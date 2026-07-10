@@ -1,12 +1,12 @@
 /**
- * Merchant Pulse V1 — Home Experience Sprint 1 (mobile-first).
- * Hero owns the story; cards own decisions. Presentation only.
+ * Merchant Pulse V1 — Home cards + CTA (shared Hero is #ma-page-hero-global).
+ * No Home-specific Hero styling — Messages / WhatsApp own the Hero visual language.
  */
 
 .ma-pulse-v1-root {
   max-width: 40rem;
   margin: 0 auto;
-  padding: 0.5rem 0 1.5rem;
+  padding: 0.25rem 0 1.5rem;
 }
 
 .ma-pulse-v1 {
@@ -16,34 +16,7 @@
 }
 
 .ma-pulse-v1--home-ref {
-  gap: 1.15rem;
-}
-
-/* Hero — narrative owner (not a card) */
-.ma-pulse-hero {
-  padding: 1.15rem 1.15rem 1.25rem;
-  border-radius: 14px;
-  border: 1px solid rgba(13, 148, 136, 0.2);
-  background: rgba(13, 148, 136, 0.06);
-}
-
-.ma-pulse-hero__story {
-  margin: 0;
-  font-size: 1.28rem;
-  line-height: 1.55;
-  color: #0f172a;
-  font-weight: 700;
-}
-
-.ma-pulse-hero.ma-pulse-slot--require_action {
-  border-color: rgba(13, 148, 136, 0.45);
-  background: rgba(13, 148, 136, 0.1);
-}
-
-.ma-pulse-hero.ma-pulse-slot--unknown,
-.ma-pulse-hero.ma-pulse-slot--loading {
-  border-color: rgba(148, 163, 184, 0.45);
-  background: rgba(248, 250, 252, 0.95);
+  gap: 0.85rem;
 }
 
 .ma-pulse-cards {
@@ -122,16 +95,8 @@
   .ma-pulse-v1-root {
     max-width: min(56rem, 100%);
     margin-inline: 0;
-    padding-top: 1rem;
+    padding-top: 0.5rem;
     padding-inline-end: 1rem;
-  }
-
-  .ma-pulse-v1--home-ref {
-    gap: 1.35rem;
-  }
-
-  .ma-pulse-hero__story {
-    font-size: 1.45rem;
   }
 
   .ma-pulse-slot__message {

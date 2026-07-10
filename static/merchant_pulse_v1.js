@@ -1,11 +1,9 @@
 /**
- * Merchant Pulse V1 — Home Experience Sprint 1 (presentation only).
+ * Merchant Pulse V1 — Home Experience Sprint 1.1 (presentation only).
  *
- * Home reference layout:
- *   Hero (executive_brief story) → max 3 decision cards → optional Work CTA
- *
- * Cards never repeat Hero. Empty / placeholder / duplicate cards are omitted.
- * Payload shape unchanged — no new architecture.
+ * Reuses the shared global Hero (#ma-page-hero-global.ma-vi-hero) —
+ * same component as Messages / WhatsApp. Pulse fills content only.
+ * Cards never repeat the Hero story.
  */
 (function () {
   "use strict";
@@ -17,14 +15,16 @@
     "merchant_decision",
   ];
 
-  /** Home Sprint 1 — cards only (Hero owns executive_brief). Max three. */
+  /** Decision cards only — Hero story lives in the shared page Hero. */
   var HOME_CARD_SPECS = [
     { key: "decision_summary", label: "هل تحتاجني؟" },
     { key: "cartflow_progress", label: "ماذا تعلمنا؟" },
     { key: "merchant_decision", label: "قرارك التالي" },
   ];
 
-  var HOME_PAGE_PURPOSE = "ماذا حدث أثناء غيابك؟";
+  var HOME_HERO_TITLE = "ملخص ما حدث أثناء غيابك";
+  var HOME_HERO_PURPOSE = "ماذا حدث أثناء غيابك؟";
+  var HOME_STORY_FALLBACK = "لم يحدث ما يحتاج انتباهك منذ آخر زيارة.";
   var ENTER_WORK_CTA_LABEL = "افتح السلال";
 
   var PLACEHOLDER_RE =
@@ -97,13 +97,20 @@
   function isTechnicalWording(msg) {
     var m = normMsg(msg);
     if (!m) return false;
-    // Internal / process wording must never surface on Home.
     return (
       m.indexOf("اكتمل مسار") !== -1 ||
       m.indexOf("مسار استرجاع") !== -1 ||
       m.indexOf("recovery_") !== -1 ||
       m.indexOf("signal") !== -1
     );
+  }
+
+  function resolveHeroStory(brief) {
+    var msg = normMsg(brief && brief.message);
+    if (isPlaceholderMessage(msg) || isTechnicalWording(msg)) {
+      return HOME_STORY_FALLBACK;
+    }
+    return msg;
   }
 
   function cardIsUseful(slot, heroMsg, seenMsgs) {
@@ -117,23 +124,40 @@
     return true;
   }
 
-  function renderHero(brief) {
-    var msg = normMsg(brief && brief.message);
-    if (isPlaceholderMessage(msg) || isTechnicalWording(msg)) {
-      msg = "لم يحدث ما يحتاج انتباهك منذ آخر زيارة.";
+  /**
+   * Fill the shared global Hero (Messages / WhatsApp component).
+   * Same slots only — no Home-specific Hero markup or CSS.
+   * Title = Home hero title; purpose = Pulse story (body weight);
+   * pageSub = framing question (shared caption slot).
+   */
+  function fillSharedHero(storyMsg) {
+    var hero = byId("ma-page-hero-global");
+    if (hero) {
+      hero.classList.add("ma-vi-hero");
+      hero.removeAttribute("hidden");
+      if (!hero.querySelector(".ma-vi-hero__glow")) {
+        var glow = document.createElement("div");
+        glow.className = "ma-vi-hero__glow";
+        glow.setAttribute("aria-hidden", "true");
+        hero.insertBefore(glow, hero.firstChild);
+      }
     }
-    var st = (brief && brief.status) || "healthy";
-    return (
-      '<header class="ma-pulse-hero ' +
-      statusClass(st) +
-      '" data-pulse-hero="executive_brief" data-pulse-status="' +
-      esc(st) +
-      '">' +
-      '<p class="ma-pulse-hero__story">' +
-      esc(msg) +
-      "</p>" +
-      "</header>"
-    );
+    if (document.body) {
+      document.body.setAttribute("data-ma-page", "home");
+    }
+    var pt = byId("pageTitle");
+    if (pt) pt.textContent = HOME_HERO_TITLE;
+    var pp = byId("pagePurpose");
+    if (pp) {
+      pp.textContent = storyMsg;
+      pp.hidden = false;
+    }
+    var ps = byId("pageSub");
+    if (ps) {
+      ps.textContent = HOME_HERO_PURPOSE;
+      ps.hidden = false;
+      ps.classList.add("ma-vi-hero__summary");
+    }
   }
 
   function renderCard(key, label, slot) {
@@ -172,7 +196,13 @@
       count += 1;
     }
     if (!html) return "";
-    return '<div class="ma-pulse-cards" data-pulse-cards="' + count + '">' + html + "</div>";
+    return (
+      '<div class="ma-pulse-cards" data-pulse-cards="' +
+      count +
+      '">' +
+      html +
+      "</div>"
+    );
   }
 
   function renderCta(pulse) {
@@ -199,40 +229,13 @@
     });
   }
 
-  function syncHomePageChrome(heroMsg) {
-    var pp = byId("pagePurpose");
-    if (pp) {
-      pp.textContent = HOME_PAGE_PURPOSE;
-      pp.hidden = false;
-    }
-    var pt = byId("pageTitle");
-    if (pt && !normMsg(pt.textContent)) {
-      pt.textContent = "الرئيسية";
-    }
-    // Supporting global subtitle must not repeat the hero story.
-    var ps = byId("pageSub");
-    if (ps) {
-      var sub = normMsg(ps.textContent);
-      if (!sub || (heroMsg && sub === heroMsg) || isPlaceholderMessage(sub)) {
-        ps.textContent = "";
-        ps.hidden = true;
-      }
-    }
-  }
-
-  function renderPulseHtml(pulse) {
-    var brief = pulse.executive_brief || {};
-    var heroMsg = normMsg(brief.message);
-    if (isPlaceholderMessage(heroMsg) || isTechnicalWording(heroMsg)) {
-      heroMsg = "لم يحدث ما يحتاج انتباهك منذ آخر زيارة.";
-    }
+  function renderPulseHtml(pulse, heroMsg) {
     return (
       '<div class="ma-pulse-v1 ma-pulse-v1--home-ref" data-pulse-fork="' +
       esc(pulse.fork) +
       '" data-pulse-status="' +
       esc(pulse.status || "") +
-      '" data-home-sprint="1">' +
-      renderHero(brief) +
+      '" data-home-sprint="1" data-shared-hero="1">' +
       renderCards(pulse, heroMsg) +
       renderCta(pulse) +
       "</div>"
@@ -250,11 +253,8 @@
     var pulse = summary && summary.merchant_pulse_v1;
     if (!isValidPulse(pulse)) return false;
 
-    var brief = pulse.executive_brief || {};
-    var heroMsg = normMsg(brief.message);
-    if (isPlaceholderMessage(heroMsg) || isTechnicalWording(heroMsg)) {
-      heroMsg = "لم يحدث ما يحتاج انتباهك منذ آخر زيارة.";
-    }
+    var heroMsg = resolveHeroStory(pulse.executive_brief);
+    fillSharedHero(heroMsg);
 
     root.classList.remove(
       "ma-home-experience--loading",
@@ -263,9 +263,8 @@
       "ma-pe-v2-home"
     );
     root.classList.add("ma-pulse-v1-root", "ma-pulse-v1-root--home-ref");
-    root.setAttribute("aria-label", "ماذا حدث أثناء غيابك");
-    root.innerHTML = renderPulseHtml(pulse);
-    syncHomePageChrome(heroMsg);
+    root.setAttribute("aria-label", HOME_HERO_PURPOSE);
+    root.innerHTML = renderPulseHtml(pulse, heroMsg);
     bindCta();
     return true;
   }

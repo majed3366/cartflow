@@ -60,12 +60,28 @@ class MerchantPulseHomeSprint1ContractTests(unittest.TestCase):
     def test_js_has_no_fetch(self) -> None:
         self.assertNotIn("fetch(", _JS)
 
-    def test_home_hero_owns_executive_brief(self) -> None:
-        self.assertIn("data-pulse-hero", _JS)
-        self.assertIn("ma-pulse-hero__story", _JS)
-        self.assertIn("executive_brief", _JS)
-        # Hero story — not a fourth card label for executive_brief
-        self.assertNotIn('"ماذا يحدث"', _JS)
+    def test_reuses_shared_global_hero(self) -> None:
+        self.assertIn("ma-page-hero-global", _JS)
+        self.assertIn("ma-vi-hero", _JS)
+        self.assertIn("fillSharedHero", _JS)
+        self.assertIn("ملخص ما حدث أثناء غيابك", _JS)
+        self.assertIn("ماذا حدث أثناء غيابك؟", _JS)
+        # Must not invent a Home-only hero block
+        self.assertNotIn("ma-pulse-hero__story", _JS)
+        self.assertNotIn("data-pulse-hero", _JS)
+
+    def test_home_not_inline_hero_page(self) -> None:
+        # Home must use global ma-vi-hero like Messages/WhatsApp
+        self.assertNotRegex(
+            _APP_JS,
+            re.compile(r"PAGES_WITH_INLINE_HERO\s*=\s*\{[^}]*\bhome\s*:"),
+        )
+        self.assertNotIn(
+            'body[data-ma-page="home"] #ma-page-hero-global',
+            (_ROOT / "static" / "merchant_product_polish_v1.css").read_text(
+                encoding="utf-8"
+            ),
+        )
 
     def test_max_three_decision_cards(self) -> None:
         self.assertIn("هل تحتاجني؟", _JS)
@@ -90,10 +106,9 @@ class MerchantPulseHomeSprint1ContractTests(unittest.TestCase):
         self.assertIn("ma-pulse-enter-work-btn", _JS)
         self.assertIn('goTo("carts")', _JS)
 
-    def test_home_page_purpose(self) -> None:
+    def test_home_page_purpose_in_shell(self) -> None:
         self.assertIn("ماذا حدث أثناء غيابك؟", _APP_JS)
         self.assertIn("ماذا حدث أثناء غيابك؟", _TMPL)
-        self.assertIn("HOME_PAGE_PURPOSE", _JS)
 
     def test_lazy_failsafe_to_home(self) -> None:
         self.assertIn("maApplyMerchantPulseV1", _LAZY)
@@ -109,9 +124,8 @@ class MerchantPulseHomeSprint1ContractTests(unittest.TestCase):
         self.assertIn("merchant_pulse_v1.js", _TMPL)
         self.assertIn("merchant_pulse_v1.css", _TMPL)
 
-    def test_css_hero_and_cards(self) -> None:
-        self.assertIn(".ma-pulse-hero", _CSS)
-        self.assertIn(".ma-pulse-hero__story", _CSS)
+    def test_css_cards_only_no_home_hero(self) -> None:
+        self.assertNotIn(".ma-pulse-hero", _CSS)
         self.assertIn(".ma-pulse-cards", _CSS)
         for cls in (
             "ma-pulse-slot--loading",

@@ -354,7 +354,6 @@
   }
 
   var PAGES_WITH_INLINE_HERO = {
-    home: true,
     carts: true,
     followup: true,
     completed: true,

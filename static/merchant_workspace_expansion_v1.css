@@ -40,6 +40,7 @@
   body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="completed"] .ma-content-head,
   body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="vip"] .ma-content-head,
   body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="messages"] .ma-content-head,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="home"] .ma-content-head,
   body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="reasons"] .ma-content-head,
   body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="carts"] #page-carts,
   body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="followup"] #page-followup,
@@ -74,6 +75,7 @@
   body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="completed"] #page-completed .ma-vi-hero,
   body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="vip"] #page-vip .ma-page-hero--inline,
   body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="vip"] #page-vip .ma-vi-hero,
+  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="home"] #ma-page-hero-global.ma-vi-hero,
   body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="messages"] #ma-page-hero-global.ma-vi-hero,
   body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="reasons"] #ma-page-hero-global.ma-vi-hero {
     max-width: none;
@@ -101,7 +103,6 @@
   }
 
   /* Reassert Family A + C from responsive layout (unchanged intent) */
-  body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="home"] .ma-content-head,
   body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="home-setup"] .ma-content-head,
   body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="home-month"] .ma-content-head,
   body[data-cf-merchant-app="1"].cf-pds-closure[data-ma-page="home-test-tools"] .ma-content-head,
