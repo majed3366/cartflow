@@ -26,6 +26,7 @@
   var HOME_HERO_PURPOSE = "ماذا حدث أثناء غيابك؟";
   var HOME_STORY_FALLBACK = "لم يحدث ما يحتاج انتباهك منذ آخر زيارة.";
   var ENTER_WORK_CTA_LABEL = "افتح السلال";
+  var lastHomeHeroStory = HOME_STORY_FALLBACK;
 
   var PLACEHOLDER_RE =
     /^(—|–|-|…|\.{1,3}|جارٍ التحديث…?|جاري التحديث…?)$/;
@@ -131,10 +132,12 @@
    * pageSub = framing question (shared caption slot).
    */
   function fillSharedHero(storyMsg) {
+    lastHomeHeroStory = normMsg(storyMsg) || HOME_STORY_FALLBACK;
     var hero = byId("ma-page-hero-global");
     if (hero) {
       hero.classList.add("ma-vi-hero");
       hero.removeAttribute("hidden");
+      hero.removeAttribute("data-shared-hero-carts");
       if (!hero.querySelector(".ma-vi-hero__glow")) {
         var glow = document.createElement("div");
         glow.className = "ma-vi-hero__glow";
@@ -149,7 +152,7 @@
     if (pt) pt.textContent = HOME_HERO_TITLE;
     var pp = byId("pagePurpose");
     if (pp) {
-      pp.textContent = storyMsg;
+      pp.textContent = lastHomeHeroStory;
       pp.hidden = false;
     }
     var ps = byId("pageSub");
@@ -158,6 +161,14 @@
       ps.hidden = false;
       ps.classList.add("ma-vi-hero__summary");
     }
+  }
+
+  /** Re-assert Home shared Hero after other pages may have filled it. */
+  function refillHomeSharedHero() {
+    var root = byId("ma-home-experience-root");
+    if (!root || !root.querySelector('[data-shared-hero="1"]')) return false;
+    fillSharedHero(lastHomeHeroStory);
+    return true;
   }
 
   function renderCard(key, label, slot) {
@@ -270,5 +281,6 @@
   }
 
   window.maApplyMerchantPulseV1 = applyMerchantPulseV1;
+  window.maRefillHomeSharedHero = refillHomeSharedHero;
   window.maMerchantPulseV1IsValid = isValidPulse;
 })();

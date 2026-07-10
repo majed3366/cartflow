@@ -398,12 +398,15 @@
     if (pageKey && pageKey !== "carts" && globalHero) {
       globalHero.removeAttribute("data-shared-hero-carts");
     }
-    // Home Pulse owns the shared global Hero — do not clobber title/purpose/story.
+    // Home Pulse owns the shared global Hero — re-assert, do not clobber with page defaults.
     if (pageKey === "home") {
       var homeRoot = byId("ma-home-experience-root");
       var pulseOwned =
         homeRoot && homeRoot.querySelector('[data-shared-hero="1"]');
       if (pulseOwned) {
+        if (typeof window.maRefillHomeSharedHero === "function") {
+          window.maRefillHomeSharedHero();
+        }
         syncVisualHero(pageKey);
         return;
       }

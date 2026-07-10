@@ -42,6 +42,14 @@ class CartsExperienceSprint2V1Tests(unittest.TestCase):
         self.assertIn("لا توجد سلال تحتاج تدخلك اليوم.", _LAZY)
         self.assertIn("fillSharedCartsHero(verdict)", _LAZY)
         self.assertIn("fillSharedCartsHero(", _LAZY)
+        # Must not paint Carts Hero while another page is active.
+        fill_fn = _LAZY[
+            _LAZY.index("function fillSharedCartsHero") : _LAZY.index(
+                "function renderCartsAttentionVerdictV1"
+            )
+        ]
+        self.assertIn('pageKey === "carts"', fill_fn)
+        self.assertNotIn('setAttribute("data-ma-page", "carts")', fill_fn)
 
     def test_attention_verdict_host_stays_quiet(self) -> None:
         # Hero owns story — paint paths hide inline verdict host.

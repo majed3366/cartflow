@@ -3601,8 +3601,16 @@
   /**
    * Carts Experience Sprint 2 — fill shared #ma-page-hero-global (same as Home).
    * Hero owns question + Commerce Language story; workspace below unchanged.
+   * Only paints when Carts is the active page (never clobber Home/Messages).
    */
   function fillSharedCartsHero(verdict) {
+    var pageKey =
+      (document.body && document.body.getAttribute("data-ma-page")) || "";
+    var cartsPage = byId("page-carts");
+    var cartsActive =
+      pageKey === "carts" ||
+      (cartsPage && cartsPage.classList.contains("active"));
+    if (!cartsActive) return;
     var hero = byId("ma-page-hero-global");
     if (hero) {
       hero.classList.add("ma-vi-hero");
@@ -3614,9 +3622,6 @@
         glow.setAttribute("aria-hidden", "true");
         hero.insertBefore(glow, hero.firstChild);
       }
-    }
-    if (document.body) {
-      document.body.setAttribute("data-ma-page", "carts");
     }
     var pt = byId("pageTitle");
     if (pt) pt.textContent = "ملخص ما يحتاج انتباهك";

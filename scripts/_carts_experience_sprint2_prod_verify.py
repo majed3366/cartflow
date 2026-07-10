@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import json
-import os
 import time
+import uuid
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -12,11 +12,9 @@ from typing import Any
 
 from playwright.sync_api import sync_playwright
 
-BASE = os.environ.get("CARTFLOW_PROD_BASE", "https://smartreplyai.net").rstrip("/")
+BASE = "https://smartreplyai.net"
 OUT = Path(__file__).resolve().parent / "_carts_experience_sprint2_prod_out"
 JS_MARKER = "fillSharedCartsHero"
-EMAIL = os.environ.get("CARTFLOW_PROD_EMAIL", "")
-PASSWORD = os.environ.get("CARTFLOW_PROD_PASSWORD", "")
 
 
 def _utc() -> str:
@@ -42,10 +40,19 @@ def wait_for_deploy(*, attempts: int = 40, sleep_s: float = 15.0) -> dict[str, A
     for i in range(1, attempts + 1):
         code, body = _get(url)
         hit = JS_MARKER in body and "cartsHeroStoryFromVerdict" in body
+        polish_url = f"{BASE}/static/merchant_product_polish_v1.css?_={int(time.time())}"
+        _, polish = _get(polish_url)
+        carts_hidden = 'body[data-ma-page="carts"] #ma-page-hero-global' in polish
         out["attempts"].append(
-            {"n": i, "status": code, "marker_present": hit, "len": len(body)}
+            {
+                "n": i,
+                "status": code,
+                "marker_present": hit,
+                "carts_hero_still_hidden_in_css": carts_hidden,
+                "len": len(body),
+            }
         )
-        if hit:
+        if hit and not carts_hidden:
             out["deployed"] = True
             out["attempt"] = i
             return out
@@ -54,65 +61,126 @@ def wait_for_deploy(*, attempts: int = 40, sleep_s: float = 15.0) -> dict[str, A
     return out
 
 
-def _shot(page, name: str, *, width: int, height: int) -> str:
-    page.set_viewport_size({"width": width, "height": height})
-    path = OUT / f"{name}.png"
-    page.screenshot(path=str(path), full_page=False)
-    return path.name
+def _probe(page) -> dict[str, Any]:
+    return page.evaluate(
+        """() => {
+          const hero = document.getElementById('ma-page-hero-global');
+          const inline = document.getElementById('ma-carts-hero');
+          const verdict = document.getElementById('ma-carts-attention-verdict-v1');
+          const cs = hero ? getComputedStyle(hero) : null;
+          return {
+            page: document.body && document.body.getAttribute('data-ma-page'),
+            hero_visible: !!(hero && cs && cs.display !== 'none' && cs.visibility !== 'hidden'),
+            hero_classes: hero ? hero.className : '',
+            shared_carts: hero ? hero.getAttribute('data-shared-hero-carts') : null,
+            title: (document.getElementById('pageTitle') || {}).textContent || '',
+            purpose: (document.getElementById('pagePurpose') || {}).textContent || '',
+            sub: (document.getElementById('pageSub') || {}).textContent || '',
+            inline_hidden: !inline || inline.hidden || getComputedStyle(inline).display === 'none',
+            verdict_quiet: !verdict || verdict.hidden || !verdict.innerText.trim(),
+          };
+        }"""
+    )
 
 
-def capture() -> dict[str, Any]:
+def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
-    report: dict[str, Any] = {"utc": _utc(), "base": BASE, "shots": []}
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context(locale="ar-SA")
-        page = context.new_page()
-        page.goto(f"{BASE}/dashboard", wait_until="domcontentloaded", timeout=90000)
-        if EMAIL and PASSWORD:
-            if page.locator('input[type="email"], input[name="email"]').count():
-                page.fill('input[type="email"], input[name="email"]', EMAIL)
-                page.fill('input[type="password"], input[name="password"]', PASSWORD)
-                page.click('button[type="submit"], button:has-text("دخول")')
-                page.wait_for_url("**/dashboard**", timeout=60000)
-        page.goto(f"{BASE}/dashboard#home", wait_until="networkidle", timeout=90000)
-        page.wait_for_timeout(2500)
-        hero = page.locator("#ma-page-hero-global")
-        report["home_hero_visible"] = hero.is_visible()
-        report["home_hero_classes"] = hero.get_attribute("class") or ""
-        report["shots"].append(_shot(page, "01_home_desktop", width=1280, height=900))
-        report["shots"].append(_shot(page, "01_home_mobile", width=390, height=844))
-
-        page.goto(f"{BASE}/dashboard#carts", wait_until="networkidle", timeout=90000)
-        page.wait_for_timeout(4000)
-        report["carts_hero_visible"] = hero.is_visible()
-        report["carts_shared_attr"] = hero.get_attribute("data-shared-hero-carts")
-        report["carts_title"] = page.locator("#pageTitle").inner_text()
-        report["carts_purpose"] = page.locator("#pagePurpose").inner_text()
-        report["carts_sub"] = page.locator("#pageSub").inner_text()
-        report["inline_carts_hero_hidden"] = page.locator("#ma-carts-hero").is_hidden()
-        report["shots"].append(_shot(page, "02_carts_desktop", width=1280, height=900))
-        report["shots"].append(_shot(page, "02_carts_mobile", width=390, height=844))
-        browser.close()
-    return report
-
-
-def main() -> None:
-    OUT.mkdir(parents=True, exist_ok=True)
+    report: dict[str, Any] = {"utc": _utc(), "base": BASE}
     deploy = wait_for_deploy()
+    report["deploy"] = deploy
     (OUT / "deploy_wait.json").write_text(
         json.dumps(deploy, ensure_ascii=False, indent=2), encoding="utf-8"
     )
+    print(json.dumps(deploy, indent=2))
     if not deploy.get("deployed"):
-        print("DEPLOY_NOT_READY")
-        raise SystemExit(2)
-    report = capture()
-    report["deploy"] = deploy
+        (OUT / "report.json").write_text(
+            json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        return 2
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        context = browser.new_context(
+            viewport={"width": 1280, "height": 900}, locale="ar-SA"
+        )
+        page = context.new_page()
+        uid = uuid.uuid4().hex[:8]
+        email = f"cf.carts.s2.{uid}@smartreplyai.net"
+        password = f"CfCartsS2!{uid}"
+        page.goto(f"{BASE}/signup", timeout=120000, wait_until="domcontentloaded")
+        page.wait_for_timeout(1200)
+        page.locator('input[name="store_name"]').fill(f"Carts S2 {uid}", timeout=60000)
+        page.locator('input[name="email"]').fill(email)
+        page.locator('input[name="password"]').first.fill(password)
+        page.locator('input[name="confirm_password"]').fill(password)
+        page.get_by_role("button", name="إنشاء الحساب").click()
+        page.wait_for_timeout(5000)
+        report["email"] = email
+
+        page.goto(f"{BASE}/dashboard#home", timeout=120000, wait_until="domcontentloaded")
+        page.wait_for_timeout(8000)
+        # Ensure Home hero was not left on Carts framing.
+        page.evaluate(
+            """() => {
+              if (typeof window.maRefillHomeSharedHero === 'function') {
+                window.maRefillHomeSharedHero();
+              }
+            }"""
+        )
+        page.wait_for_timeout(500)
+        report["home"] = _probe(page)
+        page.set_viewport_size({"width": 1280, "height": 900})
+        page.screenshot(path=str(OUT / "01_home_desktop.png"), full_page=False)
+        page.set_viewport_size({"width": 390, "height": 844})
+        page.wait_for_timeout(400)
+        page.screenshot(path=str(OUT / "01_home_mobile.png"), full_page=False)
+
+        page.set_viewport_size({"width": 1280, "height": 900})
+        page.goto(f"{BASE}/dashboard#carts", timeout=120000, wait_until="domcontentloaded")
+        try:
+            page.wait_for_function(
+                """() => {
+                  const p = document.getElementById('pagePurpose');
+                  const t = (p && p.textContent) || '';
+                  return t && !t.includes('جارٍ تجهيز') && !t.includes('جاري تجهيز');
+                }""",
+                timeout=45000,
+            )
+        except Exception as exc:  # noqa: BLE001
+            report["carts_story_wait_error"] = str(exc)
+        page.wait_for_timeout(1500)
+        report["carts"] = _probe(page)
+        page.screenshot(path=str(OUT / "02_carts_desktop.png"), full_page=False)
+        page.set_viewport_size({"width": 390, "height": 844})
+        page.wait_for_timeout(400)
+        page.screenshot(path=str(OUT / "02_carts_mobile.png"), full_page=False)
+
+        browser.close()
+
+    report["screenshots"] = sorted(p.name for p in OUT.glob("*.png"))
     (OUT / "report.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    print(json.dumps(report, ensure_ascii=False, indent=2))
+    print(
+        json.dumps(
+            {
+                "deployed": True,
+                "home": report.get("home"),
+                "carts": report.get("carts"),
+                "screenshots": report["screenshots"],
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+    ok = (
+        report.get("carts", {}).get("hero_visible")
+        and report.get("carts", {}).get("shared_carts") == "1"
+        and "ما الذي يحتاج انتباهك الآن؟" in (report.get("carts", {}).get("sub") or "")
+        and report.get("carts", {}).get("inline_hidden")
+    )
+    return 0 if ok else 3
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
