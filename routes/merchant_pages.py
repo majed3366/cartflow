@@ -41,6 +41,9 @@ def dashboard(request: Request):
     from services.cart_page_v2_ui_flag_v1 import (  # noqa: PLC0415
         carts_v2_ui_enabled,
     )
+    from services.merchant_pulse_ui_v1_flag import (  # noqa: PLC0415
+        merchant_pulse_ui_v1_enabled,
+    )
 
     resp = templates.TemplateResponse(
         request,
@@ -51,6 +54,7 @@ def dashboard(request: Request):
             "merchant_setup_render_build": MERCHANT_SETUP_RENDER_BUILD,
             "merchant_dashboard_lazy_shell": True,
             "merchant_carts_v2_ui": carts_v2_ui_enabled(),
+            "merchant_pulse_ui_v1": merchant_pulse_ui_v1_enabled(),
             "merchant_ar_date_header": merchant_ar_weekday_date_header(now_utc),
             "merchant_nav_badge_abandoned": 0,
             "merchant_nav_badge_followup": 0,

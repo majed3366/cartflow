@@ -19,8 +19,9 @@
 <link rel="stylesheet" href="/static/merchant_responsive_layout_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
 <link rel="stylesheet" href="/static/merchant_workspace_expansion_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
 <link rel="stylesheet" href="/static/merchant_currency_certification_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
+<link rel="stylesheet" href="/static/merchant_pulse_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
 </head>
-<body data-cf-merchant-app="1" class="cf-pds-closure">
+<body data-cf-merchant-app="1" class="cf-pds-closure"{% if merchant_pulse_ui_v1 %} data-merchant-pulse-ui-v1="1"{% endif %}>
 
 <input type="checkbox" id="ma-sidebar-toggle" class="ma-sidebar-toggle" autocomplete="off" aria-hidden="true">
 <div class="ma-scrim"><label for="ma-sidebar-toggle" aria-label="إغلاق القائمة"></label></div>
@@ -994,6 +995,7 @@
 <script defer src="/static/merchant_product_language_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_vip_automation_ui.js"></script>
 <script defer src="/static/merchant_home_experience.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
+<script defer src="/static/merchant_pulse_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_intelligence_carts_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/cart_page_rendering_state_controller_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_dashboard_lazy.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>

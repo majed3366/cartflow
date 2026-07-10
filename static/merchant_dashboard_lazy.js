@@ -2144,7 +2144,15 @@
     applyHomeLayoutAfterSetup(d.merchant_activation, d.merchant_setup_experience);
     logSetupRenderDebug("summary_dom", probeSetupExperienceRoot());
 
-    if (window.maApplyHomeExperience) {
+    var pulseRendered = false;
+    if (window.maApplyMerchantPulseV1) {
+      try {
+        pulseRendered = !!window.maApplyMerchantPulseV1(d);
+      } catch (pulseErr) {
+        pulseRendered = false;
+      }
+    }
+    if (!pulseRendered && window.maApplyHomeExperience) {
       window.maApplyHomeExperience(
         d.merchant_home_experience_v1 || { ok: false }
       );
