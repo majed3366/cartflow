@@ -7,13 +7,6 @@
 (function () {
   "use strict";
 
-  var PROOF_CONFIDENCE_AR = {
-    high: "مرتفع",
-    medium: "متوسط",
-    low: "منخفض",
-    insufficient: "غير كافٍ",
-  };
-
   var OIA_LABEL_OBSERVATION = "الملاحظة";
   var OIA_LABEL_IMPACT = "التأثير";
   var OIA_LABEL_ACTION = "الإجراء المقترح";
@@ -47,16 +40,11 @@
   }
 
   function renderKnowledgeProofMeta(card) {
-    var conf = (card && card.confidence) || "insufficient";
-    var confAr = PROOF_CONFIDENCE_AR[String(conf).toLowerCase()] || conf;
     var sourceLabel = evidenceLabelForCard(card);
+    // confidence (high/medium/low/unknown) is internal metadata — never render.
     return (
       '<div class="ma-knowledge-proof-meta" aria-label="دليل الاستنتاج">' +
-      '<span class="ma-knowledge-proof-conf-label">الثقة</span> ' +
-      '<span class="ma-knowledge-proof-conf-value">' +
-      esc(confAr) +
-      "</span>" +
-      ' · <span class="ma-knowledge-proof-evidence-label">المصدر:</span> ' +
+      '<span class="ma-knowledge-proof-evidence-label">المصدر:</span> ' +
       '<span class="ma-knowledge-proof-evidence-value">' +
       esc(sourceLabel) +
       "</span>" +

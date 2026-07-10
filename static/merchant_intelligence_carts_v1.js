@@ -20,13 +20,6 @@
     "no_contact",
   ];
 
-  var CONF_LABEL_AR = {
-    high: "ثقة عالية",
-    medium: "ثقة متوسطة",
-    low: "ثقة منخفضة",
-    insufficient: "ثقة محدودة",
-  };
-
   var REC_TYPE_LABEL_AR = {
     required_action: "إجراء مطلوب",
     suggested_action: "مقترح",
@@ -270,12 +263,7 @@
         decisionRowHtml("ماذا حدث؟", what, esc) +
           decisionRowHtml("لماذا يهم؟", meaning, esc) +
           decisionRowHtml("ماذا فعل CartFlow؟", did, esc) +
-          decisionRowHtml("هل تحتاج أن تتدخل؟", actionLine, esc, actionClass) +
-          '<div class="ma-mi-group-card__meta">' +
-          '<span class="ma-mi-group-card__conf">' +
-          esc(confidenceLabelAr(story.confidence)) +
-          "</span>" +
-          "</div>"
+          decisionRowHtml("هل تحتاج أن تتدخل؟", actionLine, esc, actionClass)
       ) +
       '<span class="ma-mi-group-card__cta v2-btn" aria-hidden="true">عرض التفاصيل</span>' +
       "</summary>"
@@ -392,10 +380,6 @@
       }
     });
     return best;
-  }
-
-  function confidenceLabelAr(conf) {
-    return CONF_LABEL_AR[norm(conf).toLowerCase()] || "—";
   }
 
   function recTypeLabelAr(recType) {
@@ -598,16 +582,13 @@
             esc,
             recType === "required_action" ? "ma-mi-decision-row--action" : ""
           ) +
-          '<div class="ma-mi-group-card__meta">' +
           (value > 0
-            ? '<span class="ma-mi-group-card__value cf-currency-atom cftyp-currency" data-cf-currency="1" dir="ltr">' +
+            ? '<div class="ma-mi-group-card__meta">' +
+              '<span class="ma-mi-group-card__value cf-currency-atom cftyp-currency" data-cf-currency="1" dir="ltr">' +
               esc(merchantCurrencyText(value)) +
-              "</span>"
-            : "") +
-          '<span class="ma-mi-group-card__conf">' +
-          esc(confidenceLabelAr(group.confidence)) +
-          "</span>" +
-          "</div>"
+              "</span>" +
+              "</div>"
+            : "")
       ) +
       '<span class="ma-mi-group-card__cta v2-btn" aria-hidden="true">عرض التفاصيل</span>' +
       "</summary>"

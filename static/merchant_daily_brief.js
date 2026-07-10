@@ -68,17 +68,14 @@
     var parts = [];
     var cls = String(item.decision_class_label_ar || "").trim();
     if (cls) parts.push(cls);
-    var conf = String(item.confidence_label_ar || item.confidence || "").trim();
-    if (conf) parts.push("ثقة " + conf);
+    // confidence (high/medium/low/unknown) is internal — never render.
     var src = String(item.evidence_source_ar || "").trim();
     if (src && src !== "—") parts.push(src);
     return parts.join(" · ");
   }
 
   function queueCardMeta(item) {
-    var cls = String(item.decision_class_label_ar || "").trim() || "—";
-    var conf = String(item.confidence_label_ar || "").trim();
-    return conf ? cls + " · " + conf : cls;
+    return String(item.decision_class_label_ar || "").trim() || "—";
   }
 
   function emptyStateHtml(payload) {

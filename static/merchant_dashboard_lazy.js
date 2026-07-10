@@ -4585,23 +4585,15 @@
       }
       h += "</span></div>";
     }
-    var conf = ps.confidence_ar || ps.confidence || "";
     var ev = ps.evidence_label_ar || ps.evidence_source_ar || "";
-    if (conf || ev) {
+    // confidence (high/medium/low/unknown) is internal — never render to merchants.
+    if (ev) {
       h +=
-        '<div class="ma-cart-timeline-event ma-cart-timeline-event--meta ma-cart-timeline-event--muted">';
-      if (conf) {
-        h +=
-          '<span class="ma-cart-timeline-event-meta">الثقة: ' + esc(conf) + "</span>";
-      }
-      if (ev) {
-        h +=
-          (conf ? " · " : "") +
-          '<span class="ma-cart-timeline-event-meta">المصدر: ' +
-          esc(ev) +
-          "</span>";
-      }
-      h += "</div>";
+        '<div class="ma-cart-timeline-event ma-cart-timeline-event--meta ma-cart-timeline-event--muted">' +
+        '<span class="ma-cart-timeline-event-meta">المصدر: ' +
+        esc(ev) +
+        "</span>" +
+        "</div>";
     }
     return h;
   }
@@ -4749,9 +4741,7 @@
       esc(ps.why_we_know_ar || "—") +
       "</div>" +
       '<div class="recovery-truth-line ma-proof-meta">' +
-      "<strong>الثقة:</strong> " +
-      esc(ps.confidence_ar || ps.confidence || "غير معروف") +
-      " · <strong>المصدر:</strong> " +
+      "<strong>المصدر:</strong> " +
       esc(ps.evidence_label_ar || ps.evidence_source_ar || "—") +
       "</div>";
     if (steps.length) {

@@ -99,9 +99,10 @@ class MerchantPulseJsContractTests(unittest.TestCase):
         ):
             self.assertIn(cls, _CSS)
 
-    def test_validity_helper_exported(self) -> None:
-        self.assertIn("maMerchantPulseV1IsValid", _JS)
-        self.assertIn("isValidPulse", _JS)
+    def test_confidence_never_rendered(self) -> None:
+        self.assertNotIn("ma-pulse-slot__confidence", _JS)
+        self.assertNotIn("slot.confidence", _JS)
+        self.assertNotIn("ma-pulse-slot__confidence", _CSS)
 
 
 class MerchantPulsePayloadShapeTests(unittest.TestCase):

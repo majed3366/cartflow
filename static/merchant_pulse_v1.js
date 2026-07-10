@@ -74,10 +74,7 @@
 
   function renderSlot(key, slot) {
     var label = SECTION_LABELS[key] || key;
-    var conf = String(slot.confidence || "").trim();
-    var confHtml = conf
-      ? '<p class="ma-pulse-slot__confidence">' + esc(conf) + "</p>"
-      : "";
+    // confidence (high/medium/low/unknown) is internal metadata — never render.
     return (
       '<section class="ma-pulse-slot ' +
       statusClass(slot.status) +
@@ -92,7 +89,6 @@
       '<p class="ma-pulse-slot__message">' +
       esc(slot.message || "—") +
       "</p>" +
-      confHtml +
       "</section>"
     );
   }
