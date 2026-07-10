@@ -11,6 +11,7 @@ _LAZY = (_ROOT / "static" / "merchant_dashboard_lazy.js").read_text(encoding="ut
 _POLISH = (_ROOT / "static" / "merchant_product_polish_v1.css").read_text(
     encoding="utf-8"
 )
+_VI = (_ROOT / "static" / "merchant_visual_identity_v1.css").read_text(encoding="utf-8")
 _TMPL = (_ROOT / "templates" / "merchant_app.html").read_text(encoding="utf-8")
 
 
@@ -20,9 +21,9 @@ class CartsExperienceSprint2V1Tests(unittest.TestCase):
         block = _APP_JS[start : start + 180]
         self.assertNotIn("carts:", block)
         self.assertIn("followup:", block)
-        self.assertIn('data-shared-hero-carts', _APP_JS)
-        self.assertIn("ملخص ما يحتاج انتباهك", _APP_JS)
+        self.assertIn("data-shared-hero-carts", _APP_JS)
         self.assertIn("ما الذي يحتاج انتباهك الآن؟", _APP_JS)
+        self.assertIn("fillQuestionFirstHero", _APP_JS)
 
     def test_polish_does_not_hide_global_hero_on_carts(self) -> None:
         self.assertNotIn(
@@ -41,7 +42,7 @@ class CartsExperienceSprint2V1Tests(unittest.TestCase):
         self.assertIn("سلة تحتاج انتباهك.", _LAZY)
         self.assertIn("لا توجد سلال تحتاج تدخلك اليوم.", _LAZY)
         self.assertIn("fillSharedCartsHero(verdict)", _LAZY)
-        self.assertIn("fillSharedCartsHero(", _LAZY)
+        self.assertIn("maFillQuestionFirstHero", _LAZY)
         # Must not paint Carts Hero while another page is active.
         fill_fn = _LAZY[
             _LAZY.index("function fillSharedCartsHero") : _LAZY.index(
@@ -50,6 +51,14 @@ class CartsExperienceSprint2V1Tests(unittest.TestCase):
         ]
         self.assertIn('pageKey === "carts"', fill_fn)
         self.assertNotIn('setAttribute("data-ma-page", "carts")', fill_fn)
+        # Sprint 2.1 — no Title→Answer→Question framing title
+        self.assertNotIn("ملخص ما يحتاج انتباهك", fill_fn)
+
+    def test_question_first_narrative_css(self) -> None:
+        self.assertIn('data-hero-narrative="question-first"', _VI)
+        self.assertIn("order: 1", _VI)
+        self.assertIn("order: 2", _VI)
+        self.assertIn("order: 3", _VI)
 
     def test_attention_verdict_host_stays_quiet(self) -> None:
         # Hero owns story — paint paths hide inline verdict host.

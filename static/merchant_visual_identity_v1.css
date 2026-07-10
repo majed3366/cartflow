@@ -185,6 +185,37 @@ body[data-cf-merchant-app="1"] .ma-page-summary.ma-vi-hero__summary {
   color: rgba(255, 255, 255, 0.78);
 }
 
+/*
+ * Hero Experience Sprint 2.1 — Question → Answer → Optional context.
+ * Same type sizes; flex order only so the question reads first.
+ * Messages / WhatsApp keep default Title → Purpose (no data-hero-narrative).
+ */
+body[data-cf-merchant-app="1"] #ma-page-hero-global.ma-vi-hero[data-hero-narrative="question-first"] {
+  display: flex;
+  flex-direction: column;
+}
+
+body[data-cf-merchant-app="1"] #ma-page-hero-global.ma-vi-hero[data-hero-narrative="question-first"] #pageSub {
+  order: 1;
+  margin-top: 0;
+  margin-bottom: var(--cfvi-space-xs);
+}
+
+body[data-cf-merchant-app="1"] #ma-page-hero-global.ma-vi-hero[data-hero-narrative="question-first"] #pageTitle {
+  order: 2;
+  margin-bottom: var(--cfvi-space-sm);
+}
+
+body[data-cf-merchant-app="1"] #ma-page-hero-global.ma-vi-hero[data-hero-narrative="question-first"] #pagePurpose {
+  order: 3;
+  margin-top: 0;
+  max-width: 42ch;
+}
+
+body[data-cf-merchant-app="1"] #ma-page-hero-global.ma-vi-hero[data-hero-narrative="question-first"] .ma-vi-hero__glow {
+  order: 0;
+}
+
 /* Global hero compact pages */
 body[data-cf-merchant-app="1"] #ma-page-hero-global.ma-vi-hero {
   width: calc(100% - var(--cfvi-space-md) * 2);

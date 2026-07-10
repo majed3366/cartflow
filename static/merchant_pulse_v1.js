@@ -22,9 +22,10 @@
     { key: "merchant_decision", label: "قرارك التالي" },
   ];
 
-  var HOME_HERO_TITLE = "ملخص ما حدث أثناء غيابك";
-  var HOME_HERO_PURPOSE = "ماذا حدث أثناء غيابك؟";
+  var HOME_HERO_QUESTION = "ماذا حدث أثناء غيابك؟";
   var HOME_STORY_FALLBACK = "لم يحدث ما يحتاج انتباهك منذ آخر زيارة.";
+  var HOME_HERO_SUPPORT_RECOVERED =
+    "CartFlow تابع عمليات الاسترداد أثناء غيابك.";
   var ENTER_WORK_CTA_LABEL = "افتح السلال";
   var lastHomeHeroStory = HOME_STORY_FALLBACK;
 
@@ -131,33 +132,57 @@
    * Title = Home hero title; purpose = Pulse story (body weight);
    * pageSub = framing question (shared caption slot).
    */
+  /**
+   * Hero Experience Sprint 2.1 — Question → Answer → Optional.
+   * Eyebrow question first; story is the large visual focus.
+   */
+  function homeHeroSupport(storyMsg) {
+    var s = normMsg(storyMsg);
+    if (/تم استرداد|عمليات شراء|عملية شراء/.test(s)) {
+      return HOME_HERO_SUPPORT_RECOVERED;
+    }
+    return "";
+  }
+
   function fillSharedHero(storyMsg) {
     lastHomeHeroStory = normMsg(storyMsg) || HOME_STORY_FALLBACK;
     var hero = byId("ma-page-hero-global");
     if (hero) {
-      hero.classList.add("ma-vi-hero");
-      hero.removeAttribute("hidden");
       hero.removeAttribute("data-shared-hero-carts");
-      if (!hero.querySelector(".ma-vi-hero__glow")) {
-        var glow = document.createElement("div");
-        glow.className = "ma-vi-hero__glow";
-        glow.setAttribute("aria-hidden", "true");
-        hero.insertBefore(glow, hero.firstChild);
-      }
     }
     if (document.body) {
       document.body.setAttribute("data-ma-page", "home");
     }
+    var payload = {
+      question: HOME_HERO_QUESTION,
+      story: lastHomeHeroStory,
+      support: homeHeroSupport(lastHomeHeroStory),
+    };
+    if (typeof window.maFillQuestionFirstHero === "function") {
+      window.maFillQuestionFirstHero(payload);
+      return;
+    }
+    // Fallback if app helper not yet available
+    if (hero) {
+      hero.classList.add("ma-vi-hero");
+      hero.removeAttribute("hidden");
+      hero.setAttribute("data-hero-narrative", "question-first");
+    }
     var pt = byId("pageTitle");
-    if (pt) pt.textContent = HOME_HERO_TITLE;
+    if (pt) pt.textContent = payload.story;
     var pp = byId("pagePurpose");
     if (pp) {
-      pp.textContent = lastHomeHeroStory;
-      pp.hidden = false;
+      if (payload.support) {
+        pp.textContent = payload.support;
+        pp.hidden = false;
+      } else {
+        pp.textContent = "";
+        pp.hidden = true;
+      }
     }
     var ps = byId("pageSub");
     if (ps) {
-      ps.textContent = HOME_HERO_PURPOSE;
+      ps.textContent = payload.question;
       ps.hidden = false;
       ps.classList.add("ma-vi-hero__summary");
     }
@@ -274,7 +299,7 @@
       "ma-pe-v2-home"
     );
     root.classList.add("ma-pulse-v1-root", "ma-pulse-v1-root--home-ref");
-    root.setAttribute("aria-label", HOME_HERO_PURPOSE);
+    root.setAttribute("aria-label", HOME_HERO_QUESTION);
     root.innerHTML = renderPulseHtml(pulse, heroMsg);
     bindCta();
     return true;

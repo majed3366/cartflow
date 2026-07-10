@@ -64,11 +64,14 @@ class MerchantPulseHomeSprint1ContractTests(unittest.TestCase):
         self.assertIn("ma-page-hero-global", _JS)
         self.assertIn("ma-vi-hero", _JS)
         self.assertIn("fillSharedHero", _JS)
-        self.assertIn("ملخص ما حدث أثناء غيابك", _JS)
         self.assertIn("ماذا حدث أثناء غيابك؟", _JS)
+        self.assertIn("question-first", _JS)
+        self.assertIn("maFillQuestionFirstHero", _JS)
         # Must not invent a Home-only hero block
         self.assertNotIn("ma-pulse-hero__story", _JS)
         self.assertNotIn("data-pulse-hero", _JS)
+        # Sprint 2.1 — no Title→Answer→Question framing title
+        self.assertNotIn("ملخص ما حدث أثناء غيابك", _JS)
 
     def test_home_not_inline_hero_page(self) -> None:
         # Home must use global ma-vi-hero like Messages/WhatsApp

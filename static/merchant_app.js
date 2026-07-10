@@ -360,9 +360,58 @@
     vip: true,
   };
 
-  var CARTS_HERO_TITLE = "ملخص ما يحتاج انتباهك";
   var CARTS_HERO_QUESTION = "ما الذي يحتاج انتباهك الآن؟";
   var CARTS_HERO_STORY_PENDING = "جارٍ تجهيز صورة السلال…";
+  var CARTS_HERO_SUPPORT_NEEDS_YOU = "تابع الحالات التي تحتاج قرارًا منك.";
+
+  /**
+   * Hero Experience Sprint 2.1 — Question → Answer → Optional.
+   * pageSub = eyebrow question; pageTitle = story (visual focus); pagePurpose = support.
+   */
+  function fillQuestionFirstHero(opts) {
+    opts = opts || {};
+    var hero = byId("ma-page-hero-global");
+    var pt = byId("pageTitle");
+    var pp = byId("pagePurpose");
+    var ps = byId("pageSub");
+    var question = String(opts.question || "").trim();
+    var story = String(opts.story || "").trim();
+    var support = String(opts.support || "").trim();
+    if (hero) {
+      hero.classList.add("ma-vi-hero");
+      hero.removeAttribute("hidden");
+      hero.setAttribute("data-hero-narrative", "question-first");
+      if (!hero.querySelector(".ma-vi-hero__glow")) {
+        var glow = document.createElement("div");
+        glow.className = "ma-vi-hero__glow";
+        glow.setAttribute("aria-hidden", "true");
+        hero.insertBefore(glow, hero.firstChild);
+      }
+    }
+    if (ps) {
+      ps.textContent = question;
+      ps.hidden = !question;
+      ps.classList.add("ma-vi-hero__summary");
+    }
+    if (pt) pt.textContent = story || "";
+    if (pp) {
+      if (support) {
+        pp.textContent = support;
+        pp.hidden = false;
+      } else {
+        pp.textContent = "";
+        pp.hidden = true;
+      }
+    }
+  }
+
+  function clearQuestionFirstHero() {
+    var hero = byId("ma-page-hero-global");
+    if (hero) hero.removeAttribute("data-hero-narrative");
+  }
+
+  window.maFillQuestionFirstHero = fillQuestionFirstHero;
+  window.maClearQuestionFirstHero = clearQuestionFirstHero;
 
   function syncVisualHero(pageKey) {
     var globalHero = byId("ma-page-hero-global");
@@ -398,6 +447,9 @@
     if (pageKey && pageKey !== "carts" && globalHero) {
       globalHero.removeAttribute("data-shared-hero-carts");
     }
+    if (pageKey && pageKey !== "home" && pageKey !== "carts") {
+      clearQuestionFirstHero();
+    }
     // Home Pulse owns the shared global Hero — re-assert, do not clobber with page defaults.
     if (pageKey === "home") {
       var homeRoot = byId("ma-home-experience-root");
@@ -420,16 +472,11 @@
       if (globalHero) {
         globalHero.setAttribute("data-shared-hero-carts", "1");
       }
-      if (pt) pt.textContent = CARTS_HERO_TITLE;
-      if (pp) {
-        pp.textContent = CARTS_HERO_STORY_PENDING;
-        pp.hidden = false;
-      }
-      if (ps) {
-        ps.textContent = CARTS_HERO_QUESTION;
-        ps.hidden = false;
-        ps.classList.add("ma-vi-hero__summary");
-      }
+      fillQuestionFirstHero({
+        question: CARTS_HERO_QUESTION,
+        story: CARTS_HERO_STORY_PENDING,
+        support: "",
+      });
       syncVisualHero(pageKey);
       return;
     }

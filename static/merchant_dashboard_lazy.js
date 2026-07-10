@@ -3599,10 +3599,17 @@
   }
 
   /**
-   * Carts Experience Sprint 2 — fill shared #ma-page-hero-global (same as Home).
-   * Hero owns question + Commerce Language story; workspace below unchanged.
+   * Carts Experience Sprint 2.1 — Question → Answer → Optional on shared Hero.
    * Only paints when Carts is the active page (never clobber Home/Messages).
    */
+  function cartsHeroSupportFromVerdict(verdict) {
+    verdict = verdict || {};
+    if (String(verdict.mode || "") === "needs_you") {
+      return "تابع الحالات التي تحتاج قرارًا منك.";
+    }
+    return "";
+  }
+
   function fillSharedCartsHero(verdict) {
     var pageKey =
       (document.body && document.body.getAttribute("data-ma-page")) || "";
@@ -3613,26 +3620,37 @@
     if (!cartsActive) return;
     var hero = byId("ma-page-hero-global");
     if (hero) {
+      hero.setAttribute("data-shared-hero-carts", "1");
+    }
+    var payload = {
+      question: "ما الذي يحتاج انتباهك الآن؟",
+      story: cartsHeroStoryFromVerdict(verdict),
+      support: cartsHeroSupportFromVerdict(verdict),
+    };
+    if (typeof window.maFillQuestionFirstHero === "function") {
+      window.maFillQuestionFirstHero(payload);
+      return;
+    }
+    if (hero) {
       hero.classList.add("ma-vi-hero");
       hero.removeAttribute("hidden");
-      hero.setAttribute("data-shared-hero-carts", "1");
-      if (!hero.querySelector(".ma-vi-hero__glow")) {
-        var glow = document.createElement("div");
-        glow.className = "ma-vi-hero__glow";
-        glow.setAttribute("aria-hidden", "true");
-        hero.insertBefore(glow, hero.firstChild);
-      }
+      hero.setAttribute("data-hero-narrative", "question-first");
     }
     var pt = byId("pageTitle");
-    if (pt) pt.textContent = "ملخص ما يحتاج انتباهك";
+    if (pt) pt.textContent = payload.story;
     var pp = byId("pagePurpose");
     if (pp) {
-      pp.textContent = cartsHeroStoryFromVerdict(verdict);
-      pp.hidden = false;
+      if (payload.support) {
+        pp.textContent = payload.support;
+        pp.hidden = false;
+      } else {
+        pp.textContent = "";
+        pp.hidden = true;
+      }
     }
     var ps = byId("pageSub");
     if (ps) {
-      ps.textContent = "ما الذي يحتاج انتباهك الآن؟";
+      ps.textContent = payload.question;
       ps.hidden = false;
       ps.classList.add("ma-vi-hero__summary");
     }
