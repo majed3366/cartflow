@@ -219,13 +219,30 @@ def finalize_dashboard_summary_payload(
             home_attach_mode="summary_not_ok",
             cache_hit=cache_hit,
         )
+        try:
+            from services.merchant_pulse_v1 import (  # noqa: PLC0415
+                attach_merchant_pulse_v1_to_summary,
+            )
+
+            attach_merchant_pulse_v1_to_summary(body, store_slug=store_slug)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("merchant_pulse_v1 attach (not_ok): %s", exc)
         return body
-    return ensure_merchant_home_experience_on_summary(
+    body = ensure_merchant_home_experience_on_summary(
         body,
         summary_source=summary_source,
         store_slug=store_slug,
         cache_hit=cache_hit,
     )
+    try:
+        from services.merchant_pulse_v1 import (  # noqa: PLC0415
+            attach_merchant_pulse_v1_to_summary,
+        )
+
+        attach_merchant_pulse_v1_to_summary(body, store_slug=store_slug)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("merchant_pulse_v1 attach: %s", exc)
+    return body
 
 
 __all__ = [
