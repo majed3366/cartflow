@@ -42,7 +42,7 @@
     "home-setup": "تحقق من جاهزية متجرك قبل التشغيل الكامل.",
     "home-month": "أرقام الاسترداد والأداء لهذا الشهر.",
     "home-test-tools": "اختبر الودجيت والاسترجاع بدون إرسال حقيقي.",
-    carts: "CartFlow يتابع سلال متجرك اليوم — افهم ما يحدث قبل التفاصيل.",
+    carts: "ما الذي يحتاج انتباهك الآن؟",
     followup: "ردود العملاء والمتابعة التي يحتاج المتجر مراجعتها.",
     completed: "سلال أنهت مسار الاسترجاع — شراء أو استرداد ناجح.",
     vip: "سلال عالية القيمة تحتاج متابعة خاصة منك.",
@@ -353,12 +353,16 @@
     });
   }
 
+  /* Carts uses shared global Hero (Experience Sprint 2) — same as Home/Messages. */
   var PAGES_WITH_INLINE_HERO = {
-    carts: true,
     followup: true,
     completed: true,
     vip: true,
   };
+
+  var CARTS_HERO_TITLE = "ملخص ما يحتاج انتباهك";
+  var CARTS_HERO_QUESTION = "ما الذي يحتاج انتباهك الآن؟";
+  var CARTS_HERO_STORY_PENDING = "جارٍ تجهيز صورة السلال…";
 
   function syncVisualHero(pageKey) {
     var globalHero = byId("ma-page-hero-global");
@@ -387,8 +391,12 @@
     var pt = byId("pageTitle");
     var pp = byId("pagePurpose");
     var ps = byId("pageSub");
+    var globalHero = byId("ma-page-hero-global");
     if (document.body && pageKey) {
       document.body.setAttribute("data-ma-page", pageKey);
+    }
+    if (pageKey && pageKey !== "carts" && globalHero) {
+      globalHero.removeAttribute("data-shared-hero-carts");
     }
     // Home Pulse owns the shared global Hero — do not clobber title/purpose/story.
     if (pageKey === "home") {
@@ -399,6 +407,28 @@
         syncVisualHero(pageKey);
         return;
       }
+    }
+    // Carts Experience Sprint 2 — shared Hero owns question + Commerce Language story.
+    if (pageKey === "carts") {
+      if (globalHero && globalHero.getAttribute("data-shared-hero-carts") === "1") {
+        syncVisualHero(pageKey);
+        return;
+      }
+      if (globalHero) {
+        globalHero.setAttribute("data-shared-hero-carts", "1");
+      }
+      if (pt) pt.textContent = CARTS_HERO_TITLE;
+      if (pp) {
+        pp.textContent = CARTS_HERO_STORY_PENDING;
+        pp.hidden = false;
+      }
+      if (ps) {
+        ps.textContent = CARTS_HERO_QUESTION;
+        ps.hidden = false;
+        ps.classList.add("ma-vi-hero__summary");
+      }
+      syncVisualHero(pageKey);
+      return;
     }
     if (pt) pt.textContent = text || "";
     var purpose = pageKey && PAGE_PURPOSE[pageKey] ? PAGE_PURPOSE[pageKey] : "";

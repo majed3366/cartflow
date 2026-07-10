@@ -76,8 +76,7 @@
   padding-top: 0;
 }
 
-/* Global hero hidden when page owns its inline hero (Home uses shared global Hero) */
-body[data-ma-page="carts"] #ma-page-hero-global,
+/* Global hero hidden when page owns its inline hero (Home + Carts use shared global Hero) */
 body[data-ma-page="followup"] #ma-page-hero-global,
 body[data-ma-page="completed"] #ma-page-hero-global,
 body[data-ma-page="vip"] #ma-page-hero-global {

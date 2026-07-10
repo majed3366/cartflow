@@ -3582,6 +3582,57 @@
     };
   }
 
+  function cartsHeroStoryFromVerdict(verdict) {
+    verdict = verdict || {};
+    var mode = String(verdict.mode || "");
+    var counts = verdict.counts || {};
+    var freshness = String(verdict.freshness || "");
+    if (mode === "refreshing" || freshness === "pending") {
+      return "جارٍ تجهيز صورة السلال…";
+    }
+    var needs = parseInt(counts.needs_you, 10) || 0;
+    if (mode === "needs_you" && needs > 0) {
+      if (needs === 1) return "لديك سلة واحدة تحتاج انتباهك.";
+      return "لديك " + needs + " سلة تحتاج انتباهك.";
+    }
+    return "لا توجد سلال تحتاج تدخلك اليوم.";
+  }
+
+  /**
+   * Carts Experience Sprint 2 — fill shared #ma-page-hero-global (same as Home).
+   * Hero owns question + Commerce Language story; workspace below unchanged.
+   */
+  function fillSharedCartsHero(verdict) {
+    var hero = byId("ma-page-hero-global");
+    if (hero) {
+      hero.classList.add("ma-vi-hero");
+      hero.removeAttribute("hidden");
+      hero.setAttribute("data-shared-hero-carts", "1");
+      if (!hero.querySelector(".ma-vi-hero__glow")) {
+        var glow = document.createElement("div");
+        glow.className = "ma-vi-hero__glow";
+        glow.setAttribute("aria-hidden", "true");
+        hero.insertBefore(glow, hero.firstChild);
+      }
+    }
+    if (document.body) {
+      document.body.setAttribute("data-ma-page", "carts");
+    }
+    var pt = byId("pageTitle");
+    if (pt) pt.textContent = "ملخص ما يحتاج انتباهك";
+    var pp = byId("pagePurpose");
+    if (pp) {
+      pp.textContent = cartsHeroStoryFromVerdict(verdict);
+      pp.hidden = false;
+    }
+    var ps = byId("pageSub");
+    if (ps) {
+      ps.textContent = "ما الذي يحتاج انتباهك الآن؟";
+      ps.hidden = false;
+      ps.classList.add("ma-vi-hero__summary");
+    }
+  }
+
   function renderCartsAttentionVerdictV1(rows, opts) {
     var host = byId("ma-carts-attention-verdict-v1");
     var hero = byId("ma-carts-hero");
@@ -3606,37 +3657,15 @@
     }
     // Pending/empty body owns the cart-list whisper host so the page never
     // looks blank under the verdict — do not suppress that host from here.
-    if (!host) return true;
-    var pending = resolveAttentionVerdictPending(opts);
     var verdict = buildCartsAttentionVerdictV1(rows, opts);
-    var freshness = verdict.freshness || (pending ? "pending" : "final");
-    var html =
-      '<div class="ma-carts-attention-verdict__inner" data-verdict-mode="' +
-      esc(verdict.mode) +
-      '" data-verdict-freshness="' +
-      esc(freshness) +
-      '">' +
-      '<p class="ma-carts-attention-verdict__kicker">ما يحتاج انتباهك الآن</p>' +
-      '<p class="ma-carts-attention-verdict__headline">' +
-      esc(verdict.headline) +
-      "</p>";
-    if (verdict.detail) {
-      html +=
-        '<p class="ma-carts-attention-verdict__detail">' +
-        esc(verdict.detail) +
-        "</p>";
+    fillSharedCartsHero(verdict);
+    // Shared Hero owns the page story — keep inline verdict host quiet.
+    if (host) {
+      host.hidden = true;
+      host.innerHTML = "";
+      host.setAttribute("data-verdict-freshness", verdict.freshness || "final");
+      host.setAttribute("hidden", "");
     }
-    if (verdict.continue_hint) {
-      html +=
-        '<p class="ma-carts-attention-verdict__continue">' +
-        esc(verdict.continue_hint) +
-        "</p>";
-    }
-    html += "</div>";
-    host.innerHTML = html;
-    host.setAttribute("data-verdict-freshness", freshness);
-    host.hidden = false;
-    host.removeAttribute("hidden");
     return true;
   }
 
@@ -3761,39 +3790,23 @@
       mplHost.hidden = true;
       mplHost.innerHTML = "";
     }
-    if (!host || !plan || !plan.verdict) return;
+    if (!plan || !plan.verdict) return;
     var verdict = plan.verdict;
     var freshness = plan.freshness || verdict.freshness || "pending";
-    var html =
-      '<div class="ma-carts-attention-verdict__inner" data-verdict-mode="' +
-      esc(verdict.mode || plan.verdictMode || "") +
-      '" data-verdict-freshness="' +
-      esc(freshness) +
-      '" data-rsc-phase="' +
-      esc(plan.phase || "") +
-      '">' +
-      '<p class="ma-carts-attention-verdict__kicker">ما يحتاج انتباهك الآن</p>' +
-      '<p class="ma-carts-attention-verdict__headline">' +
-      esc(verdict.headline || "") +
-      "</p>";
-    if (verdict.detail) {
-      html +=
-        '<p class="ma-carts-attention-verdict__detail">' +
-        esc(verdict.detail) +
-        "</p>";
+    fillSharedCartsHero({
+      mode: verdict.mode,
+      counts: verdict.counts,
+      freshness: freshness,
+      headline: verdict.headline,
+    });
+    // Shared Hero owns the page story — keep inline verdict host quiet.
+    if (host) {
+      host.hidden = true;
+      host.innerHTML = "";
+      host.setAttribute("data-verdict-freshness", freshness);
+      host.setAttribute("data-rsc-phase", plan.phase || "");
+      host.setAttribute("hidden", "");
     }
-    if (verdict.continue_hint) {
-      html +=
-        '<p class="ma-carts-attention-verdict__continue">' +
-        esc(verdict.continue_hint) +
-        "</p>";
-    }
-    html += "</div>";
-    host.innerHTML = html;
-    host.setAttribute("data-verdict-freshness", freshness);
-    host.setAttribute("data-rsc-phase", plan.phase || "");
-    host.hidden = false;
-    host.removeAttribute("hidden");
   }
 
   function paintCartBodyPendingFromPlan(plan) {
