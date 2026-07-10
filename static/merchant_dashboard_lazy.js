@@ -2555,6 +2555,44 @@
     return !!(cartsExperienceRevealed && cartsLastCanonicalVerdict);
   };
 
+  var cartsRevealSafetyTimer = null;
+  function clearCartsRevealSafety() {
+    if (cartsRevealSafetyTimer) {
+      window.clearTimeout(cartsRevealSafetyTimer);
+      cartsRevealSafetyTimer = null;
+    }
+  }
+
+  function scheduleCartsRevealSafety() {
+    clearCartsRevealSafety();
+    cartsRevealSafetyTimer = window.setTimeout(function () {
+      cartsRevealSafetyTimer = null;
+      if (cartsExperienceRevealed) return;
+      var pageKey =
+        (document.body && document.body.getAttribute("data-ma-page")) || "";
+      if (pageKey !== "carts") return;
+      var rows = activeNormalCartRows(lastNormalCartsPageRows || []);
+      logClientRefresh("carts_reveal_safety", { rows: rows.length });
+      if (rows.length) {
+        rscDispatch("APPLY_SUCCESS", {
+          rows: rows,
+          miPayload: lastMerchantIntelligencePayload,
+          reason: "reveal_safety",
+          appliedGen: normalCartsAppliedGen,
+          rowsSource: "memory",
+        });
+      } else {
+        rscDispatch("APPLY_CONFIRMED_EMPTY", {
+          reason: "reveal_safety_empty",
+          appliedGen: normalCartsAppliedGen,
+          rowsSource: "live",
+        });
+      }
+    }, 12000);
+  }
+
+  window.maScheduleCartsRevealSafety = scheduleCartsRevealSafety;
+
   function isArchivedVisual(mc) {
     if (!mc) return false;
     if (mc.customer_lifecycle_is_archived_visual === true) return true;
@@ -4122,6 +4160,7 @@
     }
     cartsExperienceRevealed = true;
     setCartsExperienceReadyFlag(true);
+    clearCartsRevealSafety();
     logClientRefresh("rsc_commit", {
       phase: plan.phase,
       freshness: plan.freshness,

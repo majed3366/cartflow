@@ -445,6 +445,9 @@
       support: "",
     });
     setCartsExperienceReady(false);
+    if (typeof window.maScheduleCartsRevealSafety === "function") {
+      window.maScheduleCartsRevealSafety();
+    }
   }
 
   window.maFillQuestionFirstHero = fillQuestionFirstHero;

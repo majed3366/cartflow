@@ -14,7 +14,12 @@ from playwright.sync_api import sync_playwright
 
 BASE = "https://smartreplyai.net"
 OUT = Path(__file__).resolve().parent / "_carts_experience_sprint2_2_prod_out"
-MARKERS = ("cartsPlanIsCanonicalReveal", "rsc_commit_hold_reveal", "data-carts-ready")
+MARKERS = (
+    "cartsPlanIsCanonicalReveal",
+    "rsc_commit_hold_reveal",
+    "normal_carts_live_calm_empty_reveal",
+    "carts_reveal_safety",
+)
 
 
 def _utc() -> str:
