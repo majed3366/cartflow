@@ -83,6 +83,48 @@ body[data-ma-page="vip"] #ma-page-hero-global {
   display: none;
 }
 
+/*
+ * Carts Experience Sprint 2.2 — one reveal gate.
+ * Until data-carts-ready=1: question-only Hero + unified loading; no partial truth.
+ */
+body[data-ma-page="carts"][data-carts-ready="0"] #ma-page-hero-global #pageTitle,
+body[data-ma-page="carts"][data-carts-ready="0"] #ma-page-hero-global #pagePurpose {
+  visibility: hidden;
+  min-height: 1.25em;
+}
+
+body[data-ma-page="carts"][data-carts-ready="0"] #page-carts .ma-pe-v2-carts-shell {
+  display: none;
+}
+
+body[data-ma-page="carts"][data-carts-ready="0"] #ma-carts-unified-loading {
+  display: block;
+}
+
+#ma-carts-unified-loading[hidden] {
+  display: none !important;
+}
+
+#ma-carts-unified-loading {
+  display: none;
+  margin: 12px 0 0;
+  max-width: var(--v2-max-wide, 1080px);
+}
+
+.ma-cart-filters-hint {
+  margin: 6px 0 0;
+  padding: 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--muted, #64748b);
+  max-width: 52ch;
+}
+
+.ma-cart-filters-hint[hidden] {
+  display: none !important;
+}
+
 .ma-content-head.ma-page-hero {
   padding-bottom: 8px;
 }

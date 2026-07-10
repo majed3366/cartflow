@@ -361,8 +361,6 @@
   };
 
   var CARTS_HERO_QUESTION = "ما الذي يحتاج انتباهك الآن؟";
-  var CARTS_HERO_STORY_PENDING = "جارٍ تجهيز صورة السلال…";
-  var CARTS_HERO_SUPPORT_NEEDS_YOU = "تابع الحالات التي تحتاج قرارًا منك.";
 
   /**
    * Hero Experience Sprint 2.1 — Question → Answer → Optional.
@@ -410,8 +408,48 @@
     if (hero) hero.removeAttribute("data-hero-narrative");
   }
 
+  /** Carts Sprint 2.2 — hold partial UI until one canonical snapshot is ready. */
+  function setCartsExperienceReady(ready) {
+    if (!document.body) return;
+    document.body.setAttribute("data-carts-ready", ready ? "1" : "0");
+    var loading = byId("ma-carts-unified-loading");
+    if (loading) {
+      if (ready) {
+        loading.hidden = true;
+        loading.setAttribute("hidden", "");
+        loading.setAttribute("aria-busy", "false");
+      } else {
+        loading.hidden = false;
+        loading.removeAttribute("hidden");
+        loading.setAttribute("aria-busy", "true");
+      }
+    }
+  }
+
+  function beginCartsExperienceShell() {
+    var globalHero = byId("ma-page-hero-global");
+    if (globalHero) {
+      globalHero.setAttribute("data-shared-hero-carts", "1");
+    }
+    // Keep last canonical Hero on re-entry; never wipe with empty/technical story.
+    if (
+      typeof window.maCartsExperienceHasCanonical === "function" &&
+      window.maCartsExperienceHasCanonical()
+    ) {
+      setCartsExperienceReady(true);
+      return;
+    }
+    fillQuestionFirstHero({
+      question: CARTS_HERO_QUESTION,
+      story: "",
+      support: "",
+    });
+    setCartsExperienceReady(false);
+  }
+
   window.maFillQuestionFirstHero = fillQuestionFirstHero;
   window.maClearQuestionFirstHero = clearQuestionFirstHero;
+  window.maSetCartsExperienceReady = setCartsExperienceReady;
 
   function syncVisualHero(pageKey) {
     var globalHero = byId("ma-page-hero-global");
@@ -449,6 +487,7 @@
     }
     if (pageKey && pageKey !== "home" && pageKey !== "carts") {
       clearQuestionFirstHero();
+      if (document.body) document.body.removeAttribute("data-carts-ready");
     }
     // Home Pulse owns the shared global Hero — re-assert, do not clobber with page defaults.
     if (pageKey === "home") {
@@ -463,20 +502,9 @@
         return;
       }
     }
-    // Carts Experience Sprint 2 — shared Hero owns question + Commerce Language story.
+    // Carts Experience Sprint 2.2 — question shell; reveal only with canonical snapshot.
     if (pageKey === "carts") {
-      if (globalHero && globalHero.getAttribute("data-shared-hero-carts") === "1") {
-        syncVisualHero(pageKey);
-        return;
-      }
-      if (globalHero) {
-        globalHero.setAttribute("data-shared-hero-carts", "1");
-      }
-      fillQuestionFirstHero({
-        question: CARTS_HERO_QUESTION,
-        story: CARTS_HERO_STORY_PENDING,
-        support: "",
-      });
+      beginCartsExperienceShell();
       syncVisualHero(pageKey);
       return;
     }

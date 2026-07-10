@@ -236,7 +236,11 @@
             <h1 class="ma-page-hero__title">السلال</h1>
             <p class="ma-page-hero__purpose">CartFlow يتابع سلال متجرك اليوم — مجموعات ذكية قبل التفاصيل.</p>
           </header>
-          <p class="ma-page-summary" id="ma-carts-queue-sub">CartFlow يجهّز فهم المتجر…</p>
+          <p class="ma-page-summary" id="ma-carts-queue-sub" hidden>CartFlow يجهّز فهم المتجر…</p>
+
+          <div id="ma-carts-unified-loading" class="ma-carts-unified-loading v2-whisper" hidden aria-live="polite" aria-busy="true">
+            <p class="v2-whisper-text">يرجى الانتظار قليلاً.</p>
+          </div>
 
           <div class="filter-bar" id="ma-cart-filters" hidden>
             {% if merchant_dashboard_lazy_shell %}
@@ -253,12 +257,15 @@
             <button type="button" class="filter-btn" data-filter="nophone">لا جوال ({{ merchant_cart_filter_counts.nophone | default(0) }})</button>
             {% endif %}
           </div>
+          <p id="ma-cart-filters-hint" class="ma-cart-filters-hint" hidden>
+            الأرقام تصنيفات لنفس السلال — قد تظهر السلة في أكثر من تصنيف.
+          </p>
 
           <div id="ma-carts-product-language-v1" class="ma-mpl-narrative-host" aria-live="polite" hidden></div>
 
           <div class="ma-cart-groups ma-mi-carts-root" id="ma-carts-groups-v2" aria-live="polite"></div>
           <aside id="ma-carts-queue-empty" class="v2-whisper" hidden>
-            <p class="v2-whisper-text">لا توجد سلات تحتاج انتباهك — CartFlow يتابع المتجر.</p>
+            <p class="v2-whisper-text">لا توجد سلال تحتاج تدخلك اليوم.</p>
           </aside>
         </div>
 

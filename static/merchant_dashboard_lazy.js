@@ -2529,6 +2529,28 @@
    * not final until a successful live/snapshot apply sets this true. */
   var cartsAttentionVerdictFresh = false;
   var cartsAttentionVerdictPending = false;
+  /* Sprint 2.2 — one reveal gate; Hero/filters/list share one canonical snapshot. */
+  var cartsExperienceRevealed = false;
+  var cartsLastCanonicalVerdict = null;
+
+  function setCartsExperienceReadyFlag(ready) {
+    if (typeof window.maSetCartsExperienceReady === "function") {
+      window.maSetCartsExperienceReady(ready);
+    } else if (document.body) {
+      document.body.setAttribute("data-carts-ready", ready ? "1" : "0");
+    }
+  }
+
+  function cartsPlanIsCanonicalReveal(plan) {
+    if (!plan) return false;
+    if (plan.freshness !== "final") return false;
+    var mode = String(plan.bodyMode || "");
+    return mode === "stories" || mode === "empty";
+  }
+
+  window.maCartsExperienceHasCanonical = function () {
+    return !!(cartsExperienceRevealed && cartsLastCanonicalVerdict);
+  };
 
   function isArchivedVisual(mc) {
     if (!mc) return false;
@@ -3587,8 +3609,9 @@
     var mode = String(verdict.mode || "");
     var counts = verdict.counts || {};
     var freshness = String(verdict.freshness || "");
+    // Sprint 2.2 — never expose technical pending copy; caller must skip paint.
     if (mode === "refreshing" || freshness === "pending") {
-      return "جارٍ تجهيز صورة السلال…";
+      return null;
     }
     var needs = parseInt(counts.needs_you, 10) || 0;
     if (mode === "needs_you" && needs > 0) {
@@ -3599,8 +3622,8 @@
   }
 
   /**
-   * Carts Experience Sprint 2.1 — Question → Answer → Optional on shared Hero.
-   * Only paints when Carts is the active page (never clobber Home/Messages).
+   * Carts Experience Sprint 2.2 — Question → Answer from canonical verdict only.
+   * Pending/refreshing never paints (keeps last valid or unified loading).
    */
   function cartsHeroSupportFromVerdict(verdict) {
     verdict = verdict || {};
@@ -3617,19 +3640,30 @@
     var cartsActive =
       pageKey === "carts" ||
       (cartsPage && cartsPage.classList.contains("active"));
-    if (!cartsActive) return;
+    if (!cartsActive) return false;
+    var story = cartsHeroStoryFromVerdict(verdict);
+    if (story == null) {
+      // Keep last canonical Hero; do not oscillate or show technical copy.
+      return false;
+    }
     var hero = byId("ma-page-hero-global");
     if (hero) {
       hero.setAttribute("data-shared-hero-carts", "1");
     }
     var payload = {
       question: "ما الذي يحتاج انتباهك الآن؟",
-      story: cartsHeroStoryFromVerdict(verdict),
+      story: story,
       support: cartsHeroSupportFromVerdict(verdict),
+    };
+    cartsLastCanonicalVerdict = {
+      mode: verdict.mode,
+      freshness: verdict.freshness || "final",
+      counts: verdict.counts || null,
+      story: story,
     };
     if (typeof window.maFillQuestionFirstHero === "function") {
       window.maFillQuestionFirstHero(payload);
-      return;
+      return true;
     }
     if (hero) {
       hero.classList.add("ma-vi-hero");
@@ -3654,6 +3688,7 @@
       ps.hidden = false;
       ps.classList.add("ma-vi-hero__summary");
     }
+    return true;
   }
 
   function renderCartsAttentionVerdictV1(rows, opts) {
@@ -3681,7 +3716,11 @@
     // Pending/empty body owns the cart-list whisper host so the page never
     // looks blank under the verdict — do not suppress that host from here.
     var verdict = buildCartsAttentionVerdictV1(rows, opts);
-    fillSharedCartsHero(verdict);
+    var painted = fillSharedCartsHero(verdict);
+    if (painted && String(verdict.freshness || "") === "final") {
+      cartsExperienceRevealed = true;
+      setCartsExperienceReadyFlag(true);
+    }
     // Shared Hero owns the page story — keep inline verdict host quiet.
     if (host) {
       host.hidden = true;
@@ -3877,13 +3916,23 @@
   function paintCartBodyEmptyFromPlan() {
     var root = byId("ma-carts-groups-v2");
     var empty = byId("ma-carts-queue-empty");
+    var filters = byId("ma-cart-filters");
+    var filtersHint = byId("ma-cart-filters-hint");
     if (root) root.innerHTML = "";
+    if (filters) {
+      filters.hidden = false;
+      filters.removeAttribute("hidden");
+    }
+    if (filtersHint) {
+      filtersHint.hidden = false;
+      filtersHint.removeAttribute("hidden");
+    }
     if (empty) {
       empty.hidden = false;
       empty.removeAttribute("hidden");
       var p = empty.querySelector(".v2-whisper-text");
       if (p) {
-        p.textContent = "لا توجد سلات تحتاج انتباهك — CartFlow يتابع المتجر.";
+        p.textContent = "لا توجد سلال تحتاج تدخلك اليوم.";
       }
     }
   }
@@ -3898,10 +3947,15 @@
     }
     var page = byId("page-carts");
     var filters = byId("ma-cart-filters");
+    var filtersHint = byId("ma-cart-filters-hint");
     if (page) page.classList.add("ma-carts--mi-v1");
     if (filters) {
       filters.hidden = false;
       filters.removeAttribute("hidden");
+    }
+    if (filtersHint) {
+      filtersHint.hidden = false;
+      filtersHint.removeAttribute("hidden");
     }
     var d = plan.miPayload || {};
     var rows = plan.rows || [];
@@ -3998,14 +4052,40 @@
       return;
     }
     cartPageRscLastPlanKey = planKey;
+
+    // Sprint 2.2 — one reveal: Hero + filters + list from the same final snapshot only.
+    if (!cartsPlanIsCanonicalReveal(plan)) {
+      if (!cartsExperienceRevealed) {
+        setCartsExperienceReadyFlag(false);
+        logClientRefresh("rsc_commit_hold_reveal", {
+          phase: plan.phase,
+          freshness: plan.freshness,
+          bodyMode: plan.bodyMode,
+          reason: plan.reason || "",
+        });
+        return;
+      }
+      // Already revealed: keep last Hero; allow last-good stories body without pending Hero.
+      if (plan.bodyMode === "stories") {
+        paintCartBodyStoriesFromPlan(plan);
+      }
+      logClientRefresh("rsc_commit_keep_canonical", {
+        phase: plan.phase,
+        freshness: plan.freshness,
+        bodyMode: plan.bodyMode,
+        reason: plan.reason || "",
+      });
+      return;
+    }
+
     paintAttentionVerdictFromPlan(plan);
     if (plan.bodyMode === "stories") {
       paintCartBodyStoriesFromPlan(plan);
-    } else if (plan.bodyMode === "empty") {
-      paintCartBodyEmptyFromPlan();
     } else {
-      paintCartBodyPendingFromPlan(plan);
+      paintCartBodyEmptyFromPlan();
     }
+    cartsExperienceRevealed = true;
+    setCartsExperienceReadyFlag(true);
     logClientRefresh("rsc_commit", {
       phase: plan.phase,
       freshness: plan.freshness,
@@ -4015,6 +4095,7 @@
       rows: (plan.rows || []).length,
       reason: plan.reason || "",
       silent: !!plan.silentRevalidate,
+      revealed: true,
     });
   }
 
