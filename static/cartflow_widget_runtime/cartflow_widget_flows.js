@@ -401,7 +401,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
           } catch (ePs) {}
           window.setTimeout(function () {
             gracefulCloseWidget();
-          }, 450);
+          }, 900);
         });
       },
       onSkip: function () {
