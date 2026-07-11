@@ -378,15 +378,32 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       title: "اترك رقمك للمتابعة",
       onBack: showContinuationForPending,
       onSave: function (pn) {
-        runBackgroundReasonPhoneSave({
-          payload: Object.assign({}, payload),
-          phoneNorm: pn,
-          subHint: subCat != null ? String(subCat) : "",
-          textHint: textHint,
-          reasonKey: rk,
-          kind: "reason_phone",
-        });
-        gracefulCloseWidget();
+        try {
+          if (Cf.Shell && Cf.Shell.showError) {
+            Cf.Shell.showError("");
+          }
+        } catch (eClrErr) {}
+        Cf.Phone.postReasonMerged(
+          Object.assign({}, payload),
+          pn,
+          subCat != null ? String(subCat) : "",
+          textHint,
+          rk
+        )
+          .then(function () {
+            st().background_save_failed = false;
+            gracefulCloseWidget();
+          })
+          .catch(function () {
+            st().background_save_failed = true;
+            try {
+              if (Cf.Shell && Cf.Shell.showError) {
+                Cf.Shell.showError(
+                  "تعذّر حفظ رقم الجوال. تأكد من الرقم وحاول مرة أخرى."
+                );
+              }
+            } catch (ePh) {}
+          });
       },
       onSkip: function () {
         gracefulCloseWidget();
@@ -590,20 +607,56 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     var subCat =
       detail.sub_category != null ? detail.sub_category : null;
 
+    if (st().reason_save_in_flight) {
+      try {
+        console.log("[CF REASON CLICK IGNORED]", {
+          reason_key: rk,
+          why: "in_flight",
+        });
+      } catch (eIgn) {}
+      return;
+    }
+
     st().pending_reason_key = rk;
     st().pending_reason_payload = Object.assign({}, payload || {});
     st().pending_reason_detail = Object.assign({}, detail || {});
     try {
       console.log("[CF REASON SELECTED V2]", { reason_key: rk });
     } catch (eR) {}
-    try {
-      console.log("[CF UX REASON INSTANT]", {
-        reason_key: rk,
-        path: "to_suggestions",
-      });
-    } catch (eUx) {}
 
-    function proceedReasonSave(cartBridgeResult) {
+    function setReasonButtonsDisabled(disabled) {
+      try {
+        var root = Cf.Shell && Cf.Shell.getRoot ? Cf.Shell.getRoot() : null;
+        if (!root) return;
+        root.querySelectorAll("[data-cf-reason-key], .cf-reason-btn, button[data-reason]").forEach(
+          function (btn) {
+            if (disabled) btn.setAttribute("disabled", "true");
+            else btn.removeAttribute("disabled");
+            btn.setAttribute("aria-busy", disabled ? "true" : "false");
+          }
+        );
+      } catch (eDis) {}
+    }
+
+    function failReasonPersist(msg) {
+      st().reason_save_in_flight = false;
+      st().background_save_failed = true;
+      setReasonButtonsDisabled(false);
+      try {
+        if (Cf.Shell && Cf.Shell.showError) {
+          Cf.Shell.showError(
+            msg || "تعذّر حفظ السبب. حاول مرة أخرى."
+          );
+        }
+      } catch (eSe) {}
+    }
+
+    function persistThenAdvance(cartBridgeResult) {
+      if (st().reason_save_in_flight) return;
+      st().reason_save_in_flight = true;
+      st().background_save_failed = false;
+      setReasonButtonsDisabled(true);
+
       var payloadCopy = Object.assign({}, payload || {});
       if (
         cartBridgeResult &&
@@ -627,8 +680,42 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
           });
         } catch (eOr) {}
       }
-      showContinuation(rk, subCat);
-      runBackgroundReasonOnly(payloadCopy, rk, subCat);
+
+      try {
+        console.log("[CF REASON PERSIST START]", { reason_key: rk });
+      } catch (ePs) {}
+
+      Cf.Api.postReason(payloadCopy)
+        .then(function (j) {
+          if (!Cf.Api.reasonPostOk(j)) {
+            failReasonPersist(
+              "تعذّر حفظ السبب. يمكنك المحاولة مرة أخرى."
+            );
+            st().background_retry_meta = {
+              kind: "reason_only",
+              payload: payloadCopy,
+              reasonKey: rk,
+              continuationSub: subCat,
+            };
+            return;
+          }
+          st().reason_save_in_flight = false;
+          st().background_retry_meta = null;
+          st().background_save_failed = false;
+          try {
+            console.log("[CF REASON PERSIST SUCCESS]", { reason_key: rk });
+          } catch (eOk) {}
+          showContinuation(rk, subCat);
+        })
+        .catch(function () {
+          failReasonPersist("تعذّر حفظ السبب. حاول مرة أخرى.");
+          st().background_retry_meta = {
+            kind: "reason_only",
+            payload: payloadCopy,
+            reasonKey: rk,
+            continuationSub: subCat,
+          };
+        });
     }
 
     if (
@@ -637,14 +724,14 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     ) {
       Cf.StorefrontCartBridge.ensureCartTruthBeforeReason()
         .then(function (res) {
-          proceedReasonSave(res);
+          persistThenAdvance(res);
         })
         .catch(function () {
-          proceedReasonSave({ reason_orphan_risk: true, persisted: false });
+          persistThenAdvance({ reason_orphan_risk: true, persisted: false });
         });
       return;
     }
-    proceedReasonSave(null);
+    persistThenAdvance(null);
   }
 
   function showContinuation(reasonKey, subCategory) {

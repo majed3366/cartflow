@@ -36,6 +36,7 @@ from services.customer_lifecycle_states_v1 import (
     UI_FILTER_SENT,
     UI_FILTER_WAITING,
     lifecycle_state_to_filter_bucket,
+    merchant_filter_bucket_for_lifecycle,
 )
 from services.dashboard_completed_row_semantics_v1 import is_completed_dashboard_row
 from services.dashboard_no_phone_facet_v1 import is_no_phone_pre_send_dashboard_row
@@ -378,7 +379,9 @@ def build_merchant_cart_counter_totals(
                 if sk and sk != LIFECYCLE_TRUTH_UNAVAILABLE_STATE:
                     if sk not in (STATE_ARCHIVED, STATE_COMPLETED):
                         totals.active_total += 1
-                        bucket = lifecycle_state_to_filter_bucket(sk)
+                        bucket = merchant_filter_bucket_for_lifecycle(
+                            sk, log_statuses=log_u
+                        )
                         if bucket == UI_FILTER_WAITING:
                             totals.waiting_total += 1
                         elif bucket == UI_FILTER_SENT:

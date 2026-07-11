@@ -69,7 +69,10 @@ ROW_CLASS: dict[str, str] = {
     STATE_RECOVERY_FOLLOWUP_COMPLETE: "s-sent",
 }
 
+# Operational acceptance (includes sandbox mock). Merchant «رسالة أُرسلت» requires
+# provider-confirmed acceptance only — see PROVIDER_CONFIRMED_SENT_LOG / _provider_sent.
 SENT_LOG = frozenset({"sent_real", "mock_sent"})
+PROVIDER_CONFIRMED_SENT_LOG = frozenset({"sent_real"})
 FAILED_LOG = frozenset({"whatsapp_failed", "failed_final", "failed_retry"})
 INTERVENTION_LOG = frozenset(
     {
@@ -406,6 +409,11 @@ def _provider_sent(
     *,
     timeline_statuses: Optional[frozenset[str]] = None,
 ) -> bool:
+    """Operational send acceptance (includes sandbox ``mock_sent``).
+
+    Merchant filter «رسالة أُرسلت» is remapped separately via
+    ``merchant_filter_bucket_for_lifecycle`` to require ``sent_real`` only.
+    """
     try:
         from services.recovery_truth_timeline_v1 import provider_send_proven
 
@@ -417,6 +425,24 @@ def _provider_sent(
         )
     except Exception:  # noqa: BLE001
         return bool(sent_count >= 1 or log_ss & SENT_LOG)
+
+
+def merchant_filter_bucket_for_lifecycle(
+    state_key: str,
+    *,
+    log_statuses: Any = None,
+) -> str:
+    """Filter membership for merchant chips — provider-confirmed send only.
+
+    ``mock_sent`` / scheduled / prepared must not claim «رسالة أُرسلت».
+    """
+    bucket = lifecycle_state_to_filter_bucket(state_key)
+    if bucket != UI_FILTER_SENT:
+        return bucket
+    log_ss = _log_set(log_statuses)
+    if log_ss & PROVIDER_CONFIRMED_SENT_LOG:
+        return UI_FILTER_SENT
+    return UI_FILTER_WAITING
 
 
 def _customer_replied(
@@ -1046,11 +1072,9 @@ def classify_customer_lifecycle_state_v1(
         )
     )
     if pre_send_without_send and not schedule_materialized:
-        phone_blocked = (
-            not has_phone
-            or "schedule_blocked_missing_phone" in log_ss
-            or "skipped_missing_phone" in log_ss
-        )
+        # Historic schedule_blocked_* / skipped_missing_phone log tags must not
+        # keep «بانتظار اكتمال بيانات التواصل» after a valid phone is present.
+        phone_blocked = not has_phone
         if phone_blocked:
             return _finish(
                 _pack(
@@ -1190,11 +1214,22 @@ def attach_customer_lifecycle_state_v1(
     target.update(lc.to_payload_fields())
     target["merchant_status_label_ar"] = lc.label_ar
     target["merchant_status_row_class"] = lc.status_row_class
-    tab_bucket = lifecycle_state_to_filter_bucket(lc.state_key)
+    tab_bucket = merchant_filter_bucket_for_lifecycle(
+        lc.state_key, log_statuses=log_statuses
+    )
     primary_bucket = lifecycle_state_to_primary_bucket(lc.state_key)
+    # Mock/sandbox acceptance must not claim merchant «رسالة أُرسلت» membership.
+    if (
+        tab_bucket == UI_FILTER_WAITING
+        and lifecycle_state_to_filter_bucket(lc.state_key) == UI_FILTER_SENT
+    ):
+        primary_bucket = PRIMARY_WAITING
     target["merchant_cart_primary_bucket"] = primary_bucket
     target["merchant_cart_bucket"] = tab_bucket
-    target["merchant_cart_visible_tabs"] = list(lifecycle_state_visible_tabs(lc.state_key))
+    if tab_bucket == UI_FILTER_ARCHIVED:
+        target["merchant_cart_visible_tabs"] = [UI_FILTER_ALL]
+    else:
+        target["merchant_cart_visible_tabs"] = [UI_FILTER_ALL, tab_bucket]
     if lc.state_key == STATE_COMPLETED:
         target["merchant_cart_is_terminal"] = True
         target["merchant_cart_is_active"] = False
@@ -1341,10 +1376,14 @@ __all__ = [
     "lifecycle_state_to_filter_bucket",
     "lifecycle_state_to_primary_bucket",
     "lifecycle_state_visible_tabs",
+    "merchant_filter_bucket_for_lifecycle",
     "lifecycle_truth_consistency_for_row",
     "enforce_lifecycle_truth_consistency_on_row",
     "apply_lifecycle_unavailable_fallback",
     "finalize_merchant_lifecycle_row_truth",
     "LIFECYCLE_TRUTH_UNAVAILABLE_LABEL_AR",
     "LIFECYCLE_TRUTH_UNAVAILABLE_STATE",
+    "LABEL_WAITING_CONTACT_COMPLETION_AR",
+    "PROVIDER_CONFIRMED_SENT_LOG",
+    "SENT_LOG",
 ]

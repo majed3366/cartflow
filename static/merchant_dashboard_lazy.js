@@ -1,9 +1,9 @@
 /* Lazy-load merchant dashboard JSON sections (shell-first). Not storefront widget V2. */
-/* MERCHANT_SETUP_RENDER_BUILD=ui-setup-v8i-cart-row-trace-v1 */
+/* MERCHANT_SETUP_RENDER_BUILD=ui-setup-v8j-lifecycle-e2e-v1 */
 (function () {
   "use strict";
 
-  var MERCHANT_SETUP_RENDER_BUILD = "ui-setup-v8i-cart-row-trace-v1";
+  var MERCHANT_SETUP_RENDER_BUILD = "ui-setup-v8j-lifecycle-e2e-v1";
 
   /* Sprint 2.3 — read-only row disappearance probe (no semantics change). */
   var CARTS_ROW_TRACE_MAX = 120;

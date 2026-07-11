@@ -569,6 +569,9 @@ async def post_abandonment_reason(request: Request) -> Any:
                     phone_norm = pn
             else:
                 if err or pn is None:
+                    # Provided but invalid — never silently drop customer phone input.
+                    if phone_raw is not None and str(phone_raw).strip():
+                        return j({"ok": False, "error": "invalid_customer_phone"}, 400)
                     phone_norm = None
                 else:
                     phone_norm = pn

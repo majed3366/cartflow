@@ -28,6 +28,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     pending_reason_key: null,
     background_retry_meta: null,
     background_save_failed: false,
+    reason_save_in_flight: false,
     last_exit_fire_ts: 0,
     exit_session_block: false,
     /** Hesitation UX: canonical fire deadline (unix ms); see cartflow_widget_triggers.js */

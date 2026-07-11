@@ -25,6 +25,7 @@ from services.merchant_cart_row_classifier import (
     PRIMARY_RECOVERED,
     PRIMARY_RETURN_TO_SITE,
     PRIMARY_SENT,
+    PRIMARY_WAITING,
 )
 from services.merchant_decision_layer_v1 import (
     CLASS_CRITICAL_ACTION,
@@ -42,6 +43,7 @@ INTELLIGENCE_VERSION = "v1"
 AUTHORITY = "merchant_intelligence_v1"
 
 GROUP_WAITING_PHONE = "waiting_phone"
+GROUP_AWAITING_SEND = "awaiting_send"
 GROUP_WAITING_REPLY = "waiting_reply"
 GROUP_RETURNED = "returned"
 GROUP_NEEDS_MERCHANT = "needs_merchant"
@@ -58,6 +60,7 @@ _OPERATIONAL_GROUP_ORDER = (
     GROUP_VIP,
     GROUP_NO_CONTACT,
     GROUP_WAITING_PHONE,
+    GROUP_AWAITING_SEND,
     GROUP_RETURNED,
     GROUP_WAITING_PURCHASE,
     GROUP_WAITING_REPLY,
@@ -112,6 +115,11 @@ _GROUP_REGISTRY: dict[str, dict[str, Any]] = {
     GROUP_WAITING_PHONE: {
         "title_ar": "بانتظار الجوال",
         "meaning_ar": "سلة بانتظار رقم تواصل قبل متابعة الاسترداد",
+        "default_surfaces": [SURFACE_CARTS, SURFACE_CART_DETAIL, SURFACE_MERCHANT_HOME],
+    },
+    GROUP_AWAITING_SEND: {
+        "title_ar": "بانتظار الإرسال",
+        "meaning_ar": "البيانات مكتملة — بانتظار أول رسالة استرجاع مجدولة",
         "default_surfaces": [SURFACE_CARTS, SURFACE_CART_DETAIL, SURFACE_MERCHANT_HOME],
     },
     GROUP_WAITING_REPLY: {
@@ -253,6 +261,10 @@ def _has_phone(row: Mapping[str, Any]) -> bool:
     if row.get("has_phone") is False:
         return False
     if row.get("has_phone") is True:
+        return True
+    if row.get("merchant_has_customer_phone") is False:
+        return False
+    if row.get("merchant_has_customer_phone") is True:
         return True
     expl = row.get("merchant_explanation_v1")
     if isinstance(expl, Mapping) and expl.get("has_phone") is False:
@@ -404,6 +416,18 @@ def assign_cart_intelligence_group(row: Mapping[str, Any]) -> Optional[dict[str,
         reason = "missing_phone"
         creation_reason = "no_phone_before_send"
         confidence = "high"
+    elif lifecycle in ("waiting_first_send", "active") or bucket == PRIMARY_WAITING:
+        # Pre-send carts with phone must remain visible in Carts (not MI orphans).
+        group_id = GROUP_AWAITING_SEND
+        reason = f"lifecycle:{lifecycle or 'waiting'}"
+        creation_reason = "awaiting_first_provider_send"
+        confidence = "medium"
+    elif lifecycle == "needs_intervention":
+        # Phone present but schedule/contact path incomplete — still show the cart.
+        group_id = GROUP_AWAITING_SEND
+        reason = "needs_intervention_pre_send"
+        creation_reason = "intervention_without_provider_send"
+        confidence = "medium"
     elif lifecycle in _RETURN_LIFECYCLE or bucket == PRIMARY_RETURN_TO_SITE:
         if lifecycle == "waiting_purchase_window":
             group_id = GROUP_WAITING_PURCHASE
@@ -1059,10 +1083,12 @@ __all__ = [
     "AUTHORITY",
     "GROUP_COMPLETED",
     "GROUP_NEEDS_MERCHANT",
+    "GROUP_AWAITING_SEND",
     "GROUP_REPEATED_HESITATION",
     "GROUP_RETURNED",
     "GROUP_VIP",
     "GROUP_WAITING_REPLY",
+    "GROUP_WAITING_PHONE",
     "INTELLIGENCE_VERSION",
     "REC_REQUIRED",
     "REC_SUGGESTED",

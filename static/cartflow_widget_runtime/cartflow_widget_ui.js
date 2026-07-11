@@ -202,10 +202,12 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       var b = document.createElement("button");
       b.type = "button";
       b.textContent = item.label;
+      b.setAttribute("data-cf-reason-key", String((item && item.r) || ""));
       stampPrimary(b, ph);
       b.addEventListener("click", function (e) {
         e.preventDefault();
         e.stopPropagation();
+        if (b.getAttribute("disabled") === "true") return;
         opts.onPick(item);
       });
       row.appendChild(b);

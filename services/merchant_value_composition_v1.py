@@ -11,6 +11,7 @@ from typing import Any, Mapping, Optional, Sequence
 
 from services.merchant_cart_fact_v1 import FACT_KIND_PURCHASED
 from services.merchant_intelligence_v1 import (
+    GROUP_AWAITING_SEND,
     GROUP_COMPLETED,
     GROUP_NEEDS_MERCHANT,
     GROUP_REPEATED_HESITATION,
@@ -33,6 +34,7 @@ STORY_RETURNED_WITHOUT_PURCHASE = "returned_without_purchase_story"
 STORY_RECOVERED_PURCHASE = "recovered_purchase_story"
 STORY_NEEDS_MERCHANT = "needs_merchant_story"
 STORY_WAITING_REPLY = "waiting_reply_story"
+STORY_AWAITING_SEND = "awaiting_send_story"
 
 _REASON_TAG_AR = {
     "price": "السعر",
@@ -50,6 +52,7 @@ _STORY_TYPE_ORDER = (
     STORY_PRICE_HESITATION,
     STORY_SHIPPING_HESITATION,
     STORY_RETURNED_WITHOUT_PURCHASE,
+    STORY_AWAITING_SEND,
     STORY_WAITING_REPLY,
     STORY_RECOVERED_PURCHASE,
 )
@@ -228,6 +231,7 @@ def _story_type_for_group(group: Mapping[str, Any]) -> Optional[str]:
         return None
     mapping = {
         GROUP_NEEDS_MERCHANT: STORY_NEEDS_MERCHANT,
+        GROUP_AWAITING_SEND: STORY_AWAITING_SEND,
         GROUP_WAITING_REPLY: STORY_WAITING_REPLY,
         GROUP_RETURNED: STORY_RETURNED_WITHOUT_PURCHASE,
         GROUP_WAITING_PURCHASE: STORY_RETURNED_WITHOUT_PURCHASE,
@@ -412,6 +416,40 @@ def _compose_needs_merchant_story(
     )
 
 
+def _compose_awaiting_send_story(
+    group: Mapping[str, Any],
+    group_rows: Sequence[Mapping[str, Any]],
+    rec: Optional[Mapping[str, Any]],
+) -> Optional[dict[str, Any]]:
+    count = int(group.get("affected_carts") or len(group_rows) or 0)
+    if count < 1:
+        return None
+    headline = (
+        _count_phrase(count, singular="سلة جاهزة", plural="سلال جاهزة")
+        + " وبانتظار أول رسالة استرجاع."
+    )
+    cartflow = _sanitize_merchant_line(_aggregate_system_did(group_rows))
+    if not cartflow:
+        cartflow = "CartFlow جهّز المسار — لم يُؤكَّد إرسال من المزود بعد."
+    rec_msg = _norm((rec or {}).get("merchant_message_ar"))
+    recommendation = rec_msg or "لا يلزم إجراء الآن — سيتابع CartFlow تلقائيًا."
+    action_required, action_line = _action_required_label(REC_NO_ACTION)
+    return _story_dict(
+        story_type=STORY_AWAITING_SEND,
+        group=group,
+        group_rows=group_rows,
+        rec=rec,
+        title_ar="بانتظار الإرسال",
+        headline_ar=headline,
+        merchant_meaning_ar="البيانات مكتملة — لم تُثبت رسالة مُرسلة عبر المزود بعد.",
+        cartflow_action_ar=cartflow,
+        observed_result_ar="",
+        recommendation_ar=recommendation,
+        action_required=action_required,
+        merchant_action_line=action_line,
+    )
+
+
 def _compose_waiting_reply_story(
     group: Mapping[str, Any],
     group_rows: Sequence[Mapping[str, Any]],
@@ -524,6 +562,7 @@ def _compose_story_for_group(
         STORY_RETURNED_WITHOUT_PURCHASE: _compose_returned_story,
         STORY_RECOVERED_PURCHASE: _compose_recovered_story,
         STORY_NEEDS_MERCHANT: _compose_needs_merchant_story,
+        STORY_AWAITING_SEND: _compose_awaiting_send_story,
         STORY_WAITING_REPLY: _compose_waiting_reply_story,
     }
     composer = composers.get(story_type)
@@ -669,6 +708,7 @@ def validate_merchant_value_story_v1(story: Mapping[str, Any]) -> list[str]:
 
 __all__ = [
     "AUTHORITY",
+    "STORY_AWAITING_SEND",
     "STORY_NEEDS_MERCHANT",
     "STORY_PRICE_HESITATION",
     "STORY_RECOVERED_PURCHASE",

@@ -141,8 +141,8 @@ class CartsSprint23FreshnessTests(unittest.TestCase):
     def test_silent_skip_plan_key_includes_row_identity(self) -> None:
         self.assertIn("rowIdSig", _LAZY)
         self.assertIn("needsYou", _LAZY)
-        self.assertIn("ui-setup-v8i-cart-row-trace-v1", _LAZY)
-        self.assertIn("ui-setup-v8i-cart-row-trace-v1", _BUILD)
+        self.assertIn("ui-setup-v8j-lifecycle-e2e-v1", _LAZY)
+        self.assertIn("ui-setup-v8j-lifecycle-e2e-v1", _BUILD)
         self.assertIn("__maCartsRowTrace", _LAZY)
         self.assertIn("__maCartsRowProbe", _LAZY)
         self.assertIn("1_api_response", _LAZY)
