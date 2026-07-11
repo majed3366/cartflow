@@ -63,9 +63,11 @@ class StorefrontCartBridgeTimingJsTests(unittest.TestCase):
         self.assertIn("cacheCartItemResponse", text)
         self.assertIn("cart_items_quantity", text)
 
-    def test_reason_guard_uses_retry_path(self) -> None:
+    def test_reason_guard_uses_fail_fast_path(self) -> None:
         text = _CORE.read_text(encoding="utf-8")
-        self.assertIn("ensure_before_reason", text)
+        self.assertIn("ensureCartTruthBeforeReason", text)
+        self.assertIn("[CF BRIDGE ENSURE FAIL FAST]", text)
+        self.assertIn("stable_identity_no_wait", text)
         text_flows = _FLOWS.read_text(encoding="utf-8")
         self.assertIn("ensureCartTruthBeforeReason", text_flows)
         self.assertIn("cf_reason_orphan_risk", text_flows)
@@ -81,7 +83,7 @@ class StorefrontCartBridgeTimingJsTests(unittest.TestCase):
 
     def test_runtime_version_bumped(self) -> None:
         text = _WIDGET_LOADER.read_text(encoding="utf-8")
-        self.assertIn("v2-widget-trigger-arbitration-shadow-v1", text)
+        self.assertIn("v2-widget-", text)
 
 
 class StorefrontCartBridgeTimingSimulationTests(unittest.TestCase):

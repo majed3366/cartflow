@@ -947,6 +947,12 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       Cf.StorefrontCartBridge.ensureCartTruthBeforeReason()
         .then(function (res) {
           reasonMark("bridge_ensure");
+          if (res && res.fail_fast_path === "missing_identity") {
+            failReasonPersist(
+              "تعذّر ربط السلة. حدّث الصفحة وحاول مرة أخرى."
+            );
+            return;
+          }
           persistThenAdvance(res);
         })
         .catch(function () {

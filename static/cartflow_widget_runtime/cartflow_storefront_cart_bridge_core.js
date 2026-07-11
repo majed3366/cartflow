@@ -53,7 +53,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       return true;
     }
     var h = String((opts && (opts.source_hint || opts.trigger)) || "");
-    return /post_items|cart_sources|zid_network_hook|ensure_before_reason|empty_retry|early_click/i.test(
+    return /post_items|cart_sources|zid_network_hook|empty_retry|early_click/i.test(
       h
     );
   }
@@ -376,35 +376,143 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   }
 
   /**
-   * Phase 6: ensure cart truth before reason save.
-   * Returns Promise<{ ok, persisted, orphaned_reason_risk?, ... }>
+   * Phase 6 / Fast Path V1: ensure cart truth before reason save — fail-fast.
+   *
+   * Must NOT await empty-retry ladders or in-flight cart-event POSTs on the
+   * reason critical path (prod P50 wait was ~3391ms).
+   *
+   * Paths:
+   * 1) cart_persisted → return immediately
+   * 2) stable session (+ optional cart id / last normalized) → return immediately;
+   *    schedule best-effort background persist (non-blocking) for durability
+   * 3) no session → fail fast (caller shows retry); do not wait
    */
+  function resolveStableSessionId() {
+    try {
+      if (Cf.Api && typeof Cf.Api.sessionId === "function") {
+        var s = String(Cf.Api.sessionId() || "").trim();
+        if (s) return s;
+      }
+    } catch (eSid) {}
+    try {
+      var ss = sessionStorage.getItem("cartflow_recovery_session_id");
+      if (ss && String(ss).trim()) return String(ss).trim();
+    } catch (eSs) {}
+    return "";
+  }
+
+  function resolveStableCartId() {
+    try {
+      if (typeof window.cartflowGetStableCartEventIdForTracking === "function") {
+        var c = String(window.cartflowGetStableCartEventIdForTracking() || "").trim();
+        if (c) return c;
+      }
+    } catch (eCid) {}
+    try {
+      if (bridgeState.last_normalized && bridgeState.last_normalized.cart_id) {
+        var c2 = String(bridgeState.last_normalized.cart_id || "").trim();
+        if (c2) return c2;
+      }
+    } catch (eLn) {}
+    return "";
+  }
+
+  function scheduleBackgroundPersistAfterReason() {
+    /* Defer so reason POST can start first on the wire (connection contention). */
+    window.setTimeout(function () {
+      try {
+        if (bridgeState.cart_persisted) {
+          return;
+        }
+        readAndPersist({
+          reason: "add",
+          source_hint: "ensure_before_reason_bg",
+          force: false,
+          /* Intentionally NOT allowFreshAfterInFlight — coalesce, never chain-wait. */
+        });
+      } catch (eBg) {}
+    }, 0);
+  }
+
   function ensureCartTruthBeforeReason(opts) {
     opts = opts || {};
-    if (bridgeState.cart_persisted && !opts.force) {
-      return Promise.resolve({ ok: true, persisted: true, already: true });
+    var t0 =
+      typeof performance !== "undefined" && performance.now
+        ? performance.now()
+        : Date.now();
+
+    function done(payload) {
+      var ms = Math.round(
+        ((typeof performance !== "undefined" && performance.now
+          ? performance.now()
+          : Date.now()) -
+          t0) *
+          10
+      ) / 10;
+      try {
+        console.log(
+          "[CF BRIDGE ENSURE FAIL FAST]",
+          Object.assign({ ms: ms }, payload || {})
+        );
+      } catch (eLog) {}
+      return Promise.resolve(
+        Object.assign(
+          {
+            skipped_wait: true,
+            ms: ms,
+          },
+          payload || {}
+        )
+      );
     }
-    return readAndPersist({
-      reason: "add",
-      force: opts.force === true,
-      source_hint: "ensure_before_reason",
-      allowFreshAfterInFlight: true,
-    }).then(
-      function (res) {
-        if (!res || (!res.ok && !res.skipped)) {
-          bridgeState.reason_orphan_risk = true;
-          blog("[CF CART BRIDGE ERROR]", {
-            phase: "ensure_before_reason",
-            reason_orphan_risk: true,
-            detail: res,
-          });
-        }
-        return Object.assign({}, res || {}, {
-          persisted: bridgeState.cart_persisted,
-          reason_orphan_risk: bridgeState.reason_orphan_risk,
-        });
-      }
+
+    if (bridgeState.cart_persisted && !opts.force) {
+      return done({
+        ok: true,
+        persisted: true,
+        already: true,
+        fail_fast_path: "already_persisted",
+        reason_orphan_risk: false,
+      });
+    }
+
+    var sid = resolveStableSessionId();
+    var cid = resolveStableCartId();
+    var hasNormalized = !!(
+      bridgeState.last_normalized &&
+      (bridgeState.last_normalized.session_id || bridgeState.last_normalized.cart_id)
     );
+
+    if (sid && (cid || hasNormalized || bridgeState.last_post_ok === true)) {
+      scheduleBackgroundPersistAfterReason();
+      return done({
+        ok: true,
+        persisted: !!bridgeState.cart_persisted,
+        fail_fast_path: "stable_identity_no_wait",
+        session_id: sid,
+        cart_id: cid || null,
+        reason_orphan_risk: !bridgeState.cart_persisted,
+      });
+    }
+
+    if (sid) {
+      /* Reason API scopes by store_slug + session_id — safe to persist reason now. */
+      scheduleBackgroundPersistAfterReason();
+      return done({
+        ok: true,
+        persisted: false,
+        fail_fast_path: "session_only_no_wait",
+        session_id: sid,
+        reason_orphan_risk: true,
+      });
+    }
+
+    return done({
+      ok: false,
+      persisted: false,
+      fail_fast_path: "missing_identity",
+      reason_orphan_risk: true,
+    });
   }
 
   function getDiagnostics() {
