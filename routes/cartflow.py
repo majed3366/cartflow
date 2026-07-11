@@ -488,11 +488,56 @@ async def post_assist_handoff(request: Request) -> Any:
         return j({"ok": False, "error": "persist_failed"}, 500)
 
 
-@router.post("/reason")
-async def post_abandonment_reason(request: Request) -> Any:
+async def _arm_recovery_after_reason_saved_bg(
+    *,
+    store_slug: str,
+    session_id: str,
+    body: dict[str, Any],
+) -> None:
     """
-    يسجّل سبب التردد من الودجت. الأجسام: ‎store_slug, session_id, reason، ‎
-    ‎custom_text‎ اختياري لـ ‎other‎؛ ‎customer_phone‎ (‎05‎ / ‎9665‎…) لـ ‎other‎ مع توسيع القديم (‎custom_text‎ وحده لا يزال مقبولاً).
+    Post-commit recovery arm — must not block the widget reason HTTP response.
+
+    Live Sprint 2.3 timing (production): bridge ensure 0.3ms when cart already
+    persisted; awaited arm inside /reason was ~2300ms (first over-budget stage).
+    """
+    from services.db_session_lifecycle import (  # noqa: PLC0415
+        release_scoped_db_session,
+        scoped_db_session_begin,
+    )
+
+    wall = time.perf_counter()
+    scoped_db_session_begin()
+    try:
+        from main import _schedule_normal_recovery_after_cart_recovery_reason_saved
+
+        await _schedule_normal_recovery_after_cart_recovery_reason_saved(
+            store_slug=store_slug,
+            session_id=session_id,
+            body=body,
+        )
+    except Exception as hook_err:  # noqa: BLE001
+        log.warning(
+            "cartflow/reason recovery reschedule hook skipped: %s",
+            hook_err,
+        )
+    finally:
+        release_scoped_db_session()
+        _log_reason_save_profile(
+            wall_perf_start=wall,
+            phase="recovery_arm_background",
+        )
+
+
+@router.post("/reason")
+async def post_abandonment_reason(
+    request: Request,
+    background_tasks: BackgroundTasks,
+) -> Any:
+    """
+    يسجّل سبب التردد من الودجت.
+
+    Recovery schedule arm runs as a BackgroundTask after commit so the
+    widget can advance without waiting on materialization / dispatch.
     """
     try:
         from main import _ensure_cartflow_api_db_warmed
@@ -772,23 +817,19 @@ async def post_abandonment_reason(request: Request) -> Any:
                     exc_info=True,
                 )
         if not is_handoff_only_reason(reason):
-            try:
-                from main import _schedule_normal_recovery_after_cart_recovery_reason_saved
-
-                await _schedule_normal_recovery_after_cart_recovery_reason_saved(
-                    store_slug=ss,
-                    session_id=sid,
-                    body=body,
-                )
-            except Exception as hook_err:  # noqa: BLE001
-                log.warning(
-                    "cartflow/reason recovery reschedule hook skipped: %s",
-                    hook_err,
-                )
+            # Detach arm from the HTTP response path (operational fast path).
+            # Starlette still runs this before TestClient returns, so schedule
+            # assertions in unit tests remain valid.
+            background_tasks.add_task(
+                _arm_recovery_after_reason_saved_bg,
+                store_slug=ss,
+                session_id=sid,
+                body=dict(body),
+            )
 
         _log_reason_save_profile(
             wall_perf_start=perf_rs,
-            phase="committed_plus_recovery_arm",
+            phase="committed_reason_response",
             audit_query_baseline=rs_q_base,
         )
         return j({"ok": True})
