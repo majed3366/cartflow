@@ -379,18 +379,43 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }).then(function (r) {
-      var ttfb =
-        Math.round(
-          ((typeof performance !== "undefined" && performance.now
-            ? performance.now()
-            : Date.now()) -
-            netT0) *
-            10
-        ) / 10;
+      var headersAt =
+        typeof performance !== "undefined" && performance.now
+          ? performance.now()
+          : Date.now();
+      var ttfb = Math.round((headersAt - netT0) * 10) / 10;
       return r.json().then(function (j) {
+        var jsonAt =
+          typeof performance !== "undefined" && performance.now
+            ? performance.now()
+            : Date.now();
         try {
           if (j && typeof j === "object") {
             j._cf_client_net_ms = ttfb;
+            j._cf_client_json_ms = Math.round((jsonAt - headersAt) * 10) / 10;
+            j._cf_reason_arm = r.headers.get("x-cf-reason-arm") || null;
+            j._cf_server_timing = r.headers.get("server-timing") || null;
+            try {
+              var entries =
+                typeof performance !== "undefined" &&
+                performance.getEntriesByName
+                  ? performance.getEntriesByName(url)
+                  : [];
+              var last = entries.length ? entries[entries.length - 1] : null;
+              if (last) {
+                j._cf_resource_timing = {
+                  start_to_request:
+                    Math.round((last.requestStart - last.startTime) * 10) / 10,
+                  request_to_response:
+                    Math.round((last.responseStart - last.requestStart) * 10) /
+                    10,
+                  response_body:
+                    Math.round((last.responseEnd - last.responseStart) * 10) /
+                    10,
+                  duration: Math.round(last.duration * 10) / 10,
+                };
+              }
+            } catch (eRt) {}
           }
         } catch (eNet) {}
         if (!r.ok) {

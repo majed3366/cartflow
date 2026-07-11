@@ -2,8 +2,10 @@
 """واجهات ‎CartFlow‎ للوحة (تحليلات الاسترجاع) وسبب ترك السلة (ودجت)."""
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
+import threading
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
@@ -522,10 +524,11 @@ async def _arm_recovery_after_reason_saved_bg(
     body: dict[str, Any],
 ) -> None:
     """
-    Post-commit recovery arm — must not block the widget reason HTTP response.
+    Post-commit recovery arm body (same scheduling logic as before).
 
-    Live Sprint 2.3 timing (production): bridge ensure 0.3ms when cart already
-    persisted; awaited arm inside /reason was ~2300ms (first over-budget stage).
+    Must not run via FastAPI ``BackgroundTasks`` under ``@app.middleware("http")``
+    (BaseHTTPMiddleware): those tasks still complete inside ``call_next`` before
+    the browser receives the response — proven client wait ≈ arm duration.
     """
     from services.db_session_lifecycle import (  # noqa: PLC0415
         release_scoped_db_session,
@@ -555,16 +558,57 @@ async def _arm_recovery_after_reason_saved_bg(
         )
 
 
+def _spawn_reason_recovery_arm_detached(
+    *,
+    store_slug: str,
+    session_id: str,
+    body: dict[str, Any],
+) -> None:
+    """
+    Truly detach recovery arm from the reason HTTP response.
+
+    Fast Path V1.1: ``BackgroundTasks`` + BaseHTTPMiddleware still block TTFB
+    (~2.5–5.7s client wait while handler is ~180ms). Daemon thread + ``asyncio.run``
+    returns the response immediately; arm logic unchanged.
+    """
+
+    def _run() -> None:
+        try:
+            asyncio.run(
+                _arm_recovery_after_reason_saved_bg(
+                    store_slug=store_slug,
+                    session_id=session_id,
+                    body=body,
+                )
+            )
+        except Exception as thread_err:  # noqa: BLE001
+            log.warning(
+                "cartflow/reason recovery arm thread failed: %s",
+                thread_err,
+            )
+
+    try:
+        threading.Thread(
+            target=_run,
+            name="cf-reason-recovery-arm",
+            daemon=True,
+        ).start()
+    except Exception as spawn_err:  # noqa: BLE001
+        log.warning(
+            "cartflow/reason recovery arm spawn failed: %s",
+            spawn_err,
+        )
+
+
 @router.post("/reason")
 async def post_abandonment_reason(
     request: Request,
-    background_tasks: BackgroundTasks,
 ) -> Any:
     """
     يسجّل سبب التردد من الودجت.
 
-    Recovery schedule arm runs as a BackgroundTask after commit so the
-    widget can advance without waiting on materialization / dispatch.
+    Recovery schedule arm is spawned on a daemon thread after commit so the
+    widget HTTP response is not held by BaseHTTPMiddleware + BackgroundTasks.
 
     Investigation: returns optional ``cf_timing`` stage deltas (additive JSON).
     """
@@ -858,11 +902,8 @@ async def post_abandonment_reason(
                 )
         clock.mark("vip_alert_optional")
         if not is_handoff_only_reason(reason):
-            # Detach arm from the HTTP response path (operational fast path).
-            # Starlette still runs this before TestClient returns, so schedule
-            # assertions in unit tests remain valid.
-            background_tasks.add_task(
-                _arm_recovery_after_reason_saved_bg,
+            # True detach: BackgroundTasks still block BaseHTTPMiddleware TTFB.
+            _spawn_reason_recovery_arm_detached(
                 store_slug=ss,
                 session_id=sid,
                 body=dict(body),
@@ -885,7 +926,18 @@ async def post_abandonment_reason(
             )
         except OSError:
             pass
-        return j({"ok": True, "cf_timing": timing})
+        resp = j({"ok": True, "cf_timing": timing})
+        try:
+            # Correlated browser DevTools / Resource Timing friendly.
+            resp.headers["Server-Timing"] = (
+                "handler;dur="
+                + str(timing.get("total_handler_ms") or 0)
+                + ",arm;desc=\"detached_thread\""
+            )
+            resp.headers["X-CF-Reason-Arm"] = "detached_thread"
+        except Exception:  # noqa: BLE001
+            pass
+        return resp
     except (SQLAlchemyError, OSError) as e:
         db.session.rollback()
         log.warning("cartflow reason: %s", e)

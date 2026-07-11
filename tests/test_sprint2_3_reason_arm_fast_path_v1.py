@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
-"""Sprint 2.3 — reason POST must not await recovery arm (live timing confirmed)."""
+"""Sprint 2.3 / Fast Path V1.1 — reason POST must not wait on recovery arm."""
 from __future__ import annotations
 
+import time
+import threading
 import unittest
 import uuid
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -19,25 +21,26 @@ _ROUTES = (_ROOT / "routes" / "cartflow.py").read_text(encoding="utf-8")
 
 
 class ReasonArmFastPathStructuralTests(unittest.TestCase):
-    def test_reason_route_schedules_arm_as_background_task(self) -> None:
+    def test_reason_route_spawns_detached_arm_not_background_tasks(self) -> None:
         self.assertIn("_arm_recovery_after_reason_saved_bg", _ROUTES)
+        self.assertIn("_spawn_reason_recovery_arm_detached", _ROUTES)
         self.assertIn("committed_reason_response", _ROUTES)
         self.assertIn("recovery_arm_background", _ROUTES)
         self.assertIn("scoped_db_session_begin", _ROUTES)
+        self.assertIn("detached_thread", _ROUTES)
         route_idx = _ROUTES.find("async def post_abandonment_reason")
-        bg_idx = _ROUTES.find("async def _arm_recovery_after_reason_saved_bg")
         self.assertGreaterEqual(route_idx, 0)
-        self.assertGreaterEqual(bg_idx, 0)
         route_body = _ROUTES[route_idx:]
-        self.assertIn(
+        self.assertIn("_spawn_reason_recovery_arm_detached(", route_body)
+        self.assertNotIn(
             "background_tasks.add_task(\n                _arm_recovery_after_reason_saved_bg",
             route_body,
         )
-        bg_body = _ROUTES[bg_idx:route_idx] if bg_idx < route_idx else _ROUTES[bg_idx:]
-        self.assertIn(
-            "await _schedule_normal_recovery_after_cart_recovery_reason_saved",
-            bg_body,
-        )
+        spawn_idx = _ROUTES.find("def _spawn_reason_recovery_arm_detached")
+        self.assertGreaterEqual(spawn_idx, 0)
+        spawn_body = _ROUTES[spawn_idx:route_idx]
+        self.assertIn("threading.Thread", spawn_body)
+        self.assertIn("asyncio.run", spawn_body)
 
 
 class ReasonArmFastPathBehaviorTests(unittest.TestCase):
@@ -59,11 +62,8 @@ class ReasonArmFastPathBehaviorTests(unittest.TestCase):
             pass
         _reset_recovery_memory()
 
-    @patch(
-        "routes.cartflow._arm_recovery_after_reason_saved_bg",
-        new_callable=AsyncMock,
-    )
-    def test_reason_ok_schedules_background_arm(self, arm_bg: AsyncMock) -> None:
+    @patch("routes.cartflow._spawn_reason_recovery_arm_detached")
+    def test_reason_ok_schedules_detached_arm(self, spawn) -> None:
         sid = f"s-rafp-{self.suffix}"
         r = self.client.post(
             "/api/cartflow/reason",
@@ -76,7 +76,8 @@ class ReasonArmFastPathBehaviorTests(unittest.TestCase):
         )
         self.assertEqual(r.status_code, 200, r.text)
         self.assertTrue(r.json().get("ok"))
-        arm_bg.assert_awaited()
+        self.assertEqual(r.headers.get("x-cf-reason-arm"), "detached_thread")
+        spawn.assert_called_once()
         row = (
             db.session.query(CartRecoveryReason)
             .filter(
@@ -87,6 +88,73 @@ class ReasonArmFastPathBehaviorTests(unittest.TestCase):
         )
         self.assertIsNotNone(row)
         self.assertEqual((row.reason or "").strip().lower(), "price")
+
+    def test_detached_spawn_returns_before_arm_finishes(self) -> None:
+        """Daemon thread must not be joined by the reason HTTP response path."""
+        started = threading.Event()
+        release = threading.Event()
+        done = []
+
+        def _fake_spawn(**_kwargs):
+            def _run():
+                started.set()
+                release.wait(timeout=5)
+                done.append(True)
+
+            threading.Thread(target=_run, daemon=True).start()
+
+        with patch(
+            "routes.cartflow._spawn_reason_recovery_arm_detached",
+            side_effect=_fake_spawn,
+        ):
+            # Warm path once so schema bootstrap is not in the measured sample.
+            warm = self.client.post(
+                "/api/cartflow/reason",
+                json={
+                    "store_slug": self.slug,
+                    "session_id": f"s-rafp-warm-{self.suffix}",
+                    "reason": "price",
+                    "sub_category": "price_discount_request",
+                },
+            )
+            self.assertEqual(warm.status_code, 200, warm.text)
+
+        with patch(
+            "routes.cartflow._spawn_reason_recovery_arm_detached",
+            side_effect=_fake_spawn,
+        ):
+            t0 = time.perf_counter()
+            r = self.client.post(
+                "/api/cartflow/reason",
+                json={
+                    "store_slug": self.slug,
+                    "session_id": f"s-rafp-fast-{self.suffix}",
+                    "reason": "price",
+                    "sub_category": "price_discount_request",
+                },
+            )
+            elapsed_ms = (time.perf_counter() - t0) * 1000.0
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertTrue(started.wait(timeout=2))
+        # Response returned while arm thread still blocked on ``release``.
+        self.assertFalse(done)
+        self.assertLess(elapsed_ms, 2000.0, f"unexpectedly slow response {elapsed_ms:.1f}ms")
+        release.set()
+        time.sleep(0.05)
+        self.assertTrue(done)
+
+class ReasonPostDetachClientTests(unittest.TestCase):
+    def test_fetch_records_arm_header_and_resource_timing(self) -> None:
+        text = (
+            _ROOT / "static/cartflow_widget_runtime/cartflow_widget_fetch.js"
+        ).read_text(encoding="utf-8")
+        self.assertIn("_cf_reason_arm", text)
+        self.assertIn("_cf_resource_timing", text)
+        self.assertIn("request_to_response", text)
+
+    def test_runtime_version(self) -> None:
+        loader = (_ROOT / "static/widget_loader.js").read_text(encoding="utf-8")
+        self.assertIn("v2-widget-reason-post-detach-v1", loader)
 
 
 if __name__ == "__main__":

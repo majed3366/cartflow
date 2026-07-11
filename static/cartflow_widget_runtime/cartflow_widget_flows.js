@@ -873,6 +873,18 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
             if (j && j._cf_client_net_ms != null) {
               reasonTrace.client_net_ms = j._cf_client_net_ms;
             }
+            if (j && j._cf_client_json_ms != null) {
+              reasonTrace.client_json_ms = j._cf_client_json_ms;
+            }
+            if (j && j._cf_reason_arm) {
+              reasonTrace.reason_arm = j._cf_reason_arm;
+            }
+            if (j && j._cf_server_timing) {
+              reasonTrace.server_timing = j._cf_server_timing;
+            }
+            if (j && j._cf_resource_timing) {
+              reasonTrace.resource_timing = j._cf_resource_timing;
+            }
           } catch (eSrv) {}
           if (!Cf.Api.reasonPostOk(j)) {
             failReasonPersist(

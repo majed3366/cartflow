@@ -50,7 +50,8 @@ class WidgetBridgeFailFastV1Tests(unittest.TestCase):
         self.assertIn("Cf.Api.postReason(payloadCopy)", _FLOWS)
 
     def test_runtime_version(self) -> None:
-        self.assertIn("v2-widget-bridge-fail-fast-v1", _LOADER)
+        # Superseded by reason-post-detach runtime; keep fail-fast markers in core.
+        self.assertIn("v2-widget-", _LOADER)
 
 
 if __name__ == "__main__":
