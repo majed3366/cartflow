@@ -484,7 +484,9 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     );
 
     if (sid && (cid || hasNormalized || bridgeState.last_post_ok === true)) {
-      scheduleBackgroundPersistAfterReason();
+      /* Do NOT schedule cart-event here — it races the reason POST on the
+         single uvicorn worker and re-inflates client TTFB (Fast Path V1.1).
+         Flows call scheduleBackgroundPersistAfterReason after reason OK. */
       return done({
         ok: true,
         persisted: !!bridgeState.cart_persisted,
@@ -492,18 +494,19 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         session_id: sid,
         cart_id: cid || null,
         reason_orphan_risk: !bridgeState.cart_persisted,
+        defer_cart_persist: !bridgeState.cart_persisted,
       });
     }
 
     if (sid) {
       /* Reason API scopes by store_slug + session_id — safe to persist reason now. */
-      scheduleBackgroundPersistAfterReason();
       return done({
         ok: true,
         persisted: false,
         fail_fast_path: "session_only_no_wait",
         session_id: sid,
         reason_orphan_risk: true,
+        defer_cart_persist: true,
       });
     }
 
@@ -604,6 +607,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     readAndPersist: readAndPersist,
     persistFromTrigger: persistFromTrigger,
     ensureCartTruthBeforeReason: ensureCartTruthBeforeReason,
+    scheduleBackgroundPersistAfterReason: scheduleBackgroundPersistAfterReason,
     getDiagnostics: getDiagnostics,
     installZidNetworkHooks: installZidNetworkHooks,
   };

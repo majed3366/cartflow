@@ -904,6 +904,18 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
           st().background_retry_meta = null;
           st().background_save_failed = false;
           try {
+            /* Cart-event after reason OK — avoids single-worker race with POST /reason. */
+            if (
+              cartBridgeResult &&
+              cartBridgeResult.defer_cart_persist &&
+              Cf.StorefrontCartBridge &&
+              typeof Cf.StorefrontCartBridge.scheduleBackgroundPersistAfterReason ===
+                "function"
+            ) {
+              Cf.StorefrontCartBridge.scheduleBackgroundPersistAfterReason();
+            }
+          } catch (eBg) {}
+          try {
             if (Cf.Shell && typeof Cf.Shell.hideFooterMessage === "function") {
               Cf.Shell.hideFooterMessage();
             }
