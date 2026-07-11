@@ -100,18 +100,34 @@ def apply_storefront_widget_cors_headers(response, *, origin: str) -> None:
     response.headers["Access-Control-Max-Age"] = _WIDGET_CORS_MAX_AGE
 
 
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.datastructures import MutableHeaders
 from starlette.requests import Request
 from starlette.responses import Response
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 
-class StorefrontWidgetCorsMiddleware(BaseHTTPMiddleware):
-    """OPTIONS preflight + ACAO for Zid storefront widget APIs (no wildcard *)."""
+class StorefrontWidgetCorsMiddleware:
+    """
+    OPTIONS preflight + ACAO for Zid storefront widget APIs (no wildcard *).
 
-    async def dispatch(self, request: Request, call_next):
+    Pure ASGI (not BaseHTTPMiddleware): BaseHTTPMiddleware buffers the response
+    through an anyio memory stream and was part of the reason-POST TTFB pile-up
+    when paired with BackgroundTasks. Keep this path streaming.
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        request = Request(scope, receive=receive)
         path = request.url.path
         if not widget_cors_path_matches(path):
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
         origin = request.headers.get("origin") or ""
         allowed = is_allowed_storefront_widget_origin(origin)
@@ -126,12 +142,31 @@ class StorefrontWidgetCorsMiddleware(BaseHTTPMiddleware):
             resp = Response(status_code=204 if allowed else 403, content=b"")
             if allowed:
                 apply_storefront_widget_cors_headers(resp, origin=origin)
-            return resp
+            await resp(scope, receive, send)
+            return
 
-        response = await call_next(request)
-        if allowed:
-            apply_storefront_widget_cors_headers(response, origin=origin)
-        return response
+        if not allowed:
+            await self.app(scope, receive, send)
+            return
+
+        async def send_with_cors(message: dict) -> None:
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(raw=list(message.get("headers") or []))
+                headers["Access-Control-Allow-Origin"] = origin.strip()
+                headers["Access-Control-Allow-Credentials"] = "true"
+                vary = headers.get("Vary")
+                if vary:
+                    if "Origin" not in vary:
+                        headers["Vary"] = f"{vary}, Origin"
+                else:
+                    headers["Vary"] = "Origin"
+                headers["Access-Control-Allow-Methods"] = _WIDGET_CORS_ALLOW_METHODS
+                headers["Access-Control-Allow-Headers"] = _WIDGET_CORS_ALLOW_HEADERS
+                headers["Access-Control-Max-Age"] = _WIDGET_CORS_MAX_AGE
+                message = {**message, "headers": headers.raw}
+            await send(message)
+
+        await self.app(scope, receive, send_with_cors)
 
 
 __all__ = [

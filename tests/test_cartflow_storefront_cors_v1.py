@@ -133,5 +133,9 @@ class CartflowStorefrontCorsHttpTests(unittest.TestCase):
         self.assertIsNone(r.headers.get("access-control-allow-origin"))
 
 
-if __name__ == "__main__":
-    unittest.main()
+    def test_cors_middleware_is_pure_asgi(self) -> None:
+        from services.cartflow_storefront_cors_v1 import StorefrontWidgetCorsMiddleware
+        from starlette.middleware.base import BaseHTTPMiddleware
+
+        self.assertFalse(issubclass(StorefrontWidgetCorsMiddleware, BaseHTTPMiddleware))
+        self.assertTrue(hasattr(StorefrontWidgetCorsMiddleware, "__call__"))

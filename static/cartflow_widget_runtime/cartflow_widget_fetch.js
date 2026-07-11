@@ -396,11 +396,39 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
             j._cf_reason_arm = r.headers.get("x-cf-reason-arm") || null;
             j._cf_server_timing = r.headers.get("server-timing") || null;
             try {
-              var entries =
+              var absUrl = url;
+              try {
+                absUrl = new URL(url, window.location.href).href;
+              } catch (eAbs) {}
+              var entries = [];
+              if (
                 typeof performance !== "undefined" &&
                 performance.getEntriesByName
-                  ? performance.getEntriesByName(url)
-                  : [];
+              ) {
+                entries = performance.getEntriesByName(absUrl) || [];
+                if (!entries.length && absUrl !== url) {
+                  entries = performance.getEntriesByName(url) || [];
+                }
+              }
+              if (
+                !entries.length &&
+                typeof performance !== "undefined" &&
+                performance.getEntriesByType
+              ) {
+                var all = performance.getEntriesByType("resource") || [];
+                var iRt;
+                for (iRt = all.length - 1; iRt >= 0; iRt--) {
+                  var cand = all[iRt];
+                  if (
+                    cand &&
+                    cand.name &&
+                    String(cand.name).indexOf("/api/cartflow/reason") >= 0
+                  ) {
+                    entries = [cand];
+                    break;
+                  }
+                }
+              }
               var last = entries.length ? entries[entries.length - 1] : null;
               if (last) {
                 j._cf_resource_timing = {

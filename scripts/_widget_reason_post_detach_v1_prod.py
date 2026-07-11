@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 BASE = "https://smartreplyai.net"
-TARGET = "v2-widget-reason-post-detach-v1-2"
+TARGET = "v2-widget-reason-post-detach-v1-3"
 OUT = Path(__file__).resolve().parent / "_widget_reason_post_detach_v1_out"
 N = 20
 BEFORE = {
@@ -158,7 +158,7 @@ def _one(page, i: int) -> dict:
             break
         if page.get_by_role("button", name="شكراً").count():
             page.get_by_role("button", name="شكراً").click(timeout=5000)
-            page.wait_for_timeout(200)
+            # Do not sleep — phone render should be immediate after thanks.
         page.wait_for_timeout(50)
     entry["click_to_phone_ms"] = phone_ms
 
