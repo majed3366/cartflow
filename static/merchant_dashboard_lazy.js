@@ -1,9 +1,9 @@
 /* Lazy-load merchant dashboard JSON sections (shell-first). Not storefront widget V2. */
-/* MERCHANT_SETUP_RENDER_BUILD=ui-setup-v8g-rsc-v1_1 */
+/* MERCHANT_SETUP_RENDER_BUILD=ui-setup-v8h-cart-fresh-v1 */
 (function () {
   "use strict";
 
-  var MERCHANT_SETUP_RENDER_BUILD = "ui-setup-v8g-rsc-v1_1";
+  var MERCHANT_SETUP_RENDER_BUILD = "ui-setup-v8h-cart-fresh-v1";
 
   function esc(s) {
     return String(s == null ? "" : s)
@@ -4102,6 +4102,25 @@
     cartsAttentionVerdictPending = plan.freshness !== "final";
     cartsAttentionVerdictFresh = plan.freshness === "final";
     // Silent soft revalidate: do not re-paint identical merchant-visible composition.
+    // Include needs_you + row identity so a same-length hot merge still updates Hero/list.
+    var rowIdSig = "";
+    try {
+      rowIdSig = (plan.rows || [])
+        .map(function (r) {
+          return String(
+            (r && (r.recovery_key || r.zid_cart_id || r.cart_id || "")) || ""
+          );
+        })
+        .filter(Boolean)
+        .slice(0, 60)
+        .join(",");
+    } catch (_rowSigErr) {
+      rowIdSig = String((plan.rows || []).length);
+    }
+    var needsYou =
+      plan.counts && plan.counts.needs_you != null
+        ? String(plan.counts.needs_you)
+        : "";
     var planKey =
       String(plan.phase || "") +
       "|" +
@@ -4112,6 +4131,10 @@
       String(plan.verdictMode || "") +
       "|" +
       String((plan.rows || []).length) +
+      "|" +
+      needsYou +
+      "|" +
+      rowIdSig +
       "|" +
       String(plan.miSource || "");
     if (plan.silentRevalidate && planKey === cartPageRscLastPlanKey) {
@@ -4271,6 +4294,13 @@
     if (mi && typeof mi.workspaceKey === "function") {
       return mi.workspaceKey(d, rows);
     }
+    var rowSig = (rows || [])
+      .map(function (r) {
+        return String((r && (r.recovery_key || r.zid_cart_id || r.cart_id)) || "");
+      })
+      .filter(Boolean)
+      .slice(0, 60)
+      .join(",");
     var store = d && d.merchant_intelligence_store_v1;
     var sig = ((store && store.groups) || [])
       .map(function (g) {
@@ -4282,7 +4312,7 @@
         ].join(":");
       })
       .join("|");
-    return sig + "::" + String(rows.length);
+    return sig + "::" + String(rows.length) + "::" + rowSig;
   }
 
   function updateMiCartsV1QueueSelection() {

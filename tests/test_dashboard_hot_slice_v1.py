@@ -176,9 +176,15 @@ class DashboardHotSliceIntegrationTests(unittest.TestCase):
         self.assertEqual(body.get("data_freshness"), "hot_merged")
 
     @patch("services.merchant_auth_v1.development_dashboard_bypass_active", return_value=True)
-    def test_store_counters_unchanged_from_snapshot(self, _bypass: MagicMock) -> None:
+    def test_store_counters_bump_when_hot_slice_adds_new_cart(self, _bypass: MagicMock) -> None:
+        """Sprint 2.3: new hot keys advance store counters (were frozen at snapshot)."""
         self._seed_stale_snapshot_without_new_cart()
-        hot_row = {"recovery_key": self.recovery_key, "zid_cart_id": self.cart_id}
+        hot_row = {
+            "recovery_key": self.recovery_key,
+            "zid_cart_id": self.cart_id,
+            "merchant_cart_visible_tabs": ["all", "waiting"],
+            "merchant_cart_primary_bucket": "waiting",
+        }
         with patch(
             "services.dashboard_hot_slice_v1.build_hot_slice_active_rows",
             return_value=([hot_row], {"hot_slice_rows": 1, "hot_slice_ms": 1.0, "hot_slice_queries": 2, "hot_slice_degraded": False, "hot_slice_reason": ""}),
@@ -186,8 +192,11 @@ class DashboardHotSliceIntegrationTests(unittest.TestCase):
             resp = self.client.get("/api/dashboard/normal-carts")
         body = resp.json()
         store_counts = body.get("merchant_store_cart_counts") or {}
-        self.assertEqual(store_counts.get("active_total"), 1)
-        self.assertEqual(store_counts.get("waiting_total"), 1)
+        self.assertEqual(store_counts.get("active_total"), 2)
+        self.assertEqual(store_counts.get("waiting_total"), 2)
+        health = body.get("merchant_counter_health") or {}
+        self.assertTrue(health.get("counter_hot_slice_bumped"))
+        self.assertEqual(health.get("counter_hot_slice_new_rows"), 1)
 
     def test_apply_hot_slice_payload_metadata(self) -> None:
         payload = {

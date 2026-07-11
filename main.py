@@ -19399,12 +19399,24 @@ def _merchant_dashboard_refresh_state_payload(dash_store: Optional[Any]) -> dict
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         db.session.rollback()
     revision_token = f"{slug}:{max_log_id}:{max_sent_id}:{sent_total}:{max_archive_rev}"
+    cart_rev = 0
+    try:
+        from services.dashboard_refresh_cart_revision_v1 import (  # noqa: PLC0415
+            append_cart_revision_to_refresh_token,
+            live_abandoned_cart_max_id,
+        )
+
+        cart_rev = live_abandoned_cart_max_id(store_slug=slug, dash_store=dash_store)
+        revision_token = append_cart_revision_to_refresh_token(revision_token, cart_rev)
+    except Exception:  # noqa: BLE001
+        cart_rev = 0
     return {
         "merchant_dashboard_refresh_token": revision_token,
         "merchant_dashboard_refresh_last_log_id": max_log_id,
         "merchant_dashboard_refresh_last_sent_log_id": max_sent_id,
         "merchant_dashboard_refresh_sent_total": sent_total,
         "merchant_dashboard_refresh_archive_rev": max_archive_rev,
+        "merchant_dashboard_refresh_cart_rev": cart_rev,
     }
 
 

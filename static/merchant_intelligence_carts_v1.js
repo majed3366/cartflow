@@ -839,6 +839,13 @@
   }
 
   function workspaceKey(d, rows) {
+    var rowSig = (rows || [])
+      .map(function (r) {
+        return norm(recoveryKey(r, null) || r.zid_cart_id || r.cart_id || "");
+      })
+      .filter(Boolean)
+      .slice(0, 60)
+      .join(",");
     var stories = (d && d.merchant_value_stories_v1 && d.merchant_value_stories_v1.stories) || [];
     if (stories.length) {
       var sig = stories
@@ -850,10 +857,10 @@
           ].join(":");
         })
         .join("|");
-      return "stories:" + sig + "::" + String(rows.length);
+      return "stories:" + sig + "::" + String(rows.length) + "::" + rowSig;
     }
     var store = d && d.merchant_intelligence_store_v1;
-    var sig = ((store && store.groups) || [])
+    var gsig = ((store && store.groups) || [])
       .map(function (g) {
         return [
           String(g.group_id || ""),
@@ -863,7 +870,7 @@
         ].join(":");
       })
       .join("|");
-    return "groups:" + sig + "::" + String(rows.length);
+    return "groups:" + gsig + "::" + String(rows.length) + "::" + rowSig;
   }
 
   function renderStories(root, bundle, rows, deps) {

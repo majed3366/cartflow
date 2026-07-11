@@ -496,6 +496,16 @@ def build_refresh_state_from_snapshot(
             t0=wall0,
             endpoint="refresh-state",
         )
+        try:
+            from services.dashboard_refresh_cart_revision_v1 import (  # noqa: PLC0415
+                apply_live_cart_revision_to_refresh_state,
+            )
+
+            body = apply_live_cart_revision_to_refresh_state(
+                body, store_slug=store_slug
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.warning("refresh-state live cart revision skipped: %s", exc)
         return enforce_route_budget(body, wall0=wall0, endpoint="refresh-state")
 
 

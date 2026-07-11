@@ -286,7 +286,9 @@
         tr.style.display = show ? "" : "none";
       });
     }
-    var queue = document.getElementById("ma-carts-queue-v2");
+    var queue =
+      document.getElementById("ma-carts-groups-v2") ||
+      document.getElementById("ma-carts-queue-v2");
     if (queue) {
       queue.querySelectorAll(".v2-queue-item[data-ma-filter]").forEach(function (item) {
         var show = rowMatchesCartFilterMode(item, m);

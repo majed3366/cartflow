@@ -174,6 +174,77 @@ def build_hot_slice_active_rows(
     return list(active_rows), meta
 
 
+def _bump_store_counters_for_new_hot_rows(
+    payload: dict[str, Any],
+    *,
+    snapshot_rows: list[dict[str, Any]],
+    merged_rows: list[dict[str, Any]],
+) -> None:
+    """
+    When hot-slice introduces recovery keys absent from the snapshot page rows,
+    advance store-level counters for those new carts only.
+
+    Preserves canonical counter field meanings; does not invent Hero needs_you
+    (that remains client primary-action projection over page rows).
+    """
+    before = {_row_recovery_key(r) for r in snapshot_rows if _row_recovery_key(r)}
+    new_rows: list[dict[str, Any]] = []
+    for row in merged_rows:
+        if not isinstance(row, dict):
+            continue
+        rk = _row_recovery_key(row)
+        if not rk or rk in before:
+            continue
+        new_rows.append(row)
+    if not new_rows:
+        return
+
+    store = dict(payload.get("merchant_store_cart_counts") or {})
+    if not store and not payload.get("merchant_cart_filter_counts"):
+        return
+
+    def _inc(key: str, n: int = 1) -> None:
+        store[key] = int(store.get(key) or 0) + n
+
+    for row in new_rows:
+        archived = row.get("customer_lifecycle_is_archived_visual")
+        if archived is True or str(archived).lower() in ("1", "true", "yes"):
+            _inc("archived_total")
+            continue
+        _inc("active_total")
+        tabs = row.get("merchant_cart_visible_tabs") or []
+        if not isinstance(tabs, list):
+            tabs = []
+        tabs_l = {str(t or "").strip().lower() for t in tabs}
+        primary = str(
+            row.get("merchant_cart_primary_bucket") or row.get("merchant_cart_bucket") or ""
+        ).strip().lower()
+        if "waiting" in tabs_l or primary in ("waiting", "abandoned"):
+            _inc("waiting_total")
+        if "sent" in tabs_l or primary == "sent":
+            _inc("sent_total")
+        if "attention" in tabs_l or primary in ("attention", "intervention"):
+            _inc("engaged_total")
+        if "recovered" in tabs_l or primary == "recovered":
+            _inc("completed_total")
+        if "nophone" in tabs_l or primary in ("nophone", "no_phone"):
+            _inc("no_phone_total")
+
+    payload["merchant_store_cart_counts"] = store
+    fc = dict(payload.get("merchant_cart_filter_counts") or {})
+    fc["all"] = int(store.get("active_total") or fc.get("all") or 0)
+    fc["waiting"] = int(store.get("waiting_total") or fc.get("waiting") or 0)
+    fc["sent"] = int(store.get("sent_total") or fc.get("sent") or 0)
+    fc["attention"] = int(store.get("engaged_total") or fc.get("attention") or 0)
+    fc["recovered"] = int(store.get("completed_total") or fc.get("recovered") or 0)
+    fc["nophone"] = int(store.get("no_phone_total") or fc.get("nophone") or 0)
+    payload["merchant_cart_filter_counts"] = fc
+    health = dict(payload.get("merchant_counter_health") or {})
+    health["counter_hot_slice_bumped"] = True
+    health["counter_hot_slice_new_rows"] = len(new_rows)
+    payload["merchant_counter_health"] = health
+
+
 def apply_hot_slice_to_normal_carts_payload(
     payload: dict[str, Any],
     *,
@@ -183,7 +254,9 @@ def apply_hot_slice_to_normal_carts_payload(
     """
     Merge hot live rows into snapshot normal-carts payload.
 
-    Store-level counters and refresh token remain from snapshot (unchanged).
+    Store-level counters are advanced only for recovery keys newly introduced by
+    the hot merge (snapshot counters otherwise remain until the builder rewrite).
+    Refresh token remains from snapshot (cart revision is overlaid on refresh-state).
     """
     if not dashboard_hot_slice_enabled():
         payload.setdefault("data_freshness", "snapshot_only")
@@ -207,6 +280,11 @@ def apply_hot_slice_to_normal_carts_payload(
     payload["merchant_carts_page_rows"] = merged
     if merged:
         payload["merchant_table_rows"] = list(merged[:8])
+
+    if hot_rows:
+        _bump_store_counters_for_new_hot_rows(
+            payload, snapshot_rows=snapshot_rows, merged_rows=merged
+        )
 
     payload["hot_slice_rows"] = int(hot_meta.get("hot_slice_rows") or 0)
     payload["hot_slice_ms"] = hot_meta.get("hot_slice_ms")
