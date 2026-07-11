@@ -469,20 +469,61 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       save.setAttribute("disabled", "true");
       save.setAttribute("aria-busy", "true");
       skip.setAttribute("disabled", "true");
-      /* Immediate rhythm: ack on click, before await/persist. */
-      save.textContent = "جاري حفظ الرقم…";
+      /* Fast path: no «جاري حفظ الرقم…» unless persist exceeds threshold. */
+      var PERSIST_LOADING_THRESHOLD_MS = 400;
+      var phoneLoadingShown = false;
+      var phoneLoadingTimer = null;
+      var phonePerf0 =
+        typeof performance !== "undefined" && performance.now
+          ? performance.now()
+          : Date.now();
       try {
-        if (Cf.Shell && typeof Cf.Shell.showFooterMessage === "function") {
-          Cf.Shell.showFooterMessage({ message: "جاري حفظ الرقم…" });
-        }
         console.log("[CF PHONE SAVE ACK]");
       } catch (eAckPh) {}
+      phoneLoadingTimer = window.setTimeout(function () {
+        phoneLoadingShown = true;
+        save.textContent = "جاري حفظ الرقم…";
+        try {
+          if (Cf.Shell && typeof Cf.Shell.showFooterMessage === "function") {
+            Cf.Shell.showFooterMessage({ message: "جاري حفظ الرقم…" });
+          }
+          console.log("[CF PHONE SAVE SLOW PATH]", {
+            threshold_ms: PERSIST_LOADING_THRESHOLD_MS,
+          });
+        } catch (eSlowPh) {}
+      }, PERSIST_LOADING_THRESHOLD_MS);
       var ret = opts.onSave(pn);
       Promise.resolve(ret)
         .then(function () {
+          if (phoneLoadingTimer != null) {
+            try {
+              window.clearTimeout(phoneLoadingTimer);
+            } catch (eClrT) {}
+            phoneLoadingTimer = null;
+          }
+          try {
+            var ms = Math.round(
+              ((typeof performance !== "undefined" && performance.now
+                ? performance.now()
+                : Date.now()) -
+                phonePerf0) *
+                10
+            ) / 10;
+            console.log("[CF PHONE PERSIST TIMING]", {
+              ms: ms,
+              slow_path: !!phoneLoadingShown,
+              threshold_ms: PERSIST_LOADING_THRESHOLD_MS,
+            });
+          } catch (eTm) {}
           /* parent shows success + closes */
         })
         .catch(function () {
+          if (phoneLoadingTimer != null) {
+            try {
+              window.clearTimeout(phoneLoadingTimer);
+            } catch (eClrF) {}
+            phoneLoadingTimer = null;
+          }
           save.removeAttribute("disabled");
           save.removeAttribute("aria-busy");
           skip.removeAttribute("disabled");

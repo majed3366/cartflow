@@ -21,11 +21,11 @@ _LOADER = (_ROOT / "static/widget_loader.js").read_text(encoding="utf-8")
 class WidgetInteractionTrustV1Tests(unittest.TestCase):
     def test_reason_ack_before_bridge_and_persist(self) -> None:
         idx = _FLOWS.index("function openReasonPath")
-        block = _FLOWS[idx : idx + 9000]
+        block = _FLOWS[idx : idx + 14000]
         self.assertIn("acknowledgeReasonPick", block)
         self.assertIn("[CF REASON ACK]", block)
-        self.assertIn("تم الاختيار — جاري الحفظ…", block)
         self.assertIn('data-cf-reason-selected', block)
+        self.assertIn("جاري الحفظ…", block)  # slow-path only
         # Ack + in_flight lock happen before ensureCartTruthBeforeReason
         self.assertLess(
             block.index("acknowledgeReasonPick();"),
@@ -58,7 +58,7 @@ class WidgetInteractionTrustV1Tests(unittest.TestCase):
         self.assertIn("hideFooterMessage: hideFooterMessage", _SHELL)
 
     def test_runtime_version_bumped(self) -> None:
-        self.assertIn("v2-widget-interaction", _LOADER)
+        self.assertIn("v2-widget-", _LOADER)
 
     def test_double_submit_still_guarded(self) -> None:
         self.assertIn('why: "in_flight"', _FLOWS)

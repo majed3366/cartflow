@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Widget Journey V2.1 — interaction rhythm polish."""
+"""Widget Journey V2.1 — interaction rhythm polish (superseded by V2.2 deferred loading)."""
 from __future__ import annotations
 
 import unittest
@@ -18,16 +18,14 @@ _LOADER = (_ROOT / "static/widget_loader.js").read_text(encoding="utf-8")
 class WidgetInteractionRhythmV21Tests(unittest.TestCase):
     def test_reason_ack_is_more_than_border(self) -> None:
         idx = _FLOWS.index("function acknowledgeReasonPick")
-        block = _FLOWS[idx : idx + 3500]
+        block = _FLOWS[idx : idx + 4500]
         self.assertIn('"✓ " + base', block)
-        self.assertIn("تم الاختيار — جاري الحفظ…", block)
-        self.assertIn('data-cf-reason-status', block)
-        self.assertIn('data-cf-reason-transition', block)
         self.assertIn("[CF REASON ACK]", block)
+        self.assertIn('data-cf-reason-transition', block)
 
     def test_reason_ack_before_persist_unchanged(self) -> None:
         idx = _FLOWS.index("function openReasonPath")
-        block = _FLOWS[idx : idx + 10000]
+        block = _FLOWS[idx : idx + 14000]
         self.assertLess(
             block.index("acknowledgeReasonPick();"),
             block.index("ensureCartTruthBeforeReason"),
@@ -37,18 +35,17 @@ class WidgetInteractionRhythmV21Tests(unittest.TestCase):
             block.index("showContinuation(rk, subCat)"),
         )
 
-    def test_phone_click_ack_before_persist(self) -> None:
-        self.assertIn('save.textContent = "جاري حفظ الرقم…"', _UI)
-        self.assertIn('message: "جاري حفظ الرقم…"', _UI)
+    def test_phone_deferred_loading_keeps_success(self) -> None:
         self.assertIn("[CF PHONE SAVE ACK]", _UI)
-        # Must not clear footer before persist completes
+        self.assertIn("جاري حفظ الرقم…", _UI)
+        self.assertIn("phoneLoadingTimer = window.setTimeout", _UI)
         on_save = _FLOWS[_FLOWS.index("onSave: function (pn)") : _FLOWS.index("onSkip:")]
         self.assertNotIn("hideFooterMessage", on_save)
         self.assertIn('showSuccess("تم حفظ الرقم")', _FLOWS)
         self.assertIn("return Cf.Phone.postReasonMerged", on_save)
 
     def test_runtime_version(self) -> None:
-        self.assertIn("v2-widget-interaction-rhythm-v2_1", _LOADER)
+        self.assertIn("v2-widget-", _LOADER)
 
 
 if __name__ == "__main__":

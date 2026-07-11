@@ -378,7 +378,6 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       title: "اترك رقمك للمتابعة",
       onBack: showContinuationForPending,
       onSave: function (pn) {
-        /* Keep click-time «جاري حفظ الرقم…» visible during persist — do not clear. */
         return Cf.Phone.postReasonMerged(
           Object.assign({}, payload),
           pn,
@@ -397,7 +396,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
           } catch (ePs) {}
           window.setTimeout(function () {
             gracefulCloseWidget();
-          }, 900);
+          }, 700);
         });
       },
       onSkip: function () {
@@ -637,12 +636,12 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       } catch (eDis) {}
     }
 
-    /** Sync ack <100ms: selected label + transition copy — before bridge/POST. */
+    /** Sync selected ack only — «جاري الحفظ…» is deferred (slow path). */
     function acknowledgeReasonPick() {
       try {
         var root = Cf.Shell && Cf.Shell.getRoot ? Cf.Shell.getRoot() : null;
         if (!root) return;
-        root.setAttribute("data-cf-reason-transition", "saving");
+        root.setAttribute("data-cf-reason-transition", "selected");
         root.querySelectorAll("[data-cf-reason-key]").forEach(function (btn) {
           var key = String(btn.getAttribute("data-cf-reason-key") || "").toLowerCase();
           btn.setAttribute("disabled", "true");
@@ -670,11 +669,29 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
             btn.style.fontWeight = "";
           }
         });
+        var ackMs = Math.round(
+          ((typeof performance !== "undefined" && performance.now
+            ? performance.now()
+            : Date.now()) -
+            ackPerf0) *
+            10
+        ) / 10;
+        console.log("[CF REASON ACK]", { reason_key: rk, ack_ms: ackMs });
+      } catch (eAck) {}
+    }
+
+    function showReasonSavingSlowPath() {
+      reasonLoadingShown = true;
+      try {
+        var root = Cf.Shell && Cf.Shell.getRoot ? Cf.Shell.getRoot() : null;
+        if (root) root.setAttribute("data-cf-reason-transition", "saving");
         var mount =
           Cf.Shell && Cf.Shell.getContentMount
             ? Cf.Shell.getContentMount()
-            : root.querySelector("[data-cf-content], .cf-content");
-        var status = root.querySelector("[data-cf-reason-status]");
+            : root
+            ? root.querySelector("[data-cf-content], .cf-content")
+            : null;
+        var status = root ? root.querySelector("[data-cf-reason-status]") : null;
         if (!status && mount) {
           status = document.createElement("p");
           status.setAttribute("data-cf-reason-status", "1");
@@ -687,23 +704,40 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
             mount.insertBefore(status, mount.firstChild);
           }
         }
-        if (status) {
-          status.textContent = "تم الاختيار — جاري الحفظ…";
-        }
+        if (status) status.textContent = "جاري الحفظ…";
         if (Cf.Shell && typeof Cf.Shell.showFooterMessage === "function") {
-          Cf.Shell.showFooterMessage({
-            message: "تم الاختيار — جاري الحفظ…",
-          });
+          Cf.Shell.showFooterMessage({ message: "جاري الحفظ…" });
         }
-        var ackMs = Math.round(
+        console.log("[CF REASON SAVE SLOW PATH]", {
+          threshold_ms: PERSIST_LOADING_THRESHOLD_MS,
+        });
+      } catch (eSlow) {}
+    }
+
+    function clearReasonLoadingTimer() {
+      if (reasonLoadingTimer != null) {
+        try {
+          window.clearTimeout(reasonLoadingTimer);
+        } catch (eCt) {}
+        reasonLoadingTimer = null;
+      }
+    }
+
+    function logReasonPersistTiming() {
+      try {
+        var ms = Math.round(
           ((typeof performance !== "undefined" && performance.now
             ? performance.now()
             : Date.now()) -
-            ackPerf0) *
+            persistPerf0) *
             10
         ) / 10;
-        console.log("[CF REASON ACK]", { reason_key: rk, ack_ms: ackMs });
-      } catch (eAck) {}
+        console.log("[CF REASON PERSIST TIMING]", {
+          ms: ms,
+          slow_path: !!reasonLoadingShown,
+          threshold_ms: PERSIST_LOADING_THRESHOLD_MS,
+        });
+      } catch (eT) {}
     }
 
     function clearReasonPickVisual() {
@@ -728,6 +762,8 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
 
     function failReasonPersist(msg) {
+      clearReasonLoadingTimer();
+      logReasonPersistTiming();
       st().reason_save_in_flight = false;
       st().background_save_failed = true;
       clearReasonPickVisual();
@@ -787,6 +823,8 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
             };
             return;
           }
+          clearReasonLoadingTimer();
+          logReasonPersistTiming();
           st().reason_save_in_flight = false;
           st().background_retry_meta = null;
           st().background_save_failed = false;
@@ -811,9 +849,20 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
         });
     }
 
-    // One intentional action → immediate ack → lock → persist → transition
+    // Selected immediately → persist in background → loading only if slow
+    var PERSIST_LOADING_THRESHOLD_MS = 400;
+    var persistPerf0 =
+      typeof performance !== "undefined" && performance.now
+        ? performance.now()
+        : Date.now();
+    var reasonLoadingShown = false;
+    var reasonLoadingTimer = null;
     acknowledgeReasonPick();
     st().reason_save_in_flight = true;
+    reasonLoadingTimer = window.setTimeout(
+      showReasonSavingSlowPath,
+      PERSIST_LOADING_THRESHOLD_MS
+    );
 
     if (
       Cf.StorefrontCartBridge &&
