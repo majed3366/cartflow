@@ -469,7 +469,8 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       save.setAttribute("disabled", "true");
       save.setAttribute("aria-busy", "true");
       skip.setAttribute("disabled", "true");
-      save.textContent = "جاري الحفظ…";
+      /* Immediate rhythm: ack on click, before await/persist. */
+      save.textContent = "جاري حفظ الرقم…";
       try {
         if (Cf.Shell && typeof Cf.Shell.showFooterMessage === "function") {
           Cf.Shell.showFooterMessage({ message: "جاري حفظ الرقم…" });

@@ -378,11 +378,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       title: "اترك رقمك للمتابعة",
       onBack: showContinuationForPending,
       onSave: function (pn) {
-        try {
-          if (Cf.Shell && typeof Cf.Shell.hideFooterMessage === "function") {
-            Cf.Shell.hideFooterMessage();
-          }
-        } catch (eClrErr) {}
+        /* Keep click-time «جاري حفظ الرقم…» visible during persist — do not clear. */
         return Cf.Phone.postReasonMerged(
           Object.assign({}, payload),
           pn,
@@ -393,7 +389,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
           st().background_save_failed = false;
           try {
             if (Cf.Shell && typeof Cf.Shell.showSuccess === "function") {
-              Cf.Shell.showSuccess("تم حفظ الرقم — سنتابع طلبك");
+              Cf.Shell.showSuccess("تم حفظ الرقم");
             }
           } catch (eOkMsg) {}
           try {
@@ -641,32 +637,63 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       } catch (eDis) {}
     }
 
-    /** Sync ack <100ms: selected + lock + status — before bridge/POST. */
+    /** Sync ack <100ms: selected label + transition copy — before bridge/POST. */
     function acknowledgeReasonPick() {
       try {
         var root = Cf.Shell && Cf.Shell.getRoot ? Cf.Shell.getRoot() : null;
         if (!root) return;
+        root.setAttribute("data-cf-reason-transition", "saving");
         root.querySelectorAll("[data-cf-reason-key]").forEach(function (btn) {
           var key = String(btn.getAttribute("data-cf-reason-key") || "").toLowerCase();
           btn.setAttribute("disabled", "true");
           btn.setAttribute("aria-busy", "true");
+          if (!btn.getAttribute("data-cf-reason-label")) {
+            btn.setAttribute("data-cf-reason-label", btn.textContent || "");
+          }
+          var base = btn.getAttribute("data-cf-reason-label") || "";
           if (key === rk) {
             btn.setAttribute("data-cf-reason-selected", "1");
             btn.setAttribute("aria-pressed", "true");
+            btn.textContent = "✓ " + base;
             btn.style.outline = "2px solid rgba(255,255,255,.92)";
             btn.style.outlineOffset = "1px";
-            btn.style.filter = "brightness(1.1)";
+            btn.style.filter = "brightness(1.12)";
             btn.style.opacity = "1";
+            btn.style.fontWeight = "700";
           } else {
             btn.removeAttribute("data-cf-reason-selected");
             btn.setAttribute("aria-pressed", "false");
+            btn.textContent = base;
             btn.style.outline = "";
             btn.style.filter = "";
-            btn.style.opacity = "0.5";
+            btn.style.opacity = "0.45";
+            btn.style.fontWeight = "";
           }
         });
+        var mount =
+          Cf.Shell && Cf.Shell.getContentMount
+            ? Cf.Shell.getContentMount()
+            : root.querySelector("[data-cf-content], .cf-content");
+        var status = root.querySelector("[data-cf-reason-status]");
+        if (!status && mount) {
+          status = document.createElement("p");
+          status.setAttribute("data-cf-reason-status", "1");
+          status.style.cssText =
+            "margin:0 0 8px;font-size:12px;line-height:1.4;font-weight:600;color:#e2e8f0;";
+          var row = mount.querySelector("[data-cf-reason-row-v2]");
+          if (row && row.parentNode) {
+            row.parentNode.insertBefore(status, row);
+          } else {
+            mount.insertBefore(status, mount.firstChild);
+          }
+        }
+        if (status) {
+          status.textContent = "تم الاختيار — جاري الحفظ…";
+        }
         if (Cf.Shell && typeof Cf.Shell.showFooterMessage === "function") {
-          Cf.Shell.showFooterMessage({ message: "جاري الحفظ…" });
+          Cf.Shell.showFooterMessage({
+            message: "تم الاختيار — جاري الحفظ…",
+          });
         }
         var ackMs = Math.round(
           ((typeof performance !== "undefined" && performance.now
@@ -683,13 +710,20 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       try {
         var root = Cf.Shell && Cf.Shell.getRoot ? Cf.Shell.getRoot() : null;
         if (!root) return;
+        root.removeAttribute("data-cf-reason-transition");
         root.querySelectorAll("[data-cf-reason-key]").forEach(function (btn) {
+          var base = btn.getAttribute("data-cf-reason-label");
+          if (base != null) btn.textContent = base;
           btn.removeAttribute("data-cf-reason-selected");
           btn.removeAttribute("aria-pressed");
+          btn.removeAttribute("data-cf-reason-label");
           btn.style.outline = "";
           btn.style.filter = "";
           btn.style.opacity = "";
+          btn.style.fontWeight = "";
         });
+        var status = root.querySelector("[data-cf-reason-status]");
+        if (status && status.parentNode) status.parentNode.removeChild(status);
       } catch (eClr) {}
     }
 

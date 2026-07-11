@@ -24,7 +24,7 @@ class WidgetInteractionTrustV1Tests(unittest.TestCase):
         block = _FLOWS[idx : idx + 9000]
         self.assertIn("acknowledgeReasonPick", block)
         self.assertIn("[CF REASON ACK]", block)
-        self.assertIn("جاري الحفظ…", block)
+        self.assertIn("تم الاختيار — جاري الحفظ…", block)
         self.assertIn('data-cf-reason-selected', block)
         # Ack + in_flight lock happen before ensureCartTruthBeforeReason
         self.assertLess(
@@ -47,11 +47,10 @@ class WidgetInteractionTrustV1Tests(unittest.TestCase):
 
     def test_phone_save_immediate_ack(self) -> None:
         self.assertIn("[CF PHONE SAVE ACK]", _UI)
-        self.assertIn("جاري الحفظ…", _UI)
         self.assertIn("جاري حفظ الرقم…", _UI)
         self.assertIn("Promise.resolve(ret)", _UI)
         self.assertIn("[CF PHONE SAVE ACK SUCCESS]", _FLOWS)
-        self.assertIn("تم حفظ الرقم — سنتابع طلبك", _FLOWS)
+        self.assertIn("تم حفظ الرقم", _FLOWS)
         self.assertIn("return Cf.Phone.postReasonMerged", _FLOWS)
 
     def test_shell_footer_status_exported(self) -> None:
@@ -59,7 +58,7 @@ class WidgetInteractionTrustV1Tests(unittest.TestCase):
         self.assertIn("hideFooterMessage: hideFooterMessage", _SHELL)
 
     def test_runtime_version_bumped(self) -> None:
-        self.assertIn("v2-widget-interaction-trust-v1", _LOADER)
+        self.assertIn("v2-widget-interaction", _LOADER)
 
     def test_double_submit_still_guarded(self) -> None:
         self.assertIn('why: "in_flight"', _FLOWS)

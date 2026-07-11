@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 BASE = "https://smartreplyai.net"
-TARGET = "v2-widget-interaction-trust-v1b"
+TARGET = "v2-widget-interaction-rhythm-v2_1"
 OUT = Path(__file__).resolve().parent / "_widget_interaction_trust_v1_out"
 
 
@@ -207,7 +207,7 @@ def _run_one_journey(page, i: int) -> dict:
                       return t.slice(0, 500);
                     }"""
                 )
-                if "جاري الحفظ" in body or "تم حفظ" in body:
+                if "جاري حفظ الرقم" in body or "تم حفظ" in body:
                     entry["phone_ack_ms"] = round((time.perf_counter() - t_phone) * 1000, 1)
                     if "تم حفظ" in body:
                         phone_confirm = True

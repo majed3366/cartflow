@@ -12,7 +12,7 @@
 (function () {
   "use strict";
 
-  var RUNTIME_VERSION = "v2-widget-interaction-trust-v1b";
+  var RUNTIME_VERSION = "v2-widget-interaction-rhythm-v2_1";
 
   function cartflowExtractHostnameSlugInline(host) {
     if (typeof window.cartflowExtractStoreSlugFromHostname === "function") {
