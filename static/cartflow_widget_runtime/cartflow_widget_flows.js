@@ -378,23 +378,64 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       title: "اترك رقمك للمتابعة",
       onBack: showContinuationForPending,
       onSave: function (pn) {
+        var phoneTrace = {
+          flow: "phone",
+          stages_ms: {},
+          t0:
+            typeof performance !== "undefined" && performance.now
+              ? performance.now()
+              : Date.now(),
+        };
+        function phoneMark(name) {
+          var now =
+            typeof performance !== "undefined" && performance.now
+              ? performance.now()
+              : Date.now();
+          var prev = phoneTrace._prev != null ? phoneTrace._prev : phoneTrace.t0;
+          phoneTrace.stages_ms[name] = Math.round((now - prev) * 10) / 10;
+          phoneTrace._prev = now;
+        }
+        phoneMark("click_validated");
         return Cf.Phone.postReasonMerged(
           Object.assign({}, payload),
           pn,
           subCat != null ? String(subCat) : "",
           textHint,
           rk
-        ).then(function () {
+        ).then(function (j) {
+          phoneMark("post_reason_merged");
           st().background_save_failed = false;
+          try {
+            if (j && j.cf_timing) {
+              phoneTrace.server = j.cf_timing;
+            }
+            if (j && j._cf_client_net_ms != null) {
+              phoneTrace.client_net_ms = j._cf_client_net_ms;
+            }
+          } catch (eSrv) {}
           try {
             if (Cf.Shell && typeof Cf.Shell.showSuccess === "function") {
               Cf.Shell.showSuccess("تم حفظ الرقم");
             }
           } catch (eOkMsg) {}
+          phoneMark("success_ui");
           try {
             console.log("[CF PHONE SAVE ACK SUCCESS]");
+            console.log("[CF FAST PATH TRACE]", phoneTrace);
           } catch (ePs) {}
           window.setTimeout(function () {
+            phoneMark("close_scheduled");
+            try {
+              phoneTrace.total_ms =
+                Math.round(
+                  ((typeof performance !== "undefined" && performance.now
+                    ? performance.now()
+                    : Date.now()) -
+                    phoneTrace.t0) *
+                    10
+                ) / 10;
+              console.log("[CF FAST PATH TRACE CLOSE]", phoneTrace);
+            } catch (eCl) {}
             gracefulCloseWidget();
           }, 700);
         });
@@ -604,6 +645,20 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       typeof performance !== "undefined" && performance.now
         ? performance.now()
         : Date.now();
+    var reasonTrace = {
+      flow: "reason",
+      stages_ms: {},
+      t0: ackPerf0,
+      _prev: ackPerf0,
+    };
+    function reasonMark(name) {
+      var now =
+        typeof performance !== "undefined" && performance.now
+          ? performance.now()
+          : Date.now();
+      reasonTrace.stages_ms[name] = Math.round((now - reasonTrace._prev) * 10) / 10;
+      reasonTrace._prev = now;
+    }
 
     if (st().reason_save_in_flight) {
       try {
@@ -808,9 +863,17 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       try {
         console.log("[CF REASON PERSIST START]", { reason_key: rk });
       } catch (ePs) {}
+      reasonMark("payload_ready");
 
       Cf.Api.postReason(payloadCopy)
         .then(function (j) {
+          reasonMark("post_reason");
+          try {
+            if (j && j.cf_timing) reasonTrace.server = j.cf_timing;
+            if (j && j._cf_client_net_ms != null) {
+              reasonTrace.client_net_ms = j._cf_client_net_ms;
+            }
+          } catch (eSrv) {}
           if (!Cf.Api.reasonPostOk(j)) {
             failReasonPersist(
               "تعذّر حفظ السبب. يمكنك المحاولة مرة أخرى."
@@ -837,6 +900,18 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
             console.log("[CF REASON PERSIST SUCCESS]", { reason_key: rk });
           } catch (eOk) {}
           showContinuation(rk, subCat);
+          reasonMark("next_screen_render");
+          try {
+            reasonTrace.total_ms =
+              Math.round(
+                ((typeof performance !== "undefined" && performance.now
+                  ? performance.now()
+                  : Date.now()) -
+                  reasonTrace.t0) *
+                  10
+              ) / 10;
+            console.log("[CF FAST PATH TRACE]", reasonTrace);
+          } catch (eTr) {}
         })
         .catch(function () {
           failReasonPersist("تعذّر حفظ السبب. حاول مرة أخرى.");
@@ -858,6 +933,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     var reasonLoadingShown = false;
     var reasonLoadingTimer = null;
     acknowledgeReasonPick();
+    reasonMark("ui_ack");
     st().reason_save_in_flight = true;
     reasonLoadingTimer = window.setTimeout(
       showReasonSavingSlowPath,
@@ -870,13 +946,16 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     ) {
       Cf.StorefrontCartBridge.ensureCartTruthBeforeReason()
         .then(function (res) {
+          reasonMark("bridge_ensure");
           persistThenAdvance(res);
         })
         .catch(function () {
+          reasonMark("bridge_ensure");
           persistThenAdvance({ reason_orphan_risk: true, persisted: false });
         });
       return;
     }
+    reasonMark("bridge_ensure");
     persistThenAdvance(null);
   }
 

@@ -63,6 +63,33 @@ def _peek_db_queries_cartflow_optional() -> Optional[int]:
     return int(peek.get("queries") or 0)
 
 
+class _ReasonStageClock:
+    """Investigation-only stage deltas for POST /reason (Fast Path Root Cause V1)."""
+
+    __slots__ = ("_t0", "_prev", "stages_ms")
+
+    def __init__(self) -> None:
+        now = time.perf_counter()
+        self._t0 = now
+        self._prev = now
+        self.stages_ms: Dict[str, float] = {}
+
+    def mark(self, name: str) -> None:
+        now = time.perf_counter()
+        self.stages_ms[name] = round((now - self._prev) * 1000.0, 1)
+        self._prev = now
+
+    def total_ms(self) -> float:
+        return round((time.perf_counter() - self._t0) * 1000.0, 1)
+
+    def as_payload(self) -> Dict[str, Any]:
+        return {
+            "stages_ms": dict(self.stages_ms),
+            "total_handler_ms": self.total_ms(),
+            "investigation": "widget_fast_path_root_cause_v1",
+        }
+
+
 def _log_reason_save_profile(
     *,
     wall_perf_start: float,
@@ -538,19 +565,24 @@ async def post_abandonment_reason(
 
     Recovery schedule arm runs as a BackgroundTask after commit so the
     widget can advance without waiting on materialization / dispatch.
+
+    Investigation: returns optional ``cf_timing`` stage deltas (additive JSON).
     """
+    clock = _ReasonStageClock()
     try:
         from main import _ensure_cartflow_api_db_warmed
 
         _ensure_cartflow_api_db_warmed()
     except (OSError, SQLAlchemyError):
         db.session.rollback()
+    clock.mark("db_warm")
     try:
         body: Any
         try:
             body = await request.json()
         except Exception:  # noqa: BLE001
             body = None
+        clock.mark("json_parse")
         if not isinstance(body, dict):
             return j({"ok": False, "error": "json_object_required"}, 400)
         sid = (str(body.get("session_id", "")) or "").strip()[:512]
@@ -570,6 +602,7 @@ async def post_abandonment_reason(
         if sub_raw is not None and (str(sub_raw) or "").strip():
             sub_cat = (str(sub_raw) or "").strip()[:64]
         custom_raw = body.get("custom_text")
+        clock.mark("validate_coerce")
         if not ss or not sid or not reason:
             return j({"ok": False, "error": "store_slug_session_reason_required"}, 400)
         if reason not in REASON_CHOICES:
@@ -620,6 +653,7 @@ async def post_abandonment_reason(
                     phone_norm = None
                 else:
                     phone_norm = pn
+        clock.mark("phone_normalize")
 
         if phone_norm:
             cf_sid = sid[:512] if sid else "-"
@@ -678,6 +712,7 @@ async def post_abandonment_reason(
             )
             .first()
         )
+        clock.mark("db_lookup_crr")
         prev_crr_phone = (
             (getattr(crr, "customer_phone", None) or "").strip()[:100]
             if crr is not None
@@ -749,6 +784,7 @@ async def post_abandonment_reason(
                 updated_at=now,
             )
             db.session.add(crr)
+        clock.mark("db_prepare_writes")
         if reason == "vip_phone_capture" and phone_norm:
             apply_vip_phone_capture_to_abandoned_carts(
                 store_slug=ss,
@@ -756,6 +792,7 @@ async def post_abandonment_reason(
                 normalized_phone=phone_norm,
             )
         db.session.flush()
+        clock.mark("db_flush")
         cart_id_raw = body.get("cart_id") or body.get("zid_cart_id")
         cid_apply: Optional[str] = None
         if cart_id_raw is not None and str(cart_id_raw).strip():
@@ -773,7 +810,9 @@ async def post_abandonment_reason(
                 phone=ph_sync,
                 reason_tag=persist_rt,
             )
+        clock.mark("phone_sync_session")
         db.session.commit()
+        clock.mark("db_commit")
         if phone_norm:
             cf_sid2 = sid[:512] if sid else "-"
             log.info(
@@ -793,6 +832,7 @@ async def post_abandonment_reason(
                 phone_norm,
                 source="real_customer_phone",
             )
+        clock.mark("phone_side_effects")
         if reason == "vip_phone_capture" and phone_norm:
             try:
                 from services.vip_abandoned_cart_phone import (
@@ -816,6 +856,7 @@ async def post_abandonment_reason(
                     alert_err,
                     exc_info=True,
                 )
+        clock.mark("vip_alert_optional")
         if not is_handoff_only_reason(reason):
             # Detach arm from the HTTP response path (operational fast path).
             # Starlette still runs this before TestClient returns, so schedule
@@ -826,13 +867,25 @@ async def post_abandonment_reason(
                 session_id=sid,
                 body=dict(body),
             )
+        clock.mark("schedule_recovery_bg")
 
         _log_reason_save_profile(
             wall_perf_start=perf_rs,
             phase="committed_reason_response",
             audit_query_baseline=rs_q_base,
         )
-        return j({"ok": True})
+        timing = clock.as_payload()
+        try:
+            print(
+                "[CF REASON STAGE TIMING] "
+                + str(timing.get("stages_ms"))
+                + " total_ms="
+                + str(timing.get("total_handler_ms")),
+                flush=True,
+            )
+        except OSError:
+            pass
+        return j({"ok": True, "cf_timing": timing})
     except (SQLAlchemyError, OSError) as e:
         db.session.rollback()
         log.warning("cartflow reason: %s", e)

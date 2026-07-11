@@ -370,12 +370,29 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     } catch (eCid) {
       /* ignore */
     }
+    var netT0 =
+      typeof performance !== "undefined" && performance.now
+        ? performance.now()
+        : Date.now();
     return fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }).then(function (r) {
+      var ttfb =
+        Math.round(
+          ((typeof performance !== "undefined" && performance.now
+            ? performance.now()
+            : Date.now()) -
+            netT0) *
+            10
+        ) / 10;
       return r.json().then(function (j) {
+        try {
+          if (j && typeof j === "object") {
+            j._cf_client_net_ms = ttfb;
+          }
+        } catch (eNet) {}
         if (!r.ok) {
           return { ok: false, status: r.status, body: j };
         }
