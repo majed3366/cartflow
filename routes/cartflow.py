@@ -588,16 +588,24 @@ def _spawn_reason_recovery_arm_detached(
             )
 
     try:
-        threading.Thread(
-            target=_run,
-            name="cf-reason-recovery-arm",
-            daemon=True,
-        ).start()
+        # Slight defer so the HTTP response can leave before arm grabs the pool.
+        threading.Timer(0.05, _run).start()
     except Exception as spawn_err:  # noqa: BLE001
         log.warning(
             "cartflow/reason recovery arm spawn failed: %s",
             spawn_err,
         )
+        try:
+            threading.Thread(
+                target=_run,
+                name="cf-reason-recovery-arm",
+                daemon=True,
+            ).start()
+        except Exception as spawn_err2:  # noqa: BLE001
+            log.warning(
+                "cartflow/reason recovery arm spawn fallback failed: %s",
+                spawn_err2,
+            )
 
 
 @router.post("/reason")
@@ -614,11 +622,21 @@ async def post_abandonment_reason(
     """
     clock = _ReasonStageClock()
     try:
-        from main import _ensure_cartflow_api_db_warmed
+        import main as _main_mod
 
-        _ensure_cartflow_api_db_warmed()
+        # Fast Path V1.1: full ensure path costs ~115–170ms even when already
+        # warmed (db_ready_run wrapper). Skip the call once the process flag is set.
+        if not bool(getattr(_main_mod, "_cartflow_api_db_warmed", False)):
+            _main_mod._ensure_cartflow_api_db_warmed()
     except (OSError, SQLAlchemyError):
         db.session.rollback()
+    except Exception:  # noqa: BLE001
+        try:
+            from main import _ensure_cartflow_api_db_warmed
+
+            _ensure_cartflow_api_db_warmed()
+        except (OSError, SQLAlchemyError):
+            db.session.rollback()
     clock.mark("db_warm")
     try:
         body: Any

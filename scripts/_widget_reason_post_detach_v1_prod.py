@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 BASE = "https://smartreplyai.net"
-TARGET = "v2-widget-reason-post-detach-v1-1"
+TARGET = "v2-widget-reason-post-detach-v1-2"
 OUT = Path(__file__).resolve().parent / "_widget_reason_post_detach_v1_out"
 N = 20
 BEFORE = {
