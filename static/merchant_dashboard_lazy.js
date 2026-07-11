@@ -1,9 +1,170 @@
 /* Lazy-load merchant dashboard JSON sections (shell-first). Not storefront widget V2. */
-/* MERCHANT_SETUP_RENDER_BUILD=ui-setup-v8h-cart-fresh-v1 */
+/* MERCHANT_SETUP_RENDER_BUILD=ui-setup-v8i-cart-row-trace-v1 */
 (function () {
   "use strict";
 
-  var MERCHANT_SETUP_RENDER_BUILD = "ui-setup-v8h-cart-fresh-v1";
+  var MERCHANT_SETUP_RENDER_BUILD = "ui-setup-v8i-cart-row-trace-v1";
+
+  /* Sprint 2.3 — read-only row disappearance probe (no semantics change). */
+  var CARTS_ROW_TRACE_MAX = 120;
+  window.__maCartsRowTrace = window.__maCartsRowTrace || [];
+
+  function cartsRowKeys(rows, lim) {
+    var out = [];
+    var n = lim != null ? lim : 12;
+    (rows || []).forEach(function (r) {
+      if (out.length >= n) return;
+      var k =
+        (r && (r.recovery_key || r.zid_cart_id || r.cart_id || r.id)) || "";
+      if (k) out.push(String(k));
+    });
+    return out;
+  }
+
+  function snapCartsRowDom() {
+    var root = byId("ma-carts-groups-v2");
+    var empty = byId("ma-carts-queue-empty");
+    var shell = document.querySelector("#page-carts .ma-pe-v2-carts-shell");
+    var items = root
+      ? Array.prototype.slice.call(root.querySelectorAll(".v2-queue-item"))
+      : [];
+    var visible = items.filter(function (el) {
+      return el.style.display !== "none" && !el.hidden;
+    });
+    var groups = root
+      ? Array.prototype.slice.call(root.querySelectorAll("details.ma-mi-group"))
+      : [];
+    var visibleGroups = groups.filter(function (el) {
+      return el.style.display !== "none" && !el.hidden;
+    });
+    var rootCs = root ? window.getComputedStyle(root) : null;
+    var shellCs = shell ? window.getComputedStyle(shell) : null;
+    return {
+      carts_ready: document.body
+        ? document.body.getAttribute("data-carts-ready")
+        : null,
+      viewport_w: window.innerWidth || 0,
+      is_desktop_mq: !!(
+        window.matchMedia && window.matchMedia("(min-width: 900px)").matches
+      ),
+      groups_host_present: !!root,
+      group_count: groups.length,
+      visible_group_count: visibleGroups.length,
+      queue_item_count: items.length,
+      visible_queue_item_count: visible.length,
+      visible_recovery_keys: visible
+        .slice(0, 12)
+        .map(function (el) {
+          return el.getAttribute("data-recovery-key") || "";
+        })
+        .filter(Boolean),
+      calm_or_pending: !!(
+        root &&
+        (root.querySelector("[data-mi-calm]") ||
+          root.querySelector("[data-mi-pending]"))
+      ),
+      calm_text: root
+        ? String(
+            (
+              (root.querySelector("[data-mi-calm] .v2-whisper-text") ||
+                root.querySelector("[data-mi-pending] .v2-whisper-text") ||
+                {}).textContent || ""
+            )
+          ).slice(0, 120)
+        : null,
+      open_group_count: groups.filter(function (el) {
+        return !!el.open;
+      }).length,
+      story_card_count: root
+        ? root.querySelectorAll(".ma-mi-group-card").length
+        : 0,
+      empty_hidden: empty ? !!empty.hidden : null,
+      empty_text: empty
+        ? String(
+            (empty.querySelector(".v2-whisper-text") &&
+              empty.querySelector(".v2-whisper-text").textContent) ||
+              ""
+          ).slice(0, 120)
+        : null,
+      root_display: rootCs ? rootCs.display : null,
+      root_visibility: rootCs ? rootCs.visibility : null,
+      root_opacity: rootCs ? rootCs.opacity : null,
+      root_h: root ? Math.round(root.getBoundingClientRect().height) : 0,
+      shell_display: shellCs ? shellCs.display : null,
+      shell_h: shell ? Math.round(shell.getBoundingClientRect().height) : 0,
+      note:
+        "no_virtual_list — MI stories/groups write .v2-queue-item into #ma-carts-groups-v2",
+    };
+  }
+
+  function traceCartsRowPipeline(stage, data) {
+    try {
+      var entry = Object.assign(
+        {
+          ts: Date.now(),
+          iso: new Date().toISOString(),
+          stage: String(stage || ""),
+          build: MERCHANT_SETUP_RENDER_BUILD,
+        },
+        data || {}
+      );
+      window.__maCartsRowTrace.push(entry);
+      if (window.__maCartsRowTrace.length > CARTS_ROW_TRACE_MAX) {
+        window.__maCartsRowTrace.shift();
+      }
+      console.info("[CARTS ROW TRACE]", stage, entry);
+    } catch (_traceErr) {
+      /* never break paint */
+    }
+  }
+
+  window.__maCartsRowProbe = function () {
+    var mi = lastMerchantIntelligencePayload || {};
+    var stories =
+      (mi.merchant_value_stories_v1 && mi.merchant_value_stories_v1.stories) ||
+      [];
+    var groups =
+      (mi.merchant_intelligence_store_v1 &&
+        mi.merchant_intelligence_store_v1.groups) ||
+      [];
+    var filter =
+      typeof window.getEffectiveNormalCartFilter === "function"
+        ? window.getEffectiveNormalCartFilter()
+        : typeof window.getCurrentNormalCartFilter === "function"
+          ? window.getCurrentNormalCartFilter()
+          : null;
+    var rsc =
+      cartPageRsc && typeof cartPageRsc.getSnapshot === "function"
+        ? cartPageRsc.getSnapshot()
+        : null;
+    return {
+      build: MERCHANT_SETUP_RENDER_BUILD,
+      memory_rows: (lastNormalCartsPageRows || []).length,
+      memory_keys: cartsRowKeys(lastNormalCartsPageRows, 12),
+      filter_mode: filter,
+      filter_counts: lastNormalCartsFilterCounts || null,
+      mi_stories: stories.length,
+      mi_groups: groups.length,
+      has_mi: !!(stories.length || groups.length),
+      rsc: rsc
+        ? {
+            phase: rsc.phase,
+            freshness: rsc.freshness,
+            bodyMode: rsc.bodyMode,
+            verdictMode: rsc.verdictMode,
+            rows: (rsc.rows || []).length,
+            miSource: rsc.miSource,
+            silentRevalidate: !!rsc.silentRevalidate,
+            reason: rsc.reason || "",
+          }
+        : null,
+      last_plan_key: cartPageRscLastPlanKey || "",
+      revealed: !!cartsExperienceRevealed,
+      dom: snapCartsRowDom(),
+      trace_len: (window.__maCartsRowTrace || []).length,
+      trace_tail: (window.__maCartsRowTrace || []).slice(-16),
+    };
+  };
 
   function esc(s) {
     return String(s == null ? "" : s)
@@ -4013,6 +4174,12 @@
     var root = byId("ma-carts-groups-v2");
     var empty = byId("ma-carts-queue-empty");
     if (!mi || !root) {
+      traceCartsRowPipeline("5_virtual_list_input", {
+        outcome: "stories_fallback_pending",
+        has_mi_api: !!mi,
+        has_root: !!root,
+        rows_count: ((plan && plan.rows) || []).length,
+      });
       paintCartBodyPendingFromPlan(plan);
       return;
     }
@@ -4036,7 +4203,28 @@
       merchant_intelligence_store_v1: d.merchant_intelligence_store_v1,
     };
     var wsKey = miCartsWorkspaceKey(payload, rows);
+    var useStories = !!(mi.hasValueStories && mi.hasValueStories(payload));
+    var storyN =
+      (payload.merchant_value_stories_v1 &&
+        payload.merchant_value_stories_v1.stories &&
+        payload.merchant_value_stories_v1.stories.length) ||
+      0;
+    var groupN =
+      (payload.merchant_intelligence_store_v1 &&
+        payload.merchant_intelligence_store_v1.groups &&
+        payload.merchant_intelligence_store_v1.groups.length) ||
+      0;
     if (wsKey === lastMiCartsWorkspaceKey && root.querySelector(".ma-mi-group")) {
+      traceCartsRowPipeline("5_virtual_list_input", {
+        outcome: "workspace_skip_reuse_dom",
+        rows_count: rows.length,
+        row_keys: cartsRowKeys(rows, 12),
+        use_stories: useStories,
+        stories_count: storyN,
+        groups_count: groupN,
+        wsKey_prefix: String(wsKey || "").slice(0, 80),
+        dom_before_filter: snapCartsRowDom(),
+      });
       updateMiCartsV1QueueSelection();
       if (typeof mi.syncOpenMiGroupSummaryPreviews === "function") {
         mi.syncOpenMiGroupSummaryPreviews(root);
@@ -4062,7 +4250,16 @@
       onSelectCart: selectPeV2Cart,
       updateSubtitle: function () {},
     };
-    if (mi.hasValueStories && mi.hasValueStories(payload)) {
+    traceCartsRowPipeline("5_virtual_list_input", {
+      outcome: "mi_render",
+      rows_count: rows.length,
+      row_keys: cartsRowKeys(rows, 12),
+      use_stories: useStories,
+      stories_count: storyN,
+      groups_count: groupN,
+      note: "MI renderStories/renderGroups is the list input (no virtual list)",
+    });
+    if (useStories) {
       mi.renderStories(root, payload.merchant_value_stories_v1, rows, deps);
     } else {
       mi.renderGroups(root, payload.merchant_intelligence_store_v1, rows, deps);
@@ -4094,6 +4291,7 @@
         renderPeV2CartPanel(findCartByRecoveryKey(peV2SelectedRecoveryKey));
       }
     }
+    traceCartsRowPipeline("6_final_dom_render", snapCartsRowDom());
   }
 
   function paintCartPageFromRsc(plan) {
@@ -4143,6 +4341,14 @@
         freshness: plan.freshness,
         reason: plan.reason || "",
       });
+      traceCartsRowPipeline("5_virtual_list_input", {
+        outcome: "silent_skip",
+        bodyMode: plan.bodyMode,
+        rows_count: (plan.rows || []).length,
+        row_keys: cartsRowKeys(plan.rows, 12),
+        planKey: planKey,
+        dom_before: snapCartsRowDom(),
+      });
       return;
     }
     cartPageRscLastPlanKey = planKey;
@@ -4157,11 +4363,28 @@
           bodyMode: plan.bodyMode,
           reason: plan.reason || "",
         });
+        traceCartsRowPipeline("5_virtual_list_input", {
+          outcome: "hold_reveal",
+          bodyMode: plan.bodyMode,
+          freshness: plan.freshness,
+          rows_count: (plan.rows || []).length,
+          row_keys: cartsRowKeys(plan.rows, 12),
+          dom: snapCartsRowDom(),
+        });
         return;
       }
       // Already revealed: keep last Hero; allow last-good stories body without pending Hero.
       if (plan.bodyMode === "stories") {
         paintCartBodyStoriesFromPlan(plan);
+      } else {
+        traceCartsRowPipeline("5_virtual_list_input", {
+          outcome: "keep_canonical_skip_body",
+          bodyMode: plan.bodyMode,
+          rows_count: (plan.rows || []).length,
+          row_keys: cartsRowKeys(plan.rows, 12),
+          note: "non-stories bodyMode after reveal — body not repainted",
+          dom: snapCartsRowDom(),
+        });
       }
       logClientRefresh("rsc_commit_keep_canonical", {
         phase: plan.phase,
@@ -4177,9 +4400,23 @@
       paintCartBodyStoriesFromPlan(plan);
     } else if (plan.bodyMode === "empty") {
       paintCartBodyEmptyFromPlan();
+      traceCartsRowPipeline("5_virtual_list_input", {
+        outcome: "paint_empty",
+        bodyMode: "empty",
+        rows_count: (plan.rows || []).length,
+      });
+      traceCartsRowPipeline("6_final_dom_render", snapCartsRowDom());
     } else {
       // Final snapshot, MI not ready — calm body, never technical pending copy.
       paintCartBodyCalmFollowFromPlan(plan);
+      traceCartsRowPipeline("5_virtual_list_input", {
+        outcome: "paint_calm_follow",
+        bodyMode: plan.bodyMode,
+        rows_count: (plan.rows || []).length,
+        row_keys: cartsRowKeys(plan.rows, 12),
+        note: "rows present but bodyMode not stories — no queue items painted",
+      });
+      traceCartsRowPipeline("6_final_dom_render", snapCartsRowDom());
     }
     cartsExperienceRevealed = true;
     setCartsExperienceReadyFlag(true);
@@ -4461,9 +4698,13 @@
         ? window.rowMatchesCartFilterMode
         : null;
     var anyVisible = false;
+    var totalItems = 0;
+    var visibleItems = 0;
+    var visibleKeys = [];
     root.querySelectorAll("details.ma-mi-group").forEach(function (group) {
       var visibleInGroup = 0;
       group.querySelectorAll(".v2-queue-item[data-ma-filter]").forEach(function (item) {
+        totalItems += 1;
         var show = true;
         if (matchFn) {
           show = matchFn(item, m);
@@ -4491,7 +4732,13 @@
         }
         item.style.display = show ? "" : "none";
         item.hidden = !show;
-        if (show) visibleInGroup += 1;
+        if (show) {
+          visibleInGroup += 1;
+          visibleItems += 1;
+          if (visibleKeys.length < 12) {
+            visibleKeys.push(item.getAttribute("data-recovery-key") || "");
+          }
+        }
       });
       var showGroup = m === "all" || visibleInGroup > 0;
       group.style.display = showGroup ? "" : "none";
@@ -4502,6 +4749,15 @@
     if (empty && m !== "all") {
       empty.hidden = anyVisible;
     }
+    traceCartsRowPipeline("4_filtered_rows", {
+      filter_mode: m,
+      queue_items_before_filter_attr: totalItems,
+      visible_queue_items: visibleItems,
+      visible_recovery_keys: visibleKeys.filter(Boolean),
+      any_visible_group: anyVisible,
+      memory_rows: (lastNormalCartsPageRows || []).length,
+      dom: snapCartsRowDom(),
+    });
   }
 
   window.maPeV2OnFilterApplied = function (mode) {
@@ -5834,6 +6090,43 @@
     if (!pageRows.length && normalCartsIsConfirmedFullEmpty(d, pageRows)) {
       prepared.__ma_confirmed_empty = true;
     }
+    try {
+      var prepRows = normalCartsPayloadRows(prepared);
+      var snapMeta2 = (prepared && prepared._snapshot) || {};
+      traceCartsRowPipeline("2_hot_slice_merge_client_view", {
+        note:
+          "Hot-slice merge is server-side; client sees already-merged page rows",
+        source: normalCartsPayloadSource(prepared),
+        rows_count: prepRows.length,
+        row_keys: cartsRowKeys(prepRows, 12),
+        hot_slice_rows:
+          snapMeta2.hot_slice_rows != null ? snapMeta2.hot_slice_rows : null,
+        filter_all:
+          prepared.merchant_cart_filter_counts &&
+          prepared.merchant_cart_filter_counts.all,
+        store_active:
+          prepared.merchant_store_cart_counts &&
+          prepared.merchant_store_cart_counts.active_total,
+      });
+      traceCartsRowPipeline("3_merchant_carts_page_rows", {
+        rows_count: prepRows.length,
+        row_keys: cartsRowKeys(prepRows, 12),
+        active_count: activeNormalCartRows(prepRows).length,
+        confirmed_empty: !!prepared.__ma_confirmed_empty,
+        has_stories: !!(
+          prepared.merchant_value_stories_v1 &&
+          prepared.merchant_value_stories_v1.stories &&
+          prepared.merchant_value_stories_v1.stories.length
+        ),
+        has_groups: !!(
+          prepared.merchant_intelligence_store_v1 &&
+          prepared.merchant_intelligence_store_v1.groups &&
+          prepared.merchant_intelligence_store_v1.groups.length
+        ),
+      });
+    } catch (_prepTraceErr) {
+      /* ignore */
+    }
     // Fresh live/snapshot apply: Attention Verdict may show final counts.
     cartsAttentionVerdictPending = false;
     cartsAttentionVerdictFresh = true;
@@ -5909,6 +6202,57 @@
         return r.json();
       })
       .then(function (d) {
+        try {
+          var apiRows = normalCartsPayloadRows(d);
+          var snapMeta = (d && d._snapshot) || {};
+          var hs = (d && d.hot_slice) || (d && d._hot_slice) || {};
+          traceCartsRowPipeline("1_api_response", {
+            label: label || "",
+            fetchGen: gen,
+            ok: !!(d && d.ok),
+            source: normalCartsPayloadSource(d),
+            rows_count: apiRows.length,
+            row_keys: cartsRowKeys(apiRows, 12),
+            filter_all:
+              d && d.merchant_cart_filter_counts
+                ? d.merchant_cart_filter_counts.all
+                : null,
+            store_active:
+              d && d.merchant_store_cart_counts
+                ? d.merchant_store_cart_counts.active_total
+                : null,
+            hot_slice_rows:
+              hs.hot_slice_rows != null
+                ? hs.hot_slice_rows
+                : snapMeta.hot_slice_rows != null
+                  ? snapMeta.hot_slice_rows
+                  : null,
+            has_stories: !!(
+              d &&
+              d.merchant_value_stories_v1 &&
+              d.merchant_value_stories_v1.stories &&
+              d.merchant_value_stories_v1.stories.length
+            ),
+            has_groups: !!(
+              d &&
+              d.merchant_intelligence_store_v1 &&
+              d.merchant_intelligence_store_v1.groups &&
+              d.merchant_intelligence_store_v1.groups.length
+            ),
+            stories_count:
+              d && d.merchant_value_stories_v1 && d.merchant_value_stories_v1.stories
+                ? d.merchant_value_stories_v1.stories.length
+                : 0,
+            groups_count:
+              d &&
+              d.merchant_intelligence_store_v1 &&
+              d.merchant_intelligence_store_v1.groups
+                ? d.merchant_intelligence_store_v1.groups.length
+                : 0,
+          });
+        } catch (_apiTraceErr) {
+          /* ignore */
+        }
         applyNormalCarts(d, gen);
         return d;
       })

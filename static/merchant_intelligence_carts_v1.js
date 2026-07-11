@@ -890,12 +890,32 @@
         }
       }
       if (deps.onSelectCart) deps.onSelectCart("");
+      try {
+        if (typeof window.__maCartsRowTrace !== "undefined") {
+          (window.__maCartsRowTrace = window.__maCartsRowTrace || []).push({
+            ts: Date.now(),
+            stage: "5b_mi_render_stories",
+            outcome: "no_stories",
+            page_rows: (rows || []).length,
+          });
+        }
+      } catch (_t) {
+        /* ignore */
+      }
       return true;
     }
     if (deps.emptyEl) deps.emptyEl.hidden = true;
+    var matchAudit = [];
     var html = stories
       .map(function (story) {
         var rowsInStory = rowsForStory(story, rows, deps.cartRecoveryKey);
+        matchAudit.push({
+          story_id: String((story && story.story_id) || ""),
+          keys_len: Array.isArray(story && story.affected_cart_keys)
+            ? story.affected_cart_keys.length
+            : 0,
+          matched_rows: rowsInStory.length,
+        });
         var sid = norm(story.story_id);
         var openAttr = openGroupState[sid] ? " open" : "";
         return (
@@ -911,6 +931,21 @@
       })
       .join("");
     root.innerHTML = html;
+    try {
+      if (typeof window.__maCartsRowTrace !== "undefined") {
+        (window.__maCartsRowTrace = window.__maCartsRowTrace || []).push({
+          ts: Date.now(),
+          stage: "5b_mi_render_stories",
+          outcome: "rendered",
+          page_rows: (rows || []).length,
+          stories: stories.length,
+          match_audit: matchAudit.slice(0, 20),
+          queue_items_in_dom: root.querySelectorAll(".v2-queue-item").length,
+        });
+      }
+    } catch (_t2) {
+      /* ignore */
+    }
     bindMiGroupDetails(root);
     if (deps.bindQueue) deps.bindQueue(root);
     if (deps.updateSubtitle) {
@@ -937,12 +972,29 @@
         }
       }
       if (deps.onSelectCart) deps.onSelectCart("");
+      try {
+        if (typeof window.__maCartsRowTrace !== "undefined") {
+          (window.__maCartsRowTrace = window.__maCartsRowTrace || []).push({
+            ts: Date.now(),
+            stage: "5b_mi_render_groups",
+            outcome: "no_groups",
+            page_rows: (rows || []).length,
+          });
+        }
+      } catch (_tg) {
+        /* ignore */
+      }
       return true;
     }
     if (deps.emptyEl) deps.emptyEl.hidden = true;
+    var matchAudit = [];
     var html = groups
       .map(function (group) {
         var rowsInGroup = rowsForGroup(group, rows, deps.cartRecoveryKey);
+        matchAudit.push({
+          group_id: String((group && group.group_id) || ""),
+          matched_rows: rowsInGroup.length,
+        });
         var rec = recommendationForGroup(group, rowsInGroup, recs);
         var openAttr = openGroupState[norm(group.group_id)] ? " open" : "";
         return (
@@ -958,6 +1010,21 @@
       })
       .join("");
     root.innerHTML = html;
+    try {
+      if (typeof window.__maCartsRowTrace !== "undefined") {
+        (window.__maCartsRowTrace = window.__maCartsRowTrace || []).push({
+          ts: Date.now(),
+          stage: "5b_mi_render_groups",
+          outcome: "rendered",
+          page_rows: (rows || []).length,
+          groups: groups.length,
+          match_audit: matchAudit.slice(0, 20),
+          queue_items_in_dom: root.querySelectorAll(".v2-queue-item").length,
+        });
+      }
+    } catch (_tg2) {
+      /* ignore */
+    }
     bindMiGroupDetails(root);
     if (deps.bindQueue) deps.bindQueue(root);
     if (deps.updateSubtitle) {
