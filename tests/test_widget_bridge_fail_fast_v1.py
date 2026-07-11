@@ -45,6 +45,13 @@ class WidgetBridgeFailFastV1Tests(unittest.TestCase):
         ]
         self.assertNotIn("ensure_before_reason", pri)
 
+    def test_flows_fail_fast_missing_identity(self) -> None:
+        self.assertIn('fail_fast_path === "missing_identity"', _FLOWS)
+        self.assertIn("ensureCartTruthBeforeReason", _FLOWS)
+        # Persist-then-advance preserved
+        self.assertIn("persistThenAdvance(res)", _FLOWS)
+        self.assertIn("Cf.Api.postReason(payloadCopy)", _FLOWS)
+
     def test_flows_schedules_cart_persist_after_reason_ok(self) -> None:
         self.assertIn("defer_cart_persist", _FLOWS)
         self.assertIn("scheduleBackgroundPersistAfterReason()", _FLOWS)
