@@ -20,6 +20,7 @@ def get(url: str) -> str:
 def main() -> None:
     loader = get(f"{BASE}/static/widget_loader.js?_ts={TS}")
     for token in (
+        "v2-widget-reason-post-detach-v1-4",
         "v2-widget-reason-post-detach-v1-3",
         "v2-widget-reason-post-detach-v1-2",
         "v2-widget-reason-post-detach-v1-1",

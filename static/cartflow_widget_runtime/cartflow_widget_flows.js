@@ -923,7 +923,21 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
           try {
             console.log("[CF REASON PERSIST SUCCESS]", { reason_key: rk });
           } catch (eOk) {}
-          showContinuation(rk, subCat);
+          /* Fast Path V1.1: after_reason phone opens immediately so reason→phone
+             can clear <500ms. Continuation remains available via phone Back. */
+          try {
+            var needPhone =
+              Cf.Phone &&
+              typeof Cf.Phone.deferAfterReasonCapture === "function" &&
+              Cf.Phone.deferAfterReasonCapture();
+            if (needPhone) {
+              handleThanksAfterReason(rk);
+            } else {
+              showContinuation(rk, subCat);
+            }
+          } catch (eNext) {
+            showContinuation(rk, subCat);
+          }
           reasonMark("next_screen_render");
           try {
             reasonTrace.total_ms =
@@ -1009,6 +1023,11 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   function mountReasonList() {
     st().background_retry_meta = null;
     st().background_save_failed = false;
+    try {
+      if (Cf.Api && typeof Cf.Api.warmReasonConnection === "function") {
+        Cf.Api.warmReasonConnection();
+      }
+    } catch (eWarm) {}
     var rows =
       Cf.Config && typeof Cf.Config.buildVisibleReasonRows === "function"
         ? Cf.Config.buildVisibleReasonRows()

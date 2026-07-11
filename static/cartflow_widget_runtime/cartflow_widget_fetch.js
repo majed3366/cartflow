@@ -340,6 +340,23 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     return body;
   }
 
+  function warmReasonConnection() {
+    /* Pre-open HTTP connection so reason POST avoids cold start_to_request (~200ms). */
+    try {
+      var url = apiBase()
+        ? apiBase() + "/api/cartflow/reason"
+        : "/api/cartflow/reason";
+      fetch(url, {
+        method: "OPTIONS",
+        headers: {
+          "Access-Control-Request-Method": "POST",
+          "Access-Control-Request-Headers": "content-type",
+        },
+        cache: "no-store",
+      }).catch(function () {});
+    } catch (eWarm) {}
+  }
+
   function postReason(payload) {
     var url = apiBase()
       ? apiBase() + "/api/cartflow/reason"
@@ -667,6 +684,7 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     storeSlug: storeSlug,
     sessionId: sessionId,
     postReason: postReason,
+    warmReasonConnection: warmReasonConnection,
     postAssistHandoff: postAssistHandoff,
     fetchReady: fetchReady,
     fetchPublicConfig: fetchPublicConfig,
