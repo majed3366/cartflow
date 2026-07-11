@@ -44,7 +44,7 @@ class CartLifecycleE2EConsistencyTests(unittest.TestCase):
         self.assertIn("persistThenAdvance", _FLOWS)
         self.assertIn("reason_save_in_flight", _FLOWS)
         idx = _FLOWS.index("function openReasonPath")
-        block = _FLOWS[idx : idx + 5000]
+        block = _FLOWS[idx : idx + 12000]
         self.assertLess(
             block.index("Cf.Api.postReason(payloadCopy)"),
             block.index("showContinuation(rk, subCat)"),

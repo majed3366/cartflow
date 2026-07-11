@@ -458,13 +458,43 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     save.addEventListener("click", function (e) {
       e.preventDefault();
       e.stopPropagation();
+      if (save.getAttribute("disabled") === "true") return;
       err.textContent = "";
       var pn = Cf.State.normalizePhoneDigits(inp.value);
       if (!pn) {
         err.textContent = "رقم غير صحيح";
         return;
       }
-      opts.onSave(pn);
+      var labelPrev = save.textContent;
+      save.setAttribute("disabled", "true");
+      save.setAttribute("aria-busy", "true");
+      skip.setAttribute("disabled", "true");
+      save.textContent = "جاري الحفظ…";
+      try {
+        if (Cf.Shell && typeof Cf.Shell.showFooterMessage === "function") {
+          Cf.Shell.showFooterMessage({ message: "جاري حفظ الرقم…" });
+        }
+        console.log("[CF PHONE SAVE ACK]");
+      } catch (eAckPh) {}
+      var ret = opts.onSave(pn);
+      Promise.resolve(ret)
+        .then(function () {
+          /* parent shows success + closes */
+        })
+        .catch(function () {
+          save.removeAttribute("disabled");
+          save.removeAttribute("aria-busy");
+          skip.removeAttribute("disabled");
+          save.textContent = labelPrev;
+          err.textContent = "تعذّر حفظ رقم الجوال. تأكد من الرقم وحاول مرة أخرى.";
+          try {
+            if (Cf.Shell && Cf.Shell.showError) {
+              Cf.Shell.showError(
+                "تعذّر حفظ رقم الجوال. تأكد من الرقم وحاول مرة أخرى."
+              );
+            }
+          } catch (ePh) {}
+        });
     });
     row.appendChild(save);
     row.appendChild(skip);

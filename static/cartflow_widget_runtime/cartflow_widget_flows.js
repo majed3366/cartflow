@@ -379,31 +379,30 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       onBack: showContinuationForPending,
       onSave: function (pn) {
         try {
-          if (Cf.Shell && Cf.Shell.showError) {
-            Cf.Shell.showError("");
+          if (Cf.Shell && typeof Cf.Shell.hideFooterMessage === "function") {
+            Cf.Shell.hideFooterMessage();
           }
         } catch (eClrErr) {}
-        Cf.Phone.postReasonMerged(
+        return Cf.Phone.postReasonMerged(
           Object.assign({}, payload),
           pn,
           subCat != null ? String(subCat) : "",
           textHint,
           rk
-        )
-          .then(function () {
-            st().background_save_failed = false;
+        ).then(function () {
+          st().background_save_failed = false;
+          try {
+            if (Cf.Shell && typeof Cf.Shell.showSuccess === "function") {
+              Cf.Shell.showSuccess("تم حفظ الرقم — سنتابع طلبك");
+            }
+          } catch (eOkMsg) {}
+          try {
+            console.log("[CF PHONE SAVE ACK SUCCESS]");
+          } catch (ePs) {}
+          window.setTimeout(function () {
             gracefulCloseWidget();
-          })
-          .catch(function () {
-            st().background_save_failed = true;
-            try {
-              if (Cf.Shell && Cf.Shell.showError) {
-                Cf.Shell.showError(
-                  "تعذّر حفظ رقم الجوال. تأكد من الرقم وحاول مرة أخرى."
-                );
-              }
-            } catch (ePh) {}
-          });
+          }, 450);
+        });
       },
       onSkip: function () {
         gracefulCloseWidget();
@@ -606,6 +605,10 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     var rk = String(reasonKey || "").toLowerCase();
     var subCat =
       detail.sub_category != null ? detail.sub_category : null;
+    var ackPerf0 =
+      typeof performance !== "undefined" && performance.now
+        ? performance.now()
+        : Date.now();
 
     if (st().reason_save_in_flight) {
       try {
@@ -638,9 +641,62 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
       } catch (eDis) {}
     }
 
+    /** Sync ack <100ms: selected + lock + status — before bridge/POST. */
+    function acknowledgeReasonPick() {
+      try {
+        var root = Cf.Shell && Cf.Shell.getRoot ? Cf.Shell.getRoot() : null;
+        if (!root) return;
+        root.querySelectorAll("[data-cf-reason-key]").forEach(function (btn) {
+          var key = String(btn.getAttribute("data-cf-reason-key") || "").toLowerCase();
+          btn.setAttribute("disabled", "true");
+          btn.setAttribute("aria-busy", "true");
+          if (key === rk) {
+            btn.setAttribute("data-cf-reason-selected", "1");
+            btn.setAttribute("aria-pressed", "true");
+            btn.style.outline = "2px solid rgba(255,255,255,.92)";
+            btn.style.outlineOffset = "1px";
+            btn.style.filter = "brightness(1.1)";
+            btn.style.opacity = "1";
+          } else {
+            btn.removeAttribute("data-cf-reason-selected");
+            btn.setAttribute("aria-pressed", "false");
+            btn.style.outline = "";
+            btn.style.filter = "";
+            btn.style.opacity = "0.5";
+          }
+        });
+        if (Cf.Shell && typeof Cf.Shell.showFooterMessage === "function") {
+          Cf.Shell.showFooterMessage({ message: "جاري الحفظ…" });
+        }
+        var ackMs = Math.round(
+          ((typeof performance !== "undefined" && performance.now
+            ? performance.now()
+            : Date.now()) -
+            ackPerf0) *
+            10
+        ) / 10;
+        console.log("[CF REASON ACK]", { reason_key: rk, ack_ms: ackMs });
+      } catch (eAck) {}
+    }
+
+    function clearReasonPickVisual() {
+      try {
+        var root = Cf.Shell && Cf.Shell.getRoot ? Cf.Shell.getRoot() : null;
+        if (!root) return;
+        root.querySelectorAll("[data-cf-reason-key]").forEach(function (btn) {
+          btn.removeAttribute("data-cf-reason-selected");
+          btn.removeAttribute("aria-pressed");
+          btn.style.outline = "";
+          btn.style.filter = "";
+          btn.style.opacity = "";
+        });
+      } catch (eClr) {}
+    }
+
     function failReasonPersist(msg) {
       st().reason_save_in_flight = false;
       st().background_save_failed = true;
+      clearReasonPickVisual();
       setReasonButtonsDisabled(false);
       try {
         if (Cf.Shell && Cf.Shell.showError) {
@@ -652,8 +708,6 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     }
 
     function persistThenAdvance(cartBridgeResult) {
-      if (st().reason_save_in_flight) return;
-      st().reason_save_in_flight = true;
       st().background_save_failed = false;
       setReasonButtonsDisabled(true);
 
@@ -703,6 +757,11 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
           st().background_retry_meta = null;
           st().background_save_failed = false;
           try {
+            if (Cf.Shell && typeof Cf.Shell.hideFooterMessage === "function") {
+              Cf.Shell.hideFooterMessage();
+            }
+          } catch (eHf) {}
+          try {
             console.log("[CF REASON PERSIST SUCCESS]", { reason_key: rk });
           } catch (eOk) {}
           showContinuation(rk, subCat);
@@ -717,6 +776,10 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
           };
         });
     }
+
+    // One intentional action → immediate ack → lock → persist → transition
+    acknowledgeReasonPick();
+    st().reason_save_in_flight = true;
 
     if (
       Cf.StorefrontCartBridge &&

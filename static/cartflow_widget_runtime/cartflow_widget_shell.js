@@ -1059,6 +1059,8 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
     setLastTriggerSource: setLastTriggerSource,
     showError: showError,
     showSuccess: showSuccess,
+    showFooterMessage: showFooterMessage,
+    hideFooterMessage: hideFooterMessage,
     minimizeLauncher: minimizeLauncher,
     expand: expandShell,
     refreshTitle: refreshTitle,
