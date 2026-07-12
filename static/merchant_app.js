@@ -43,7 +43,7 @@
     "home-setup": "تحقق من جاهزية متجرك قبل التشغيل الكامل.",
     "home-month": "أرقام الاسترداد والأداء لهذا الشهر.",
     "home-test-tools": "اختبر الودجيت والاسترجاع بدون إرسال حقيقي.",
-    workspace: "ما الذي يحتاج قرارك الآن؟ وما الذي يتولاه CartFlow؟",
+    workspace: "",
     carts: "ما الذي يحتاج انتباهك الآن؟",
     followup: "ردود العملاء والمتابعة التي يحتاج المتجر مراجعتها.",
     completed: "سلال أنهت مسار الاسترجاع — شراء أو استرداد ناجح.",
@@ -520,6 +520,30 @@
       beginCartsExperienceShell();
       syncVisualHero(pageKey);
       return;
+    }
+    /* Decision Workspace = control console — never share Home/Carts hero. */
+    if (pageKey === "workspace") {
+      clearQuestionFirstHero();
+      if (document.body) document.body.removeAttribute("data-carts-ready");
+      if (globalHero) {
+        globalHero.hidden = true;
+        globalHero.setAttribute("hidden", "");
+        globalHero.removeAttribute("data-shared-hero-carts");
+      }
+      if (pt) pt.textContent = "";
+      if (pp) {
+        pp.textContent = "";
+        pp.hidden = true;
+      }
+      if (ps) {
+        ps.textContent = "";
+        ps.hidden = true;
+      }
+      return;
+    }
+    if (globalHero) {
+      globalHero.hidden = false;
+      globalHero.removeAttribute("hidden");
     }
     if (pt) pt.textContent = text || "";
     var purpose = pageKey && PAGE_PURPOSE[pageKey] ? PAGE_PURPOSE[pageKey] : "";

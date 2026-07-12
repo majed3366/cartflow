@@ -180,36 +180,37 @@ def test_merchant_template_gated_and_scripts():
     assert "page-workspace" in html
     assert "cart_workspace_merchant_v1.js" in html
     assert "CARTFLOW_CART_WORKSPACE_V1" in html
-    assert "ma-page-hero--workspace" in html
+    assert "data-cw-console" in html
     assert "cw-merchant-seed" not in html
     js = Path("static/merchant_app.js").read_text(encoding="utf-8")
     assert "CARTFLOW_CART_WORKSPACE_V1" in js
-    # Scripts only inside flag block — merchant_dashboard_lazy must not own Workspace logic
+    assert 'pageKey === "workspace"' in js
     lazy = Path("static/merchant_dashboard_lazy.js").read_text(encoding="utf-8", errors="ignore")
     assert "CartWorkspaceRenderControllerV1" not in lazy
 
 
 def test_decision_first_card_presenter_contract():
-    """Presentation-only: Decision-First structure; eng terms not in default card paint."""
+    """Visual Rebuild: control-console tiles; eng terms only inside details."""
     card_js = Path("static/cart_workspace_decision_card_v1.js").read_text(encoding="utf-8")
     assert "presentCard" in card_js
     assert "عرض التفاصيل" in card_js
     assert "عرض خصم" in card_js
     assert "بدء المتابعة اليدوية" in card_js
-    # Default card must not paint explanation labels until details expand
-    assert "cw-decision-card__details" in card_js
-    assert "cw-decision-card__title" in card_js
-    assert "cw-decision-card__sentence" in card_js
+    assert "cw-tile__title" in card_js
+    assert "cw-tile__line" in card_js
+    assert "cw-tile__details" in card_js
     grid_js = Path("static/cart_workspace_grid_v1.js").read_text(encoding="utf-8")
     assert "تتابعه أنت الآن" in grid_js
-    assert "getFollowingVip" in grid_js
-    assert "cw-grid__scan" in grid_js
+    assert "cw-counter" in grid_js
+    assert "cw-console" in grid_js
+    assert "mission_question" not in grid_js
     merchant_js = Path("static/cart_workspace_merchant_v1.js").read_text(encoding="utf-8")
     assert "getFollowingVip" in merchant_js
-    assert "upsertFollowing" in merchant_js
-    # No merchant-facing version/status eng chrome
     assert "الإصدار" not in merchant_js
     assert "تجهيز أمثلة" not in merchant_js
+    css = Path("static/cart_workspace_merchant_v1.css").read_text(encoding="utf-8")
+    assert 'body[data-ma-page="workspace"] #ma-page-hero-global' in css
+    assert "cw-console" in css or "cw-counter" in css
 
 
 def test_render_still_paint_only():

@@ -497,6 +497,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-07-12 | **Cart Workspace Visual Rebuild V1 (presentation):** Control-console rebuild — counter-first, VIP lane, action tiles, no shared Home hero, no report prose. Ownership/Admission/Projection unchanged. Pending Product Review (no push). |
 | 2026-07-12 | **Cart Workspace Decision-First Redesign V1:** Presentation-only — operational grid cards (title + one sentence + primary action + optional details); VIP dedicated + «تتابعه أنت الآن» session follow-through; remove eng chrome (seed/version/Admission labels). No Ownership/Admission/Projection changes. |
 | 2026-07-12 | **Cart Workspace — pre-launch production PUBLISHED:** Live on `smartreplyai.net` at commit `1fff0c2`. Flag effective ON (`railway_deploy_default_on`); default entry `#workspace`; `#carts` kept. Evidence: `docs/architecture/cart_workspace_production_publish_v1_evidence/`. Rollback: set `CARTFLOW_CART_WORKSPACE_V1=false`. |
 | 2026-07-12 | **Cart Workspace Sprint 3 — Production-test candidate READY:** Commit `e2160e4` pushed to `origin/main` and live on `smartreplyai.net`. Flag `CARTFLOW_CART_WORKSPACE_V1` verified **OFF** (`feature_flag_off` 404); static SHA match; `#carts` intact; no merchant rollout. Doc: `docs/architecture/cart_workspace_sprint3_production_test_candidate_v1.md`. |

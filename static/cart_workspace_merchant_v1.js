@@ -1,7 +1,6 @@
 /**
- * Cart Workspace Merchant Experience V1 — Decision-First surface.
- * Fetches projection, paints via RenderController, dispatches commands.
- * VIP "تتابعه أنت الآن" is presentation-only session state (no projection change).
+ * Cart Workspace Visual Rebuild V1 — control console shell.
+ * No eng chrome. VIP follow-through = presentation session state only.
  */
 (function (global) {
   "use strict";
@@ -62,7 +61,7 @@
         JSON.stringify(list || [])
       );
     } catch (e) {
-      /* ignore quota */
+      /* ignore */
     }
   }
 
@@ -82,7 +81,6 @@
       decision_class: card.decision_class || "override",
       required_action: "return_to_cartflow",
       override_mode: "active",
-      action_label_ar: card.action_label_ar,
       explanation: card.explanation,
       status: "following",
     });
@@ -99,9 +97,7 @@
 
   function findCardInProjection(projection, decisionId) {
     if (!projection) return null;
-    var pools = []
-      .concat(projection.zone_a || [])
-      .concat(projection.zone_b || []);
+    var pools = [].concat(projection.zone_a || []).concat(projection.zone_b || []);
     for (var i = 0; i < pools.length; i++) {
       if (pools[i] && pools[i].decision_id === decisionId) return pools[i];
     }
@@ -139,8 +135,8 @@
         }
         paint(proj);
       })
-      .catch(function (e) {
-        setStatus("تعذر التحميل. حاول مرة أخرى.", true);
+      .catch(function () {
+        setStatus("تعذر التحميل", true);
       });
   }
 
@@ -172,14 +168,11 @@
   }
 
   function onClick(ev) {
-    var detailsToggle = ev.target && ev.target.closest
-      ? ev.target.closest("summary")
-      : null;
-    if (detailsToggle) return;
-
-    var btn = ev.target && ev.target.closest
-      ? ev.target.closest("[data-cw-command]")
-      : null;
+    if (ev.target && ev.target.closest && ev.target.closest("summary")) return;
+    var btn =
+      ev.target && ev.target.closest
+        ? ev.target.closest("[data-cw-command]")
+        : null;
     if (!btn) return;
     var decisionId = btn.getAttribute("data-decision-id");
     var cmd = btn.getAttribute("data-cw-command");
@@ -206,12 +199,8 @@
 
     postCommand(decisionId, cmd)
       .then(function (data) {
-        if (isVipTakeOver && cardSnap) {
-          upsertFollowing(cardSnap);
-        }
-        if (mapped === "return_to_cartflow") {
-          removeFollowing(decisionId);
-        }
+        if (isVipTakeOver && cardSnap) upsertFollowing(cardSnap);
+        if (mapped === "return_to_cartflow") removeFollowing(decisionId);
         if (data.projection) {
           if (global.CartWorkspaceRenderControllerV1) {
             global.CartWorkspaceRenderControllerV1.resetForTests();
@@ -221,8 +210,8 @@
           return load();
         }
       })
-      .catch(function (e) {
-        setStatus("تعذر تنفيذ القرار. حاول مرة أخرى.", true);
+      .catch(function () {
+        setStatus("تعذر التنفيذ", true);
         btn.disabled = false;
       });
   }
@@ -251,7 +240,5 @@
     removeFollowing: removeFollowing,
   };
 
-  document.addEventListener("DOMContentLoaded", function () {
-    bind();
-  });
+  document.addEventListener("DOMContentLoaded", bind);
 })(typeof window !== "undefined" ? window : globalThis);

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cart Workspace Visual Rebuild V1 — fixture</title>
+  <link rel="stylesheet" href="/static/cart_workspace_merchant_v1.css" />
+  <style>
+    /* Fixture chrome only — isolates console from merchant shell */
+    html, body { margin: 0; background: #0c0f14; }
+    .fx-shell { max-width: 1100px; margin: 0 auto; }
+    .fx-note { color: #64748b; font: 12px ui-monospace, monospace; padding: 8px 12px; }
+  </style>
+</head>
+<body data-ma-page="workspace">
+  <p class="fx-note">FIXTURE · Product Review · Visual Rebuild V1 · not production shell</p>
+  <div id="page-workspace" class="page active" data-cw-console="1">
+    <div class="cw-workspace-shell fx-shell">
+      <div id="cw-merchant-host"></div>
+    </div>
+  </div>
+  <script src="/static/cart_workspace_projection_version_v1.js"></script>
+  <script src="/static/cart_workspace_decision_card_v1.js"></script>
+  <script src="/static/cart_workspace_grid_v1.js"></script>
+  <script src="/static/cart_workspace_render_controller_v1.js"></script>
+  <script src="/static/cart_workspace_merchant_v1.js"></script>
+  <script>
+    window.CARTFLOW_STORE_SLUG = "fixture-visual-rebuild";
+    window.CartWorkspaceMerchantV1.upsertFollowing({
+      decision_id: "follow-1",
+      decision_class: "override",
+      override_mode: "active",
+      required_action: "return_to_cartflow",
+      explanation: {}
+    });
+    var projection = {
+      projection_version: 1,
+      projection_fingerprint: "fixture-vr1",
+      quiet: false,
+      zone_a: [{
+        decision_id: "d-vip",
+        decision_class: "override",
+        override_mode: "active",
+        required_action: "take_over_conversation",
+        explanation: {
+          why_here: "Override Admission",
+          cartflow_did: "hidden until details",
+          why_stopped: "hidden",
+          expected_after: "hidden"
+        }
+      }],
+      zone_b: [
+        {
+          decision_id: "d-reply",
+          decision_class: "normal",
+          required_action: "take_over_conversation",
+          explanation: { why_here: "x", cartflow_did: "y", why_stopped: "z", expected_after: "w" }
+        },
+        {
+          decision_id: "d-disc",
+          decision_class: "normal",
+          required_action: "approve_discount",
+          explanation: { why_here: "x", cartflow_did: "y", why_stopped: "z", expected_after: "w" }
+        },
+        {
+          decision_id: "d-setup",
+          decision_class: "normal",
+          required_action: "fix_channel_configuration",
+          explanation: { why_here: "x", cartflow_did: "y", why_stopped: "z", expected_after: "w" }
+        }
+      ],
+      zone_c: { visible: true, active_recovery_indicator: true, summary: "auto" },
+      zone_d: { completed_count: 3 },
+      zone_e: null
+    };
+    window.CartWorkspaceRenderControllerV1.resetForTests();
+    window.CartWorkspaceRenderControllerV1.applyProjection(
+      document.getElementById("cw-merchant-host"),
+      projection
+    );
+  </script>
+</body>
+</html>

@@ -25,7 +25,6 @@ def test_silent_success_seed_is_merchant_clean():
     assert len(proj["zone_a"]) == 1
     assert len(proj["zone_b"]) == 1
     card_html_fields = proj["zone_a"][0]
-    # Merchant-facing fields present; no need to expose matrix ids in UI paint
     assert card_html_fields.get("action_label_ar")
     assert card_html_fields.get("explanation", {}).get("why_here")
     assert "mission_question" in proj
@@ -35,7 +34,9 @@ def test_template_hides_seed_in_silent_mode():
     html = open("templates/merchant_app.html", encoding="utf-8").read()
     assert "merchant_cart_workspace_silent_success" in html
     assert "data-cw-silent-success" in html
-    # Decision-First redesign: merchant chrome has no seed / eng toolbar
+    assert "data-cw-console" in html
     assert "cw-merchant-seed" not in html
     assert "تجهيز أمثلة للفهم" not in html
-    assert "ma-page-hero--workspace" in html
+    assert "ma-page-hero--workspace" not in html
+    ws = html.split('id="page-workspace"', 1)[1].split('id="page-carts"', 1)[0]
+    assert "ma-page-hero" not in ws

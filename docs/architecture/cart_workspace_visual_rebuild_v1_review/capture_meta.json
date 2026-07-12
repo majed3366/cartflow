@@ -1,0 +1,8 @@
+{
+  "url": "http://127.0.0.1:59076/scripts/_cart_workspace_visual_rebuild_v1_fixture.html",
+  "shots": [
+    "01_desktop_console.png",
+    "02_desktop_details_expanded.png",
+    "03_mobile_console.png"
+  ]
+}
