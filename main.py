@@ -19903,11 +19903,14 @@ def _api_json_dashboard_messages(dash_store: Optional[Any]) -> Dict[str, Any]:
 
 
 def _normal_carts_dashboard_page_response(request: Request, *, audience: str) -> Any:
-    """عرض ‎HTML‎ للوحة العمليات فقط (‎audience=ops‎)؛ أي طلب تاجر يُعاد توجيهه إلى ‎/dashboard#carts‎."""
+    """عرض ‎HTML‎ للوحة العمليات فقط (‎audience=ops‎)؛ أي طلب تاجر يُعاد توجيهه إلى المسار الأساسي (#workspace عند تفعيل العلم، وإلا #carts)."""
     from urllib.parse import urlencode
 
     from services.cartflow_observability_runtime import runtime_health_snapshot_readonly
     from services.cartflow_onboarding_readiness import get_onboarding_dashboard_visibility
+    from services.cart_workspace.feature_flag_v1 import (  # noqa: PLC0415
+        cart_workspace_primary_dashboard_path,
+    )
 
     from services.merchant_whatsapp_readiness_ui import build_merchant_whatsapp_readiness_card
 
@@ -19915,7 +19918,9 @@ def _normal_carts_dashboard_page_response(request: Request, *, audience: str) ->
     if aud not in ("merchant", "ops"):
         aud = "merchant"
     if aud != "ops":
-        return RedirectResponse(url="/dashboard#carts", status_code=302)
+        return RedirectResponse(
+            url=cart_workspace_primary_dashboard_path(), status_code=302
+        )
 
     wall0 = time.perf_counter()
     _merchant_dashboard_db_ready()
@@ -19968,7 +19973,7 @@ def _normal_carts_dashboard_page_response(request: Request, *, audience: str) ->
         "onboarding_visibility": onboarding_visibility,
         "whatsapp_readiness_card": whatsapp_readiness_card,
         "recovery_ops_dashboard": True,
-        "normal_merchant_dashboard_url": "/dashboard#carts",
+        "normal_merchant_dashboard_url": cart_workspace_primary_dashboard_path(),
         "normal_operations_dashboard_url": "/dashboard/normal-carts/operations",
     }
     resp = templates.TemplateResponse(
@@ -20864,6 +20869,10 @@ def _demo_store_html_context(request: Request) -> dict[str, Any]:
 
     nav_base = merchant_activation_demo_nav_base(act)
     widget_slug = act.widget_store_slug
+    from services.cart_workspace.feature_flag_v1 import (  # noqa: PLC0415
+        cart_workspace_primary_dashboard_path,
+    )
+
     ctx = {
         "request": request,
         "demo_store_slug": widget_slug,
@@ -20877,7 +20886,7 @@ def _demo_store_html_context(request: Request) -> dict[str, Any]:
         "merchant_activation_mode": act.is_merchant_activation,
         "merchant_activation_banner_ar": act.banner_ar if act.is_merchant_activation else "",
         "merchant_activation_denied": act.denied,
-        "merchant_activation_dashboard_href": "/dashboard#carts",
+        "merchant_activation_dashboard_href": cart_workspace_primary_dashboard_path(),
     }
     st0 = _time.perf_counter()
     demo_store_context_log_stage("extras_start", store_slug=widget_slug)

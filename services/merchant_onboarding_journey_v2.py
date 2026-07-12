@@ -18,6 +18,7 @@ from services.merchant_setup_unified_p0 import (
     build_merchant_setup_unified_p0,
 )
 from services.cartflow_onboarding_readiness import evaluate_onboarding_readiness
+from services.merchant_onboarding_v1 import log_onboarding_status
 
 _FORBIDDEN = re.compile(
     r"\boauth\b|\bwebhook\b|\bprovider\b|\bruntime\b|recovery engine|"
@@ -377,17 +378,36 @@ def build_activation_journey_v2(
 
     readiness: Optional[ReadinessCard] = None
     if complete:
+        from services.cart_workspace.feature_flag_v1 import (  # noqa: PLC0415
+            cart_workspace_primary_dashboard_path,
+            cart_workspace_v1_enabled,
+        )
+
         checklist = _readiness_checklist(flags)
         readiness = ReadinessCard(
             title_ar="متجرك جاهز للتشغيل",
             lead_ar="CartFlow يراقب الآن السلال المهجورة ويشرح كل خطوة.",
             checklist_ar=checklist,
             footer_ar="يمكنك متابعة السلال والرسائل من لوحة التحكم.",
-            cta_href="/dashboard#carts",
-            cta_label_ar="الذهاب إلى لوحة السلال",
+            cta_href=cart_workspace_primary_dashboard_path(),
+            cta_label_ar=(
+                "الذهاب إلى مساحة القرار"
+                if cart_workspace_v1_enabled()
+                else "الذهاب إلى لوحة السلال"
+            ),
         )
 
     progress_label = f"{completed} / {total} خطوات مكتملة"
+
+    log_onboarding_status(
+        store,
+        merchant_user_id=merchant_user_id,
+        completed_steps=completed,
+        total_steps=total,
+        widget_test_completed=bool(flags.get("widget_test")),
+        store_connected=bool(flags.get("connect_store")),
+        context="activation_journey_v2",
+    )
 
     return ActivationJourneyV2(
         version=JOURNEY_VERSION,

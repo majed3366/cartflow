@@ -6,6 +6,7 @@
 <meta name="cartflow-merchant-setup-build" content="{{ merchant_setup_render_build | default('unknown') }}">
 <title>{{ merchant_html_title | default("CartFlow — لوحة التاجر") }}</title>
 <script>window.CARTFLOW_STORE_SLUG = "{{ merchant_store_slug | default('demo') }}";</script>
+<script>window.CARTFLOW_CART_WORKSPACE_V1 = {{ 'true' if merchant_cart_workspace_v1 else 'false' }};</script>
 <link rel="stylesheet" href="/static/merchant_app.css">
 <link rel="stylesheet" href="/static/merchant_pe_v2.css?v={{ merchant_setup_render_build | default('unknown') }}">
 <link rel="stylesheet" href="/static/merchant_product_polish_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">

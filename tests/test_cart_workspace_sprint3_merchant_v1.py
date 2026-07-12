@@ -20,6 +20,17 @@ def test_flag_default_off():
     assert cart_workspace_v1_enabled() is False
 
 
+def test_primary_dashboard_path_follows_flag(monkeypatch):
+    from services.cart_workspace.feature_flag_v1 import (
+        cart_workspace_primary_dashboard_path,
+    )
+
+    monkeypatch.delenv(FLAG_CART_WORKSPACE_V1, raising=False)
+    assert cart_workspace_primary_dashboard_path() == "/dashboard#carts"
+    monkeypatch.setenv(FLAG_CART_WORKSPACE_V1, "true")
+    assert cart_workspace_primary_dashboard_path() == "/dashboard#workspace"
+
+
 def test_merchant_api_404_when_flag_off(monkeypatch):
     monkeypatch.delenv(FLAG_CART_WORKSPACE_V1, raising=False)
     from services.cart_workspace import merchant_api_v1 as api
@@ -152,6 +163,9 @@ def test_merchant_template_gated_and_scripts():
     assert "merchant_cart_workspace_v1" in html
     assert "page-workspace" in html
     assert "cart_workspace_merchant_v1.js" in html
+    assert "CARTFLOW_CART_WORKSPACE_V1" in html
+    js = Path("static/merchant_app.js").read_text(encoding="utf-8")
+    assert "CARTFLOW_CART_WORKSPACE_V1" in js
     # Scripts only inside flag block — merchant_dashboard_lazy must not own Workspace logic
     lazy = Path("static/merchant_dashboard_lazy.js").read_text(encoding="utf-8", errors="ignore")
     assert "CartWorkspaceRenderControllerV1" not in lazy

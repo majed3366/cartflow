@@ -167,13 +167,25 @@ def dashboard_normal_carts(request: Request):
         if raw_q:
             dest += "?" + raw_q
         return RedirectResponse(url=dest, status_code=302)
-    return RedirectResponse(url="/dashboard#carts", status_code=302)
+    from services.cart_workspace.feature_flag_v1 import (  # noqa: PLC0415
+        cart_workspace_primary_dashboard_path,
+    )
+
+    return RedirectResponse(
+        url=cart_workspace_primary_dashboard_path(), status_code=302
+    )
 
 
 @router.get("/dashboard/normal-recovery")
 def dashboard_normal_recovery_legacy(request: Request):
     """توافق خلفي لمسار العنوان السابق."""
-    return RedirectResponse(url="/dashboard#carts", status_code=302)
+    from services.cart_workspace.feature_flag_v1 import (  # noqa: PLC0415
+        cart_workspace_primary_dashboard_path,
+    )
+
+    return RedirectResponse(
+        url=cart_workspace_primary_dashboard_path(), status_code=302
+    )
 
 
 @router.get("/dashboard/normal")

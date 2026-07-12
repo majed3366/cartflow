@@ -112,6 +112,12 @@ def merchant_login_post(
             status_code=400,
         )
     dest = safe_redirect_path(next)
+    if dest in ("/dashboard", "/dashboard#", "/dashboard#home"):
+        from services.cart_workspace.feature_flag_v1 import (  # noqa: PLC0415
+            cart_workspace_primary_dashboard_path,
+        )
+
+        dest = cart_workspace_primary_dashboard_path()
     resp = RedirectResponse(url=dest, status_code=303)
     _attach_session_cookie(resp, session_cookie_value_for_user(user))
     return resp
@@ -201,7 +207,11 @@ def merchant_signup_post(
             status_code=400,
         )
     log.info("[MERCHANT SIGNUP] http outcome=success user_id=%s ua=%s", user.id, ua)
-    dest = safe_redirect_path("/dashboard")
+    from services.cart_workspace.feature_flag_v1 import (  # noqa: PLC0415
+        cart_workspace_primary_dashboard_path,
+    )
+
+    dest = cart_workspace_primary_dashboard_path()
     resp = RedirectResponse(url=dest, status_code=303)
     _attach_session_cookie(resp, session_cookie_value_for_user(user))
     return resp

@@ -175,7 +175,10 @@
   function parseHash() {
     var raw = (location.hash || "").split("?")[0];
     var h = raw.toLowerCase();
-    if (h === "" || h === "#") h = "#home";
+    /* Flag ON: empty entry opens Workspace; #carts remains an explicit rollback path. */
+    if (h === "" || h === "#") {
+      h = window.CARTFLOW_CART_WORKSPACE_V1 ? "#workspace" : "#home";
+    }
     var page = PAGE_FOR_HASH[h] || "home";
     var cartTab = null;
     try {
@@ -798,6 +801,17 @@
       currentNormalCartFilter = stored;
     }
     initGlobalTopbar();
+    if (window.CARTFLOW_CART_WORKSPACE_V1) {
+      var rawHash = (location.hash || "").split("?")[0];
+      if (!rawHash || rawHash === "#") {
+        if (location.hash !== "#workspace") {
+          location.replace(
+            location.pathname + location.search + "#workspace"
+          );
+          return;
+        }
+      }
+    }
     syncFromHash();
   });
 

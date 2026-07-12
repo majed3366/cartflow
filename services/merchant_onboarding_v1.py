@@ -92,9 +92,58 @@ _STEP_SPECS: list[dict[str, str]] = [
         "id": "test_ready",
         "title_ar": "جاهز للاختبار",
         "outcome_ar": "إرسال أول رسالة تجريبية",
-        "action_href": "/dashboard#carts",
+        "action_href": "__primary_dashboard__",
     },
 ]
+
+
+def merchant_whatsapp_setup_complete(store: Optional[Any]) -> bool:
+    """
+    Merchant-facing WhatsApp setup step — persisted Store fields only.
+
+    Matches PROD_WHATSAPP proof: saved number + recovery toggle enabled.
+    Does not gate on Twilio/provider (that stays in readiness / send paths).
+    """
+    if store is None:
+        return False
+    num = (getattr(store, "store_whatsapp_number", None) or "").strip()
+    wa_on = bool(getattr(store, "whatsapp_recovery_enabled", True))
+    return bool(num and wa_on)
+
+
+def log_onboarding_status(
+    store: Optional[Any],
+    *,
+    merchant_user_id: Optional[int] = None,
+    completed_steps: int = 0,
+    total_steps: int = 0,
+    widget_test_completed: bool = False,
+    store_connected: bool = False,
+    context: str = "dashboard",
+) -> None:
+    """Structured onboarding calculation log (read-only fields)."""
+    slug = (getattr(store, "zid_store_id", None) or "").strip() if store else ""
+    wa_present = merchant_whatsapp_setup_complete(store)
+    whatsapp_step = merchant_whatsapp_setup_complete(store)
+    line = (
+        "[ONBOARDING STATUS] "
+        f"context={context} "
+        f"store_slug={slug or '-'} "
+        f"store_id={getattr(store, 'id', None) or '-'} "
+        f"merchant_user_id={merchant_user_id if merchant_user_id is not None else '-'} "
+        f"store_whatsapp_number_present={str(wa_present).lower()} "
+        f"whatsapp_recovery_enabled={str(bool(getattr(store, 'whatsapp_recovery_enabled', True) if store else False)).lower()} "
+        f"widget_test_completed={str(widget_test_completed).lower()} "
+        f"store_connected={str(store_connected).lower()} "
+        f"whatsapp_step_complete={str(whatsapp_step).lower()} "
+        f"completed_steps={completed_steps} "
+        f"total_steps={total_steps}"
+    )
+    try:
+        print(line, flush=True)
+    except OSError:
+        pass
+    log.info("%s", line)
 
 
 def _step_is_complete(
@@ -125,13 +174,7 @@ def _step_is_complete(
         return token_ok and recovery_on
 
     if step_id == "whatsapp":
-        num = (getattr(store, "store_whatsapp_number", None) or "").strip()
-        wa_on = bool(getattr(store, "whatsapp_recovery_enabled", True))
-        if not num or not wa_on:
-            return False
-        if ev.get("sandbox_mode_active"):
-            return True
-        return bool(flags.get("whatsapp_configured") or flags.get("provider_ready"))
+        return merchant_whatsapp_setup_complete(store)
 
     if step_id == "widget":
         return bool(flags.get("widget_installed"))
@@ -174,15 +217,23 @@ def build_merchant_onboarding_flow(
         "milestones": {},
     }
     steps_out: list[MerchantOnboardingStep] = []
+    from services.cart_workspace.feature_flag_v1 import (  # noqa: PLC0415
+        cart_workspace_primary_dashboard_path,
+    )
+
+    primary = cart_workspace_primary_dashboard_path()
     for i, spec in enumerate(_STEP_SPECS, start=1):
         sid = spec["id"]
+        href = spec["action_href"]
+        if href == "__primary_dashboard__":
+            href = primary
         steps_out.append(
             MerchantOnboardingStep(
                 step_id=sid,
                 order=i,
                 title_ar=spec["title_ar"],
                 outcome_ar=spec["outcome_ar"],
-                action_href=spec["action_href"],
+                action_href=href,
                 is_complete=_step_is_complete(
                     sid, store, ev, merchant_user_id=merchant_user_id
                 ),
@@ -204,7 +255,7 @@ def build_merchant_onboarding_flow(
     else:
         current_step_ar = ""
         current_outcome_ar = ""
-        action_href = "/dashboard#carts"
+        action_href = cart_workspace_primary_dashboard_path()
 
     if onboarding_complete:
         card_title = "🎉 متجرك جاهز"
@@ -252,4 +303,6 @@ __all__ = [
     "MerchantOnboardingStep",
     "TOTAL_GUIDED_STEPS",
     "build_merchant_onboarding_flow",
+    "log_onboarding_status",
+    "merchant_whatsapp_setup_complete",
 ]
