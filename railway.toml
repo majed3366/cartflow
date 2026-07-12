@@ -26,5 +26,7 @@ CARTFLOW_PROCESS_ROLE = "api"
 CARTFLOW_RECOVERY_RESUME_ON_STARTUP = "0"
 CARTFLOW_DB_DUE_SCANNER_ENABLED = "false"
 CARTFLOW_ENFORCE_API_ONLY = "1"
-# Pre-launch production validation: Workspace primary. Rollback = set false / unset + redeploy.
+# Pre-launch production validation: Workspace primary.
+# Prefer explicit true; Railway deploy also enables when unset (see feature_flag_v1).
+# Rollback = set false / 0 / off + redeploy/restart.
 CARTFLOW_CART_WORKSPACE_V1 = "true"

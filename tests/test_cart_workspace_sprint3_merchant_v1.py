@@ -16,7 +16,21 @@ from services.cart_workspace.shadow_pipeline_v1 import evaluate_candidate
 from services.cart_workspace.shadow_store_v1 import ShadowStoreV1
 
 
-def test_flag_default_off():
+def test_flag_default_off(monkeypatch):
+    monkeypatch.delenv(FLAG_CART_WORKSPACE_V1, raising=False)
+    monkeypatch.delenv("RAILWAY_GIT_COMMIT_SHA", raising=False)
+    assert cart_workspace_v1_enabled() is False
+
+
+def test_flag_on_when_railway_deploy_and_unset(monkeypatch):
+    monkeypatch.delenv(FLAG_CART_WORKSPACE_V1, raising=False)
+    monkeypatch.setenv("RAILWAY_GIT_COMMIT_SHA", "abc1234")
+    assert cart_workspace_v1_enabled() is True
+
+
+def test_flag_explicit_off_rolls_back_on_railway(monkeypatch):
+    monkeypatch.setenv("RAILWAY_GIT_COMMIT_SHA", "abc1234")
+    monkeypatch.setenv(FLAG_CART_WORKSPACE_V1, "false")
     assert cart_workspace_v1_enabled() is False
 
 
@@ -26,6 +40,7 @@ def test_primary_dashboard_path_follows_flag(monkeypatch):
     )
 
     monkeypatch.delenv(FLAG_CART_WORKSPACE_V1, raising=False)
+    monkeypatch.delenv("RAILWAY_GIT_COMMIT_SHA", raising=False)
     assert cart_workspace_primary_dashboard_path() == "/dashboard#carts"
     monkeypatch.setenv(FLAG_CART_WORKSPACE_V1, "true")
     assert cart_workspace_primary_dashboard_path() == "/dashboard#workspace"
@@ -33,6 +48,7 @@ def test_primary_dashboard_path_follows_flag(monkeypatch):
 
 def test_merchant_api_404_when_flag_off(monkeypatch):
     monkeypatch.delenv(FLAG_CART_WORKSPACE_V1, raising=False)
+    monkeypatch.delenv("RAILWAY_GIT_COMMIT_SHA", raising=False)
     from services.cart_workspace import merchant_api_v1 as api
 
     req = MagicMock()

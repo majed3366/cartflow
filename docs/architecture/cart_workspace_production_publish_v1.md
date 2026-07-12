@@ -12,8 +12,10 @@ Make Cart Workspace (`#workspace` / مساحة القرار) the **primary** mer
 | Mechanism | Value |
 |-----------|--------|
 | Flag | `CARTFLOW_CART_WORKSPACE_V1` |
-| Production default (this publish) | `true` via `railway.toml` `[env]` |
-| Code default (unset env) | still `False` in `feature_flag_v1.py` |
+| `railway.toml` `[env]` | `true` (config-as-code intent) |
+| Railway deploy when unset | **ON** (pre-launch — `RAILWAY_GIT_COMMIT_SHA` present) |
+| Local / non-Railway unset | **OFF** |
+| Explicit `false` / `0` / `off` | **OFF** (rollback) |
 
 ## Primary entry
 
@@ -30,10 +32,12 @@ When flag OFF:
 
 ## Rollback
 
-1. Set `CARTFLOW_CART_WORKSPACE_V1=false` (or `0` / unset) on the Railway API service **or** change `railway.toml` and redeploy.
-2. Redeploy if needed so the process picks up the env.
+1. Set `CARTFLOW_CART_WORKSPACE_V1=false` (or `0` / `off`) on the Railway API service — **required** even if `railway.toml` says true, if dashboard overrides; or change `railway.toml` to `false`.
+2. Redeploy / restart so the process picks up the env.
 3. Confirm `GET /api/cart-workspace/v1/projection` → 404 `feature_flag_off`.
 4. `#carts` remains intact throughout.
+
+Note: On Railway, leaving the variable **unset** enables Workspace (pre-launch publish). Rollback must set an explicit false.
 
 ## Safety
 
