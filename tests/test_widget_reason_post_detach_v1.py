@@ -36,12 +36,12 @@ class WidgetReasonPostDetachV1Tests(unittest.TestCase):
         )
 
     def test_warm_and_phone_fast_path(self) -> None:
-        self.assertIn("deferAfterReasonCapture", _FLOWS)
+        self.assertIn("phoneCaptureMode()", _FLOWS)
         self.assertIn("handleThanksAfterReason(rk)", _FLOWS)
-        self.assertNotIn("warmReasonConnection", _FLOWS)
+        self.assertIn('pcm === "after_reason"', _FLOWS)
 
     def test_runtime(self) -> None:
-        self.assertIn("v2-widget-reason-post-detach-v1-5", _LOADER)
+        self.assertIn("v2-widget-reason-post-detach-v1-6", _LOADER)
 
 
 if __name__ == "__main__":

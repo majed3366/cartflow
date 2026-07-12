@@ -923,14 +923,20 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
           try {
             console.log("[CF REASON PERSIST SUCCESS]", { reason_key: rk });
           } catch (eOk) {}
-          /* Fast Path V1.1: after_reason phone opens immediately so reason→phone
-             can clear <500ms. Continuation remains available via phone Back. */
+          /* Fast Path V1.1: open phone immediately after reason when capture is
+             after_reason and no phone yet. Continuation remains via phone Back.
+             Do not use deferAfterReasonCapture() — it returns false for VIP and
+             would re-introduce the شكراً gate (blocks <500ms reason→phone). */
           try {
-            var needPhone =
-              Cf.Phone &&
-              typeof Cf.Phone.deferAfterReasonCapture === "function" &&
-              Cf.Phone.deferAfterReasonCapture();
-            if (needPhone) {
+            var pcm =
+              Cf.Config && typeof Cf.Config.phoneCaptureMode === "function"
+                ? Cf.Config.phoneCaptureMode()
+                : "after_reason";
+            var hasPhone =
+              Cf.State && typeof Cf.State.hasValidStoredPhone === "function"
+                ? Cf.State.hasValidStoredPhone()
+                : false;
+            if (pcm === "after_reason" && !hasPhone) {
               handleThanksAfterReason(rk);
             } else {
               showContinuation(rk, subCat);
