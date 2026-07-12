@@ -1023,11 +1023,6 @@ window.CartflowWidgetRuntime = window.CartflowWidgetRuntime || {};
   function mountReasonList() {
     st().background_retry_meta = null;
     st().background_save_failed = false;
-    try {
-      if (Cf.Api && typeof Cf.Api.warmReasonConnection === "function") {
-        Cf.Api.warmReasonConnection();
-      }
-    } catch (eWarm) {}
     var rows =
       Cf.Config && typeof Cf.Config.buildVisibleReasonRows === "function"
         ? Cf.Config.buildVisibleReasonRows()

@@ -154,7 +154,7 @@ class ReasonPostDetachClientTests(unittest.TestCase):
 
     def test_runtime_version(self) -> None:
         loader = (_ROOT / "static/widget_loader.js").read_text(encoding="utf-8")
-        self.assertIn("v2-widget-reason-post-detach-v1-4", loader)
+        self.assertIn("v2-widget-reason-post-detach-v1-5", loader)
 
 
 if __name__ == "__main__":

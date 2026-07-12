@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 BASE = "https://smartreplyai.net"
-TARGET = "v2-widget-reason-post-detach-v1-4"
+TARGET = "v2-widget-reason-post-detach-v1-5"
 OUT = Path(__file__).resolve().parent / "_widget_reason_post_detach_v1_out"
 N = 20
 BEFORE = {
@@ -114,11 +114,18 @@ def _one(page, i: int) -> dict:
         """
         (() => {
           window.__CF_FAST_PATH_TRACES = [];
+          window.__CF_PHONE_SHOWN_AT = null;
           const orig = console.log;
           console.log = function() {
             try {
               if (arguments[0] === '[CF FAST PATH TRACE]') {
                 window.__CF_FAST_PATH_TRACES.push(arguments[1]);
+              }
+              if (arguments[0] === '[CF V2 SHOW PHONE]') {
+                window.__CF_PHONE_SHOWN_AT =
+                  (typeof performance !== 'undefined' && performance.now)
+                    ? performance.now()
+                    : Date.now();
               }
             } catch (e) {}
             return orig.apply(console, arguments);
@@ -147,10 +154,35 @@ def _one(page, i: int) -> dict:
     except Exception:
         pass
 
+    # Warm same-origin connection before reason click (avoid cold start_to_request).
+    try:
+        page.evaluate(
+            """async () => {
+              try {
+                await fetch('/api/cartflow/ready?store_slug=warm&session_id=warm', {
+                  cache: 'no-store',
+                });
+              } catch (e) {}
+            }"""
+        )
+        page.wait_for_timeout(150)
+    except Exception:
+        pass
+
+    page.evaluate("() => { window.__CF_PHONE_SHOWN_AT = null; window.__CF_CLICK_AT = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); }")
     t_click = time.perf_counter()
     page.locator("[data-cf-reason-key]").first.click(timeout=10000)
     phone_ms = None
     for _ in range(80):
+        shown = page.evaluate(
+            """() => {
+              if (window.__CF_PHONE_SHOWN_AT == null || window.__CF_CLICK_AT == null) return null;
+              return Math.round((window.__CF_PHONE_SHOWN_AT - window.__CF_CLICK_AT) * 10) / 10;
+            }"""
+        )
+        if shown is not None:
+            phone_ms = float(shown)
+            break
         if page.locator('input[type="tel"]').count() and page.locator(
             'input[type="tel"]'
         ).last.is_visible():
@@ -158,8 +190,7 @@ def _one(page, i: int) -> dict:
             break
         if page.get_by_role("button", name="شكراً").count():
             page.get_by_role("button", name="شكراً").click(timeout=5000)
-            # Do not sleep — phone render should be immediate after thanks.
-        page.wait_for_timeout(50)
+        page.wait_for_timeout(25)
     entry["click_to_phone_ms"] = phone_ms
 
     traces = page.evaluate("() => window.__CF_FAST_PATH_TRACES || []")
@@ -181,6 +212,10 @@ def _one(page, i: int) -> dict:
             net_ms = t.get("client_net_ms")
             srv = t.get("server") or {}
             server_ms = srv.get("total_handler_ms")
+            # Prefer instrumented next-screen total when phone opened directly.
+            if phone_ms is None and t.get("total_ms") is not None:
+                phone_ms = float(t["total_ms"])
+                entry["click_to_phone_ms"] = phone_ms
     entry["post_reason_ms"] = post_ms
     entry["client_net_ms"] = net_ms
     entry["server_handler_ms"] = server_ms
