@@ -1,0 +1,91 @@
+{
+  "commit": "1fff0c23c80c333c180b176576ad722c098775fd",
+  "base": "https://smartreplyai.net",
+  "checks": {
+    "url_after_signup": "https://smartreplyai.net/dashboard#workspace",
+    "default_workspace": true,
+    "demo_seed_ok": true,
+    "flag": {
+      "flag": "CARTFLOW_CART_WORKSPACE_V1",
+      "enabled": true,
+      "default": false,
+      "env_raw": null,
+      "railway_deploy_default_on": true,
+      "merchant_surface": "enabled",
+      "shadow_pipeline": "available_dev_only",
+      "primary_path": "/dashboard#workspace"
+    },
+    "projection": {
+      "status": 200,
+      "ok": true,
+      "flag_enabled": true,
+      "shape": {
+        "zone_a_count": 1,
+        "zone_b_count": 1,
+        "zone_c_present": true,
+        "zone_d_completed": 1,
+        "zone_e_present": false,
+        "labels": {
+          "A": "أولوية قصوى (VIP)",
+          "B": "ما يحتاج قرارك",
+          "C": "CartFlow يعمل الآن",
+          "D": "النتائج المكتملة",
+          "E": "الصحة التشغيلية"
+        },
+        "mission": "ما الذي يحتاج قرارك الآن؟",
+        "version": 8,
+        "fingerprint": "c33322edb3296c85a02afe1a0856455dca96a1ee822ab168f2bf45595f2c2c80"
+      }
+    },
+    "workspace_dom": {
+      "page_workspace": true,
+      "page_active": true,
+      "has_workspace_nav": true,
+      "has_carts_nav": true,
+      "hash": "#workspace",
+      "flag_js": true,
+      "has_zone_labels": true,
+      "has_mission": true,
+      "has_card_action": true,
+      "text_len": 1077
+    },
+    "carts_dom": {
+      "hash": "#carts",
+      "page_carts": true,
+      "active": true,
+      "has_shell": true
+    },
+    "mobile_projection": {
+      "status": 200,
+      "ok": true,
+      "shape": {
+        "zone_a_count": 1,
+        "zone_b_count": 1,
+        "zone_c_present": true,
+        "zone_d_completed": 1,
+        "zone_e_present": false,
+        "labels": {
+          "A": "أولوية قصوى (VIP)",
+          "B": "ما يحتاج قرارك",
+          "C": "CartFlow يعمل الآن",
+          "D": "النتائج المكتملة",
+          "E": "الصحة التشغيلية"
+        },
+        "mission": "ما الذي يحتاج قرارك الآن؟",
+        "version": 10,
+        "fingerprint": "76d7601460a2a3aea322eb2072f3afb7b37545d541cb31c1f32ea5098d90fce0"
+      }
+    },
+    "desktop_mobile_fingerprint_match": false,
+    "console_errors": [],
+    "console_error_count": 0
+  },
+  "auth": {
+    "email": "cf.cw.publish.9cdbdcf56c@smartreplyai.net"
+  },
+  "screenshots": [
+    "01_desktop_workspace.png",
+    "02_desktop_carts_reference.png",
+    "03_mobile_workspace.png"
+  ]
+}

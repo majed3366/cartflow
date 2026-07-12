@@ -1,50 +1,63 @@
 # Cart Workspace — Production Publish V1 (pre-launch)
 
 **Date (UTC):** 2026-07-12  
-**Scope:** Controlled pre-launch production validation — **not** public commercial rollout.
+**Scope:** Controlled pre-launch production validation — **not** public commercial rollout.  
+**Verdict:** **PUBLISHED** on `https://smartreplyai.net`
 
-## Intent
+## Identity
 
-Make Cart Workspace (`#workspace` / مساحة القرار) the **primary** merchant experience in the current pre-launch production environment, while keeping `#carts` available as a temporary rollback/reference path.
+| Field | Value |
+|-------|--------|
+| Commit SHA (full) | `1fff0c23c80c333c180b176576ad722c098775fd` |
+| Commit SHA (short) | `1fff0c2` |
+| Prior publish commit | `60258c6` (primary entry + railway.toml) |
+| Production host | `https://smartreplyai.net` |
+| Primary path | `/dashboard#workspace` |
+| Reference/rollback path | `/dashboard#carts` |
+| Widget runtime | `v2-widget-reason-post-detach-v1-6` (unchanged) |
 
 ## Enablement
 
 | Mechanism | Value |
 |-----------|--------|
 | Flag | `CARTFLOW_CART_WORKSPACE_V1` |
-| `railway.toml` `[env]` | `true` (config-as-code intent) |
-| Railway deploy when unset | **ON** (pre-launch — `RAILWAY_GIT_COMMIT_SHA` present) |
+| `railway.toml` `[env]` | `true` |
+| Observed on prod | `enabled=true`, `env_raw=null`, `railway_deploy_default_on=true` |
 | Local / non-Railway unset | **OFF** |
 | Explicit `false` / `0` / `off` | **OFF** (rollback) |
 
-## Primary entry
+## Verification (production)
 
-When flag ON:
+| Check | Result |
+|-------|--------|
+| Deploy live | Pass — APIs return Workspace (not `feature_flag_off`) |
+| Flag ON | Pass — `merchant_surface=enabled` |
+| Default entry `#workspace` | Pass — signup lands `/dashboard#workspace` |
+| `#carts` available | Pass — nav + page shell active |
+| Zones A–E | Pass — A=1 VIP card, B=1 decision, C present, D completed=1, E null (healthy) |
+| Desktop/mobile same structure | Pass — matching zone counts / labels / mission (in-memory version may bump between requests) |
+| Console errors | Pass — 0 |
+| Cart truth page | Pass — `#carts` loads with filter shell |
 
-- Login / signup / normal-carts merchant redirects → `/dashboard#workspace`
-- Empty dashboard hash → `#workspace`
-- Top nav: **مساحة القرار** + **السلال** (reference)
+### Evidence
 
-When flag OFF:
-
-- Primary path returns to `/dashboard#carts`
-- Workspace UI/API gated off
+- `docs/architecture/cart_workspace_production_publish_v1_evidence/01_desktop_workspace.png`
+- `docs/architecture/cart_workspace_production_publish_v1_evidence/02_desktop_carts_reference.png`
+- `docs/architecture/cart_workspace_production_publish_v1_evidence/03_mobile_workspace.png`
+- `docs/architecture/cart_workspace_production_publish_v1_evidence/verification_report.json`
 
 ## Rollback
 
-1. Set `CARTFLOW_CART_WORKSPACE_V1=false` (or `0` / `off`) on the Railway API service — **required** even if `railway.toml` says true, if dashboard overrides; or change `railway.toml` to `false`.
-2. Redeploy / restart so the process picks up the env.
+1. Set `CARTFLOW_CART_WORKSPACE_V1=false` (or `0` / `off`) on the Railway API service.  
+   **Required:** on Railway, unset defaults to ON — must set explicit false.
+2. Redeploy / restart.
 3. Confirm `GET /api/cart-workspace/v1/projection` → 404 `feature_flag_off`.
-4. `#carts` remains intact throughout.
+4. `#carts` remains intact; primary path returns to `/dashboard#carts`.
 
-Note: On Railway, leaving the variable **unset** enables Workspace (pre-launch publish). Rollback must set an explicit false.
+Unit proof: `test_flag_explicit_off_rolls_back_on_railway`.
 
 ## Safety
 
-- `#carts` page **not** deleted
-- Feature flag **not** removed
-- No Ownership / Admission / Projection / Rendering contract changes
-
-## Verification results
-
-_Filled after deploy._
+- `#carts` page **not** deleted  
+- Feature flag **not** removed  
+- No Ownership / Admission / Projection / Rendering contract changes  
