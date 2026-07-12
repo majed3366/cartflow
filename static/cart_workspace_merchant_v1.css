@@ -1,0 +1,97 @@
+/* Cart Workspace merchant surface — structural clarity only (no polish sprint). */
+#page-workspace .cw-workspace-shell {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 0 2rem;
+}
+#page-workspace .cw-workspace-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+#page-workspace .cw-mission {
+  font-size: 1.15rem;
+  font-weight: 650;
+  margin: 0 0 1rem;
+}
+#page-workspace .cw-zone {
+  border: 1px solid #d4d4d8;
+  background: #fff;
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  margin: 0.75rem 0;
+}
+#page-workspace .cw-zone-a {
+  border-color: #b45309;
+  background: #fffbeb;
+}
+#page-workspace .cw-zone__title {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+}
+#page-workspace .cw-zone__hint,
+#page-workspace .cw-zone__reassure,
+#page-workspace .cw-zone__quiet {
+  margin: 0 0 0.75rem;
+  color: #3f3f46;
+  line-height: 1.5;
+}
+#page-workspace .cw-grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.75rem;
+}
+#page-workspace .cw-decision-card {
+  border: 1px solid #e4e4e7;
+  border-radius: 8px;
+  padding: 0.75rem;
+  background: #fafafa;
+}
+#page-workspace .cw-decision-card__fields {
+  display: grid;
+  grid-template-columns: 7.5rem 1fr;
+  gap: 0.35rem 0.5rem;
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+}
+#page-workspace .cw-decision-card__fields dt {
+  color: #71717a;
+  margin: 0;
+}
+#page-workspace .cw-decision-card__fields dd {
+  margin: 0;
+}
+#page-workspace .cw-decision-card__primary {
+  background: #18181b;
+  color: #fff;
+  border: 0;
+  border-radius: 8px;
+  padding: 0.55rem 0.85rem;
+  cursor: pointer;
+  font: inherit;
+}
+#page-workspace .cw-decision-card__secondary {
+  margin-inline-start: 0.4rem;
+  background: transparent;
+  border: 1px solid #a1a1aa;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font: inherit;
+}
+#page-workspace .cw-zone-c {
+  background: #f4f4f5;
+}
+#page-workspace .cw-zone-d {
+  opacity: 0.95;
+}
+@media (max-width: 640px) {
+  #page-workspace .cw-decision-card__fields {
+    grid-template-columns: 1fr;
+  }
+  #page-workspace .cw-grid-cards {
+    grid-template-columns: 1fr;
+  }
+}

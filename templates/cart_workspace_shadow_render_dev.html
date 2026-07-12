@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cart Workspace Shadow Render (DEV ONLY)</title>
+  <style>
+    /* Structural only — no production polish */
+    body { font-family: system-ui, sans-serif; margin: 1rem; background: #f6f6f6; color: #111; }
+    .cw-banner { background: #fef3c7; border: 1px solid #fcd34d; padding: 0.75rem; margin-bottom: 1rem; }
+    .cw-zone { border: 1px solid #ccc; padding: 0.75rem; margin: 0.75rem 0; background: #fff; }
+    .cw-zone-a { border-color: #b45309; }
+    .cw-decision-card { border: 1px dashed #999; padding: 0.5rem; margin: 0.5rem 0; }
+    .cw-decision-card__fields { display: grid; grid-template-columns: 8rem 1fr; gap: 0.25rem 0.5rem; }
+    .cw-controls { margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    code { background: #eee; padding: 0.1rem 0.3rem; }
+  </style>
+</head>
+<body>
+  <div class="cw-banner">
+    <strong>[CartFlow DEV ONLY]</strong> Cart Workspace shadow render harness.
+    Merchant carts page is unchanged. Flag <code>CARTFLOW_CART_WORKSPACE_V1</code> remains OFF for production surface.
+  </div>
+  <div class="cw-controls">
+    <label>Golden / scenario
+      <select id="cw-scenario">
+        <option value="GS-01">GS-01 Normal hesitation</option>
+        <option value="GS-02">GS-02 Customer reply</option>
+        <option value="GS-03">GS-03 VIP</option>
+        <option value="GS-04">GS-04 Discount</option>
+        <option value="GS-05">GS-05 Purchase</option>
+        <option value="GS-06">GS-06 Missing phone</option>
+        <option value="GS-07">GS-07 Duplicate</option>
+        <option value="GS-08">GS-08 Provider outage</option>
+        <option value="GS-09">GS-09 Merchant inactive</option>
+        <option value="GS-10">GS-10 Recovery completed</option>
+      </select>
+    </label>
+    <button type="button" id="cw-load">Load projection & paint</button>
+    <button type="button" id="cw-repaint">Re-apply same version (must no-repaint)</button>
+    <span id="cw-status"></span>
+  </div>
+  <div id="cw-meta"></div>
+  <div id="cw-host" aria-live="polite"></div>
+
+  <script src="/static/cart_workspace_projection_version_v1.js"></script>
+  <script src="/static/cart_workspace_decision_card_v1.js"></script>
+  <script src="/static/cart_workspace_grid_v1.js"></script>
+  <script src="/static/cart_workspace_render_controller_v1.js"></script>
+  <script>
+    (function () {
+      var host = document.getElementById("cw-host");
+      var statusEl = document.getElementById("cw-status");
+      var metaEl = document.getElementById("cw-meta");
+      var lastProj = null;
+
+      function setStatus(t) { statusEl.textContent = t; }
+
+      function paint(projection) {
+        var result = window.CartWorkspaceRenderControllerV1.applyProjection(host, projection);
+        setStatus(
+          "painted=" + result.painted +
+          " decision=" + (result.compare && result.compare.decision) +
+          " reason=" + (result.compare && result.compare.reason || "") +
+          " version=" + (projection && projection.projection_version)
+        );
+        metaEl.innerHTML =
+          "<pre>" +
+          JSON.stringify(
+            {
+              quiet: projection.quiet,
+              workspace_phase: projection.workspace_phase,
+              projection_version: projection.projection_version,
+              zone_a: (projection.zone_a || []).length,
+              zone_b: (projection.zone_b || []).length,
+              attention_focus_decision_id: projection.attention_focus_decision_id,
+            },
+            null,
+            2
+          ) +
+          "</pre>";
+        lastProj = projection;
+      }
+
+      document.getElementById("cw-load").onclick = function () {
+        var sid = document.getElementById("cw-scenario").value;
+        window.CartWorkspaceRenderControllerV1.resetForTests();
+        fetch("/dev/cart-workspace-projection?golden=" + encodeURIComponent(sid) + "&scenario_reset=true")
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            var proj = (data.snapshot && data.snapshot.projection) || data.projection;
+            if (!proj) throw new Error("no projection");
+            paint(proj);
+          })
+          .catch(function (e) { setStatus("error: " + e); });
+      };
+
+      document.getElementById("cw-repaint").onclick = function () {
+        if (!lastProj) { setStatus("no projection loaded"); return; }
+        paint(lastProj);
+      };
+    })();
+  </script>
+</body>
+</html>

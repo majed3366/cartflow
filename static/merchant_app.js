@@ -6,6 +6,7 @@
     "home-setup": "إعداد المتجر",
     "home-month": "الملخص العام",
     "home-test-tools": "أدوات التجربة",
+    workspace: "مساحة القرار",
     carts: "السلال",
     followup: "السلال",
     completed: "السلال",
@@ -42,6 +43,7 @@
     "home-setup": "تحقق من جاهزية متجرك قبل التشغيل الكامل.",
     "home-month": "أرقام الاسترداد والأداء لهذا الشهر.",
     "home-test-tools": "اختبر الودجيت والاسترجاع بدون إرسال حقيقي.",
+    workspace: "ما الذي يحتاج قرارك الآن؟ وما الذي يتولاه CartFlow؟",
     carts: "ما الذي يحتاج انتباهك الآن؟",
     followup: "ردود العملاء والمتابعة التي يحتاج المتجر مراجعتها.",
     completed: "سلال أنهت مسار الاسترجاع — شراء أو استرداد ناجح.",
@@ -76,6 +78,7 @@
     "home-setup": "home",
     "home-month": "home",
     "home-test-tools": "home",
+    workspace: "workspace",
     carts: "carts",
     followup: "carts",
     completed: "carts",
@@ -92,6 +95,7 @@
 
   var SECTION_LABELS = {
     home: "الرئيسية",
+    workspace: "مساحة القرار",
     carts: "السلال",
     comms: "التواصل",
     settings: "الإعدادات",
@@ -125,6 +129,7 @@
     "#home-setup": "home-setup",
     "#home-month": "home-month",
     "#home-test-tools": "home-test-tools",
+    "#workspace": "workspace",
     "#carts": "carts",
     "#followup": "followup",
     "#completed": "completed",
@@ -599,6 +604,9 @@
     if (typeof window.maInitPlansPage === "function" && page === "plans") {
       window.maInitPlansPage();
     }
+    if (page === "workspace" && window.CartWorkspaceMerchantV1 && typeof window.CartWorkspaceMerchantV1.load === "function") {
+      window.CartWorkspaceMerchantV1.load();
+    }
   }
 
   function resolveCartPage(cartTab) {
@@ -747,6 +755,10 @@
     var sec = (section || "home").trim();
     if (sec === "home") {
       goTo("home");
+      return;
+    }
+    if (sec === "workspace") {
+      goTo("workspace");
       return;
     }
     if (sec === "carts") {

@@ -34,6 +34,9 @@
   <div class="ma-gtb-center">
     <nav class="ma-gtb-sections" aria-label="أقسام لوحة التاجر">
       <button type="button" class="ma-gtb-section active" data-ma-section="home">الرئيسية</button>
+      {% if merchant_cart_workspace_v1 %}
+      <button type="button" class="ma-gtb-section" data-ma-section="workspace">مساحة القرار</button>
+      {% endif %}
       <button type="button" class="ma-gtb-section" data-ma-section="carts">السلال</button>
       <button type="button" class="ma-gtb-section" data-ma-section="comms">التواصل</button>
       <button type="button" class="ma-gtb-section" data-ma-section="settings">الإعدادات</button>
@@ -61,6 +64,13 @@
     <button type="button" class="nav-item" data-home-nav="month" onclick="maHomeNav('month')">الملخص العام</button>
     <button type="button" class="nav-item" data-home-nav="test-tools" onclick="maHomeNav('test-tools')">أدوات التجربة</button>
   </nav>
+  {% if merchant_cart_workspace_v1 %}
+  <nav class="ma-ctx-panel ma-sidebar-nav" data-ma-ctx="workspace" hidden aria-label="مساحة القرار">
+    <p class="ma-ctx-label">مساحة القرار</p>
+    <button type="button" class="nav-item active" data-nav="workspace" onclick="if(window.goTo){goTo('workspace');return false;}">ما يحتاج قرارك</button>
+    <p class="ma-ctx-hint" style="padding:8px 12px;font-size:12px;color:#71717a;line-height:1.45;">لا توجد تصنيفات حالة هنا — فقط القرارات المعتمدة.</p>
+  </nav>
+  {% endif %}
   <nav class="ma-ctx-panel ma-sidebar-nav" data-ma-ctx="carts" hidden aria-label="السلال">
     <p class="ma-ctx-label">السلال</p>
     <button type="button" class="nav-item" data-nav="carts" data-cart-tab="all" onclick="goToCartTab('all')">الكل</button>
@@ -203,6 +213,27 @@
   <div class="page ma-page-home-sub" id="page-home-test-tools">
     <div id="ma-test-tools-root" class="ma-test-tools-root" aria-live="polite"></div>
   </div>
+
+  {% if merchant_cart_workspace_v1 %}
+  <div class="page ma-pe-v2" id="page-workspace" data-ma-workspace="1"{% if merchant_cart_workspace_silent_success %} data-cw-silent-success="1"{% endif %}>
+    <header class="ma-page-hero ma-page-hero--inline">
+      <h1 class="ma-page-hero__title">مساحة القرار</h1>
+      <p class="ma-page-hero__purpose">ما الذي يحتاج قرارك الآن؟ وما الذي يتولاه CartFlow؟</p>
+    </header>
+    <div class="cw-workspace-shell">
+      {% if not merchant_cart_workspace_silent_success %}
+      <div class="cw-workspace-toolbar">
+        <button type="button" class="ma-fw-save" id="cw-merchant-refresh">تحديث</button>
+        <button type="button" class="ma-fw-save" id="cw-merchant-seed" title="للتجهيز الداخلي فقط">تجهيز أمثلة للفهم</button>
+        <span id="cw-merchant-status" aria-live="polite"></span>
+      </div>
+      {% else %}
+      <span id="cw-merchant-status" hidden aria-hidden="true"></span>
+      {% endif %}
+      <div id="cw-merchant-host" aria-live="polite"></div>
+    </div>
+  </div>
+  {% endif %}
 
   <div class="page ma-pe-v2{% if merchant_carts_v2_ui %} ma-carts--v2-ui{% endif %}" id="page-carts" data-ma-cart-section="waiting"{% if merchant_carts_v2_ui %} data-carts-v2-ui="1"{% endif %}>
     <div class="page-header ma-cart-page-header">
@@ -1007,6 +1038,14 @@
 <script defer src="/static/merchant_intelligence_carts_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/cart_page_rendering_state_controller_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_dashboard_lazy.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
+{% if merchant_cart_workspace_v1 %}
+<link rel="stylesheet" href="/static/cart_workspace_merchant_v1.css?v={{ merchant_setup_render_build | default('unknown') }}" />
+<script defer src="/static/cart_workspace_projection_version_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
+<script defer src="/static/cart_workspace_decision_card_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
+<script defer src="/static/cart_workspace_grid_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
+<script defer src="/static/cart_workspace_render_controller_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
+<script defer src="/static/cart_workspace_merchant_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
+{% endif %}
 <script defer src="/static/merchant_whatsapp_settings.js"></script>
 <script defer src="/static/merchant_whatsapp_connect.js"></script>
 <script defer src="/static/merchant_vip_settings.js"></script>
