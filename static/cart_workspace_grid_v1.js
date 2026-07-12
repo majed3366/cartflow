@@ -1,6 +1,7 @@
 /**
- * Cart Workspace Grid Presenter V1 — paints zones A–E from projection only.
- * No ownership/admission/VIP inference. No counter derivation.
+ * Cart Workspace Grid Presenter V1 — Decision-First operational grid.
+ * Paints zones from projection only. No ownership/admission inference.
+ * VIP follow-through list is presentation state from merchant UI (optional).
  */
 (function (global) {
   "use strict";
@@ -20,15 +21,32 @@
     );
   }
 
-  function renderZoneCards(cards) {
+  function renderZoneCards(cards, mode) {
     var render = cardRenderer();
     if (!render || !Array.isArray(cards) || !cards.length) return "";
-    return cards.map(render).join("");
+    return cards
+      .map(function (c) {
+        return render(c, { mode: mode || "decision" });
+      })
+      .join("");
   }
 
-  function label(projection, key, fallback) {
-    var zl = (projection && projection.zone_labels) || {};
-    return esc(zl[key] || fallback);
+  function followingVipCards() {
+    try {
+      if (
+        global.CartWorkspaceMerchantV1 &&
+        typeof global.CartWorkspaceMerchantV1.getFollowingVip === "function"
+      ) {
+        return global.CartWorkspaceMerchantV1.getFollowingVip() || [];
+      }
+    } catch (e) {
+      /* ignore */
+    }
+    return [];
+  }
+
+  function decisionCount(zoneA, zoneB) {
+    return (zoneA.length || 0) + (zoneB.length || 0);
   }
 
   /**
@@ -45,89 +63,122 @@
     var zoneD = projection.zone_d || {};
     var zoneE = projection.zone_e || null;
     var quiet = !!projection.quiet;
-    var mission = esc(
-      projection.mission_question || "ما الذي يحتاج قرارك الآن؟"
-    );
+    var following = followingVipCards();
+    var openCount = decisionCount(zoneA, zoneB);
 
     var html = [];
     html.push(
-      '<div class="cw-grid" dir="rtl" data-projection-version="' +
-        esc(projection.projection_version) +
-        '" data-quiet="' +
+      '<div class="cw-grid" dir="rtl" data-quiet="' +
         (quiet ? "1" : "0") +
-        '" data-phase="' +
-        esc(projection.workspace_phase || "") +
+        '" data-open-count="' +
+        esc(openCount) +
         '">'
     );
 
-    html.push('<p class="cw-mission" data-from-projection="1">' + mission + "</p>");
-
-    if (zoneA.length) {
-      html.push('<section class="cw-zone cw-zone-a" data-zone="A">');
-      html.push(
-        '<h2 class="cw-zone__title">' + label(projection, "A", "أولوية قصوى (VIP)") + "</h2>"
-      );
-      html.push(
-        '<p class="cw-zone__hint">يحتاج قرارك فوراً — CartFlow يستمر في التنفيذ.</p>'
-      );
-      html.push('<div class="cw-zone__cards cw-grid-cards">' + renderZoneCards(zoneA) + "</div>");
-      html.push("</section>");
-    }
-
-    html.push('<section class="cw-zone cw-zone-b" data-zone="B">');
     html.push(
-      '<h2 class="cw-zone__title">' + label(projection, "B", "ما يحتاج قرارك") + "</h2>"
+      '<div class="cw-grid__scan" aria-live="polite">' +
+        '<span class="cw-grid__scan-label">يحتاج قرارك</span>' +
+        '<strong class="cw-grid__scan-count">' +
+        esc(openCount) +
+        "</strong>" +
+        "</div>"
     );
-    if (zoneB.length) {
-      html.push('<div class="cw-zone__cards cw-grid-cards">' + renderZoneCards(zoneB) + "</div>");
-    } else if (quiet) {
+
+    /* Zone A — VIP always visible */
+    html.push('<section class="cw-zone cw-zone-a" data-zone="A">');
+    html.push('<h2 class="cw-zone__title">VIP</h2>');
+    html.push(
+      '<p class="cw-zone__hint">أولوية قصوى — المتابعة اليدوية فقط. CartFlow يبقى مسؤولاً عن التنفيذ.</p>'
+    );
+    if (zoneA.length) {
       html.push(
-        '<p class="cw-zone__quiet" data-from-projection="1">' +
-          esc((zoneC && zoneC.summary) || "") +
-          "</p>"
+        '<div class="cw-zone__cards cw-grid-cards">' +
+          renderZoneCards(zoneA) +
+          "</div>"
       );
     } else {
-      html.push('<p class="cw-zone__empty">لا توجد قرارات عادية الآن.</p>');
+      html.push(
+        '<p class="cw-zone__empty">لا يوجد عملاء VIP يحتاجون قرارك الآن.</p>'
+      );
     }
     html.push("</section>");
 
+    /* Presentation: VIP cards merchant is manually following */
+    html.push('<section class="cw-zone cw-zone-following" data-zone="FOLLOWING">');
+    html.push('<h2 class="cw-zone__title">تتابعه أنت الآن</h2>');
+    if (following.length) {
+      html.push(
+        '<p class="cw-zone__hint">هذه الحالات لم تختفِ — أنت تتابعها يدوياً، وCartFlow يراقب التنفيذ.</p>'
+      );
+      html.push(
+        '<div class="cw-zone__cards cw-grid-cards">' +
+          renderZoneCards(following, "following") +
+          "</div>"
+      );
+    } else {
+      html.push(
+        '<p class="cw-zone__empty">لا توجد حالات تتابعها يدوياً الآن.</p>'
+      );
+    }
+    html.push("</section>");
+
+    /* Zone B — decision grid */
+    html.push('<section class="cw-zone cw-zone-b" data-zone="B">');
+    html.push('<h2 class="cw-zone__title">ما يحتاج قرارك</h2>');
+    if (zoneB.length) {
+      html.push(
+        '<div class="cw-zone__cards cw-grid-cards">' +
+          renderZoneCards(zoneB) +
+          "</div>"
+      );
+    } else if (quiet && !zoneA.length) {
+      html.push(
+        '<p class="cw-zone__quiet">' +
+          esc(
+            (zoneC && zoneC.summary) ||
+              "لا يوجد ما يحتاج قرارك الآن. CartFlow يتابع الاسترداد."
+          ) +
+          "</p>"
+      );
+    } else {
+      html.push('<p class="cw-zone__empty">لا توجد قرارات بانتظارك الآن.</p>');
+    }
+    html.push("</section>");
+
+    /* Zone C — reassurance, not a queue */
     if (zoneC && zoneC.visible !== false) {
       html.push('<section class="cw-zone cw-zone-c" data-zone="C">');
+      html.push('<h2 class="cw-zone__title">CartFlow يتابع</h2>');
       html.push(
-        '<h2 class="cw-zone__title">' + label(projection, "C", "CartFlow يعمل الآن") + "</h2>"
+        '<p class="cw-zone__reassure">' +
+          esc(
+            zoneC.summary ||
+              "CartFlow يعمل على استرداد السلال — لا تحتاج مراجعة كل سلة."
+          ) +
+          "</p>"
       );
-      html.push("<p class=\"cw-zone__reassure\">" + esc(zoneC.summary || "") + "</p>");
       html.push("</section>");
     }
 
+    /* Zone D — completed rollup, calm */
     html.push('<section class="cw-zone cw-zone-d" data-zone="D">');
+    html.push('<h2 class="cw-zone__title">اكتمل مؤخراً</h2>');
     html.push(
-      '<h2 class="cw-zone__title">' + label(projection, "D", "النتائج المكتملة") + "</h2>"
-    );
-    html.push(
-      '<p class="cw-zone__rollup" data-completed-count="' +
-        esc(zoneD.completed_count) +
-        '">اكتمل مؤخراً: <strong>' +
+      '<p class="cw-zone__rollup">نتائج هادئة: <strong>' +
         esc(zoneD.completed_count == null ? 0 : zoneD.completed_count) +
         "</strong></p>"
     );
     html.push("</section>");
 
-    if (zoneE && typeof zoneE === "object") {
-      html.push('<section class="cw-zone cw-zone-e" data-zone="E">');
-      html.push(
-        '<h2 class="cw-zone__title">' + label(projection, "E", "الصحة التشغيلية") + "</h2>"
-      );
-      html.push("<p>" + esc(zoneE.summary || "") + "</p>");
-      html.push("</section>");
-    }
-
-    if (projection.attention_focus_decision_id) {
-      html.push(
-        '<div class="cw-attention" data-focus-decision-id="' +
-          esc(projection.attention_focus_decision_id) +
-          '" hidden></div>'
-      );
+    if (zoneE && typeof zoneE === "object" && (zoneE.summary || zoneE.status)) {
+      var eText = zoneE.summary || "";
+      /* Skip English/engineering health blobs */
+      if (eText && !/[A-Za-z]{4,}/.test(eText)) {
+        html.push('<section class="cw-zone cw-zone-e" data-zone="E">');
+        html.push('<h2 class="cw-zone__title">حالة التشغيل</h2>');
+        html.push("<p>" + esc(eText) + "</p>");
+        html.push("</section>");
+      }
     }
 
     html.push("</div>");

@@ -217,20 +217,12 @@
 
   {% if merchant_cart_workspace_v1 %}
   <div class="page ma-pe-v2" id="page-workspace" data-ma-workspace="1"{% if merchant_cart_workspace_silent_success %} data-cw-silent-success="1"{% endif %}>
-    <header class="ma-page-hero ma-page-hero--inline">
+    <header class="ma-page-hero ma-page-hero--inline ma-page-hero--workspace">
       <h1 class="ma-page-hero__title">مساحة القرار</h1>
-      <p class="ma-page-hero__purpose">ما الذي يحتاج قرارك الآن؟ وما الذي يتولاه CartFlow؟</p>
+      <p class="ma-page-hero__purpose">نفّذ ما يحتاج قرارك — CartFlow يتابع الباقي.</p>
     </header>
     <div class="cw-workspace-shell">
-      {% if not merchant_cart_workspace_silent_success %}
-      <div class="cw-workspace-toolbar">
-        <button type="button" class="ma-fw-save" id="cw-merchant-refresh">تحديث</button>
-        <button type="button" class="ma-fw-save" id="cw-merchant-seed" title="للتجهيز الداخلي فقط">تجهيز أمثلة للفهم</button>
-        <span id="cw-merchant-status" aria-live="polite"></span>
-      </div>
-      {% else %}
-      <span id="cw-merchant-status" hidden aria-hidden="true"></span>
-      {% endif %}
+      <span id="cw-merchant-status" hidden aria-live="polite"></span>
       <div id="cw-merchant-host" aria-live="polite"></div>
     </div>
   </div>

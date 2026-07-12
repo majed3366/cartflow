@@ -35,4 +35,7 @@ def test_template_hides_seed_in_silent_mode():
     html = open("templates/merchant_app.html", encoding="utf-8").read()
     assert "merchant_cart_workspace_silent_success" in html
     assert "data-cw-silent-success" in html
-    assert "cw-merchant-seed" in html  # still in non-silent branch
+    # Decision-First redesign: merchant chrome has no seed / eng toolbar
+    assert "cw-merchant-seed" not in html
+    assert "تجهيز أمثلة للفهم" not in html
+    assert "ma-page-hero--workspace" in html
