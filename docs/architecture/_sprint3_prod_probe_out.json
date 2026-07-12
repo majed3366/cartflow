@@ -1,0 +1,147 @@
+{
+  "commit_sha": "e2160e46fabceeeae1f46b5ccf80113e988b4a9d",
+  "host": "https://smartreplyai.net",
+  "checks": {
+    "health": {
+      "status": 200,
+      "body": {
+        "ok": true,
+        "service": "cartflow"
+      }
+    },
+    "ping": {
+      "status": 200,
+      "body": {
+        "ok": true
+      }
+    },
+    "projection_flag_off": {
+      "status": 404,
+      "body": {
+        "ok": false,
+        "error": "feature_flag_off",
+        "flag": {
+          "flag": "CARTFLOW_CART_WORKSPACE_V1",
+          "enabled": false,
+          "default": false,
+          "merchant_surface": "disabled",
+          "shadow_pipeline": "available_dev_only"
+        }
+      },
+      "pass": true
+    },
+    "commands_flag_off": {
+      "status": 404,
+      "body": {
+        "ok": false,
+        "error": "feature_flag_off"
+      },
+      "pass": true
+    },
+    "demo_seed_flag_off": {
+      "status": 404,
+      "body": {
+        "ok": false,
+        "error": "feature_flag_off"
+      },
+      "pass": true
+    },
+    "static_sha_match": {
+      "pass": true,
+      "files": {
+        "cart_workspace_merchant_v1.js": {
+          "status": 200,
+          "match": true,
+          "sha256": "b5ea93b8e0b803e8"
+        },
+        "cart_workspace_merchant_v1.css": {
+          "status": 200,
+          "match": true,
+          "sha256": "885850d278a82e42"
+        },
+        "cart_workspace_decision_card_v1.js": {
+          "status": 200,
+          "match": true,
+          "sha256": "f9148d0e50f2fb02"
+        },
+        "cart_workspace_grid_v1.js": {
+          "status": 200,
+          "match": true,
+          "sha256": "ac246d125016e33f"
+        },
+        "cart_workspace_projection_version_v1.js": {
+          "status": 200,
+          "match": true,
+          "sha256": "6a834cf2ee2d4f68"
+        },
+        "cart_workspace_render_controller_v1.js": {
+          "status": 200,
+          "match": true,
+          "sha256": "c49d054e6e6385f0"
+        },
+        "merchant_app.js": {
+          "status": 200,
+          "match": true,
+          "sha256": "77d0b857f2ef0053"
+        }
+      }
+    },
+    "login_no_workspace": {
+      "status": 200,
+      "pass": true
+    },
+    "carts_routing_intact": {
+      "pass": true,
+      "has_workspace_code": true
+    },
+    "widget_runtime_version": "v2-widget-reason-post-detach-v1-6",
+    "scheduler": {
+      "ok": true,
+      "role": "api",
+      "resume_enabled": false,
+      "due_scanner_enabled": false,
+      "due_scanner_limit": 25,
+      "delay_dispatch_enabled": false,
+      "overdue_scheduled_count": 0,
+      "running_stale_count": 0,
+      "scheduler_ownership": {
+        "role": "api",
+        "compliance": "ok",
+        "block_reason": "role_api",
+        "may_resume": false,
+        "may_due_scan": false,
+        "may_delay_dispatch": false,
+        "production_like": true,
+        "fail_closed": true,
+        "policy_error": null
+      },
+      "ownership_diagnosis": {
+        "codes": [
+          "scheduler_role_api_blocked"
+        ],
+        "severity": "ok",
+        "summary": "API role correctly blocks scheduler drivers on this process.",
+        "role": "api",
+        "compliance": "ok",
+        "block_reason": "role_api",
+        "overdue_scheduled_count": 0,
+        "running_stale_count": 0,
+        "resume_enabled": false,
+        "due_scanner_enabled": false,
+        "delay_dispatch_enabled": false
+      },
+      "db_pool": {
+        "available": true,
+        "pool_class": "QueuePool",
+        "size": 30,
+        "checked_out": 1,
+        "overflow": -28,
+        "max_connections": 2,
+        "available_slots": 1,
+        "timeout_count": 0,
+        "exhausted": false,
+        "summary_ar": "QueuePool — محجوز=1 — حجم=30 — تجاوز=-28"
+      }
+    }
+  }
+}
