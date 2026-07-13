@@ -1,6 +1,6 @@
 /**
- * Cart Workspace Decision Card — Visual Rebuild V3 (Production Candidate).
- * Independent action tiles. No section chrome.
+ * Cart Workspace Decision Card — Wireframe Contract V1.
+ * Independent action tiles. No section chrome. Details gated.
  */
 (function (global) {
   "use strict";
@@ -32,7 +32,7 @@
       return {
         icon: "🔴",
         title: "VIP",
-        sentence: "متابعة يدوية",
+        sentence: "عميل عالي القيمة",
         actionLabel: "بدء المتابعة اليدوية",
         isVip: true,
       };
@@ -76,10 +76,10 @@
     }
     if (action === "return_to_cartflow" || action === "approve_next_step") {
       return {
-        icon: "↩",
+        icon: "⭐",
         title: "تتابعه أنت الآن",
-        sentence: "متابعة يدوية جارية",
-        actionLabel: "إعادة المتابعة لـ CartFlow",
+        sentence: "متابعة يدوية نشطة",
+        actionLabel: "فتح المحادثة",
         isVip: false,
       };
     }
@@ -101,7 +101,7 @@
     };
   }
 
-  function detailsHtml(card, id) {
+  function detailsHtml(card, id, extraRows) {
     var ex = explanationOf(card);
     var rows = [];
     if (ex.why_here) {
@@ -126,6 +126,9 @@
           '">رفض العرض</button></dd>'
       );
     }
+    if (Array.isArray(extraRows) && extraRows.length) {
+      rows = rows.concat(extraRows);
+    }
     if (!rows.length) return "";
     return (
       '<details class="cw-card__details">' +
@@ -138,14 +141,50 @@
 
   /**
    * @param {object} card
-   * @param {{ mode?: string }} opts decision | following | status
+   * @param {{ mode?: string }} opts decision | following | status | quiet
    */
   function renderDecisionCardHtml(card, opts) {
     if (!card || typeof card !== "object") return "";
     opts = opts || {};
     var mode = opts.mode || "decision";
 
+    if (mode === "quiet") {
+      return (
+        '<article class="cw-card cw-card--quiet" data-cw-quiet="1">' +
+        '<div class="cw-card__head">' +
+        '<span class="cw-card__icon" aria-hidden="true">✅</span>' +
+        '<h3 class="cw-card__title">لا يوجد ما يحتاج قرارك الآن</h3></div>' +
+        '<p class="cw-card__line">CartFlow يتابع متجرك تلقائياً</p>' +
+        "</article>"
+      );
+    }
+
     if (mode === "status") {
+      var statusFoot = "";
+      if (card.actionLabel) {
+        if (card.actionAsDetails) {
+          statusFoot =
+            '<div class="cw-card__foot">' +
+            '<details class="cw-card__details">' +
+            "<summary>" +
+            esc(card.actionLabel) +
+            "</summary>" +
+            (card.detailsBody
+              ? '<div class="cw-card__detail-list"><p>' +
+                esc(card.detailsBody) +
+                "</p></div>"
+              : "") +
+            "</details></div>";
+        } else {
+          statusFoot =
+            '<div class="cw-card__foot">' +
+            '<button type="button" class="cw-card__action" data-cw-command="' +
+            esc(card.actionCommand || "") +
+            '">' +
+            esc(card.actionLabel) +
+            "</button></div>";
+        }
+      }
       return (
         '<article class="cw-card cw-card--status' +
         (card.kind ? " cw-card--" + esc(card.kind) : "") +
@@ -160,9 +199,10 @@
         '<p class="cw-card__line">' +
         esc(card.sentence || "") +
         "</p>" +
-        (card.metric
-          ? '<p class="cw-card__metric">' + esc(card.metric) + "</p>"
+        (card.subline
+          ? '<p class="cw-card__sub">' + esc(card.subline) + "</p>"
           : "") +
+        statusFoot +
         "</article>"
       );
     }
@@ -170,14 +210,20 @@
     var id = esc(card.decision_id || "");
     var action = esc(card.required_action || "");
     var p = presentCard(card);
+    var extraDetails = [];
     if (mode === "following") {
       p = {
         icon: "⭐",
         title: "تتابعه أنت الآن",
-        sentence: p.isVip ? "VIP · متابعة يدوية" : "متابعة يدوية جارية",
-        actionLabel: "إعادة المتابعة لـ CartFlow",
+        sentence: "متابعة يدوية نشطة",
+        actionLabel: "فتح المحادثة",
         isVip: !!p.isVip,
       };
+      extraDetails.push(
+        '<dt></dt><dd><button type="button" class="cw-card__ghost" data-cw-command="return_to_cartflow" data-decision-id="' +
+          id +
+          '" data-cw-following="1">إعادة المتابعة لـ CartFlow</button></dd>'
+      );
     }
 
     var mods = ["cw-card"];
@@ -187,7 +233,7 @@
     var actionBtn;
     if (mode === "following") {
       actionBtn =
-        '<button type="button" class="cw-card__action" data-cw-command="return_to_cartflow" data-decision-id="' +
+        '<button type="button" class="cw-card__action" data-cw-command="take_over_conversation" data-decision-id="' +
         id +
         '" data-cw-following="1">' +
         esc(p.actionLabel) +
@@ -225,7 +271,7 @@
       "</p>" +
       '<div class="cw-card__foot">' +
       actionBtn +
-      (mode === "following" ? "" : detailsHtml(card, id)) +
+      detailsHtml(card, id, extraDetails) +
       "</div></article>"
     );
   }

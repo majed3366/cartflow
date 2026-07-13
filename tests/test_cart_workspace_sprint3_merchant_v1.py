@@ -190,23 +190,30 @@ def test_merchant_template_gated_and_scripts():
 
 
 def test_decision_first_card_presenter_contract():
-    """Visual Rebuild V3: flat grid + CartFlow palette; no section chrome; details gated."""
+    """Wireframe Contract V1: flat grid; literal header; quiet empty; details gated."""
     card_js = Path("static/cart_workspace_decision_card_v1.js").read_text(encoding="utf-8")
     assert "presentCard" in card_js
     assert "عرض التفاصيل" in card_js
     assert "عرض خصم" in card_js
+    assert "عميل عالي القيمة" in card_js
+    assert "فتح المحادثة" in card_js
     assert "cw-card__title" in card_js
     assert "cw-card__line" in card_js
     assert "cw-card__details" in card_js
     assert "تتابعه أنت الآن" in card_js
+    assert "لا يوجد ما يحتاج قرارك الآن" in card_js
+    assert "متابعة يدوية نشطة" in card_js
     grid_js = Path("static/cart_workspace_grid_v1.js").read_text(encoding="utf-8")
     assert "cw-ops__count" in grid_js
     assert "cw-grid" in grid_js
+    assert "تشغيل متجرك عندما يحتاج قراراً بشرياً" in grid_js
+    assert "يحتاج قرارك:" in grid_js
+    assert "آخر الإنجازات" in grid_js
+    assert "يتابع السلال تلقائياً" in grid_js
     assert 'mode: "following"' in grid_js or "following" in grid_js
     assert "cw-lane" not in grid_js
-    assert "لا يوجد" not in grid_js
     assert "mission_question" not in grid_js
-    assert "تشغيل متجرك عندما يحتاج قراراً بشرياً" not in grid_js
+    assert 'mode: "quiet"' in grid_js or '"quiet"' in grid_js
     merchant_js = Path("static/cart_workspace_merchant_v1.js").read_text(encoding="utf-8")
     assert "getFollowingVip" in merchant_js
     assert "الإصدار" not in merchant_js
@@ -214,10 +221,8 @@ def test_decision_first_card_presenter_contract():
     assert 'body[data-ma-page="workspace"] #ma-page-hero-global' in css
     assert "cw-grid" in css
     assert "cw-ops__count-n" in css
-    assert "--v2-bg" in css or "var(--v2-bg" in css
+    assert "--cw-card-min-h" in css
     assert "--cw-bg: #0b1220" not in css
-    assert "--cw-go: #22c55e" not in css
-    assert "--cw-attention" in css
     assert "var(--v2-accent" in css or "--v2-accent" in css
 
 

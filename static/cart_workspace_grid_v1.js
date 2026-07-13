@@ -1,7 +1,7 @@
 /**
- * Cart Workspace Grid — Visual Rebuild V3 (Production Candidate).
- * Cards ARE the page. No section wrappers. Hide empty categories.
- * Header = title + decision counter only.
+ * Cart Workspace Grid — Wireframe Contract V1.
+ * Cards ARE the page. No section wrappers.
+ * Empty decisions: quiet card + working/results/achievements (never blank).
  */
 (function (global) {
   "use strict";
@@ -41,9 +41,21 @@
     return [];
   }
 
+  function achievementLabel(zoneD) {
+    var raw =
+      (zoneD && (zoneD.achievement_amount_ar || zoneD.achievement_label)) || "";
+    raw = String(raw).trim();
+    return raw || "—";
+  }
+
   function renderGridHtml(projection) {
     if (!projection || typeof projection !== "object") {
-      return '<div class="cw-grid cw-grid--empty" data-cw-empty="1"></div>';
+      projection = {
+        zone_a: [],
+        zone_b: [],
+        zone_c: { visible: true, active_recovery_indicator: true, summary: "" },
+        zone_d: { completed_count: 0 },
+      };
     }
 
     var zoneA = Array.isArray(projection.zone_a) ? projection.zone_a : [];
@@ -52,70 +64,88 @@
     var zoneD = projection.zone_d || {};
     var following = followingVipCards();
     var openCount = zoneA.length + zoneB.length;
+    var hasDecisions = openCount > 0;
 
     var html = [];
     html.push(
       '<div class="cw-ops" dir="rtl" data-open-count="' + esc(openCount) + '">'
     );
 
-    /* Compact header — title only (counter follows) */
+    /* Compact header — wireframe literal */
     html.push(
       '<header class="cw-ops__hdr">' +
+        '<div class="cw-ops__hdr-main">' +
         '<p class="cw-ops__name">مساحة القرار</p>' +
+        '<p class="cw-ops__tag">تشغيل متجرك عندما يحتاج قراراً بشرياً.</p>' +
+        "</div>" +
+        '<p class="cw-ops__count" role="status" aria-live="polite">' +
+        "يحتاج قرارك: <strong class=\"cw-ops__count-n\">" +
+        esc(openCount) +
+        "</strong></p>" +
         "</header>"
     );
 
-    /* Counter */
-    html.push(
-      '<div class="cw-ops__count" role="status" aria-live="polite">' +
-        '<span class="cw-ops__count-label">يحتاج قرارك</span>' +
-        '<span class="cw-ops__count-n">' +
-        esc(openCount) +
-        "</span></div>"
-    );
-
-    /* Flat grid — cards only, order: VIP → decisions → following → status */
+    /* Flat grid — cards only */
     html.push('<div class="cw-grid">');
 
-    zoneA.forEach(function (c) {
-      html.push(renderCard(c, "decision"));
-    });
-    zoneB.forEach(function (c) {
-      html.push(renderCard(c, "decision"));
-    });
-    following.forEach(function (c) {
-      html.push(renderCard(c, "following"));
-    });
-
-    if (zoneC && zoneC.visible !== false && zoneC.active_recovery_indicator) {
-      html.push(
-        renderCard(
-          {
-            kind: "auto",
-            icon: "🤖",
-            title: "CartFlow يعمل",
-            sentence: "يتابع الاسترداد تلقائياً",
-          },
-          "status"
-        )
-      );
+    if (!hasDecisions && !following.length) {
+      html.push(renderCard({ quiet: true }, "quiet"));
+    } else {
+      zoneA.forEach(function (c) {
+        html.push(renderCard(c, "decision"));
+      });
+      zoneB.forEach(function (c) {
+        html.push(renderCard(c, "decision"));
+      });
+      following.forEach(function (c) {
+        html.push(renderCard(c, "following"));
+      });
     }
 
+    /* CartFlow Working — always present (wireframe + empty-state) */
+    html.push(
+      renderCard(
+        {
+          kind: "auto",
+          icon: "🤖",
+          title: "CartFlow يعمل",
+          sentence: "يتابع السلال تلقائياً",
+          actionLabel: "عرض التفاصيل",
+          actionAsDetails: true,
+          detailsBody: String(zoneC.summary || "CartFlow يتابع الاسترداد تلقائياً"),
+        },
+        "status"
+      )
+    );
+
+    /* Results — always present */
     var done = Number(zoneD.completed_count || 0);
-    if (done > 0) {
-      html.push(
-        renderCard(
-          {
-            kind: "done",
-            icon: "✅",
-            title: "النتائج",
-            sentence: "تم استرداد",
-            metric: done + " · آخر فترة",
-          },
-          "status"
-        )
-      );
-    }
+    html.push(
+      renderCard(
+        {
+          kind: "done",
+          icon: "✅",
+          title: "النتائج",
+          sentence: "تم استرداد " + done + " سلال",
+          subline: "آخر 24 ساعة",
+        },
+        "status"
+      )
+    );
+
+    /* Achievements — wireframe confidence card (not Home revenue report) */
+    html.push(
+      renderCard(
+        {
+          kind: "achieve",
+          icon: "📊",
+          title: "آخر الإنجازات",
+          sentence: achievementLabel(zoneD),
+          subline: "اليوم",
+        },
+        "status"
+      )
+    );
 
     html.push("</div>"); /* .cw-grid */
     html.push("</div>"); /* .cw-ops */

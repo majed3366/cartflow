@@ -497,6 +497,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-07-13 | **Cart Workspace Wireframe Contract V1:** Literal wireframe presentation — compact header (title + tagline + `يحتاج قرارك: N`); equal-height card grid; VIP/decision/following/working/results/achievements copy; quiet empty card (never blank page); CartFlow PE v2 palette. |
 | 2026-07-13 | **Cart Workspace Visual Rebuild V3 (Production Candidate):** Grid-first cards retained; presentation aligned to CartFlow PE v2 palette (`--v2-*`); compact title + counter only; secondary action buttons; VIP attention weight; quieter working/results. Pushed for production Product Review. |
 | 2026-07-12 | **Cart Workspace Visual Rebuild V2 (Grid First):** Flat card grid is the page (no section lanes); compact ops header + large counter; hide empty VIP/status; following cards in-grid. Pending Product Review (no push). |
 | 2026-07-12 | **Cart Workspace Visual Rebuild V1 (presentation):** Control-console rebuild — counter-first, VIP lane, action tiles, no shared Home hero, no report prose. Ownership/Admission/Projection unchanged. Pending Product Review (no push). |

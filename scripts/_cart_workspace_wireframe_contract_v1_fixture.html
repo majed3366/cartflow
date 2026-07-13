@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cart Workspace Wireframe Contract V1 — fixture</title>
+  <link rel="stylesheet" href="/static/merchant_pe_v2.css" />
+  <link rel="stylesheet" href="/static/merchant_product_polish_v1.css" />
+  <link rel="stylesheet" href="/static/cart_workspace_merchant_v1.css" />
+  <style>
+    html, body { margin: 0; background: var(--v2-bg, #f4f6fa); }
+    .fx { color: var(--v2-ink-whisper, #8b95a8); font: 11px ui-monospace, monospace; padding: 6px 10px; }
+  </style>
+</head>
+<body data-ma-page="workspace" class="v2">
+  <p class="fx">FIXTURE · Wireframe Contract V1</p>
+  <div id="page-workspace" class="page active" data-cw-console="1">
+    <div class="cw-workspace-shell">
+      <div id="cw-merchant-host"></div>
+    </div>
+  </div>
+  <script src="/static/cart_workspace_projection_version_v1.js"></script>
+  <script src="/static/cart_workspace_decision_card_v1.js"></script>
+  <script src="/static/cart_workspace_grid_v1.js"></script>
+  <script src="/static/cart_workspace_render_controller_v1.js"></script>
+  <script src="/static/cart_workspace_merchant_v1.js"></script>
+  <script>
+    window.CARTFLOW_STORE_SLUG = "fixture-wireframe-v1";
+    window.CartWorkspaceMerchantV1.upsertFollowing({
+      decision_id: "follow-1",
+      decision_class: "override",
+      override_mode: "active",
+      required_action: "return_to_cartflow",
+      explanation: {}
+    });
+    var projection = {
+      projection_version: 2,
+      projection_fingerprint: "fixture-wireframe-v1",
+      quiet: false,
+      zone_a: [{
+        decision_id: "d-vip",
+        decision_class: "override",
+        override_mode: "active",
+        required_action: "take_over_conversation",
+        explanation: {
+          why_here: "hidden-default",
+          cartflow_did: "hidden-default",
+          why_stopped: "hidden-default",
+          expected_after: "hidden-default"
+        }
+      }],
+      zone_b: [
+        {
+          decision_id: "d-reply",
+          decision_class: "normal",
+          required_action: "take_over_conversation",
+          explanation: { why_here: "x", cartflow_did: "y", why_stopped: "z", expected_after: "w" }
+        },
+        {
+          decision_id: "d-disc",
+          decision_class: "normal",
+          required_action: "approve_discount",
+          explanation: { why_here: "x", cartflow_did: "y", why_stopped: "z", expected_after: "w" }
+        },
+        {
+          decision_id: "d-setup",
+          decision_class: "normal",
+          required_action: "fix_channel_configuration",
+          explanation: { why_here: "x", cartflow_did: "y", why_stopped: "z", expected_after: "w" }
+        }
+      ],
+      zone_c: { visible: true, active_recovery_indicator: true, summary: "يتابع السلال تلقائياً" },
+      zone_d: {
+        completed_count: 6,
+        achievement_amount_ar: "852 ريال",
+        window: "last_24h"
+      },
+      zone_e: null
+    };
+    window.CartWorkspaceRenderControllerV1.resetForTests();
+    window.CartWorkspaceRenderControllerV1.applyProjection(
+      document.getElementById("cw-merchant-host"),
+      projection
+    );
+  </script>
+</body>
+</html>
