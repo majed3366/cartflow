@@ -1,7 +1,7 @@
 /**
- * Cart Workspace Grid — Visual Rebuild V1.
- * Control center: counter → VIP → decisions → following → auto/completed status.
- * No report sections. No mission paragraphs. No hero.
+ * Cart Workspace Grid — Visual Rebuild V3 (Production Candidate).
+ * Cards ARE the page. No section wrappers. Hide empty categories.
+ * Header = title + decision counter only.
  */
 (function (global) {
   "use strict";
@@ -21,14 +21,10 @@
     );
   }
 
-  function renderTiles(cards, mode) {
+  function renderCard(card, mode) {
     var render = cardRenderer();
-    if (!render || !Array.isArray(cards) || !cards.length) return "";
-    return cards
-      .map(function (c) {
-        return render(c, { mode: mode || "decision" });
-      })
-      .join("");
+    if (!render || !card) return "";
+    return render(card, { mode: mode || "decision" });
   }
 
   function followingVipCards() {
@@ -47,7 +43,7 @@
 
   function renderGridHtml(projection) {
     if (!projection || typeof projection !== "object") {
-      return '<div class="cw-console cw-console--empty" data-cw-empty="1"></div>';
+      return '<div class="cw-grid cw-grid--empty" data-cw-empty="1"></div>';
     }
 
     var zoneA = Array.isArray(projection.zone_a) ? projection.zone_a : [];
@@ -59,85 +55,70 @@
 
     var html = [];
     html.push(
-      '<div class="cw-console" dir="rtl" data-open-count="' +
+      '<div class="cw-ops" dir="rtl" data-open-count="' + esc(openCount) + '">'
+    );
+
+    /* Compact header — title only (counter follows) */
+    html.push(
+      '<header class="cw-ops__hdr">' +
+        '<p class="cw-ops__name">مساحة القرار</p>' +
+        "</header>"
+    );
+
+    /* Counter */
+    html.push(
+      '<div class="cw-ops__count" role="status" aria-live="polite">' +
+        '<span class="cw-ops__count-label">يحتاج قرارك</span>' +
+        '<span class="cw-ops__count-n">' +
         esc(openCount) +
-        '">'
-    );
-
-    /* TOP: decision counter only */
-    html.push(
-      '<div class="cw-counter" role="status" aria-live="polite">' +
-        '<span class="cw-counter__label">يحتاج قرارك</span>' +
-        '<span class="cw-counter__n">' +
-        esc(openCount) +
-        "</span>" +
-        "</div>"
-    );
-
-    /* VIP lane — always first, always visible */
-    html.push('<section class="cw-lane cw-lane--vip" data-zone="A">');
-    html.push('<div class="cw-lane__bar"><span class="cw-lane__tag">VIP</span></div>');
-    if (zoneA.length) {
-      html.push(
-        '<div class="cw-board">' + renderTiles(zoneA) + "</div>"
-      );
-    } else {
-      html.push('<div class="cw-lane__none">لا يوجد VIP</div>');
-    }
-    html.push("</section>");
-
-    /* Decisions board */
-    html.push('<section class="cw-lane cw-lane--decisions" data-zone="B">');
-    if (zoneB.length) {
-      html.push(
-        '<div class="cw-board">' + renderTiles(zoneB) + "</div>"
-      );
-    } else if (!zoneA.length) {
-      html.push(
-        '<div class="cw-lane__none cw-lane__none--calm">لا قرارات الآن</div>'
-      );
-    }
-    html.push("</section>");
-
-    /* Manual follow-through */
-    html.push('<section class="cw-lane cw-lane--follow" data-zone="FOLLOWING">');
-    html.push(
-      '<div class="cw-lane__bar"><span class="cw-lane__tag">تتابعه أنت الآن</span></div>'
-    );
-    if (following.length) {
-      html.push(
-        '<div class="cw-board">' +
-          renderTiles(following, "following") +
-          "</div>"
-      );
-    } else {
-      html.push('<div class="cw-lane__none">—</div>');
-    }
-    html.push("</section>");
-
-    /* Status row: auto + completed — non-action tiles */
-    html.push('<div class="cw-status-row">');
-    html.push(
-      '<div class="cw-status-tile cw-status-tile--auto" data-zone="C">' +
-        '<span class="cw-status-tile__k">CartFlow يعمل الآن</span>' +
-        '<span class="cw-status-tile__v">' +
-        esc(
-          zoneC && zoneC.active_recovery_indicator
-            ? "يتابع الاسترداد تلقائياً"
-            : "يعمل"
-        ) +
         "</span></div>"
     );
-    html.push(
-      '<div class="cw-status-tile cw-status-tile--done" data-zone="D">' +
-        '<span class="cw-status-tile__k">النتائج المكتملة</span>' +
-        '<span class="cw-status-tile__v">' +
-        esc(zoneD.completed_count == null ? 0 : zoneD.completed_count) +
-        "</span></div>"
-    );
-    html.push("</div>");
 
-    html.push("</div>");
+    /* Flat grid — cards only, order: VIP → decisions → following → status */
+    html.push('<div class="cw-grid">');
+
+    zoneA.forEach(function (c) {
+      html.push(renderCard(c, "decision"));
+    });
+    zoneB.forEach(function (c) {
+      html.push(renderCard(c, "decision"));
+    });
+    following.forEach(function (c) {
+      html.push(renderCard(c, "following"));
+    });
+
+    if (zoneC && zoneC.visible !== false && zoneC.active_recovery_indicator) {
+      html.push(
+        renderCard(
+          {
+            kind: "auto",
+            icon: "🤖",
+            title: "CartFlow يعمل",
+            sentence: "يتابع الاسترداد تلقائياً",
+          },
+          "status"
+        )
+      );
+    }
+
+    var done = Number(zoneD.completed_count || 0);
+    if (done > 0) {
+      html.push(
+        renderCard(
+          {
+            kind: "done",
+            icon: "✅",
+            title: "النتائج",
+            sentence: "تم استرداد",
+            metric: done + " · آخر فترة",
+          },
+          "status"
+        )
+      );
+    }
+
+    html.push("</div>"); /* .cw-grid */
+    html.push("</div>"); /* .cw-ops */
     return html.join("");
   }
 

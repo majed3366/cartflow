@@ -1,6 +1,6 @@
 /**
- * Cart Workspace Decision Card — Visual Rebuild V1 (paint only).
- * Control-center action tile. No report layout.
+ * Cart Workspace Decision Card — Visual Rebuild V3 (Production Candidate).
+ * Independent action tiles. No section chrome.
  */
 (function (global) {
   "use strict";
@@ -77,8 +77,8 @@
     if (action === "return_to_cartflow" || action === "approve_next_step") {
       return {
         icon: "↩",
-        title: "إعادة للمتابعة",
-        sentence: "أعد لـ CartFlow",
+        title: "تتابعه أنت الآن",
+        sentence: "متابعة يدوية جارية",
         actionLabel: "إعادة المتابعة لـ CartFlow",
         isVip: false,
       };
@@ -111,7 +111,7 @@
       rows.push("<dt>ماذا فعل CartFlow؟</dt><dd>" + esc(ex.cartflow_did) + "</dd>");
     }
     if (ex.why_stopped) {
-      rows.push("<dt>لماذا توقفت الأتمتة؟</dt><dd>" + esc(ex.why_stopped) + "</dd>");
+      rows.push("<dt>لماذا توقفت؟</dt><dd>" + esc(ex.why_stopped) + "</dd>");
     }
     if (ex.expected_after) {
       rows.push("<dt>ماذا بعد قرارك؟</dt><dd>" + esc(ex.expected_after) + "</dd>");
@@ -121,41 +121,80 @@
       String((card && card.required_action) || "") === "approve_or_deny_discount"
     ) {
       rows.push(
-        '<dt></dt><dd><button type="button" class="cw-tile__ghost" data-cw-command="reject_exception" data-decision-id="' +
+        '<dt></dt><dd><button type="button" class="cw-card__ghost" data-cw-command="reject_exception" data-decision-id="' +
           id +
           '">رفض العرض</button></dd>'
       );
     }
     if (!rows.length) return "";
     return (
-      '<details class="cw-tile__details">' +
+      '<details class="cw-card__details">' +
       "<summary>عرض التفاصيل</summary>" +
-      '<dl class="cw-tile__detail-list">' +
+      '<dl class="cw-card__detail-list">' +
       rows.join("") +
       "</dl></details>"
     );
   }
 
+  /**
+   * @param {object} card
+   * @param {{ mode?: string }} opts decision | following | status
+   */
   function renderDecisionCardHtml(card, opts) {
     if (!card || typeof card !== "object") return "";
     opts = opts || {};
     var mode = opts.mode || "decision";
+
+    if (mode === "status") {
+      return (
+        '<article class="cw-card cw-card--status' +
+        (card.kind ? " cw-card--" + esc(card.kind) : "") +
+        '">' +
+        '<div class="cw-card__head">' +
+        '<span class="cw-card__icon" aria-hidden="true">' +
+        esc(card.icon || "") +
+        "</span>" +
+        '<h3 class="cw-card__title">' +
+        esc(card.title || "") +
+        "</h3></div>" +
+        '<p class="cw-card__line">' +
+        esc(card.sentence || "") +
+        "</p>" +
+        (card.metric
+          ? '<p class="cw-card__metric">' + esc(card.metric) + "</p>"
+          : "") +
+        "</article>"
+      );
+    }
+
     var id = esc(card.decision_id || "");
     var action = esc(card.required_action || "");
     var p = presentCard(card);
-    var mods = [];
-    if (p.isVip) mods.push("cw-tile--vip");
-    if (mode === "following") mods.push("cw-tile--following");
-
-    var actions;
     if (mode === "following") {
-      actions =
-        '<button type="button" class="cw-tile__action" data-cw-command="return_to_cartflow" data-decision-id="' +
+      p = {
+        icon: "⭐",
+        title: "تتابعه أنت الآن",
+        sentence: p.isVip ? "VIP · متابعة يدوية" : "متابعة يدوية جارية",
+        actionLabel: "إعادة المتابعة لـ CartFlow",
+        isVip: !!p.isVip,
+      };
+    }
+
+    var mods = ["cw-card"];
+    if (p.isVip && mode !== "following") mods.push("cw-card--vip");
+    if (mode === "following") mods.push("cw-card--following");
+
+    var actionBtn;
+    if (mode === "following") {
+      actionBtn =
+        '<button type="button" class="cw-card__action" data-cw-command="return_to_cartflow" data-decision-id="' +
         id +
-        '" data-cw-following="1">إعادة المتابعة لـ CartFlow</button>';
+        '" data-cw-following="1">' +
+        esc(p.actionLabel) +
+        "</button>";
     } else {
-      actions =
-        '<button type="button" class="cw-tile__action" data-cw-command="' +
+      actionBtn =
+        '<button type="button" class="cw-card__action" data-cw-command="' +
         action +
         '" data-decision-id="' +
         id +
@@ -165,7 +204,7 @@
     }
 
     return (
-      '<article class="cw-tile ' +
+      '<article class="' +
       mods.join(" ") +
       '" data-decision-id="' +
       id +
@@ -174,22 +213,20 @@
       '" data-required-action="' +
       action +
       '">' +
-      '<div class="cw-tile__head">' +
-      '<span class="cw-tile__icon" aria-hidden="true">' +
+      '<div class="cw-card__head">' +
+      '<span class="cw-card__icon" aria-hidden="true">' +
       esc(p.icon) +
       "</span>" +
-      '<h3 class="cw-tile__title">' +
+      '<h3 class="cw-card__title">' +
       esc(p.title) +
-      "</h3>" +
-      "</div>" +
-      '<p class="cw-tile__line">' +
+      "</h3></div>" +
+      '<p class="cw-card__line">' +
       esc(p.sentence) +
       "</p>" +
-      '<div class="cw-tile__foot">' +
-      actions +
+      '<div class="cw-card__foot">' +
+      actionBtn +
       (mode === "following" ? "" : detailsHtml(card, id)) +
-      "</div>" +
-      "</article>"
+      "</div></article>"
     );
   }
 
