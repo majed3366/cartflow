@@ -2306,14 +2306,22 @@
     logSetupRenderDebug("summary_dom", probeSetupExperienceRoot());
 
     var pulseRendered = false;
-    if (window.maApplyMerchantPulseV1) {
+    var homeV1Rendered = false;
+    if (window.maApplyDashboardHomeV1) {
+      try {
+        homeV1Rendered = !!window.maApplyDashboardHomeV1(d);
+      } catch (homeV1Err) {
+        homeV1Rendered = false;
+      }
+    }
+    if (!homeV1Rendered && window.maApplyMerchantPulseV1) {
       try {
         pulseRendered = !!window.maApplyMerchantPulseV1(d);
       } catch (pulseErr) {
         pulseRendered = false;
       }
     }
-    if (!pulseRendered && window.maApplyHomeExperience) {
+    if (!homeV1Rendered && !pulseRendered && window.maApplyHomeExperience) {
       window.maApplyHomeExperience(
         d.merchant_home_experience_v1 || { ok: false }
       );

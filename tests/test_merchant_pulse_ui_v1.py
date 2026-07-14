@@ -116,10 +116,14 @@ class MerchantPulseHomeSprint1ContractTests(unittest.TestCase):
     def test_lazy_failsafe_to_home(self) -> None:
         self.assertIn("maApplyMerchantPulseV1", _LAZY)
         self.assertIn("maApplyHomeExperience", _LAZY)
+        self.assertIn("maApplyDashboardHomeV1", _LAZY)
         self.assertIn("pulseRendered", _LAZY)
+        self.assertIn("homeV1Rendered", _LAZY)
         self.assertRegex(
             _LAZY,
-            re.compile(r"if\s*\(\s*!pulseRendered\s*&&\s*window\.maApplyHomeExperience\s*\)"),
+            re.compile(
+                r"if\s*\(\s*!homeV1Rendered\s*&&\s*!pulseRendered\s*&&\s*window\.maApplyHomeExperience\s*\)"
+            ),
         )
 
     def test_template_flag_and_assets(self) -> None:
