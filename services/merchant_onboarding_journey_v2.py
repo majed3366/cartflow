@@ -161,16 +161,14 @@ def _flags_from_unified(
 
 
 def _readiness_checklist(flags: dict[str, bool]) -> list[str]:
-    """Merchant-safe checklist — only lines backed by current activation flags."""
+    """Merchant-safe checklist — Store Connection + Widget + WhatsApp only."""
     lines: list[str] = []
-    if flags.get("live_widget") or flags.get("ready_for_launch"):
-        lines.append("الودجيت مُعدّ")
     if flags.get("connect_store"):
         lines.append("المتجر مربوط")
+    if flags.get("live_widget") or flags.get("ready_for_launch"):
+        lines.append("الودجيت مُعدّ")
     if flags.get("configure_whatsapp"):
         lines.append("واتساب مُعدّ")
-    if flags.get("recovery_enabled"):
-        lines.append("الاسترجاع مفعّل")
     return lines
 
 

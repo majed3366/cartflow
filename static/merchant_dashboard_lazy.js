@@ -966,39 +966,6 @@
     root.removeAttribute("hidden");
   }
 
-  function recoveryStatusFromWaCard(wa) {
-    if (!wa || typeof wa !== "object") {
-      return { ok: false, label: "—", hint: "" };
-    }
-    var key = String(wa.state_key || "").trim();
-    if (key === "ready") {
-      return {
-        ok: true,
-        label: wa.badge_ar || "جاهز",
-        hint: wa.description_ar || wa.impact_ar || "",
-      };
-    }
-    if (key === "disabled") {
-      return {
-        ok: false,
-        label: wa.badge_ar || "غير مفعل",
-        hint: wa.description_ar || wa.impact_ar || "",
-      };
-    }
-    if (key === "sandbox") {
-      return {
-        ok: false,
-        label: wa.badge_ar || "تجريبي",
-        hint: wa.description_ar || wa.impact_ar || "",
-      };
-    }
-    return {
-      ok: false,
-      label: wa.badge_ar || wa.title_ar || "يحتاج متابعة",
-      hint: wa.description_ar || wa.impact_ar || "",
-    };
-  }
-
   function readinessRowHtml(icon, title, statusLabel, ok, hint, href, goPage) {
     var cls = ok ? "is-ready" : "is-pending";
     var mark = ok ? "✓" : "○";
@@ -1049,16 +1016,23 @@
         description_ar: "",
         impact_ar: "",
       };
-    var mse = d.merchant_setup_experience || {};
-    var pct = parseInt(mse.readiness_percent, 10);
-    if (isNaN(pct)) pct = 0;
-    pct = Math.max(0, Math.min(100, pct));
-    var stateLabel = mse.setup_state_label_ar || "—";
-    var nextStep = mse.next_step_ar || wa.next_action_ar || "";
+    /* Store Readiness = Store Connection + Widget + WhatsApp only (no Recovery). */
     var storeOk = !!(sc.store_connected_ok || sc.connected);
     var widgetOk = !!sc.widget_installed_ok;
     var waOk = String(wa.state_key || "") === "ready";
-    var recovery = recoveryStatusFromWaCard(wa);
+    var readyCount = (storeOk ? 1 : 0) + (widgetOk ? 1 : 0) + (waOk ? 1 : 0);
+    var pct = Math.round((100 * readyCount) / 3);
+    pct = Math.max(0, Math.min(100, pct));
+    var stateLabel =
+      readyCount === 3
+        ? "جاهز"
+        : readyCount === 0
+          ? "لم يبدأ"
+          : "قيد التجهيز";
+    var nextStep = "";
+    if (!storeOk) nextStep = "اربط متجرك";
+    else if (!widgetOk) nextStep = "ثبّت الودجيت";
+    else if (!waOk) nextStep = wa.next_action_ar || "أكمل إعداد واتساب";
     var rows =
       readinessRowHtml(
         "🏪",
@@ -1070,15 +1044,6 @@
         "settings"
       ) +
       readinessRowHtml(
-        "💬",
-        "واتساب",
-        wa.badge_ar || wa.title_ar || "—",
-        waOk,
-        wa.description_ar || "",
-        "/dashboard#whatsapp",
-        "whatsapp"
-      ) +
-      readinessRowHtml(
         "🧩",
         "الودجيت",
         sc.widget_status_label_ar || "—",
@@ -1088,11 +1053,11 @@
         "widget"
       ) +
       readinessRowHtml(
-        "🔄",
-        "الاسترجاع",
-        recovery.label,
-        recovery.ok,
-        recovery.hint,
+        "💬",
+        "واتساب",
+        wa.badge_ar || wa.title_ar || "—",
+        waOk,
+        wa.description_ar || "",
         "/dashboard#whatsapp",
         "whatsapp"
       );
