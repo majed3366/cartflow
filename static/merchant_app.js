@@ -5,7 +5,6 @@
     home: "نظرة عامة",
     "home-setup": "إعداد المتجر",
     "home-month": "الملخص العام",
-    "home-test-tools": "أدوات التجربة",
     workspace: "مساحة القرار",
     carts: "السلال",
     followup: "السلال",
@@ -19,6 +18,7 @@
     "whatsapp-connect": "ربط واتساب",
     plans: "الباقات",
     settings: "الحساب والمتجر",
+    "settings-diagnostics": "تشخيص واختبار",
   };
 
   var PAGE_SUBTITLES = {
@@ -35,14 +35,15 @@
       "قارن Starter و Growth و Pro — عرض للمقارنة فقط بدون ترقية أو دفع",
     settings:
       "ربط المتجر مع زد أو سلة، ثم تفضيلات الحساب — لا تغيّر الاسترجاع تلقائياً",
+    "settings-diagnostics":
+      "أدوات التجربة والتشخيص — خارج مركز التحكم التنفيذي",
   };
 
   /** One-sentence page purpose — hero rhythm (Product Polish V1). */
   var PAGE_PURPOSE = {
-    home: "ماذا حدث أثناء غيابك؟",
+    home: "كيف حال متجرك الآن — وما الذي يستحق انتباهك.",
     "home-setup": "تحقق من جاهزية متجرك قبل التشغيل الكامل.",
     "home-month": "أرقام الاسترداد والأداء لهذا الشهر.",
-    "home-test-tools": "اختبر الودجيت والاسترجاع بدون إرسال حقيقي.",
     workspace: "",
     carts: "ما الذي يحتاج انتباهك الآن؟",
     followup: "ردود العملاء والمتابعة التي يحتاج المتجر مراجعتها.",
@@ -56,6 +57,7 @@
     "whatsapp-connect": "اربط رقم واتساب أعمال متجرك لإرسال الاسترجاع.",
     plans: "اشتراكك الحالي — ما تشمله باقتك وكيف تقارن.",
     settings: "إعداد متجرك — الربط والحساب والتفضيلات.",
+    "settings-diagnostics": "اختبر الودجيت والاسترجاع بدون إرسال حقيقي.",
   };
 
   var CART_TAB_TITLES = {
@@ -77,7 +79,6 @@
     home: "home",
     "home-setup": "home",
     "home-month": "home",
-    "home-test-tools": "home",
     workspace: "workspace",
     carts: "carts",
     followup: "carts",
@@ -91,6 +92,7 @@
     "whatsapp-connect": "settings",
     plans: "settings",
     settings: "settings",
+    "settings-diagnostics": "settings",
   };
 
   var SECTION_LABELS = {
@@ -105,21 +107,18 @@
     home: true,
     "home-setup": true,
     "home-month": true,
-    "home-test-tools": true,
   };
 
   var HOME_NAV_FOR_PAGE = {
     home: "overview",
     "home-setup": "setup",
     "home-month": "month",
-    "home-test-tools": "test-tools",
   };
 
   var HOME_PAGE_FOR_NAV = {
     overview: "home",
     setup: "home-setup",
     month: "home-month",
-    "test-tools": "home-test-tools",
   };
 
   var PAGE_FOR_HASH = {
@@ -128,7 +127,9 @@
     "#home": "home",
     "#home-setup": "home-setup",
     "#home-month": "home-month",
-    "#home-test-tools": "home-test-tools",
+    /* Legacy Home tools hash → Settings Diagnostics permanently */
+    "#home-test-tools": "settings-diagnostics",
+    "#settings-diagnostics": "settings-diagnostics",
     "#workspace": "workspace",
     "#carts": "carts",
     "#followup": "followup",
@@ -581,6 +582,11 @@
 
   window.maHomeNav = function (target) {
     var t = (target || "overview").trim();
+    /* Permanent relocation: Home test tools → Settings Diagnostics */
+    if (t === "test-tools" || t === "diagnostics") {
+      goTo("settings-diagnostics");
+      return;
+    }
     var page = HOME_PAGE_FOR_NAV[t] || "home";
     goTo(page);
     setHomeNavActive(t);

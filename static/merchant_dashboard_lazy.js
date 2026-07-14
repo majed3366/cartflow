@@ -768,7 +768,7 @@
   window.maProbeSetupExperienceRoot = probeSetupExperienceRoot;
 
   function isHomeSectionActive() {
-    var pages = ["page-home", "page-home-setup", "page-home-month", "page-home-test-tools"];
+    var pages = ["page-home", "page-home-setup", "page-home-month", "page-settings-diagnostics"];
     var i;
     for (i = 0; i < pages.length; i++) {
       var el = byId(pages[i]);
@@ -1208,7 +1208,7 @@
       '"' +
       goAttr +
       ">متابعة الإعداد</a>" +
-      '<a class="ma-activation-btn ma-activation-btn-secondary" href="/dashboard#home-test-tools" onclick="if(window.maHomeNav){maHomeNav(\'test-tools\');}return false;">أدوات التجربة</a>' +
+      '<a class="ma-activation-btn ma-activation-btn-secondary" href="/dashboard#settings-diagnostics" onclick="if(window.goTo){goTo(\'settings-diagnostics\');}return false;">تشخيص واختبار</a>' +
       "</div>"
     );
   }
@@ -1519,7 +1519,7 @@
     var extTarget = isDemoStoreHref(href) ? ' target="_blank" rel="noopener"' : "";
     if (st.repeatable_demo) {
       return (
-        '<a class="ma-setup-step-action" href="/dashboard#home-test-tools" onclick="if(window.maHomeNav){maHomeNav(\'test-tools\');}return false;">أدوات التجربة</a>'
+        '<a class="ma-setup-step-action" href="/dashboard#settings-diagnostics" onclick="if(window.goTo){goTo(\'settings-diagnostics\');}return false;">تشخيص واختبار</a>'
       );
     }
     if (!st.is_complete && !st.is_current) {
@@ -1566,7 +1566,7 @@
     root.setAttribute("data-ma-setup-demo-tools", "1");
     root.innerHTML =
       '<div class="ma-setup-panel ma-unified-setup-panel ma-setup-v3 ma-setup-demo-tools">' +
-      '<p class="ma-setup-v2-eyebrow">أدوات التجربة</p>' +
+      '<p class="ma-setup-v2-eyebrow">تشخيص واختبار</p>' +
       '<p class="ma-setup-v2-context">يمكن لفريقك إعادة التجربة في أي وقت — الإكمال لا يعطّل الأزرار.</p>' +
       '<div class="ma-setup-hero-actions ma-setup-demo-tools-primary">' +
       '<a class="ma-setup-btn-primary" href="' +
@@ -1689,8 +1689,8 @@
     }
     var primaryLabel = esc(mse.action_label_ar || "ابدأ هذه الخطوة");
     if (curStep && curStep.repeatable_demo) {
-      rawHref = "/dashboard#home-test-tools";
-      primaryLabel = "انتقل إلى أدوات التجربة";
+      rawHref = "/dashboard#settings-diagnostics";
+      primaryLabel = "انتقل إلى تشخيص واختبار";
     }
     var primaryHref = esc(rawHref);
     var isExternalTest =
@@ -1698,7 +1698,7 @@
     var primaryTarget = isExternalTest ? ' target="_blank" rel="noopener"' : "";
     var primaryGo =
       curStep && curStep.repeatable_demo
-        ? ' onclick="if(window.maHomeNav){maHomeNav(\'test-tools\');}return false;"'
+        ? ' onclick="if(window.goTo){goTo(\'settings-diagnostics\');}return false;"'
         : "";
     return (
       '<section class="ma-setup-hero ma-setup-hero-v3" aria-label="الخطوة الحالية">' +

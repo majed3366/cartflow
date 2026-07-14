@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Dashboard Home UI V1 — presentation contract (structure only)."""
+"""Dashboard Home Executive Control Center (V3) — presentation contract."""
 from __future__ import annotations
 
 import re
@@ -11,6 +11,7 @@ _JS = (_ROOT / "static" / "merchant_dashboard_home_v1.js").read_text(encoding="u
 _CSS = (_ROOT / "static" / "merchant_dashboard_home_v1.css").read_text(encoding="utf-8")
 _TMPL = (_ROOT / "templates" / "merchant_app.html").read_text(encoding="utf-8")
 _LAZY = (_ROOT / "static" / "merchant_dashboard_lazy.js").read_text(encoding="utf-8")
+_APP = (_ROOT / "static" / "merchant_app.js").read_text(encoding="utf-8")
 
 
 class DashboardHomeUiV1Tests(unittest.TestCase):
@@ -32,19 +33,34 @@ class DashboardHomeUiV1Tests(unittest.TestCase):
         for marker in (
             "اليوم في متجرك",
             "ملخص تنفيذي",
-            "أولوية اليوم",
+            "أعلى أولوية اليوم",
+            "أحدث فهم مهم",
             "الإيرادات المستعادة",
             "العملاء المشترون",
             "العملاء العائدون",
             "طبقة المعرفة",
-            "ما يحتاج انتباهك",
+            "مركز الانتباه",
             "ملخص الأداء",
             "آخر النشاطات",
-            "سلال اليوم",
-            "رسائل واتساب",
-            "معدل التحويل",
+            "اتجاه الاسترجاع",
+            "اتجاه التحويل",
+            "نشاط واتساب",
+            "الصحة التشغيلية",
+            "الملاحظة",
+            "الدليل",
+            "التفسير",
+            "التوصية",
+            "الثقة",
         ):
             self.assertIn(marker, _JS)
+
+    def test_executive_control_center_surface(self) -> None:
+        self.assertIn("ma-ecc", _JS)
+        self.assertIn("ma-dash-home-v3", _JS)
+        self.assertIn("ma-ecc-hero", _CSS)
+        self.assertIn("ma-ecc-kl", _CSS)
+        self.assertIn("ma-ecc-attention", _CSS)
+        self.assertIn("ma-ecc-metrics", _CSS)
 
     def test_no_fake_returned_kpi(self) -> None:
         self.assertIn("Customers returned: no governed today-KPI", _JS)
@@ -55,14 +71,25 @@ class DashboardHomeUiV1Tests(unittest.TestCase):
             "--pds-space-",
             "--v2-",
             "--cfpds-card-",
-            "ma-dh-metric-grid",
-            "ma-dh-card--elevated",
+            "ma-ecc-metrics",
+            "ma-ecc-band--knowledge",
         ):
             self.assertIn(token, _CSS)
 
     def test_states_present(self) -> None:
-        for name in ("renderLoading", "renderError", "ma-dh-empty", "ma-dh-skel"):
+        for name in ("renderLoading", "renderError", "ma-ecc-calm", "ma-ecc-skel"):
             self.assertTrue(name in _JS or name in _CSS)
+
+    def test_diagnostics_moved_to_settings(self) -> None:
+        self.assertNotIn('data-home-nav="test-tools"', _TMPL)
+        self.assertIn("settings-diagnostics", _TMPL)
+        self.assertIn("page-settings-diagnostics", _TMPL)
+        self.assertIn("تشخيص واختبار", _TMPL)
+        self.assertIn("settings-diagnostics", _APP)
+        self.assertIn("#home-test-tools", _APP)
+        self.assertIn('"settings-diagnostics"', _APP)
+        self.assertNotIn("page-home-test-tools", _TMPL)
+        self.assertNotIn("page-home-test-tools", _LAZY)
 
 
 if __name__ == "__main__":

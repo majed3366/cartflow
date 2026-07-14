@@ -64,7 +64,6 @@
     <button type="button" class="nav-item active" data-home-nav="overview" onclick="maHomeNav('overview')">نظرة عامة</button>
     <button type="button" class="nav-item" data-home-nav="setup" onclick="maHomeNav('setup')">إعداد المتجر</button>
     <button type="button" class="nav-item" data-home-nav="month" onclick="maHomeNav('month')">الملخص العام</button>
-    <button type="button" class="nav-item" data-home-nav="test-tools" onclick="maHomeNav('test-tools')">أدوات التجربة</button>
   </nav>
   {% if merchant_cart_workspace_v1 %}
   <nav class="ma-ctx-panel ma-sidebar-nav" data-ma-ctx="workspace" hidden aria-label="مساحة القرار">
@@ -93,6 +92,7 @@
     <button type="button" class="nav-item" data-nav="widget" onclick="goTo('widget')">الودجيت</button>
     <button type="button" class="nav-item" data-nav="plans" onclick="goTo('plans')">الباقات</button>
     <button type="button" class="nav-item" data-nav="settings" onclick="goTo('settings')">الحساب والمتجر</button>
+    <button type="button" class="nav-item" data-nav="settings-diagnostics" onclick="goTo('settings-diagnostics')">تشخيص واختبار</button>
   </nav>
   <div class="ma-ctx-future-reserve" aria-hidden="true" hidden></div>
 </aside>
@@ -101,7 +101,7 @@
   <main class="main ma-content-root" id="ma-content-root">
     <header class="ma-content-head ma-page-hero" id="ma-page-hero-global">
       <h1 class="ma-page-hero__title ma-content-title" id="pageTitle">الرئيسية</h1>
-      <p class="ma-page-hero__purpose" id="pagePurpose">ماذا حدث أثناء غيابك؟</p>
+      <p class="ma-page-hero__purpose" id="pagePurpose">كيف حال متجرك الآن — وما الذي يستحق انتباهك.</p>
       <p class="ma-page-summary ma-content-sub" id="pageSub" hidden></p>
     </header>
 
@@ -111,7 +111,7 @@
     <section
       id="ma-home-experience-root"
       class="ma-home-experience ma-home-section"
-      aria-label="مركز تشغيل متجرك"
+      aria-label="مركز التحكم التنفيذي"
       aria-live="polite"
     >
       <div class="ma-home-experience-loading" id="ma-home-experience-loading">
@@ -212,8 +212,8 @@
     </div>
   </div>
 
-  <div class="page ma-page-home-sub" id="page-home-test-tools">
-    <div id="ma-test-tools-root" class="ma-test-tools-root" aria-live="polite"></div>
+  <div class="page ma-page-settings-sub" id="page-settings-diagnostics">
+    <div id="ma-test-tools-root" class="ma-test-tools-root ma-diagnostics-testing-root" aria-live="polite"></div>
   </div>
 
   {% if merchant_cart_workspace_v1 %}

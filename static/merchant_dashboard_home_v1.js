@@ -1,8 +1,8 @@
 /**
- * Dashboard Home UI V1 — production preview renderer.
- * Approved IA order: Hero → Metric Grid → Attention → Knowledge → Performance → Timeline.
- * Presentation only — consumes existing summary + merchant_home_experience_v1.
- * Never invents KPIs or fake activity.
+ * Dashboard Home — Executive Control Center (Dashboard V3).
+ * New surface (not a rearrangement of legacy Home).
+ * IA: Executive Hero → Quick Metrics → Attention → Knowledge → Performance → Timeline.
+ * Presentation only — consumes summary + merchant_home_experience_v1. Never invents KPIs.
  */
 (function () {
   "use strict";
@@ -39,44 +39,33 @@
     return "أدلة غير كافية";
   }
 
-  function confidenceBadgeClass(raw) {
+  function confidenceTone(raw) {
     var c = String(raw || "")
       .trim()
       .toLowerCase();
-    if (c === "high" || c === "confirmed") return "";
-    if (c === "medium") return "ma-dh-badge--attention";
-    if (c === "low") return "ma-dh-badge--attention";
-    return "ma-dh-badge--neutral";
+    if (c === "high" || c === "confirmed") return "high";
+    if (c === "medium") return "medium";
+    if (c === "low") return "low";
+    return "insufficient";
   }
 
-  function severityClass(item) {
+  function severityTone(item) {
     var s = String((item && item.severity) || "").trim().toLowerCase();
     var cls = String((item && item.decision_class) || "").trim().toLowerCase();
     if (s === "critical" || cls === "critical_action") return "critical";
-    if (s === "attention" || s === "suggested" || cls === "needs_attention" || cls === "suggested_action") {
+    if (
+      s === "attention" ||
+      s === "suggested" ||
+      cls === "needs_attention" ||
+      cls === "suggested_action"
+    ) {
       return "attention";
     }
     return "default";
   }
 
-  function metricValueHtml(value, hint) {
-    var v = String(value == null ? "" : value).trim();
-    if (!v || v === EMPTY_VALUE) {
-      return (
-        '<p class="ma-dh-metric__value ma-dh-metric__value--empty">' +
-        esc(EMPTY_VALUE) +
-        "</p>" +
-        (hint
-          ? '<p class="ma-dh-metric__hint">' + esc(hint) + "</p>"
-          : '<p class="ma-dh-metric__hint">لا بيانات كافية بعد</p>')
-      );
-    }
-    return (
-      '<p class="ma-dh-metric__value">' +
-      esc(v) +
-      "</p>" +
-      (hint ? '<p class="ma-dh-metric__hint">' + esc(hint) + "</p>" : "")
-    );
+  function goCartsOnclick() {
+    return ' onclick="if(window.goToSection){goToSection(\'carts\');}else if(window.goTo){goTo(\'carts\');}return false;"';
   }
 
   function buildExecutiveSummary(home) {
@@ -90,7 +79,7 @@
     if (parts.length) return parts.slice(0, 3).join(" · ");
     return (
       String(whileAway.empty_message_ar || "").trim() ||
-      "CartFlow يتابع متجرك — سنُظهر الملخص هنا عند توفر نشاط اليوم."
+      "CartFlow يتابع متجرك — سيظهر الملخص هنا عند توفر نشاط اليوم."
     );
   }
 
@@ -100,36 +89,34 @@
     return items.length ? items[0] : null;
   }
 
-  function goCartsOnclick() {
-    return ' onclick="if(window.goToSection){goToSection(\'carts\');}else if(window.goTo){goTo(\'carts\');}return false;"';
+  function primaryInsight(home) {
+    var items = (((home && home.store_understanding) || {}).items) || [];
+    return items.length ? items[0] : null;
   }
 
   function renderLoading() {
     return (
-      '<div class="ma-dh-skeleton" aria-busy="true" aria-live="polite">' +
-      '<div class="ma-dh-skel-block ma-dh-skel-block--hero"></div>' +
-      '<div class="ma-dh-skel-grid">' +
-      '<div class="ma-dh-skel-block"></div>' +
-      '<div class="ma-dh-skel-block"></div>' +
-      '<div class="ma-dh-skel-block"></div>' +
-      '<div class="ma-dh-skel-block"></div>' +
+      '<div class="ma-ecc-skel" aria-busy="true" aria-live="polite">' +
+      '<div class="ma-ecc-skel__hero"></div>' +
+      '<div class="ma-ecc-skel__metrics">' +
+      '<span></span><span></span><span></span><span></span>' +
       "</div>" +
-      '<div class="ma-dh-skel-block"></div>' +
-      '<div class="ma-dh-skel-block"></div>' +
-      '<p class="ma-dh-meta">CartFlow يجهّز ملخص يومك…</p>' +
+      '<div class="ma-ecc-skel__block ma-ecc-skel__block--tall"></div>' +
+      '<div class="ma-ecc-skel__block"></div>' +
+      '<p class="ma-ecc-whisper">CartFlow يجهّز مركز تشغيل متجرك…</p>' +
       "</div>"
     );
   }
 
   function renderError(message) {
     return (
-      '<section class="ma-dh-section" aria-label="خطأ">' +
-      '<div class="ma-dh-card ma-dh-card--error ma-dh-error">' +
-      '<p class="ma-dh-error__title">تعذّر تحميل الرئيسية</p>' +
-      '<p class="ma-dh-body">' +
+      '<section class="ma-ecc-band" aria-label="خطأ">' +
+      '<div class="ma-ecc-panel ma-ecc-panel--error">' +
+      '<p class="ma-ecc-panel__title">تعذّر تحميل الرئيسية</p>' +
+      '<p class="ma-ecc-copy">' +
       esc(message || "جرّب تحديث الصفحة. CartFlow ما زال يتابع متجرك.") +
       "</p>" +
-      '<button type="button" class="ma-dh-btn ma-dh-btn--ghost" onclick="location.reload()">' +
+      '<button type="button" class="ma-ecc-btn ma-ecc-btn--ghost" onclick="location.reload()">' +
       "تحديث الصفحة" +
       "</button>" +
       "</div></section>"
@@ -145,61 +132,104 @@
       String((summary && summary.merchant_ar_date_header) || "").trim();
     var exec = buildExecutiveSummary(home);
     var priority = primaryAttention(home);
+    var insight = primaryInsight(home);
 
-    var priorityHtml;
+    var priorityBlock;
     if (priority) {
       var actionLabel = String(priority.action_ar || "عرض السلال").trim();
-      priorityHtml =
-        '<div class="ma-dh-hero__priority">' +
-        '<p class="ma-dh-hero__label">أولوية اليوم</p>' +
-        '<h2 class="ma-dh-headline">' +
+      priorityBlock =
+        '<div class="ma-ecc-hero__cell ma-ecc-hero__cell--priority">' +
+        '<p class="ma-ecc-hero__cell-label">أعلى أولوية اليوم</p>' +
+        '<p class="ma-ecc-hero__cell-title">' +
         esc(priority.headline_ar || "—") +
-        "</h2>" +
+        "</p>" +
         (priority.why_ar
-          ? '<p class="ma-dh-body">' + esc(priority.why_ar) + "</p>"
+          ? '<p class="ma-ecc-hero__cell-body">' + esc(priority.why_ar) + "</p>"
           : "") +
-        '<a class="ma-dh-btn ma-dh-btn--on-dark" href="#carts" role="button"' +
+        '<a class="ma-ecc-btn ma-ecc-btn--light" href="#carts" role="button"' +
         goCartsOnclick() +
         ">" +
         esc(actionLabel) +
         "</a>" +
         "</div>";
     } else {
-      priorityHtml =
-        '<div class="ma-dh-hero__priority">' +
-        '<p class="ma-dh-hero__label">أولوية اليوم</p>' +
-        '<p class="ma-dh-body">' +
+      priorityBlock =
+        '<div class="ma-ecc-hero__cell ma-ecc-hero__cell--priority">' +
+        '<p class="ma-ecc-hero__cell-label">أعلى أولوية اليوم</p>' +
+        '<p class="ma-ecc-hero__cell-body">' +
         esc(
           ((home && home.attention_today) || {}).empty_message_ar ||
             "لا أمور تتطلب انتباهك الآن — CartFlow يتابع الحالات الروتينية."
         ) +
-        "</p>" +
-        "</div>";
+        "</p></div>";
     }
 
+    var insightText = "";
+    if (insight) {
+      insightText =
+        String(insight.observation_ar || insight.title_ar || "").trim() || "";
+    }
+    var insightBlock =
+      '<div class="ma-ecc-hero__cell ma-ecc-hero__cell--insight">' +
+      '<p class="ma-ecc-hero__cell-label">أحدث فهم مهم</p>' +
+      (insightText
+        ? '<p class="ma-ecc-hero__cell-title">' +
+          esc(insightText) +
+          "</p>" +
+          '<a class="ma-ecc-link-light" href="#ma-home-understanding">عرض طبقة المعرفة</a>'
+        : '<p class="ma-ecc-hero__cell-body">' +
+          esc(
+            ((home && home.store_understanding) || {}).empty_message_ar ||
+              "لا استنتاج جاهز بعد — نستمر في جمع نشاط المتجر."
+          ) +
+          "</p>") +
+      "</div>";
+
     return (
-      '<section class="ma-dh-section ma-dh-hero-wrap" aria-label="اليوم في متجرك">' +
-      '<div class="ma-dh-hero">' +
-      '<div class="ma-dh-hero__glow" aria-hidden="true"></div>' +
-      '<p class="ma-dh-hero__greet">' +
+      '<section class="ma-ecc-hero" aria-label="اليوم في متجرك">' +
+      '<div class="ma-ecc-hero__atmosphere" aria-hidden="true"></div>' +
+      '<div class="ma-ecc-hero__intro">' +
+      '<p class="ma-ecc-hero__greet">' +
       esc(greet) +
       "، " +
       esc(name) +
       (date ? " · " + esc(date) : "") +
       "</p>" +
-      '<h1 class="ma-dh-hero__title">اليوم في متجرك</h1>' +
-      '<div class="ma-dh-hero__block">' +
-      '<p class="ma-dh-hero__label">ملخص تنفيذي</p>' +
-      '<p class="ma-dh-hero__exec">' +
+      '<h1 class="ma-ecc-hero__title">اليوم في متجرك</h1>' +
+      '<div class="ma-ecc-hero__exec">' +
+      '<p class="ma-ecc-hero__exec-label">ملخص تنفيذي</p>' +
+      '<p class="ma-ecc-hero__exec-text">' +
       esc(exec) +
-      "</p>" +
-      "</div>" +
-      priorityHtml +
+      "</p></div></div>" +
+      '<div class="ma-ecc-hero__split">' +
+      priorityBlock +
+      insightBlock +
       "</div></section>"
     );
   }
 
-  function renderMetricGrid(summary, home) {
+  function metricCell(label, value, hint) {
+    var v = String(value == null ? "" : value).trim();
+    var empty = !v || v === EMPTY_VALUE;
+    return (
+      '<div class="ma-ecc-metric" role="group" aria-label="' +
+      esc(label) +
+      '">' +
+      '<p class="ma-ecc-metric__label">' +
+      esc(label) +
+      "</p>" +
+      '<p class="ma-ecc-metric__value' +
+      (empty ? " ma-ecc-metric__value--empty" : "") +
+      '">' +
+      esc(empty ? EMPTY_VALUE : v) +
+      "</p>" +
+      '<p class="ma-ecc-metric__hint">' +
+      esc(hint || (empty ? "لا بيانات كافية بعد" : "")) +
+      "</p></div>"
+    );
+  }
+
+  function renderMetrics(summary, home) {
     var revenue = String((summary && summary.merchant_kpi_revenue_fmt) || "").trim();
     var purchased = String((summary && summary.merchant_kpi_recovered_fmt) || "").trim();
     var understanding = (((home && home.store_understanding) || {}).items) || [];
@@ -214,30 +244,17 @@
     var returnedValue = "";
     var returnedHint = "لا بيانات كافية بعد";
 
-    function cell(label, valueHtml) {
-      return (
-        '<article class="ma-dh-card ma-dh-metric" aria-label="' +
-        esc(label) +
-        '">' +
-        '<p class="ma-dh-metric__label">' +
-        esc(label) +
-        "</p>" +
-        valueHtml +
-        "</article>"
-      );
-    }
-
     return (
-      '<section class="ma-dh-section" aria-labelledby="ma-dh-metrics-title">' +
-      '<header class="ma-dh-section__head">' +
-      '<h2 class="ma-dh-section__title" id="ma-dh-metrics-title">مؤشرات سريعة</h2>' +
-      '<p class="ma-dh-section__purpose">أرقام اليوم من بيانات متجرك — بدون تقدير.</p>' +
+      '<section class="ma-ecc-band" aria-labelledby="ma-ecc-metrics-title">' +
+      '<header class="ma-ecc-band__head">' +
+      '<h2 class="ma-ecc-band__title" id="ma-ecc-metrics-title">مؤشرات سريعة</h2>' +
+      '<p class="ma-ecc-band__purpose">أربعة مؤشرات تنفيذية فقط — من بيانات متجرك اليوم.</p>' +
       "</header>" +
-      '<div class="ma-dh-metric-grid">' +
-      cell("الإيرادات المستعادة", metricValueHtml(revenue, "اليوم · ريال")) +
-      cell("العملاء المشترون", metricValueHtml(purchased, "اليوم")) +
-      cell("العملاء العائدون", metricValueHtml(returnedValue, returnedHint)) +
-      cell("طبقة المعرفة", metricValueHtml(klValue, klHint)) +
+      '<div class="ma-ecc-metrics" role="list">' +
+      metricCell("الإيرادات المستعادة", revenue, revenue ? "اليوم · ريال" : "لا بيانات كافية بعد") +
+      metricCell("العملاء المشترون", purchased, purchased ? "اليوم" : "لا بيانات كافية بعد") +
+      metricCell("العملاء العائدون", returnedValue, returnedHint) +
+      metricCell("طبقة المعرفة", klValue, klHint) +
       "</div></section>"
     );
   }
@@ -246,20 +263,18 @@
     var att = (home && home.attention_today) || {};
     var items = att.items || [];
     var head =
-      '<header class="ma-dh-section__head">' +
-      '<h2 class="ma-dh-section__title" id="ma-dh-attention-title">' +
-      esc(att.title_ar || "ما يحتاج انتباهك") +
-      "</h2>" +
-      '<p class="ma-dh-section__purpose">الحالات التي تستحق تدخلك الآن.</p>' +
+      '<header class="ma-ecc-band__head">' +
+      '<h2 class="ma-ecc-band__title" id="ma-ecc-attention-title">مركز الانتباه</h2>' +
+      '<p class="ma-ecc-band__purpose">ما يستحق تدخلك الآن — كل بند يقود إلى إجراء.</p>' +
       "</header>";
 
     if (!items.length) {
       return (
-        '<section class="ma-dh-section" aria-labelledby="ma-dh-attention-title">' +
+        '<section class="ma-ecc-band ma-ecc-band--attention" aria-labelledby="ma-ecc-attention-title">' +
         head +
-        '<div class="ma-dh-card ma-dh-card--empty ma-dh-empty">' +
-        '<p class="ma-dh-empty__title">كل شيء هادئ</p>' +
-        '<p class="ma-dh-body">' +
+        '<div class="ma-ecc-calm">' +
+        '<p class="ma-ecc-calm__title">كل شيء تحت السيطرة</p>' +
+        '<p class="ma-ecc-copy">' +
         esc(
           att.empty_message_ar ||
             "لا أمور تتطلب انتباهك الآن — CartFlow يتابع الحالات الروتينية."
@@ -268,60 +283,70 @@
       );
     }
 
-    var stack = '<div class="ma-dh-attention-stack">';
+    var list = '<ol class="ma-ecc-attention">';
     items.forEach(function (item, idx) {
-      var sev = severityClass(item);
-      var cardMod =
-        sev === "critical"
-          ? " ma-dh-card--critical"
-          : sev === "attention"
-            ? " ma-dh-card--warning"
-            : " ma-dh-card--attention";
-      var badgeMod =
-        sev === "critical"
-          ? " ma-dh-badge--critical"
-          : sev === "attention"
-            ? " ma-dh-badge--attention"
-            : "";
-      var badgeText =
+      var tone = severityTone(item);
+      var badge =
         String(item.decision_class_label_ar || "").trim() ||
-        (sev === "critical" ? "حرج" : sev === "attention" ? "يحتاج انتباهك" : "مهم");
+        (tone === "critical"
+          ? "حرج"
+          : tone === "attention"
+            ? "يحتاج انتباهك"
+            : "مهم");
       var action = String(item.action_ar || "").trim();
-      stack +=
-        '<article class="ma-dh-card' +
-        cardMod +
+      if (!action && idx === 0) action = "عرض السلال";
+      list +=
+        '<li class="ma-ecc-attention__item ma-ecc-attention__item--' +
+        tone +
         '">' +
-        '<span class="ma-dh-badge' +
-        badgeMod +
+        '<div class="ma-ecc-attention__rail" aria-hidden="true">' +
+        '<span class="ma-ecc-attention__index">' +
+        (idx + 1) +
+        "</span></div>" +
+        '<div class="ma-ecc-attention__body">' +
+        '<span class="ma-ecc-chip ma-ecc-chip--' +
+        tone +
         '">' +
-        esc(badgeText) +
+        esc(badge) +
         "</span>" +
-        '<h3 class="ma-dh-headline">' +
+        '<h3 class="ma-ecc-attention__headline">' +
         esc(item.headline_ar || "—") +
         "</h3>" +
         (item.why_ar
-          ? '<p class="ma-dh-body">' + esc(item.why_ar) + "</p>"
+          ? '<p class="ma-ecc-copy">' + esc(item.why_ar) + "</p>"
           : "") +
         (action
-          ? '<a class="ma-dh-btn" href="#carts" role="button"' +
+          ? '<a class="ma-ecc-btn" href="#carts" role="button"' +
             goCartsOnclick() +
             ">" +
             esc(action) +
             "</a>"
-          : idx === 0
-            ? '<a class="ma-dh-btn" href="#carts" role="button"' +
-              goCartsOnclick() +
-              ">عرض السلال</a>"
-            : "") +
-        "</article>";
+          : "") +
+        "</div></li>";
     });
-    stack += "</div>";
+    list += "</ol>";
 
     return (
-      '<section class="ma-dh-section" aria-labelledby="ma-dh-attention-title">' +
+      '<section class="ma-ecc-band ma-ecc-band--attention" aria-labelledby="ma-ecc-attention-title">' +
       head +
-      stack +
+      list +
       "</section>"
+    );
+  }
+
+  function klStep(label, body, mod) {
+    return (
+      '<div class="ma-ecc-kl__step' +
+      (mod ? " " + mod : "") +
+      '">' +
+      '<div class="ma-ecc-kl__marker" aria-hidden="true"></div>' +
+      '<div class="ma-ecc-kl__step-body">' +
+      '<p class="ma-ecc-kl__step-label">' +
+      esc(label) +
+      "</p>" +
+      '<div class="ma-ecc-kl__step-content">' +
+      body +
+      "</div></div></div>"
     );
   }
 
@@ -329,18 +354,19 @@
     var section = (home && home.store_understanding) || {};
     var items = section.items || [];
     var head =
-      '<header class="ma-dh-section__head">' +
-      '<h2 class="ma-dh-section__title" id="ma-dh-knowledge-title">طبقة المعرفة</h2>' +
-      '<p class="ma-dh-section__purpose">ملاحظة · تردد · توصية · ثقة — من قرار المنظومة.</p>' +
+      '<header class="ma-ecc-band__head">' +
+      '<p class="ma-ecc-kicker">ما تعرفه CartFlow ولا يظهر في الأرقام</p>' +
+      '<h2 class="ma-ecc-band__title" id="ma-ecc-knowledge-title">طبقة المعرفة</h2>' +
+      '<p class="ma-ecc-band__purpose">ملاحظة → دليل → تفسير → توصية → ثقة</p>' +
       "</header>";
 
     if (!items.length) {
       return (
-        '<section class="ma-dh-section" id="ma-home-understanding" aria-labelledby="ma-dh-knowledge-title">' +
+        '<section class="ma-ecc-band ma-ecc-band--knowledge" id="ma-home-understanding" aria-labelledby="ma-ecc-knowledge-title">' +
         head +
-        '<div class="ma-dh-card ma-dh-card--elevated ma-dh-card--empty ma-dh-empty">' +
-        '<p class="ma-dh-empty__title">لا ملاحظات كافية بعد</p>' +
-        '<p class="ma-dh-body">' +
+        '<div class="ma-ecc-kl ma-ecc-kl--empty">' +
+        '<p class="ma-ecc-panel__title">لا ملاحظات كافية بعد</p>' +
+        '<p class="ma-ecc-copy">' +
         esc(
           section.empty_message_ar ||
             "لا توجد استنتاجات كافية بعد — استمر في جمع النشاط."
@@ -352,53 +378,76 @@
     var item = items[0];
     var observation =
       String(item.observation_ar || item.title_ar || "").trim() || "—";
-    var hesitation = String(item.impact_ar || "").trim();
-    var recommendation = String(item.action_ar || "").trim();
-    var conf = confidenceLabelAr(item.confidence);
-    var confClass = confidenceBadgeClass(item.confidence);
     var evidence = String(item.evidence_label_ar || "").trim();
+    var explanation = String(item.impact_ar || "").trim();
+    var recommendation = String(item.action_ar || "").trim();
+    var confTone = confidenceTone(item.confidence);
+    var conf = confidenceLabelAr(item.confidence);
+
+    var flow =
+      '<div class="ma-ecc-kl" role="list">' +
+      klStep(
+        "الملاحظة",
+        '<p class="ma-ecc-kl__observation">' + esc(observation) + "</p>",
+        "ma-ecc-kl__step--lead"
+      ) +
+      klStep(
+        "الدليل",
+        '<p class="ma-ecc-copy">' +
+          esc(evidence || "مصدر الدليل غير مكتمل بعد.") +
+          "</p>"
+      ) +
+      klStep(
+        "التفسير",
+        '<p class="ma-ecc-copy">' +
+          esc(explanation || "لا تفسير كافٍ بعد لسلوك العملاء.") +
+          "</p>"
+      ) +
+      klStep(
+        "التوصية",
+        recommendation
+          ? '<p class="ma-ecc-copy">' +
+              esc(recommendation) +
+              "</p>" +
+              '<a class="ma-ecc-btn ma-ecc-btn--on-kl" href="#carts" role="button"' +
+              goCartsOnclick() +
+              ">" +
+              esc(recommendation) +
+              "</a>"
+          : '<p class="ma-ecc-copy">لا توصية جاهزة بعد.</p>'
+      ) +
+      klStep(
+        "الثقة",
+        '<span class="ma-ecc-chip ma-ecc-chip--conf-' +
+          confTone +
+          '">' +
+          esc(conf) +
+          "</span>"
+      ) +
+      "</div>";
 
     return (
-      '<section class="ma-dh-section" id="ma-home-understanding" aria-labelledby="ma-dh-knowledge-title">' +
+      '<section class="ma-ecc-band ma-ecc-band--knowledge" id="ma-home-understanding" aria-labelledby="ma-ecc-knowledge-title">' +
       head +
-      '<div class="ma-dh-card ma-dh-card--elevated">' +
-      '<div class="ma-dh-kl-grid">' +
-      '<div class="ma-dh-kl-block ma-dh-kl-block--full">' +
-      '<p class="ma-dh-kl-block__label">أهم ملاحظة</p>' +
-      '<h3 class="ma-dh-headline">' +
-      esc(observation) +
-      "</h3>" +
-      (evidence
-        ? '<p class="ma-dh-meta">المصدر: ' + esc(evidence) + "</p>"
-        : "") +
-      "</div>" +
-      '<div class="ma-dh-kl-block">' +
-      '<p class="ma-dh-kl-block__label">سبب التردد</p>' +
-      '<p class="ma-dh-body">' +
-      esc(hesitation || "لا سبب تردد واضح بعد.") +
-      "</p></div>" +
-      '<div class="ma-dh-kl-block">' +
-      '<p class="ma-dh-kl-block__label">توصية واحدة</p>' +
-      '<p class="ma-dh-body">' +
-      esc(recommendation || "لا توصية جاهزة بعد.") +
+      flow +
+      "</section>"
+    );
+  }
+
+  function perfRow(label, value, detail) {
+    var v = String(value || "").trim();
+    return (
+      '<div class="ma-ecc-perf__row">' +
+      '<div class="ma-ecc-perf__text">' +
+      '<p class="ma-ecc-perf__label">' +
+      esc(label) +
       "</p>" +
-      (recommendation
-        ? '<a class="ma-dh-btn" href="#carts" role="button" style="margin-top:10px;"' +
-          goCartsOnclick() +
-          ">" +
-          esc(recommendation) +
-          "</a>"
-        : "") +
-      "</div>" +
-      '<div class="ma-dh-kl-block ma-dh-kl-block--full">' +
-      '<p class="ma-dh-kl-block__label">مستوى الثقة</p>' +
-      '<span class="ma-dh-badge ' +
-      esc(confClass) +
-      '">' +
-      esc(conf) +
-      "</span>" +
-      "</div>" +
-      "</div></div></section>"
+      '<p class="ma-ecc-perf__detail">' +
+      esc(detail) +
+      "</p></div>" +
+      '<p class="ma-ecc-perf__value">' +
+      esc(v || EMPTY_VALUE) +
+      "</p></div>"
     );
   }
 
@@ -413,114 +462,110 @@
           ? String(pctRaw).trim()
           : "";
 
-    function row(label, value, detail) {
-      var v = String(value || "").trim();
-      return (
-        '<article class="ma-dh-card ma-dh-perf-row">' +
-        '<p class="ma-dh-perf-row__label">' +
-        esc(label) +
-        "</p>" +
-        '<p class="ma-dh-perf-row__value">' +
-        esc(v || EMPTY_VALUE) +
-        "</p>" +
-        '<p class="ma-dh-perf-row__detail">' +
-        esc(detail) +
-        "</p></article>"
-      );
-    }
-
     return (
-      '<section class="ma-dh-section" aria-labelledby="ma-dh-perf-title">' +
-      '<header class="ma-dh-section__head">' +
-      '<h2 class="ma-dh-section__title" id="ma-dh-perf-title">ملخص الأداء</h2>' +
-      '<p class="ma-dh-section__purpose">تشغيل اليوم فقط — بدون تكرار مؤشرات الشبكة.</p>' +
+      '<section class="ma-ecc-band" aria-labelledby="ma-ecc-perf-title">' +
+      '<header class="ma-ecc-band__head">' +
+      '<h2 class="ma-ecc-band__title" id="ma-ecc-perf-title">ملخص الأداء</h2>' +
+      '<p class="ma-ecc-band__purpose">اتجاهات تشغيلية — بدون تكرار مؤشرات الشبكة.</p>' +
       "</header>" +
-      '<div class="ma-dh-perf-list">' +
-      row(
-        "سلال اليوم",
+      '<div class="ma-ecc-perf">' +
+      perfRow(
+        "اتجاه الاسترجاع",
         abandoned || EMPTY_VALUE,
         abandoned ? "سلال متروكة رُصدت اليوم" : "لا سلال متروكة اليوم بعد"
       ) +
-      row(
-        "رسائل واتساب",
-        wa || EMPTY_VALUE,
-        wa ? "سجلات إرسال اليوم" : "لا رسائل مُرسلة اليوم بعد"
-      ) +
-      row(
-        "معدل التحويل",
+      perfRow(
+        "اتجاه التحويل",
         pct !== "" ? pct + "٪" : EMPTY_VALUE,
         pct !== ""
           ? "مسترد مقابل متروك · اليوم"
           : "لا بيانات كافية لحساب النسبة"
+      ) +
+      perfRow(
+        "نشاط واتساب",
+        wa || EMPTY_VALUE,
+        wa ? "سجلات إرسال اليوم" : "لا رسائل مُرسلة اليوم بعد"
+      ) +
+      perfRow(
+        "الصحة التشغيلية",
+        abandoned || wa ? "نشط" : EMPTY_VALUE,
+        abandoned || wa
+          ? "إشارات تشغيل اليوم متاحة"
+          : "لا إشارات تشغيل كافية بعد"
       ) +
       "</div></section>"
     );
   }
 
   function renderTimeline(home) {
-    // No governed Home activity feed yet — honest empty state (never invent events).
+    // No governed Home activity feed yet — honest empty / while-away only (never invent).
     var whileAway = (((home && home.while_away) || {}).items) || [];
     var head =
-      '<header class="ma-dh-section__head">' +
-      '<h2 class="ma-dh-section__title" id="ma-dh-timeline-title">آخر النشاطات</h2>' +
-      '<p class="ma-dh-section__purpose">شراء · عودة · رسالة · رد · حدث مهم.</p>' +
+      '<header class="ma-ecc-band__head">' +
+      '<h2 class="ma-ecc-band__title" id="ma-ecc-timeline-title">آخر النشاطات</h2>' +
+      '<p class="ma-ecc-band__purpose">أحداث زمنية فقط — شراء · عودة · رسالة · رد · حدث مهم.</p>' +
       "</header>";
 
     if (!whileAway.length) {
       return (
-        '<section class="ma-dh-section" aria-labelledby="ma-dh-timeline-title">' +
+        '<section class="ma-ecc-band" aria-labelledby="ma-ecc-timeline-title">' +
         head +
-        '<div class="ma-dh-card ma-dh-card--empty ma-dh-empty">' +
-        '<p class="ma-dh-empty__title">لا نشاطات لعرضها بعد</p>' +
-        '<p class="ma-dh-body">ستظهر هنا أحداث المتجر الحقيقية عند توفرها.</p>' +
+        '<div class="ma-ecc-calm">' +
+        '<p class="ma-ecc-calm__title">لا نشاطات لعرضها بعد</p>' +
+        '<p class="ma-ecc-copy">ستظهر هنا أحداث المتجر الحقيقية عند توفرها.</p>' +
         "</div></section>"
       );
     }
 
-    // Surface governed while-away achievements as timeline rows (real headlines only).
-    var list = '<ul class="ma-dh-timeline">';
-    whileAway.slice(0, 5).forEach(function (item) {
+    var list = '<ul class="ma-ecc-timeline">';
+    whileAway.slice(0, 6).forEach(function (item, idx) {
       var headline = String((item && item.headline_ar) || "").trim();
       if (!headline) return;
       var detail = String((item && item.detail_ar) || "").trim();
       list +=
-        '<li class="ma-dh-timeline__item">' +
-        '<div class="ma-dh-timeline__main">' +
-        '<p class="ma-dh-headline" style="margin:0;font-size:var(--pds-type-body,14px);">' +
+        '<li class="ma-ecc-timeline__item">' +
+        '<div class="ma-ecc-timeline__spine" aria-hidden="true">' +
+        '<span class="ma-ecc-timeline__dot' +
+        (idx === 0 ? " ma-ecc-timeline__dot--now" : "") +
+        '"></span></div>' +
+        '<div class="ma-ecc-timeline__main">' +
+        '<p class="ma-ecc-timeline__headline">' +
         esc(headline) +
         "</p>" +
-        (detail ? '<p class="ma-dh-meta" style="margin:0;">' + esc(detail) + "</p>" : "") +
+        (detail
+          ? '<p class="ma-ecc-whisper">' + esc(detail) + "</p>"
+          : "") +
         "</div>" +
-        '<span class="ma-dh-badge">إنجاز</span>' +
+        '<span class="ma-ecc-chip ma-ecc-chip--neutral">إنجاز</span>' +
         "</li>";
     });
     list += "</ul>";
 
     return (
-      '<section class="ma-dh-section" aria-labelledby="ma-dh-timeline-title">' +
+      '<section class="ma-ecc-band" aria-labelledby="ma-ecc-timeline-title">' +
       head +
-      '<div class="ma-dh-card">' +
       list +
-      "</div></section>"
+      "</section>"
     );
   }
 
   function renderHome(summary) {
     var home = (summary && summary.merchant_home_experience_v1) || {};
     if (!home || home.ok === false) {
-      // Activation may omit ok; treat missing version as soft-empty still renderable.
       if (!home.greeting && !home.while_away && !home.attention_today) {
         home = {};
       }
     }
 
     return (
+      '<div class="ma-ecc">' +
       renderHero(home, summary) +
-      renderMetricGrid(summary, home) +
+      renderMetrics(summary, home) +
       renderAttention(home) +
       renderKnowledge(home) +
       renderPerformance(summary) +
-      renderTimeline(home)
+      renderTimeline(home) +
+      "</div>"
     );
   }
 
@@ -534,7 +579,7 @@
       "ma-home-experience--legacy",
       "ma-pe-v2-home"
     );
-    root.classList.add("ma-dash-home-v1", "ma-pe-v2-home");
+    root.classList.add("ma-dash-home-v1", "ma-dash-home-v3", "ma-pe-v2-home");
 
     if (!summary || summary.ok === false) {
       root.innerHTML = renderError(
@@ -545,7 +590,10 @@
 
     try {
       root.innerHTML = renderHome(summary);
-      if (summary.merchant_home_experience_v1 && summary.merchant_home_experience_v1.empty_calm) {
+      if (
+        summary.merchant_home_experience_v1 &&
+        summary.merchant_home_experience_v1.empty_calm
+      ) {
         root.classList.add("ma-home-experience--calm");
       }
       return true;
@@ -560,7 +608,11 @@
     if (!root) return;
     if (root.getAttribute("data-ma-dh-boot") === "1") return;
     root.setAttribute("data-ma-dh-boot", "1");
-    root.classList.add("ma-dash-home-v1", "ma-home-experience--loading");
+    root.classList.add(
+      "ma-dash-home-v1",
+      "ma-dash-home-v3",
+      "ma-home-experience--loading"
+    );
     root.innerHTML = renderLoading();
   }
 
