@@ -1,0 +1,29 @@
+{
+  "note": "Knowledge Layer rebuilt with now=2026-05-04T12:00:00Z (end of Small Reality window). Wall-clock Knowledge on the same DB returned cart_count=0 / purchase_count=0.",
+  "sim_now": {
+    "cart_count": 27,
+    "purchase_count": 18,
+    "hesitation_total": 17,
+    "insight_keys": [
+      "traffic_visitor_unavailable",
+      "conversion_funnel_gaps",
+      "conversion_cart_to_purchase",
+      "hesitation_top_reason",
+      "hesitation_distribution",
+      "recovery_activity_summary",
+      "recovery_bottleneck",
+      "store_health_overview",
+      "traffic_cart_demand_trend"
+    ]
+  },
+  "wall_clock": {
+    "cart_count": 0,
+    "purchase_count": 0
+  },
+  "merchant_store_scoping": {
+    "demo_store_id": 2,
+    "demo_carts": 27,
+    "signup_merchant_stores_carts": 0,
+    "note": "Dashboard after /signup binds to a new Store row, not demo — merchant UI shows empty while simulation data lives on demo."
+  }
+}

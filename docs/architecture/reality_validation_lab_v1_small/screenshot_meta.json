@@ -1,0 +1,10 @@
+{
+  "shots": [
+    "01_desktop_home.png",
+    "02_mobile_home.png",
+    "03_desktop_carts.png",
+    "04_mobile_carts.png"
+  ],
+  "base": "http://127.0.0.1:8777",
+  "email": "lab-shot-81c824d6@example.com"
+}

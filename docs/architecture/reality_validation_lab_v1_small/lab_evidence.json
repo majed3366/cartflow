@@ -1,0 +1,3666 @@
+{
+  "lab": "reality_validation_lab_v1",
+  "profile": "Small Reality",
+  "generated_at": "2026-07-15T10:56:05.177391+00:00",
+  "db_path": "C:\\Users\\Toshiba\\AppData\\Local\\Temp\\cartflow_reality_lab_v1_20260715.db",
+  "auth": {
+    "email": "reality-lab-7c2dc8d823@example.com",
+    "signup_status": 303,
+    "cookie_name": "cartflow_merchant_session"
+  },
+  "simulation": {
+    "simulation_run_id": "srs_0430adc995264cd5b7576dfdc10649f0",
+    "plan_summary": {
+      "simulation_run_id": "srs_0430adc995264cd5b7576dfdc10649f0",
+      "seed": 20260715,
+      "scale_profile": "small_reality_lab_v1",
+      "duration_days": 3,
+      "event_count": 250,
+      "supported_count": 108,
+      "unsupported_count": 116,
+      "customer_count": 27,
+      "session_count": 27,
+      "product_count": 7,
+      "expected_event_counts": {
+        "session_started": 27,
+        "page_viewed": 27,
+        "product_viewed": 27,
+        "scroll_depth_reached": 13,
+        "dwell_time_recorded": 14,
+        "cart_state_sync": 27,
+        "cart_abandoned": 23,
+        "whatsapp_scheduled": 13,
+        "whatsapp_sent_mock": 13,
+        "hesitation_reason_selected": 17,
+        "phone_submitted": 12,
+        "purchase_created": 10,
+        "widget_opened": 4,
+        "widget_ignored": 4,
+        "returned_to_site": 13,
+        "passive_return": 6
+      },
+      "scenario_versions": [
+        {
+          "scenario_id": "S01_normal_store_baseline",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S01_normal_store_baseline@v1.r1",
+          "planner_key": "baseline",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S03_shipping_cost_hesitation",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S03_shipping_cost_hesitation@v1.r1",
+          "planner_key": "shipping_hesitation",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S04_product_high_atc_low_purchase",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S04_product_high_atc_low_purchase@v1.r1",
+          "planner_key": "product_low_conv",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S05_wa_return_without_purchase",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S05_wa_return_without_purchase@v1.r1",
+          "planner_key": "wa_return_no_purchase",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S06_wa_success",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S06_wa_success@v1.r1",
+          "planner_key": "wa_success",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S09_widget_opened_ignored",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S09_widget_opened_ignored@v1.r1",
+          "planner_key": "widget_ignore",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S10_widget_reason_capture",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S10_widget_reason_capture@v1.r1",
+          "planner_key": "reason_mix",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S11_ignore_all_recovery",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S11_ignore_all_recovery@v1.r1",
+          "planner_key": "ignore_all",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S12_multi_return_customer",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S12_multi_return_customer@v1.r1",
+          "planner_key": "multi_return",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S13_organic_purchase",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S13_organic_purchase@v1.r1",
+          "planner_key": "organic_purchase",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S14_ambiguous_influence",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S14_ambiguous_influence@v1.r1",
+          "planner_key": "ambiguous_influence",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S15_vip_customer",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S15_vip_customer@v1.r1",
+          "planner_key": "vip",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S16_insufficient_data",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S16_insufficient_data@v1.r1",
+          "planner_key": "insufficient",
+          "phase3_eligible": true
+        }
+      ],
+      "warnings": []
+    },
+    "reality_score": {
+      "overall": 73.8,
+      "dimensions": {
+        "customer_diversity": 80.0,
+        "traffic_realism": 80.0,
+        "purchase_realism": 76.0,
+        "product_realism": 72.0,
+        "recovery_realism": 90.0,
+        "knowledge_realism": 80.0,
+        "timeline_realism": 50.0,
+        "session_realism": 55.0,
+        "behaviour_realism": 85.0,
+        "execution_fidelity": 70.0
+      },
+      "internal_only": true,
+      "merchant_facing": false,
+      "sample": {
+        "events": 66,
+        "customers": 6,
+        "sessions": 6,
+        "products": 4
+      }
+    },
+    "manifest": {
+      "simulation_run_id": "srs_0430adc995264cd5b7576dfdc10649f0",
+      "seed": 20260715,
+      "scenario_ids": [
+        "S01_normal_store_baseline",
+        "S03_shipping_cost_hesitation",
+        "S04_product_high_atc_low_purchase",
+        "S05_wa_return_without_purchase",
+        "S06_wa_success",
+        "S09_widget_opened_ignored",
+        "S10_widget_reason_capture",
+        "S11_ignore_all_recovery",
+        "S12_multi_return_customer",
+        "S13_organic_purchase",
+        "S14_ambiguous_influence",
+        "S15_vip_customer",
+        "S16_insufficient_data"
+      ],
+      "scenario_versions": [
+        {
+          "scenario_id": "S01_normal_store_baseline",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S01_normal_store_baseline@v1.r1",
+          "planner_key": "baseline",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S03_shipping_cost_hesitation",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S03_shipping_cost_hesitation@v1.r1",
+          "planner_key": "shipping_hesitation",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S04_product_high_atc_low_purchase",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S04_product_high_atc_low_purchase@v1.r1",
+          "planner_key": "product_low_conv",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S05_wa_return_without_purchase",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S05_wa_return_without_purchase@v1.r1",
+          "planner_key": "wa_return_no_purchase",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S06_wa_success",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S06_wa_success@v1.r1",
+          "planner_key": "wa_success",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S09_widget_opened_ignored",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S09_widget_opened_ignored@v1.r1",
+          "planner_key": "widget_ignore",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S10_widget_reason_capture",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S10_widget_reason_capture@v1.r1",
+          "planner_key": "reason_mix",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S11_ignore_all_recovery",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S11_ignore_all_recovery@v1.r1",
+          "planner_key": "ignore_all",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S12_multi_return_customer",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S12_multi_return_customer@v1.r1",
+          "planner_key": "multi_return",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S13_organic_purchase",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S13_organic_purchase@v1.r1",
+          "planner_key": "organic_purchase",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S14_ambiguous_influence",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S14_ambiguous_influence@v1.r1",
+          "planner_key": "ambiguous_influence",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S15_vip_customer",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S15_vip_customer@v1.r1",
+          "planner_key": "vip",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S16_insufficient_data",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S16_insufficient_data@v1.r1",
+          "planner_key": "insufficient",
+          "phase3_eligible": true
+        }
+      ],
+      "commit_hash": "a82ba3c762d3b44688247ed94b332f52b3aade31",
+      "platform_version": "store_reality_simulator_v1_phase3",
+      "start_date": "2026-05-01",
+      "end_date": "2026-05-03",
+      "clock_mode": "SimulationClock",
+      "products": [
+        {
+          "key": "watch_band",
+          "id": "demo_watch_band",
+          "name": "Raven — حزام جلد للساعة",
+          "price": 85.0,
+          "category": "إكسسوارات",
+          "sku": "DEMO-WATCH-BAND"
+        },
+        {
+          "key": "perfume",
+          "id": "demo_perfume",
+          "name": "Amber Oud — عطر مركز",
+          "price": 289.0,
+          "category": "عطور",
+          "sku": "DEMO-PERFUME"
+        },
+        {
+          "key": "charger",
+          "id": "demo_charger",
+          "name": "Nano 20W — رأس شحن سريع USB‑PD",
+          "price": 75.0,
+          "category": "إلكترونيات",
+          "sku": "DEMO-CHARGER"
+        },
+        {
+          "key": "hp_air",
+          "id": "demo_hp_air",
+          "name": "TrueSound Air — سماعة خفيفة",
+          "price": 119.0,
+          "category": "إلكترونيات",
+          "sku": "DEMO-HP-AIR"
+        }
+      ],
+      "customers": [
+        "srs_cust_2d018a0140ac",
+        "srs_cust_96751f64e5b8",
+        "srs_cust_2de27f1f795c",
+        "srs_cust_10a3417aab53",
+        "srs_cust_66dc5da14d93",
+        "srs_cust_1fc601e2f0a1"
+      ],
+      "sessions": [
+        "srs_sess_0af09ca23d51",
+        "srs_sess_10011c834ad5",
+        "srs_sess_502c48a1b590",
+        "srs_sess_3e9daee30b9a",
+        "srs_sess_fdea3d91948d",
+        "srs_sess_13ff91018943"
+      ],
+      "expected_events": {
+        "session_started": 6,
+        "page_viewed": 6,
+        "product_viewed": 6,
+        "scroll_depth_reached": 3,
+        "dwell_time_recorded": 5,
+        "cart_state_sync": 6,
+        "cart_abandoned": 6,
+        "whatsapp_scheduled": 5,
+        "whatsapp_sent_mock": 5,
+        "hesitation_reason_selected": 4,
+        "phone_submitted": 4,
+        "purchase_created": 3,
+        "returned_to_site": 3,
+        "passive_return": 2,
+        "widget_opened": 1,
+        "widget_ignored": 1
+      },
+      "expected_event_total": 66,
+      "configuration": {
+        "store_slug": "demo",
+        "scenario_ids": [
+          "S01_normal_store_baseline",
+          "S03_shipping_cost_hesitation",
+          "S04_product_high_atc_low_purchase",
+          "S05_wa_return_without_purchase",
+          "S06_wa_success",
+          "S09_widget_opened_ignored",
+          "S10_widget_reason_capture",
+          "S11_ignore_all_recovery",
+          "S12_multi_return_customer",
+          "S13_organic_purchase",
+          "S14_ambiguous_influence",
+          "S15_vip_customer",
+          "S16_insufficient_data"
+        ],
+        "seed": 20260715,
+        "start_date": "2026-05-01",
+        "duration_days": 3,
+        "scale": 1.0,
+        "mode": "execute",
+        "batch_size": 25,
+        "max_events_per_job": 500,
+        "metadata": {
+          "lab": "reality_validation_lab_v1",
+          "lab_profile": "small_reality_lab_v1"
+        }
+      },
+      "execution_time_ms": 66855.86840007454,
+      "reality_score": {
+        "overall": 73.8,
+        "dimensions": {
+          "customer_diversity": 80.0,
+          "traffic_realism": 80.0,
+          "purchase_realism": 76.0,
+          "product_realism": 72.0,
+          "recovery_realism": 90.0,
+          "knowledge_realism": 80.0,
+          "timeline_realism": 50.0,
+          "session_realism": 55.0,
+          "behaviour_realism": 85.0,
+          "execution_fidelity": 70.0
+        },
+        "internal_only": true,
+        "merchant_facing": false,
+        "sample": {
+          "events": 66,
+          "customers": 6,
+          "sessions": 6,
+          "products": 4
+        }
+      },
+      "warnings": [],
+      "known_limitations": [
+        "Storefront chrome events (page/scroll/dwell/widget_open) are unsupported markers",
+        "WhatsApp uses simulation-safe mock path only — no real provider calls",
+        "Visitor traffic metrics may be unavailable to Knowledge Layer",
+        "Ingress uses service-boundary writers under SimulationClock (not merchant request path)"
+      ],
+      "generated_at": "2026-07-15T10:53:02.530755+00:00",
+      "replay": {
+        "seed": 20260715,
+        "scenario_ids": [
+          "S01_normal_store_baseline",
+          "S03_shipping_cost_hesitation",
+          "S04_product_high_atc_low_purchase",
+          "S05_wa_return_without_purchase",
+          "S06_wa_success",
+          "S09_widget_opened_ignored",
+          "S10_widget_reason_capture",
+          "S11_ignore_all_recovery",
+          "S12_multi_return_customer",
+          "S13_organic_purchase",
+          "S14_ambiguous_influence",
+          "S15_vip_customer",
+          "S16_insufficient_data"
+        ],
+        "scenario_versions": [
+          {
+            "scenario_id": "S01_normal_store_baseline",
+            "scenario_version": "v1",
+            "scenario_revision": 1,
+            "versioned_id": "S01_normal_store_baseline@v1.r1",
+            "planner_key": "baseline",
+            "phase3_eligible": true
+          },
+          {
+            "scenario_id": "S03_shipping_cost_hesitation",
+            "scenario_version": "v1",
+            "scenario_revision": 1,
+            "versioned_id": "S03_shipping_cost_hesitation@v1.r1",
+            "planner_key": "shipping_hesitation",
+            "phase3_eligible": true
+          },
+          {
+            "scenario_id": "S04_product_high_atc_low_purchase",
+            "scenario_version": "v1",
+            "scenario_revision": 1,
+            "versioned_id": "S04_product_high_atc_low_purchase@v1.r1",
+            "planner_key": "product_low_conv",
+            "phase3_eligible": true
+          },
+          {
+            "scenario_id": "S05_wa_return_without_purchase",
+            "scenario_version": "v1",
+            "scenario_revision": 1,
+            "versioned_id": "S05_wa_return_without_purchase@v1.r1",
+            "planner_key": "wa_return_no_purchase",
+            "phase3_eligible": true
+          },
+          {
+            "scenario_id": "S06_wa_success",
+            "scenario_version": "v1",
+            "scenario_revision": 1,
+            "versioned_id": "S06_wa_success@v1.r1",
+            "planner_key": "wa_success",
+            "phase3_eligible": true
+          },
+          {
+            "scenario_id": "S09_widget_opened_ignored",
+            "scenario_version": "v1",
+            "scenario_revision": 1,
+            "versioned_id": "S09_widget_opened_ignored@v1.r1",
+            "planner_key": "widget_ignore",
+            "phase3_eligible": true
+          },
+          {
+            "scenario_id": "S10_widget_reason_capture",
+            "scenario_version": "v1",
+            "scenario_revision": 1,
+            "versioned_id": "S10_widget_reason_capture@v1.r1",
+            "planner_key": "reason_mix",
+            "phase3_eligible": true
+          },
+          {
+            "scenario_id": "S11_ignore_all_recovery",
+            "scenario_version": "v1",
+            "scenario_revision": 1,
+            "versioned_id": "S11_ignore_all_recovery@v1.r1",
+            "planner_key": "ignore_all",
+            "phase3_eligible": true
+          },
+          {
+            "scenario_id": "S12_multi_return_customer",
+            "scenario_version": "v1",
+            "scenario_revision": 1,
+            "versioned_id": "S12_multi_return_customer@v1.r1",
+            "planner_key": "multi_return",
+            "phase3_eligible": true
+          },
+          {
+            "scenario_id": "S13_organic_purchase",
+            "scenario_version": "v1",
+            "scenario_revision": 1,
+            "versioned_id": "S13_organic_purchase@v1.r1",
+            "planner_key": "organic_purchase",
+            "phase3_eligible": true
+          },
+          {
+            "scenario_id": "S14_ambiguous_influence",
+            "scenario_version": "v1",
+            "scenario_revision": 1,
+            "versioned_id": "S14_ambiguous_influence@v1.r1",
+            "planner_key": "ambiguous_influence",
+            "phase3_eligible": true
+          },
+          {
+            "scenario_id": "S15_vip_customer",
+            "scenario_version": "v1",
+            "scenario_revision": 1,
+            "versioned_id": "S15_vip_customer@v1.r1",
+            "planner_key": "vip",
+            "phase3_eligible": true
+          },
+          {
+            "scenario_id": "S16_insufficient_data",
+            "scenario_version": "v1",
+            "scenario_revision": 1,
+            "versioned_id": "S16_insufficient_data@v1.r1",
+            "planner_key": "insufficient",
+            "phase3_eligible": true
+          }
+        ],
+        "start_date": "2026-05-01",
+        "duration_days": 3,
+        "scale_profile": "small",
+        "commit_hash": "a82ba3c762d3b44688247ed94b332f52b3aade31"
+      }
+    },
+    "execute": {
+      "status": "completed",
+      "pause_reason": null,
+      "batches_done": 13,
+      "accounting": {
+        "planned": 0,
+        "persisted": 27,
+        "processed": 134,
+        "failed": 0,
+        "unsupported": 116,
+        "duplicate": 0,
+        "replayed": 0,
+        "suppressed": 13,
+        "rejected": 0
+      },
+      "performance": {
+        "available": true,
+        "pool_checked_out": null,
+        "pool_exhausted": false,
+        "pool_impl": "NullPool",
+        "memory_mb": null,
+        "batch_wall_ms": 7040.384000167251,
+        "failure_rate": 0.0,
+        "consecutive_failures": 0,
+        "notes": [
+          "memory_probe_unavailable"
+        ]
+      },
+      "validation_report": {
+        "reality_score": {
+          "overall": 73.8,
+          "dimensions": {
+            "customer_diversity": 80.0,
+            "traffic_realism": 80.0,
+            "purchase_realism": 76.0,
+            "product_realism": 72.0,
+            "recovery_realism": 90.0,
+            "knowledge_realism": 80.0,
+            "timeline_realism": 50.0,
+            "session_realism": 55.0,
+            "behaviour_realism": 85.0,
+            "execution_fidelity": 70.0
+          },
+          "internal_only": true,
+          "merchant_facing": false,
+          "sample": {
+            "events": 66,
+            "customers": 6,
+            "sessions": 6,
+            "products": 4
+          }
+        },
+        "performance_report": {
+          "last_snapshot": {
+            "available": true,
+            "pool_checked_out": null,
+            "pool_exhausted": false,
+            "pool_impl": "NullPool",
+            "memory_mb": null,
+            "batch_wall_ms": 7040.384000167251,
+            "failure_rate": 0.0,
+            "consecutive_failures": 0,
+            "notes": [
+              "memory_probe_unavailable"
+            ]
+          },
+          "execution_time_ms": 66855.86840007454
+        },
+        "knowledge_report": {
+          "note": "Knowledge is derived by CartFlow; simulator does not inject insights",
+          "hesitation_events_planned": 4,
+          "purchase_events_planned": 3
+        },
+        "dashboard_review": {
+          "note": "Rebuild demo snapshots after execute for merchant surfaces",
+          "hot_path_pollution": "cold ledger used for planned events"
+        },
+        "timeline_review": {
+          "whatsapp_scheduled_planned": 5,
+          "open_schedules_after_run": 3
+        },
+        "purchase_truth_review": {
+          "planned_purchases": 3,
+          "purchase_truth_rows": 3,
+          "mismatch": false
+        },
+        "movement_review": {
+          "returns_planned": 3,
+          "passive_returns_planned": 2
+        },
+        "recovery_review": {
+          "reasons_planned": 4,
+          "wa_mock_planned": 5,
+          "carts_touched": 6
+        },
+        "data_growth_report": {
+          "planned_events": 66,
+          "ledger_cold": true,
+          "scale_profile": "small"
+        },
+        "query_cost_report": {
+          "note": "Batch-bounded execution; no merchant request-path work",
+          "batches_bounded": true
+        },
+        "memory_report": {
+          "available": true,
+          "pool_checked_out": null,
+          "pool_exhausted": false,
+          "pool_impl": "NullPool",
+          "memory_mb": null,
+          "batch_wall_ms": 7040.384000167251,
+          "failure_rate": 0.0,
+          "consecutive_failures": 0,
+          "notes": [
+            "memory_probe_unavailable"
+          ]
+        },
+        "accounting_reconcile": {
+          "ok": true,
+          "planned": 0,
+          "accounted_terminal": 143,
+          "delta": -143,
+          "note": "Phase 2: accounting structure only; full reconciliation after Phase 3 event generation",
+          "side_buckets": {
+            "processed": 134,
+            "duplicate": 0,
+            "replayed": 0,
+            "suppressed": 13
+          }
+        },
+        "accounting": {
+          "planned": 0,
+          "persisted": 27,
+          "processed": 134,
+          "failed": 0,
+          "unsupported": 116,
+          "duplicate": 0,
+          "replayed": 0,
+          "suppressed": 13,
+          "rejected": 0
+        },
+        "architectural_findings": [
+          "Derived Knowledge/Dashboard/Attribution were not injected — platform must derive",
+          "Unsupported storefront markers were accounted without fabricating durable analytics"
+        ],
+        "weaknesses": [],
+        "unexpected_behaviour": [],
+        "recommended_improvements": [
+          "Extend HTTP ingress mode for full cart-event parity when reviewing large runs",
+          "Add more scenario planner families as product surfaces mature",
+          "Keep progressive scale: small → medium → large before full/stress"
+        ],
+        "manifest_present": true,
+        "product_logic_changed": false
+      }
+    },
+    "wall_ms": 77957.7123997733,
+    "profile": {
+      "profile_id": "small_reality_lab_v1",
+      "duration_days": 3,
+      "journeys_per_day": 9.0,
+      "max_events_per_run": 500,
+      "batch_size": 25,
+      "pause_ms_between_batches": 20,
+      "description": "Reality Validation Lab V1 — Small Reality (3 days)"
+    }
+  },
+  "evidence": {
+    "api": {
+      "summary": {
+        "status": 200,
+        "body": {
+          "ok": "True",
+          "merchant_ar_date_header": "الأربعاء، 15 7 2026",
+          "wa_badge_ar": "تجريبي",
+          "wa_state_key": "sandbox",
+          "merchant_kpi_abandoned_fmt": "0",
+          "merchant_kpi_recovered_fmt": "0",
+          "merchant_kpi_wa_sent_fmt": "0",
+          "merchant_kpi_revenue_fmt": "0",
+          "merchant_kpi_recovered_pct_vs_abandoned": "0.0",
+          "merchant_kpi_wa_sub_ar": "سجلات إرسال اليوم",
+          "merchant_reason_rows_week": [],
+          "merchant_reason_insight_ar": "لا توجد بيانات كافية عن أسباب التردد لهذه الفترة بعد.",
+          "merchant_reason_rows_month": [],
+          "merchant_reason_recommendations_ar": [
+            "لا توجد بيانات كافية عن أسباب التردد لهذه الفترة بعد."
+          ],
+          "merchant_month_abandoned_fmt": "0",
+          "merchant_month_recovered_fmt": "0",
+          "merchant_month_recovery_pct_fmt": "0.0",
+          "merchant_month_revenue_fmt": "0",
+          "merchant_nav_badge_abandoned": "0",
+          "merchant_store_cart_counts": {
+            "active_total": "0",
+            "waiting_total": "0",
+            "sent_total": "0",
+            "engaged_total": "0",
+            "completed_total": "0",
+            "archived_total": "0",
+            "no_phone_total": "0"
+          },
+          "merchant_counter_health": {
+            "counter_source": "canonical",
+            "counter_generated_at": "2026-07-15T10:53:05.251435+00:00",
+            "counter_snapshot_stale": "False",
+            "counter_query_scope": "store_total",
+            "counter_parity_version": "v1",
+            "partial": "False",
+            "candidate_rows": "0",
+            "groups_scanned": "0",
+            "row_cap": "2500",
+            "max_pick": "2500"
+          },
+          "merchant_nav_badge_followup": "0",
+          "merchant_nav_badge_vip": "0",
+          "merchant_setup_experience": {
+            "show_card": "True",
+            "card_title_ar": "متجرك قريب من التشغيل الكامل",
+            "setup_state_label_ar": "قريب من التشغيل",
+            "readiness_percent": "20",
+            "remaining_setup_count": "4",
+            "outcome_summary_ar": "تظهر سلة في قائمة السلال بعد التجربة.",
+            "next_step_ar": "الخطوة الحالية: تجربة الودجيت (إثبات التجربة) — تسجّل أول سلة من متجر الاختبار",
+            "action_href": "/demo/store",
+            "steps": [
+              {
+                "step_id": "sandbox_account",
+                "order": "1",
+                "phase": "sandbox",
+                "title_ar": "الحساب",
+                "outcome_ar": "حسابك جاهز للوصول إلى لوحة التحكم",
+                "proof_ar": "تم إنشاء المتجر وتسجيل الدخول.",
+                "action_href": "/dashboard",
+                "action_label_ar": "الرئيسية",
+                "is_complete": "True",
+                "is_current": "False",
+                "locked": "False",
+                "repeatable_demo": "False",
+                "completed_badge_ar": "",
+                "retry_action_label_ar": "",
+                "start_action_label_ar": ""
+              },
+              {
+                "step_id": "sandbox_test_widget",
+                "order": "2",
+                "phase": "sandbox",
+                "title_ar": "تجربة الودجيت (إثبات التجربة)",
+                "outcome_ar": "تسجّل أول سلة من متجر الاختبار",
+                "proof_ar": "تظهر سلة في قائمة السلال بعد التجربة.",
+                "action_href": "/demo/store",
+                "action_label_ar": "فتح متجر الاختبار",
+                "is_complete": "False",
+                "is_current": "True",
+                "locked": "False",
+                "repeatable_demo": "True",
+                "completed_badge_ar": "تمت التجربة ✅",
+                "retry_action_label_ar": "إعادة التجربة",
+                "start_action_label_ar": "ابدأ التجربة"
+              },
+              {
+                "step_id": "sandbox_first_recovery",
+                "order": "3",
+                "phase": "sandbox",
+                "title_ar": "اختبار أول استرجاع",
+                "outcome_ar": "جدولة وإرسال أول رسالة تجريبية",
+                "proof_ar": "حالة «تم إرسال رسالة» أو جدولة في السلة.",
+                "action_href": "/demo/store",
+                "action_label_ar": "متابعة التجربة",
+                "is_complete": "False",
+                "is_current": "False",
+                "locked": "False",
+                "repeatable_demo": "True",
+                "completed_badge_ar": "تمت التجربة ✅",
+                "retry_action_label_ar": "إعادة التجربة",
+                "start_action_label_ar": "ابدأ التجربة"
+              },
+              {
+                "step_id": "sandbox_view_carts",
+                "order": "4",
+                "phase": "sandbox",
+                "title_ar": "عرض السلال والشرح",
+                "outcome_ar": "افهم الفرق بين «إرسال رسالة» و«تم استردادها»",
+                "proof_ar": "الرسالة التجريبية لا تعني شراءاً فورياً — الاسترداد يظهر عند شراء حقيقي.",
+                "action_href": "/dashboard#carts",
+                "action_label_ar": "عرض السلال",
+                "is_complete": "False",
+                "is_current": "False",
+                "locked": "False",
+                "repeatable_demo": "True",
+                "completed_badge_ar": "تمت التجربة ✅",
+                "retry_action_label_ar": "إعادة التجربة",
+                "start_action_label_ar": "ابدأ التجربة"
+              },
+              {
+                "step_id": "sandbox_verified",
+                "order": "5",
+                "phase": "sandbox",
+                "title_ar": "تجربة التشغيل مُثبتة",
+                "outcome_ar": "إثبات التجربة مكتمل — جاهز لإعداد الإنتاج",
+                "proof_ar": "أول رسالة استرجاع تجريبية سُجّلت بنجاح.",
+                "action_href": "/dashboard#carts",
+                "action_label_ar": "مراجعة الإثبات",
+                "is_complete": "False",
+                "is_current": "False",
+                "locked": "False",
+                "repeatable_demo": "True",
+                "completed_badge_ar": "تمت التجربة ✅",
+                "retry_action_label_ar": "إعادة التجربة",
+                "start_action_label_ar": "ابدأ التجربة"
+              },
+              {
+                "step_id": "prod_oauth",
+                "order": "6",
+                "phase": "production",
+                "title_ar": "ربط المتجر",
+                "outcome_ar": "مزامنة الطلبات مع منصة متجرك",
+                "proof_ar": "يظهر «متجر مربوط» في إعدادات الحساب.",
+                "action_href": "/dashboard#settings",
+                "action_label_ar": "ربط المتجر",
+                "is_complete": "False",
+                "is_current": "False",
+                "locked": "True",
+                "repeatable_demo": "False",
+                "completed_badge_ar": "",
+                "retry_action_label_ar": "",
+                "start_action_label_ar": ""
+              },
+              {
+                "step_id": "prod_whatsapp",
+                "order": "7",
+                "phase": "production",
+                "title_ar": "إعداد واتساب",
+                "outcome_ar": "رقم المتجر وتفعيل الاسترجاع عبر واتساب",
+                "proof_ar": "رقم واتساب محفوظ والاسترجاع مفعّل في الإعدادات.",
+                "action_href": "/dashboard#whatsapp",
+                "action_label_ar": "إعداد واتساب",
+                "is_complete": "False",
+                "is_current": "False",
+                "locked": "True",
+                "repeatable_demo": "False",
+                "completed_badge_ar": "",
+                "retry_action_label_ar": "",
+                "start_action_label_ar": ""
+              },
+              {
+                "step_id": "prod_templates",
+                "order": "8",
+                "phase": "production",
+                "title_ar": "قوالب الرسائل",
+                "outcome_ar": "نصوص أسباب التردد جاهزة للإرسال",
+                "proof_ar": "قوالب غير فارغة — لا يُتخطى الإرسال لسبب قالب.",
+                "action_href": "/dashboard#whatsapp",
+                "action_label_ar": "تحرير القوالب",
+                "is_complete": "False",
+                "is_current": "False",
+                "locked": "True",
+                "repeatable_demo": "False",
+                "completed_badge_ar": "",
+                "retry_action_label_ar": "",
+                "start_action_label_ar": ""
+              },
+              {
+                "step_id": "prod_live_widget",
+                "order": "9",
+                "phase": "production",
+                "title_ar": "الودجيت على متجرك الحقيقي",
+                "outcome_ar": "لصق الشيفرة في قالب زد أو موقعك",
+                "proof_ar": "الودجيت مُثبت على واجهة المتجر الفعلية.",
+                "action_href": "/dashboard#widget",
+                "action_label_ar": "إعداد الودجيت",
+                "is_complete": "False",
+                "is_current": "False",
+                "locked": "True",
+                "repeatable_demo": "False",
+                "completed_badge_ar": "",
+                "retry_action_label_ar": "",
+                "start_action_label_ar": ""
+              }
+            ],
+            "merchant_understands_in_30s": "True",
+            "unified_p0": "True",
+            "setup_mode": "True",
+            "sandbox_verified": "False",
+            "production_unlocked": "False",
+            "card_lead_ar": "اتبع الخطوة التالية بالترتيب — إعداد الإنتاج يُفتح بعد إثبات التجربة.",
+            "current_step_ar": "تجربة الودجيت (إثبات التجربة)",
+            "current_outcome_ar": "تسجّل أول سلة من متجر الاختبار",
+            "proof_ar": "تظهر سلة في قائمة السلال بعد التجربة.",
+            "action_label_ar": "ابدأ التجربة",
+            "delay_hint_ar": "",
+            "test_store_url": "/demo/store",
+            "completed_steps": "1",
+            "total_steps": "5",
+            "onboarding_complete": "False",
+            "first_recovery_ready": "False",
+            "celebration_message_ar": "",
+            "merchant_store_display_name": "متجر واقع صغير",
+            "MERCHANT_SETUP_RENDER_BUILD": "ui-setup-v8j-lifecycle-e2e-v1",
+            "activation_journey_v2": {
+              "version": "2",
+              "journey_title_ar": "تفعيل المتجر",
+              "progress_percent": "17",
+              "completed_steps": "1",
+              "total_steps": "6",
+              "progress_label_ar": "1 / 6 خطوات مكتملة",
+              "onboarding_complete": "False",
+              "show_journey": "True",
+              "current_step_id": "widget_test",
+              "steps": [
+                {
+                  "step_id": "account",
+                  "order": "1",
+                  "title_ar": "تم إنشاء الحساب",
+                  "why_ar": "حسابك يفتح لوحة التحكم ومسار تفعيل المتجر.",
+                  "action_href": "/dashboard#home",
+                  "action_label_ar": "الرئيسية",
+                  "status": "done",
+                  "is_complete": "True"
+                },
+                {
+                  "step_id": "widget_test",
+                  "order": "2",
+                  "title_ar": "تجربة الودجيت",
+                  "why_ar": "CartFlow يحتاج أول سلة ليفهم سبب تردد العميل.",
+                  "action_href": "/demo/store",
+                  "action_label_ar": "فتح متجر الاختبار",
+                  "status": "current",
+                  "is_complete": "False"
+                },
+                {
+                  "step_id": "connect_store",
+                  "order": "3",
+                  "title_ar": "ربط المتجر",
+                  "why_ar": "CartFlow يحتاج الوصول لنشاط السلال في متجرك.",
+                  "action_href": "/dashboard#settings",
+                  "action_label_ar": "ربط المتجر",
+                  "status": "locked",
+                  "is_complete": "False"
+                },
+                {
+                  "step_id": "configure_whatsapp",
+                  "order": "4",
+                  "title_ar": "إعداد واتساب",
+                  "why_ar": "لإرسال رسائل المتابعة للعملاء عند ترك السلة.",
+                  "action_href": "/dashboard#whatsapp",
+                  "action_label_ar": "إعداد واتساب",
+                  "status": "locked",
+                  "is_complete": "False"
+                },
+                {
+                  "step_id": "review_messages",
+                  "order": "5",
+                  "title_ar": "مراجعة رسائل الاسترجاع",
+                  "why_ar": "تخصيص ما يصل للعميل حسب سبب التردد.",
+                  "action_href": "/dashboard#trigger-templates",
+                  "action_label_ar": "مراجعة الرسائل",
+                  "status": "locked",
+                  "is_complete": "False"
+                },
+                {
+                  "step_id": "ready_for_launch",
+                  "order": "6",
+                  "title_ar": "جاهز للتشغيل",
+                  "why_ar": "CartFlow يراقب السلال المهجورة ويشرح كل خطوة لك.",
+                  "action_href": "/dashboard#widget",
+                  "action_label_ar": "إعداد الودجيت على المتجر",
+                  "status": "locked",
+                  "is_complete": "False"
+                }
+              ],
+              "readiness_card": "None",
+              "nav_locks": {
+                "settings": {
+                  "page": "settings",
+                  "unlocked": "False",
+                  "reason_ar": "أكمل تجربة الودجيت أولاً لفهم كيف يعمل CartFlow.",
+                  "required_step_title_ar": "ربط المتجر",
+                  "cta_href": "/demo/store",
+                  "cta_label_ar": "متابعة الإعداد"
+                },
+                "whatsapp": {
+                  "page": "whatsapp",
+                  "unlocked": "False",
+                  "reason_ar": "اربط متجرك أولاً — CartFlow يحتاج نشاط السلال.",
+                  "required_step_title_ar": "إعداد واتساب",
+                  "cta_href": "/dashboard#settings",
+                  "cta_label_ar": "متابعة الإعداد"
+                },
+                "trigger-templates": {
+                  "page": "trigger-templates",
+                  "unlocked": "False",
+                  "reason_ar": "أكمل إعداد واتساب قبل تخصيص الرسائل.",
+                  "required_step_title_ar": "مراجعة رسائل الاسترجاع",
+                  "cta_href": "/dashboard#whatsapp",
+                  "cta_label_ar": "متابعة الإعداد"
+                },
+                "widget": {
+                  "page": "widget",
+                  "unlocked": "False",
+                  "reason_ar": "اربط متجرك قبل تثبيت الودجيت على واجهة المتجر.",
+                  "required_step_title_ar": "ربط المتجر",
+                  "cta_href": "/demo/store",
+                  "cta_label_ar": "متابعة الإعداد"
+                }
+              },
+              "empty_states": {
+                "carts": {
+                  "page": "carts",
+                  "title_ar": "لا توجد سلال مهجورة بعد",
+                  "body_ar": "بعد تجربة الودجيت أو ربط متجرك واستقبال زوار، ستظهر هنا فرص الاسترجاع مع سبب التردد والخطوة التالية.",
+                  "cta_href": "/demo/store",
+                  "cta_label_ar": "تجربة الودجيت"
+                },
+                "messages": {
+                  "page": "messages",
+                  "title_ar": "لا توجد رسائل مرسلة بعد",
+                  "body_ar": "عند تفعيل واتساب وبدء متابعة السلال، سيسجل CartFlow كل رسالة مع حالتها هنا.",
+                  "cta_href": "/dashboard#whatsapp",
+                  "cta_label_ar": "إعداد واتساب"
+                },
+                "reasons": {
+                  "page": "reasons",
+                  "title_ar": "لا توجد بيانات أسباب التردد بعد",
+                  "body_ar": "عندما يتردد العملاء عبر الودجيت، سترى توزيع الأسباب وتوصيات واضحة في هذه الصفحة.",
+                  "cta_href": "/demo/store",
+                  "cta_label_ar": "تجربة الودجيت"
+                }
+              }
+            },
+            "onboarding_journey_v2": "True"
+          },
+          "merchant_setup_render_debug": {
+            "MERCHANT_SETUP_RENDER_BUILD": "ui-setup-v8j-lifecycle-e2e-v1",
+            "unified_p0": "True",
+            "setup_mode": "True",
+            "show_card": "True",
+            "onboarding_complete": "False",
+            "first_recovery_ready": "False",
+            "hide_setup_card": "False",
+            "home_stage": "activation",
+            "step_count": "9",
+            "has_phase_steps": "True"
+          },
+          "merchant_activation": {
+            "milestones": [
+              {
+                "milestone_id": "first_cart",
+                "title_ar": "أول سلة مُسجَّلة",
+                "done": "False",
+                "hint_ar": "تظهر في قائمة السلال بعد تجربة المتجر."
+              },
+              {
+                "milestone_id": "first_reason",
+                "title_ar": "سبب التردد",
+                "done": "False",
+                "hint_ar": "اختر سبباً من نافذة الودجت أثناء التجربة."
+              },
+              {
+                "milestone_id": "first_scheduled",
+                "title_ar": "جدولة الاسترجاع",
+                "done": "False",
+                "hint_ar": "يعني أن النظام استلم السلة وخطط للمتابعة."
+              },
+              {
+                "milestone_id": "first_message",
+                "title_ar": "أول رسالة استرجاع",
+                "done": "False",
+                "hint_ar": "في وضع التجربة قد تكون رسالة تجريبية (Sandbox)."
+              }
+            ],
+            "summary_states": [
+              {
+                "state_id": "no_carts",
+                "label_ar": "بانتظار أول سلة",
+                "reached": "True",
+                "current": "True"
+              },
+              {
+                "state_id": "first_cart",
+                "label_ar": "أول سلة",
+                "reached": "False",
+                "current": "False"
+              },
+              {
+                "state_id": "recovery_active",
+                "label_ar": "الاسترجاع نشط",
+                "reached": "False",
+                "current": "False"
+              },
+              {
+                "state_id": "first_message",
+                "label_ar": "أول رسالة",
+                "reached": "False",
+                "current": "False"
+              },
+              {
+                "state_id": "recovery_success",
+                "label_ar": "نجاح استرداد",
+                "reached": "False",
+                "current": "False"
+              }
+            ],
+            "current_state_id": "no_carts",
+            "current_state_label_ar": "بانتظار أول سلة",
+            "next_step_ar": "افتح متجر الاختبار، أضف منتجاً، وأدخل رقم جوال عند طلب الودجت.",
+            "test_store_url": "/demo/store",
+            "test_widget_path": "/dashboard/test-widget",
+            "delay_hint_ar": "",
+            "activation_working": "False",
+            "store_slug": "متجر-واقع-صغير-0edb32",
+            "home_stage": "activation",
+            "activation_display": "prominent",
+            "hide_setup_card": "False",
+            "operational_alerts_ar": [
+              "وضع Sandbox مفعّل — للإنتاج: فعّل وضع الإنتاج واكمل مزود واتساب حسب الدليل.",
+              "لم يتم رصد أي سلة حتى الآن — جرّب زيارة المتجر وإكمال خطوة ترك السلة للتحقق."
+            ],
+            "activation_summary_lines_ar": [],
+            "last_activity_ar": "بانتظار أول سلة",
+            "setup_collapsed_default": "False",
+            "production_signal_reasons": [],
+            "activation_visibility_debug": {
+              "verdict_primary": "B",
+              "verdict_note": "New merchant path: activation_display should be prominent unless layout resolver returned something else.",
+              "ui_blocker_server": "stage_activation_or_incomplete",
+              "css_hidden_attr_blocks_show_rule": "True",
+              "home_stage": "activation",
+              "activation_display": "prominent",
+              "hide_setup_card": "False",
+              "store_slug": "متجر-واقع-صغير-0edb32",
+              "state_a_new_or_incomplete": "True",
+              "onboarding_complete": "False",
+              "any_activation_milestone": "False",
+              "merchant_active": "False",
+              "has_production_signal": "False",
+              "production_signal_reasons": [],
+              "milestones": {
+                "first_cart_detected": "False",
+                "first_reason_captured": "False",
+                "first_recovery_scheduled": "False",
+                "first_whatsapp_sent": "False",
+                "first_recovered_cart": "False"
+              },
+              "month_window": {
+                "abandoned_total": "0",
+                "recovered_total": "0",
+                "recovered_revenue": "0.0"
+              },
+              "activation_working": "False",
+              "client_expectation": {
+                "when_page_home_active": "prominent",
+                "when_page_home_not_active_at_apply": "root stays hidden if activation_display=hidden"
+              },
+              "likely_missing_ui_causes": [
+                "js_apply_while_not_on_home_then_navigate_home",
+                "server_activation_display_hidden_and_early_return",
+                "missing_or_invalid_merchant_activation_in_summary",
+                "css_ma_activation_root_hidden_attr"
+              ]
+            }
+          },
+          "merchant_activation_visibility_debug": {
+            "verdict_primary": "B",
+            "verdict_note": "New merchant path: activation_display should be prominent unless layout resolver returned something else.",
+            "ui_blocker_server": "stage_activation_or_incomplete",
+            "css_hidden_attr_blocks_show_rule": "True",
+            "home_stage": "activation",
+            "activation_display": "prominent",
+            "hide_setup_card": "False",
+            "store_slug": "متجر-واقع-صغير-0edb32",
+            "state_a_new_or_incomplete": "True",
+            "onboarding_complete": "False",
+            "any_activation_milestone": "False",
+            "merchant_active": "False",
+            "has_production_signal": "False",
+            "production_signal_reasons": [],
+            "milestones": {
+              "first_cart_detected": "False",
+              "first_reason_captured": "False",
+              "first_recovery_scheduled": "False",
+              "first_whatsapp_sent": "False",
+              "first_recovered_cart": "False"
+            },
+            "month_window": {
+              "abandoned_total": "0",
+              "recovered_total": "0",
+              "recovered_revenue": "0.0"
+            },
+            "activation_working": "False",
+            "client_expectation": {
+              "when_page_home_active": "prominent",
+              "when_page_home_not_active_at_apply": "root stays hidden if activation_display=hidden"
+            },
+            "likely_missing_ui_causes": [
+              "js_apply_while_not_on_home_then_navigate_home",
+              "server_activation_display_hidden_and_early_return",
+              "missing_or_invalid_merchant_activation_in_summary",
+              "css_ma_activation_root_hidden_attr"
+            ]
+          },
+          "whatsapp_readiness_card": {
+            "state_key": "sandbox",
+            "badge_ar": "تجريبي",
+            "title_ar": "الوضع التجريبي مفعل",
+            "description_ar": "الوضع التجريبي مفعّل — الإنتاج غير مكتمل بعد.",
+            "impact_ar": "أكمل المتبقي لبدء إرسال رسائل الاسترجاع للعملاء.",
+            "next_action_ar": "أكمل خطوة التفعيل الحالية",
+            "action_href": "/dashboard#settings",
+            "readiness_overall_ar": "غير جاهز"
+          },
+          "store_connection": {
+            "connected": "False",
+            "status_label_ar": "غير مربوط",
+            "status_description_ar": "ابدأ بربط متجرك لتفعيل استرجاع السلال.",
+            "store_name": "متجر واقع صغير",
+            "platform_ar": "—",
+            "connected_at_ar": "—",
+            "zid_connect_available": "False",
+            "zid_connect_url": "/api/merchant/store-connection/zid/connect",
+            "salla_connect_available": "False",
+            "shopify_note_ar": "Shopify قريباً",
+            "pending_setup_message_ar": "ميزة الربط قيد الإعداد",
+            "widget_installation_status": "None",
+            "widget_status_label_ar": "—",
+            "widget_status_description_ar": "",
+            "widget_installed_at_ar": "—",
+            "widget_last_seen_at_ar": "—",
+            "widget_install_error": "None",
+            "store_connected_ok": "False",
+            "widget_installed_ok": "False"
+          },
+          "merchant_dashboard_refresh_token": "متجر-واقع-صغير-0edb32:0:0:0:0:c0",
+          "merchant_dashboard_refresh_last_log_id": "0",
+          "merchant_dashboard_refresh_last_sent_log_id": "0",
+          "merchant_dashboard_refresh_sent_total": "0",
+          "merchant_dashboard_refresh_archive_rev": "0",
+          "merchant_dashboard_refresh_cart_rev": "0",
+          "merchant_home_experience_v1": {
+            "version": "v1",
+            "experience_tier": "starter",
+            "tier_capabilities": {
+              "starter": {
+                "max_attention_display": "3",
+                "max_understanding_display": "3",
+                "trend_awareness": "False",
+                "executive_summary": "False"
+              },
+              "growth": {
+                "max_attention_display": "3",
+                "max_understanding_display": "5",
+                "trend_awareness": "True",
+                "executive_summary": "False"
+              },
+              "pro": {
+                "max_attention_display": "5",
+                "max_understanding_display": "5",
+                "trend_awareness": "True",
+                "executive_summary": "True"
+              }
+            },
+            "brief_date": "2026-07-15",
+            "greeting": {
+              "greeting_ar": "مساء الخير",
+              "merchant_name_ar": "متجر واقع صغير",
+              "date_ar": "الأربعاء، 15 7 2026"
+            },
+            "while_away": {
+              "title_ar": "بينما كنت بعيداً",
+              "lead_ar": "CartFlow يتابع متجرك تلقائياً — هذا ما اكتمل:",
+              "items": [
+                {
+                  "headline_ar": "بيانات التردد محدودة",
+                  "detail_ar": "ملخص Knowledge Layer للفترة المحددة",
+                  "action_ar": "",
+                  "aggregation_key": "decision_kl_observation:hesitation_reason:insight_key:hesitation_insufficient_sample",
+                  "source_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:hesitation_reason:insight_key:hesitation_insufficient_sample",
+                  "routing_priority": "240",
+                  "section": "while_away"
+                },
+                {
+                  "headline_ar": "نشاط الاسترجاع محدود",
+                  "detail_ar": "ملخص Knowledge Layer للفترة المحددة",
+                  "action_ar": "",
+                  "aggregation_key": "decision_kl_observation:recovery_record:insight_key:recovery_insufficient_sample",
+                  "source_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:recovery_record:insight_key:recovery_insufficient_sample",
+                  "routing_priority": "240",
+                  "section": "while_away"
+                },
+                {
+                  "headline_ar": "فجوات في مسار التحويل",
+                  "detail_ar": "ملخص Knowledge Layer للفترة المحددة",
+                  "action_ar": "",
+                  "aggregation_key": "decision_kl_observation:store_activity:insight_key:conversion_funnel_gaps",
+                  "source_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:store_activity:insight_key:conversion_funnel_gaps",
+                  "routing_priority": "240",
+                  "section": "while_away"
+                },
+                {
+                  "headline_ar": "لا توجد سلال في النافذة",
+                  "detail_ar": "ملخص Knowledge Layer للفترة المحددة",
+                  "action_ar": "",
+                  "aggregation_key": "decision_kl_observation:store_activity:insight_key:conversion_no_carts",
+                  "source_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:store_activity:insight_key:conversion_no_carts",
+                  "routing_priority": "240",
+                  "section": "while_away"
+                },
+                {
+                  "headline_ar": "صحة بيانات المتجر",
+                  "detail_ar": "ملخص Knowledge Layer للفترة المحددة",
+                  "action_ar": "",
+                  "aggregation_key": "decision_kl_observation:store_activity:insight_key:store_health_overview",
+                  "source_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:store_activity:insight_key:store_health_overview",
+                  "routing_priority": "240",
+                  "section": "while_away"
+                },
+                {
+                  "headline_ar": "بيانات الزوار غير متوفرة",
+                  "detail_ar": "ملخص Knowledge Layer للفترة المحددة",
+                  "action_ar": "",
+                  "aggregation_key": "decision_kl_observation:visitor_behavior:insight_key:traffic_visitor_unavailable",
+                  "source_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:visitor_behavior:insight_key:traffic_visitor_unavailable",
+                  "routing_priority": "240",
+                  "section": "while_away"
+                },
+                {
+                  "headline_ar": "بيانات التردد محدودة",
+                  "detail_ar": "—",
+                  "action_ar": "",
+                  "aggregation_key": "hesitation_insufficient_sample:7d",
+                  "source_knowledge_id": "route:daily_brief:achievement:hesitation_insufficient_sample:7d",
+                  "routing_priority": "130",
+                  "section": "while_away"
+                },
+                {
+                  "headline_ar": "فجوات في مسار التحويل",
+                  "detail_ar": "—",
+                  "action_ar": "",
+                  "aggregation_key": "conversion_funnel_gaps:7d",
+                  "source_knowledge_id": "route:daily_brief:achievement:conversion_funnel_gaps:7d",
+                  "routing_priority": "120",
+                  "section": "while_away"
+                },
+                {
+                  "headline_ar": "لا توجد سلال في النافذة",
+                  "detail_ar": "—",
+                  "action_ar": "",
+                  "aggregation_key": "conversion_no_carts:7d",
+                  "source_knowledge_id": "route:daily_brief:achievement:conversion_no_carts:7d",
+                  "routing_priority": "120",
+                  "section": "while_away"
+                },
+                {
+                  "headline_ar": "نشاط الاسترجاع محدود",
+                  "detail_ar": "—",
+                  "action_ar": "",
+                  "aggregation_key": "recovery_insufficient_sample:7d",
+                  "source_knowledge_id": "route:daily_brief:achievement:recovery_insufficient_sample:7d",
+                  "routing_priority": "120",
+                  "section": "while_away"
+                },
+                {
+                  "headline_ar": "صحة بيانات المتجر",
+                  "detail_ar": "—",
+                  "action_ar": "",
+                  "aggregation_key": "store_health_overview:7d",
+                  "source_knowledge_id": "route:daily_brief:achievement:store_health_overview:7d",
+                  "routing_priority": "120",
+                  "section": "while_away"
+                },
+                {
+                  "headline_ar": "بيانات الزوار غير متوفرة",
+                  "detail_ar": "—",
+                  "action_ar": "",
+                  "aggregation_key": "traffic_visitor_unavailable:7d",
+                  "source_knowledge_id": "route:daily_brief:achievement:traffic_visitor_unavailable:7d",
+                  "routing_priority": "120",
+                  "section": "while_away"
+                }
+              ],
+              "empty_message_ar": "CartFlow يتابع متجرك — سنُظهر الإنجازات هنا عند توفرها."
+            },
+            "attention_today": {
+              "title_ar": "يحتاج انتباهك اليوم",
+              "lead_ar": "إجراءات مقترحة — بدون تكرار.",
+              "items": [],
+              "max_display": "3",
+              "platform_max": "5",
+              "count": "0",
+              "empty_message_ar": "لا أمور تتطلب انتباهك الآن — CartFlow يتابع الحالات الروتينية."
+            },
+            "store_understanding": {
+              "title_ar": "فهم المتجر",
+              "lead_ar": "فهم تشغيلي — ليس أرقاماً فقط.",
+              "items": [],
+              "max_display": "3",
+              "empty_message_ar": "لا توجد استنتاجات كافية بعد — استمر في جمع النشاط."
+            },
+            "quick_nav": {
+              "title_ar": "انتقال سريع",
+              "items": [
+                {
+                  "id": "knowledge",
+                  "label_ar": "طبقة المعرفة",
+                  "nav_type": "anchor",
+                  "href": "#ma-home-understanding"
+                },
+                {
+                  "id": "active_carts",
+                  "label_ar": "السلال النشطة",
+                  "nav_type": "cart_tab",
+                  "cart_tab": "all",
+                  "badge_count": "0"
+                },
+                {
+                  "id": "completed",
+                  "label_ar": "الاستردادات المكتملة",
+                  "nav_type": "cart_tab",
+                  "cart_tab": "completed"
+                },
+                {
+                  "id": "settings",
+                  "label_ar": "الإعدادات",
+                  "nav_type": "settings",
+                  "settings_page": "settings"
+                },
+                {
+                  "id": "waiting",
+                  "label_ar": "بانتظار الإرسال",
+                  "nav_type": "cart_tab",
+                  "cart_tab": "waiting",
+                  "badge_count": "0",
+                  "visible": "False"
+                }
+              ]
+            },
+            "empty_calm": "False",
+            "knowledge_routing_v1": {
+              "routing_version": "v1",
+              "surface": "merchant_home",
+              "observability": {
+                "input_items": "0",
+                "eligible_items": "0",
+                "achievement_groups": "0",
+                "attention_groups": "0"
+              }
+            },
+            "sources": {
+              "daily_brief_version": "v2",
+              "daily_brief_composer": "v2",
+              "achievement_count": "12",
+              "attention_source_count": "0",
+              "understanding_routed_groups": "0"
+            },
+            "observability": {
+              "while_away_items": "12",
+              "attention_items": "0",
+              "understanding_items": "0",
+              "dedupe_keys": "12"
+            },
+            "ok": "True",
+            "generated_at": "2026-07-15T10:53:09+00:00",
+            "store_slug": "متجر-واقع-صغير-0edb32",
+            "daily_brief_v1": {
+              "version": "v2",
+              "composer_version": "v2",
+              "brief_date": "2026-07-15",
+              "achievements": [
+                {
+                  "brief_item_id": "daily_brief:2026-07-15:achievement:decision_kl_observation:hesitation_reason:insight_key:hesitation_insufficient_sample",
+                  "section": "achievement",
+                  "headline_ar": "بيانات التردد محدودة",
+                  "what_ar": "بيانات التردد محدودة",
+                  "why_ar": "ملخص Knowledge Layer للفترة المحددة",
+                  "action_ar": "",
+                  "action_present": "False",
+                  "decision_count": "1",
+                  "source_decision_ids": [
+                    "insight:hesitation_insufficient_sample"
+                  ],
+                  "aggregation_key": "decision_kl_observation:hesitation_reason:insight_key:hesitation_insufficient_sample",
+                  "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+                  "routing_priority": "240",
+                  "routing_version": "v1",
+                  "routed_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:hesitation_reason:insight_key:hesitation_insufficient_sample",
+                  "representative_knowledge_id": "dec:decision_kl_observation:-_-_-0edb32:insight_hesitation_insufficient_sample",
+                  "representative_decision_id": "decision_kl_observation:hesitation_insufficient_sample",
+                  "decision_id": "decision_kl_observation:hesitation_insufficient_sample",
+                  "decision_class": "observation",
+                  "decision_class_label_ar": "ملاحظة",
+                  "priority": "240",
+                  "confidence": "insufficient",
+                  "confidence_label_ar": "غير كافية",
+                  "evidence_source_ar": "سبب التردد",
+                  "evidence_ids": [
+                    "hesitation_reason"
+                  ],
+                  "commercial_goal": "reduce_hesitation",
+                  "commercial_goal_label_ar": "تقليل التردد",
+                  "merge_key": "decision_kl_observation:hesitation_reason:insight_key:hesitation_insufficient_sample",
+                  "proof_sources": [
+                    "insight_key:hesitation_insufficient_sample"
+                  ],
+                  "action_key": "None"
+                },
+                {
+                  "brief_item_id": "daily_brief:2026-07-15:achievement:decision_kl_observation:recovery_record:insight_key:recovery_insufficient_sample",
+                  "section": "achievement",
+                  "headline_ar": "نشاط الاسترجاع محدود",
+                  "what_ar": "نشاط الاسترجاع محدود",
+                  "why_ar": "ملخص Knowledge Layer للفترة المحددة",
+                  "action_ar": "",
+                  "action_present": "False",
+                  "decision_count": "1",
+                  "source_decision_ids": [
+                    "insight:recovery_insufficient_sample"
+                  ],
+                  "aggregation_key": "decision_kl_observation:recovery_record:insight_key:recovery_insufficient_sample",
+                  "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+                  "routing_priority": "240",
+                  "routing_version": "v1",
+                  "routed_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:recovery_record:insight_key:recovery_insufficient_sample",
+                  "representative_knowledge_id": "dec:decision_kl_observation:-_-_-0edb32:insight_recovery_insufficient_sample",
+                  "representative_decision_id": "decision_kl_observation:recovery_insufficient_sample",
+                  "decision_id": "decision_kl_observation:recovery_insufficient_sample",
+                  "decision_class": "observation",
+                  "decision_class_label_ar": "ملاحظة",
+                  "priority": "240",
+                  "confidence": "insufficient",
+                  "confidence_label_ar": "غير كافية",
+                  "evidence_source_ar": "سجل الاسترجاع",
+                  "evidence_ids": [
+                    "recovery_record"
+                  ],
+                  "commercial_goal": "reduce_hesitation",
+                  "commercial_goal_label_ar": "تقليل التردد",
+                  "merge_key": "decision_kl_observation:recovery_record:insight_key:recovery_insufficient_sample",
+                  "proof_sources": [
+                    "insight_key:recovery_insufficient_sample"
+                  ],
+                  "action_key": "None"
+                },
+                {
+                  "brief_item_id": "daily_brief:2026-07-15:achievement:decision_kl_observation:store_activity:insight_key:conversion_funnel_gaps",
+                  "section": "achievement",
+                  "headline_ar": "فجوات في مسار التحويل",
+                  "what_ar": "فجوات في مسار التحويل",
+                  "why_ar": "ملخص Knowledge Layer للفترة المحددة",
+                  "action_ar": "",
+                  "action_present": "False",
+                  "decision_count": "1",
+                  "source_decision_ids": [
+                    "insight:conversion_funnel_gaps"
+                  ],
+                  "aggregation_key": "decision_kl_observation:store_activity:insight_key:conversion_funnel_gaps",
+                  "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+                  "routing_priority": "240",
+                  "routing_version": "v1",
+                  "routed_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:store_activity:insight_key:conversion_funnel_gaps",
+                  "representative_knowledge_id": "dec:decision_kl_observation:-_-_-0edb32:insight_conversion_funnel_gaps",
+                  "representative_decision_id": "decision_kl_observation:conversion_funnel_gaps",
+                  "decision_id": "decision_kl_observation:conversion_funnel_gaps",
+                  "decision_class": "observation",
+                  "decision_class_label_ar": "ملاحظة",
+                  "priority": "240",
+                  "confidence": "insufficient",
+                  "confidence_label_ar": "غير كافية",
+                  "evidence_source_ar": "بيانات المتجر",
+                  "evidence_ids": [
+                    "store_activity"
+                  ],
+                  "commercial_goal": "reduce_hesitation",
+                  "commercial_goal_label_ar": "تقليل التردد",
+                  "merge_key": "decision_kl_observation:store_activity:insight_key:conversion_funnel_gaps",
+                  "proof_sources": [
+                    "insight_key:conversion_funnel_gaps"
+                  ],
+                  "action_key": "None"
+                },
+                {
+                  "brief_item_id": "daily_brief:2026-07-15:achievement:decision_kl_observation:store_activity:insight_key:conversion_no_carts",
+                  "section": "achievement",
+                  "headline_ar": "لا توجد سلال في النافذة",
+                  "what_ar": "لا توجد سلال في النافذة",
+                  "why_ar": "ملخص Knowledge Layer للفترة المحددة",
+                  "action_ar": "",
+                  "action_present": "False",
+                  "decision_count": "1",
+                  "source_decision_ids": [
+                    "insight:conversion_no_carts"
+                  ],
+                  "aggregation_key": "decision_kl_observation:store_activity:insight_key:conversion_no_carts",
+                  "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+                  "routing_priority": "240",
+                  "routing_version": "v1",
+                  "routed_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:store_activity:insight_key:conversion_no_carts",
+                  "representative_knowledge_id": "dec:decision_kl_observation:-_-_-0edb32:insight_conversion_no_carts",
+                  "representative_decision_id": "decision_kl_observation:conversion_no_carts",
+                  "decision_id": "decision_kl_observation:conversion_no_carts",
+                  "decision_class": "observation",
+                  "decision_class_label_ar": "ملاحظة",
+                  "priority": "240",
+                  "confidence": "insufficient",
+                  "confidence_label_ar": "غير كافية",
+                  "evidence_source_ar": "بيانات المتجر",
+                  "evidence_ids": [
+                    "store_activity"
+                  ],
+                  "commercial_goal": "reduce_hesitation",
+                  "commercial_goal_label_ar": "تقليل التردد",
+                  "merge_key": "decision_kl_observation:store_activity:insight_key:conversion_no_carts",
+                  "proof_sources": [
+                    "insight_key:conversion_no_carts"
+                  ],
+                  "action_key": "None"
+                },
+                {
+                  "brief_item_id": "daily_brief:2026-07-15:achievement:decision_kl_observation:store_activity:insight_key:store_health_overview",
+                  "section": "achievement",
+                  "headline_ar": "صحة بيانات المتجر",
+                  "what_ar": "صحة بيانات المتجر",
+                  "why_ar": "ملخص Knowledge Layer للفترة المحددة",
+                  "action_ar": "",
+                  "action_present": "False",
+                  "decision_count": "1",
+                  "source_decision_ids": [
+                    "insight:store_health_overview"
+                  ],
+                  "aggregation_key": "decision_kl_observation:store_activity:insight_key:store_health_overview",
+                  "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+                  "routing_priority": "240",
+                  "routing_version": "v1",
+                  "routed_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:store_activity:insight_key:store_health_overview",
+                  "representative_knowledge_id": "dec:decision_kl_observation:-_-_-0edb32:insight_store_health_overview",
+                  "representative_decision_id": "decision_kl_observation:store_health_overview",
+                  "decision_id": "decision_kl_observation:store_health_overview",
+                  "decision_class": "observation",
+                  "decision_class_label_ar": "ملاحظة",
+                  "priority": "240",
+                  "confidence": "insufficient",
+                  "confidence_label_ar": "غير كافية",
+                  "evidence_source_ar": "بيانات المتجر",
+                  "evidence_ids": [
+                    "store_activity"
+                  ],
+                  "commercial_goal": "reduce_hesitation",
+                  "commercial_goal_label_ar": "تقليل التردد",
+                  "merge_key": "decision_kl_observation:store_activity:insight_key:store_health_overview",
+                  "proof_sources": [
+                    "insight_key:store_health_overview"
+                  ],
+                  "action_key": "None"
+                },
+                {
+                  "brief_item_id": "daily_brief:2026-07-15:achievement:decision_kl_observation:visitor_behavior:insight_key:traffic_visitor_unavailable",
+                  "section": "achievement",
+                  "headline_ar": "بيانات الزوار غير متوفرة",
+                  "what_ar": "بيانات الزوار غير متوفرة",
+                  "why_ar": "ملخص Knowledge Layer للفترة المحددة",
+                  "action_ar": "",
+                  "action_present": "False",
+                  "decision_count": "1",
+                  "source_decision_ids": [
+                    "insight:traffic_visitor_unavailable"
+                  ],
+                  "aggregation_key": "decision_kl_observation:visitor_behavior:insight_key:traffic_visitor_unavailable",
+                  "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+                  "routing_priority": "240",
+                  "routing_version": "v1",
+                  "routed_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:visitor_behavior:insight_key:traffic_visitor_unavailable",
+                  "representative_knowledge_id": "dec:decision_kl_observation:-_-_-0edb32:insight_traffic_visitor_unavailable",
+                  "representative_decision_id": "decision_kl_observation:traffic_visitor_unavailable",
+                  "decision_id": "decision_kl_observation:traffic_visitor_unavailable",
+                  "decision_class": "observation",
+                  "decision_class_label_ar": "ملاحظة",
+                  "priority": "240",
+                  "confidence": "insufficient",
+                  "confidence_label_ar": "غير كافية",
+                  "evidence_source_ar": "حركة الزيارات",
+                  "evidence_ids": [
+                    "visitor_behavior"
+                  ],
+                  "commercial_goal": "reduce_hesitation",
+                  "commercial_goal_label_ar": "تقليل التردد",
+                  "merge_key": "decision_kl_observation:visitor_behavior:insight_key:traffic_visitor_unavailable",
+                  "proof_sources": [
+                    "insight_key:traffic_visitor_unavailable"
+                  ],
+                  "action_key": "None"
+                },
+                {
+                  "brief_item_id": "daily_brief:2026-07-15:achievement:hesitation_insufficient_sample:7d",
+                  "section": "achievement",
+                  "headline_ar": "بيانات التردد محدودة",
+                  "what_ar": "بيانات التردد محدودة",
+                  "why_ar": "—",
+                  "action_ar": "",
+                  "action_present": "False",
+                  "decision_count": "1",
+                  "source_decision_ids": [],
+                  "aggregation_key": "hesitation_insufficient_sample:7d",
+                  "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+                  "routing_priority": "130",
+                  "routing_version": "v1",
+                  "routed_knowledge_id": "route:daily_brief:achievement:hesitation_insufficient_sample:7d",
+                  "representative_knowledge_id": "kl:hesitation_insufficient_sample:-_-_-0edb32:7d",
+                  "representative_decision_id": "",
+                  "decision_id": "",
+                  "decision_class": "",
+                  "decision_class_label_ar": "—",
+                  "priority": "130",
+                  "confidence": "insufficient",
+                  "confidence_label_ar": "غير كافية",
+                  "evidence_source_ar": "سبب التردد",
+                  "evidence_ids": [
+                    "hesitation_reason"
+                  ],
+                  "commercial_goal": "",
+                  "commercial_goal_label_ar": "—",
+                  "merge_key": "hesitation_insufficient_sample:7d",
+                  "proof_sources": [
+                    "insight_key:hesitation_insufficient_sample"
+                  ],
+                  "action_key": "None"
+                },
+                {
+                  "brief_item_id": "daily_brief:2026-07-15:achievement:conversion_funnel_gaps:7d",
+                  "section": "achievement",
+                  "headline_ar": "فجوات في مسار التحويل",
+                  "what_ar": "فجوات في مسار التحويل",
+                  "why_ar": "—",
+                  "action_ar": "",
+                  "action_present": "False",
+                  "decision_count": "1",
+                  "source_decision_ids": [],
+                  "aggregation_key": "conversion_funnel_gaps:7d",
+                  "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+                  "routing_priority": "120",
+                  "routing_version": "v1",
+                  "routed_knowledge_id": "route:daily_brief:achievement:conversion_funnel_gaps:7d",
+                  "representative_knowledge_id": "kl:conversion_funnel_gaps:-_-_-0edb32:7d",
+                  "representative_decision_id": "",
+                  "decision_id": "",
+                  "decision_class": "",
+                  "decision_class_label_ar": "—",
+                  "priority": "120",
+                  "confidence": "insufficient",
+                  "confidence_label_ar": "غير كافية",
+                  "evidence_source_ar": "بيانات المتجر",
+                  "evidence_ids": [
+                    "store_activity"
+                  ],
+                  "commercial_goal": "",
+                  "commercial_goal_label_ar": "—",
+                  "merge_key": "conversion_funnel_gaps:7d",
+                  "proof_sources": [
+                    "insight_key:conversion_funnel_gaps"
+                  ],
+                  "action_key": "None"
+                },
+                {
+                  "brief_item_id": "daily_brief:2026-07-15:achievement:conversion_no_carts:7d",
+                  "section": "achievement",
+                  "headline_ar": "لا توجد سلال في النافذة",
+                  "what_ar": "لا توجد سلال في النافذة",
+                  "why_ar": "—",
+                  "action_ar": "",
+                  "action_present": "False",
+                  "decision_count": "1",
+                  "source_decision_ids": [],
+                  "aggregation_key": "conversion_no_carts:7d",
+                  "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+                  "routing_priority": "120",
+                  "routing_version": "v1",
+                  "routed_knowledge_id": "route:daily_brief:achievement:conversion_no_carts:7d",
+                  "representative_knowledge_id": "kl:conversion_no_carts:-_-_-0edb32:7d",
+                  "representative_decision_id": "",
+                  "decision_id": "",
+                  "decision_class": "",
+                  "decision_class_label_ar": "—",
+                  "priority": "120",
+                  "confidence": "insufficient",
+                  "confidence_label_ar": "غير كافية",
+                  "evidence_source_ar": "بيانات المتجر",
+                  "evidence_ids": [
+                    "store_activity"
+                  ],
+                  "commercial_goal": "",
+                  "commercial_goal_label_ar": "—",
+                  "merge_key": "conversion_no_carts:7d",
+                  "proof_sources": [
+                    "insight_key:conversion_no_carts"
+                  ],
+                  "action_key": "None"
+                },
+                {
+                  "brief_item_id": "daily_brief:2026-07-15:achievement:recovery_insufficient_sample:7d",
+                  "section": "achievement",
+                  "headline_ar": "نشاط الاسترجاع محدود",
+                  "what_ar": "نشاط الاسترجاع محدود",
+                  "why_ar": "—",
+                  "action_ar": "",
+                  "action_present": "False",
+                  "decision_count": "1",
+                  "source_decision_ids": [],
+                  "aggregation_key": "recovery_insufficient_sample:7d",
+                  "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+                  "routing_priority": "120",
+                  "routing_version": "v1",
+                  "routed_knowledge_id": "route:daily_brief:achievement:recovery_insufficient_sample:7d",
+                  "representative_knowledge_id": "kl:recovery_insufficient_sample:-_-_-0edb32:7d",
+                  "representative_decision_id": "",
+                  "decision_id": "",
+                  "decision_class": "",
+                  "decision_class_label_ar": "—",
+                  "priority": "120",
+                  "confidence": "insufficient",
+                  "confidence_label_ar": "غير كافية",
+                  "evidence_source_ar": "سجل الاسترجاع",
+                  "evidence_ids": [
+                    "recovery_record"
+                  ],
+                  "commercial_goal": "",
+                  "commercial_goal_label_ar": "—",
+                  "merge_key": "recovery_insufficient_sample:7d",
+                  "proof_sources": [
+                    "insight_key:recovery_insufficient_sample"
+                  ],
+                  "action_key": "None"
+                },
+                {
+                  "brief_item_id": "daily_brief:2026-07-15:achievement:store_health_overview:7d",
+                  "section": "achievement",
+                  "headline_ar": "صحة بيانات المتجر",
+                  "what_ar": "صحة بيانات المتجر",
+                  "why_ar": "—",
+                  "action_ar": "",
+                  "action_present": "False",
+                  "decision_count": "1",
+                  "source_decision_ids": [],
+                  "aggregation_key": "store_health_overview:7d",
+                  "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+                  "routing_priority": "120",
+                  "routing_version": "v1",
+                  "routed_knowledge_id": "route:daily_brief:achievement:store_health_overview:7d",
+                  "representative_knowledge_id": "kl:store_health_overview:-_-_-0edb32:7d",
+                  "representative_decision_id": "",
+                  "decision_id": "",
+                  "decision_class": "",
+                  "decision_class_label_ar": "—",
+                  "priority": "120",
+                  "confidence": "insufficient",
+                  "confidence_label_ar": "غير كافية",
+                  "evidence_source_ar": "بيانات المتجر",
+                  "evidence_ids": [
+                    "store_activity"
+                  ],
+                  "commercial_goal": "",
+                  "commercial_goal_label_ar": "—",
+                  "merge_key": "store_health_overview:7d",
+                  "proof_sources": [
+                    "insight_key:store_health_overview"
+                  ],
+                  "action_key": "None"
+                },
+                {
+                  "brief_item_id": "daily_brief:2026-07-15:achievement:traffic_visitor_unavailable:7d",
+                  "section": "achievement",
+                  "headline_ar": "بيانات الزوار غير متوفرة",
+                  "what_ar": "بيانات الزوار غير متوفرة",
+                  "why_ar": "—",
+                  "action_ar": "",
+                  "action_present": "False",
+                  "decision_count": "1",
+                  "source_decision_ids": [],
+                  "aggregation_key": "traffic_visitor_unavailable:7d",
+                  "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+                  "routing_priority": "120",
+                  "routing_version": "v1",
+                  "routed_knowledge_id": "route:daily_brief:achievement:traffic_visitor_unavailable:7d",
+                  "representative_knowledge_id": "kl:traffic_visitor_unavailable:-_-_-0edb32:7d",
+                  "representative_decision_id": "",
+                  "decision_id": "",
+                  "decision_class": "",
+                  "decision_class_label_ar": "—",
+                  "priority": "120",
+                  "confidence": "insufficient",
+                  "confidence_label_ar": "غير كافية",
+                  "evidence_source_ar": "حركة الزيارات",
+                  "evidence_ids": [
+                    "visitor_behavior"
+                  ],
+                  "commercial_goal": "",
+                  "commercial_goal_label_ar": "—",
+                  "merge_key": "traffic_visitor_unavailable:7d",
+                  "proof_sources": [
+                    "insight_key:traffic_visitor_unavailable"
+                  ],
+                  "action_key": "None"
+                }
+              ],
+              "attention_items": [],
+              "items": [],
+              "achievement_count": "12",
+              "attention_count": "0",
+              "item_count": "0",
+              "max_items": "5",
+              "empty": "False",
+              "empty_state_ar": {
+                "title_ar": "يوم هادئ في متجرك",
+                "message_ar": "لا توجد قرارات تتطلب انتباهك اليوم — CartFlow يتابع الحالات الروتينية تلقائياً"
+              },
+              "knowledge_routing_v1": {
+                "routing_version": "v1",
+                "surface": "daily_brief",
+                "observability": {
+                  "input_items": "12",
+                  "eligible_items": "12",
+                  "achievement_groups": "12",
+                  "attention_groups": "0"
+                }
+              },
+              "observability": {
+                "decisions_collected": "12",
+                "decisions_composed": "6",
+                "achievement_topics": "12",
+                "attention_topics": "0",
+                "bundles_scanned": "1",
+                "routing_eligible_items": "12"
+              },
+              "ok": "True",
+              "generated_at": "2026-07-15T10:53:09+00:00",
+              "store_slug": "متجر-واقع-صغير-0edb32"
+            }
+          },
+          "merchant_daily_brief_v1": {
+            "version": "v2",
+            "composer_version": "v2",
+            "brief_date": "2026-07-15",
+            "achievements": [
+              {
+                "brief_item_id": "daily_brief:2026-07-15:achievement:decision_kl_observation:hesitation_reason:insight_key:hesitation_insufficient_sample",
+                "section": "achievement",
+                "headline_ar": "بيانات التردد محدودة",
+                "what_ar": "بيانات التردد محدودة",
+                "why_ar": "ملخص Knowledge Layer للفترة المحددة",
+                "action_ar": "",
+                "action_present": "False",
+                "decision_count": "1",
+                "source_decision_ids": [
+                  "insight:hesitation_insufficient_sample"
+                ],
+                "aggregation_key": "decision_kl_observation:hesitation_reason:insight_key:hesitation_insufficient_sample",
+                "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+                "routing_priority": "240",
+                "routing_version": "v1",
+                "routed_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:hesitation_reason:insight_key:hesitation_insufficient_sample",
+                "representative_knowledge_id": "dec:decision_kl_observation:-_-_-0edb32:insight_hesitation_insufficient_sample",
+                "representative_decision_id": "decision_kl_observation:hesitation_insufficient_sample",
+                "decision_id": "decision_kl_observation:hesitation_insufficient_sample",
+                "decision_class": "observation",
+                "decision_class_label_ar": "ملاحظة",
+                "priority": "240",
+                "confidence": "insufficient",
+                "confidence_label_ar": "غير كافية",
+                "evidence_source_ar": "سبب التردد",
+                "evidence_ids": [
+                  "hesitation_reason"
+                ],
+                "commercial_goal": "reduce_hesitation",
+                "commercial_goal_label_ar": "تقليل التردد",
+                "merge_key": "decision_kl_observation:hesitation_reason:insight_key:hesitation_insufficient_sample",
+                "proof_sources": [
+                  "insight_key:hesitation_insufficient_sample"
+                ],
+                "action_key": "None"
+              },
+              {
+                "brief_item_id": "daily_brief:2026-07-15:achievement:decision_kl_observation:recovery_record:insight_key:recovery_insufficient_sample",
+                "section": "achievement",
+                "headline_ar": "نشاط الاسترجاع محدود",
+                "what_ar": "نشاط الاسترجاع محدود",
+                "why_ar": "ملخص Knowledge Layer للفترة المحددة",
+                "action_ar": "",
+                "action_present": "False",
+                "decision_count": "1",
+                "source_decision_ids": [
+                  "insight:recovery_insufficient_sample"
+                ],
+                "aggregation_key": "decision_kl_observation:recovery_record:insight_key:recovery_insufficient_sample",
+                "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+                "routing_priority": "240",
+                "routing_version": "v1",
+                "routed_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:recovery_record:insight_key:recovery_insufficient_sample",
+                "representative_knowledge_id": "dec:decision_kl_observation:-_-_-0edb32:insight_recovery_insufficient_sample",
+                "representative_decision_id": "decision_kl_observation:recovery_insufficient_sample",
+                "decision_id": "decision_kl_observation:recovery_insufficient_sample",
+                "decision_class": "observation",
+                "decision_class_label_ar": "ملاحظة",
+                "priority": "240",
+                "confidence": "insufficient",
+                "confidence_label_ar": "غير كافية",
+                "evidence_source_ar": "سجل الاسترجاع",
+                "evidence_ids": [
+                  "recovery_record"
+                ],
+                "commercial_goal": "reduce_hesitation",
+                "commercial_goal_label_ar": "تقليل التردد",
+                "merge_key": "decision_kl_observation:recovery_record:insight_key:recovery_insufficient_sample",
+                "proof_sources": [
+                  "insight_key:recovery_insufficient_sample"
+                ],
+                "action_key": "None"
+              },
+              {
+                "brief_item_id": "daily_brief:2026-07-15:achievement:decision_kl_observation:store_activity:insight_key:conversion_funnel_gaps",
+                "section": "achievement",
+                "headline_ar": "فجوات في مسار التحويل",
+                "what_ar": "فجوات في مسار التحويل",
+                "why_ar": "ملخص Knowledge Layer للفترة المحددة",
+                "action_ar": "",
+                "action_present": "False",
+                "decision_count": "1",
+                "source_decision_ids": [
+                  "insight:conversion_funnel_gaps"
+                ],
+                "aggregation_key": "decision_kl_observation:store_activity:insight_key:conversion_funnel_gaps",
+                "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+                "routing_priority": "240",
+                "routing_version": "v1",
+                "routed_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:store_activity:insight_key:conversion_funnel_gaps",
+                "representative_knowledge_id": "dec:decision_kl_observation:-_-_-0edb32:insight_conversion_funnel_gaps",
+                "representative_decision_id": "decision_kl_observation:conversion_funnel_gaps",
+                "decision_id": "decision_kl_observation:conversion_funnel_gaps",
+                "decision_class": "observation",
+                "decision_class_label_ar": "ملاحظة",
+                "priority": "240",
+                "confidence": "insufficient",
+                "confidence_label_ar": "غير كافية",
+                "evidence_source_ar": "بيانات المتجر",
+                "evidence_ids": [
+                  "store_activity"
+                ],
+                "commercial_goal": "reduce_hesitation",
+                "commercial_goal_label_ar": "تقليل التردد",
+                "merge_key": "decision_kl_observation:store_activity:insight_key:conversion_funnel_gaps",
+                "proof_sources": [
+                  "insight_key:conversion_funnel_gaps"
+                ],
+                "action_key": "None"
+              },
+              {
+                "brief_item_id": "daily_brief:2026-07-15:achievement:decision_kl_observation:store_activity:insight_key:conversion_no_carts",
+                "section": "achievement",
+                "headline_ar": "لا توجد سلال في النافذة",
+                "what_ar": "لا توجد سلال في النافذة",
+                "why_ar": "ملخص Knowledge Layer للفترة المحددة",
+                "action_ar": "",
+                "action_present": "False",
+                "decision_count": "1",
+                "source_decision_ids": [
+                  "insight:conversion_no_carts"
+                ],
+                "aggregation_key": "decision_kl_observation:store_activity:insight_key:conversion_no_carts",
+                "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+                "routing_priority": "240",
+                "routing_version": "v1",
+                "routed_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:store_activity:insight_key:conversion_no_carts",
+                "representative_knowledge_id": "dec:decision_kl_observation:-_-_-0edb32:insight_conversion_no_carts",
+                "representative_decision_id": "decision_kl_observation:conversion_no_carts",
+                "decision_id": "decision_kl_observation:conversion_no_carts",
+                "decision_class": "observation",
+                "decision_class_label_ar": "ملاحظة",
+                "priority": "240",
+                "confidence": "insufficient",
+                "confidence_label_ar": "غير كافية",
+                "evidence_source_ar": "بيانات المتجر",
+                "evidence_ids": [
+                  "store_activity"
+                ],
+                "commercial_goal": "reduce_hesitation",
+                "commercial_goal_label_ar": "تقليل التردد",
+                "merge_key": "decision_kl_observation:store_activity:insight_key:conversion_no_carts",
+                "proof_sources": [
+                  "insight_key:conversion_no_carts"
+                ],
+                "action_key": "None"
+              },
+              {
+                "brief_item_id": "daily_brief:2026-07-15:achievement:decision_kl_observation:store_activity:insight_key:store_health_overview",
+                "section": "achievement",
+                "headline_ar": "صحة بيانات المتجر",
+                "what_ar": "صحة بيانات المتجر",
+                "why_ar": "ملخص Knowledge Layer للفترة المحددة",
+                "action_ar": "",
+                "action_present": "False",
+                "decision_count": "1",
+                "source_decision_ids": [
+                  "insight:store_health_overview"
+                ],
+                "aggregation_key": "decision_kl_observation:store_activity:insight_key:store_health_overview",
+                "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+                "routing_priority": "240",
+                "routing_version": "v1",
+                "routed_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:store_activity:insight_key:store_health_overview",
+                "representative_knowledge_id": "dec:decision_kl_observation:-_-_-0edb32:insight_store_health_overview",
+                "representative_decision_id": "decision_kl_observation:store_health_overview",
+                "decision_id": "decision_kl_observation:store_health_overview",
+                "decision_class": "observation",
+                "decision_class_label_ar": "ملاحظة",
+                "priority": "240",
+                "confidence": "insufficient",
+                "confidence_label_ar": "غير كافية",
+                "evidence_source_ar": "بيانات المتجر",
+                "evidence_ids": [
+                  "store_activity"
+                ],
+                "commercial_goal": "reduce_hesitation",
+                "commercial_goal_label_ar": "تقليل التردد",
+                "merge_key": "decision_kl_observation:store_activity:insight_key:store_health_overview",
+                "proof_sources": [
+                  "insight_key:store_health_overview"
+                ],
+                "action_key": "None"
+              },
+              {
+                "brief_item_id": "daily_brief:2026-07-15:achievement:decision_kl_observation:visitor_behavior:insight_key:traffic_visitor_unavailable",
+                "section": "achievement",
+                "headline_ar": "بيانات الزوار غير متوفرة",
+                "what_ar": "بيانات الزوار غير متوفرة",
+                "why_ar": "ملخص Knowledge Layer للفترة المحددة",
+                "action_ar": "",
+                "action_present": "False",
+                "decision_count": "1",
+                "source_decision_ids": [
+                  "insight:traffic_visitor_unavailable"
+                ],
+                "aggregation_key": "decision_kl_observation:visitor_behavior:insight_key:traffic_visitor_unavailable",
+                "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+                "routing_priority": "240",
+                "routing_version": "v1",
+                "routed_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:visitor_behavior:insight_key:traffic_visitor_unavailable",
+                "representative_knowledge_id": "dec:decision_kl_observation:-_-_-0edb32:insight_traffic_visitor_unavailable",
+                "representative_decision_id": "decision_kl_observation:traffic_visitor_unavailable",
+                "decision_id": "decision_kl_observation:traffic_visitor_unavailable",
+                "decision_class": "observation",
+                "decision_class_label_ar": "ملاحظة",
+                "priority": "240",
+                "confidence": "insufficient",
+                "confidence_label_ar": "غير كافية",
+                "evidence_source_ar": "حركة الزيارات",
+                "evidence_ids": [
+                  "visitor_behavior"
+                ],
+                "commercial_goal": "reduce_hesitation",
+                "commercial_goal_label_ar": "تقليل التردد",
+                "merge_key": "decision_kl_observation:visitor_behavior:insight_key:traffic_visitor_unavailable",
+                "proof_sources": [
+                  "insight_key:traffic_visitor_unavailable"
+                ],
+                "action_key": "None"
+              },
+              {
+                "brief_item_id": "daily_brief:2026-07-15:achievement:hesitation_insufficient_sample:7d",
+                "section": "achievement",
+                "headline_ar": "بيانات التردد محدودة",
+                "what_ar": "بيانات التردد محدودة",
+                "why_ar": "—",
+                "action_ar": "",
+                "action_present": "False",
+                "decision_count": "1",
+                "source_decision_ids": [],
+                "aggregation_key": "hesitation_insufficient_sample:7d",
+                "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+                "routing_priority": "130",
+                "routing_version": "v1",
+                "routed_knowledge_id": "route:daily_brief:achievement:hesitation_insufficient_sample:7d",
+                "representative_knowledge_id": "kl:hesitation_insufficient_sample:-_-_-0edb32:7d",
+                "representative_decision_id": "",
+                "decision_id": "",
+                "decision_class": "",
+                "decision_class_label_ar": "—",
+                "priority": "130",
+                "confidence": "insufficient",
+                "confidence_label_ar": "غير كافية",
+                "evidence_source_ar": "سبب التردد",
+                "evidence_ids": [
+                  "hesitation_reason"
+                ],
+                "commercial_goal": "",
+                "commercial_goal_label_ar": "—",
+                "merge_key": "hesitation_insufficient_sample:7d",
+                "proof_sources": [
+                  "insight_key:hesitation_insufficient_sample"
+                ],
+                "action_key": "None"
+              },
+              {
+                "brief_item_id": "daily_brief:2026-07-15:achievement:conversion_funnel_gaps:7d",
+                "section": "achievement",
+                "headline_ar": "فجوات في مسار التحويل",
+                "what_ar": "فجوات في مسار التحويل",
+                "why_ar": "—",
+                "action_ar": "",
+                "action_present": "False",
+                "decision_count": "1",
+                "source_decision_ids": [],
+                "aggregation_key": "conversion_funnel_gaps:7d",
+                "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+                "routing_priority": "120",
+                "routing_version": "v1",
+                "routed_knowledge_id": "route:daily_brief:achievement:conversion_funnel_gaps:7d",
+                "representative_knowledge_id": "kl:conversion_funnel_gaps:-_-_-0edb32:7d",
+                "representative_decision_id": "",
+                "decision_id": "",
+                "decision_class": "",
+                "decision_class_label_ar": "—",
+                "priority": "120",
+                "confidence": "insufficient",
+                "confidence_label_ar": "غير كافية",
+                "evidence_source_ar": "بيانات المتجر",
+                "evidence_ids": [
+                  "store_activity"
+                ],
+                "commercial_goal": "",
+                "commercial_goal_label_ar": "—",
+                "merge_key": "conversion_funnel_gaps:7d",
+                "proof_sources": [
+                  "insight_key:conversion_funnel_gaps"
+                ],
+                "action_key": "None"
+              },
+              {
+                "brief_item_id": "daily_brief:2026-07-15:achievement:conversion_no_carts:7d",
+                "section": "achievement",
+                "headline_ar": "لا توجد سلال في النافذة",
+                "what_ar": "لا توجد سلال في النافذة",
+                "why_ar": "—",
+                "action_ar": "",
+                "action_present": "False",
+                "decision_count": "1",
+                "source_decision_ids": [],
+                "aggregation_key": "conversion_no_carts:7d",
+                "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+                "routing_priority": "120",
+                "routing_version": "v1",
+                "routed_knowledge_id": "route:daily_brief:achievement:conversion_no_carts:7d",
+                "representative_knowledge_id": "kl:conversion_no_carts:-_-_-0edb32:7d",
+                "representative_decision_id": "",
+                "decision_id": "",
+                "decision_class": "",
+                "decision_class_label_ar": "—",
+                "priority": "120",
+                "confidence": "insufficient",
+                "confidence_label_ar": "غير كافية",
+                "evidence_source_ar": "بيانات المتجر",
+                "evidence_ids": [
+                  "store_activity"
+                ],
+                "commercial_goal": "",
+                "commercial_goal_label_ar": "—",
+                "merge_key": "conversion_no_carts:7d",
+                "proof_sources": [
+                  "insight_key:conversion_no_carts"
+                ],
+                "action_key": "None"
+              },
+              {
+                "brief_item_id": "daily_brief:2026-07-15:achievement:recovery_insufficient_sample:7d",
+                "section": "achievement",
+                "headline_ar": "نشاط الاسترجاع محدود",
+                "what_ar": "نشاط الاسترجاع محدود",
+                "why_ar": "—",
+                "action_ar": "",
+                "action_present": "False",
+                "decision_count": "1",
+                "source_decision_ids": [],
+                "aggregation_key": "recovery_insufficient_sample:7d",
+                "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+                "routing_priority": "120",
+                "routing_version": "v1",
+                "routed_knowledge_id": "route:daily_brief:achievement:recovery_insufficient_sample:7d",
+                "representative_knowledge_id": "kl:recovery_insufficient_sample:-_-_-0edb32:7d",
+                "representative_decision_id": "",
+                "decision_id": "",
+                "decision_class": "",
+                "decision_class_label_ar": "—",
+                "priority": "120",
+                "confidence": "insufficient",
+                "confidence_label_ar": "غير كافية",
+                "evidence_source_ar": "سجل الاسترجاع",
+                "evidence_ids": [
+                  "recovery_record"
+                ],
+                "commercial_goal": "",
+                "commercial_goal_label_ar": "—",
+                "merge_key": "recovery_insufficient_sample:7d",
+                "proof_sources": [
+                  "insight_key:recovery_insufficient_sample"
+                ],
+                "action_key": "None"
+              },
+              {
+                "brief_item_id": "daily_brief:2026-07-15:achievement:store_health_overview:7d",
+                "section": "achievement",
+                "headline_ar": "صحة بيانات المتجر",
+                "what_ar": "صحة بيانات المتجر",
+                "why_ar": "—",
+                "action_ar": "",
+                "action_present": "False",
+                "decision_count": "1",
+                "source_decision_ids": [],
+                "aggregation_key": "store_health_overview:7d",
+                "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+                "routing_priority": "120",
+                "routing_version": "v1",
+                "routed_knowledge_id": "route:daily_brief:achievement:store_health_overview:7d",
+                "representative_knowledge_id": "kl:store_health_overview:-_-_-0edb32:7d",
+                "representative_decision_id": "",
+                "decision_id": "",
+                "decision_class": "",
+                "decision_class_label_ar": "—",
+                "priority": "120",
+                "confidence": "insufficient",
+                "confidence_label_ar": "غير كافية",
+                "evidence_source_ar": "بيانات المتجر",
+                "evidence_ids": [
+                  "store_activity"
+                ],
+                "commercial_goal": "",
+                "commercial_goal_label_ar": "—",
+                "merge_key": "store_health_overview:7d",
+                "proof_sources": [
+                  "insight_key:store_health_overview"
+                ],
+                "action_key": "None"
+              },
+              {
+                "brief_item_id": "daily_brief:2026-07-15:achievement:traffic_visitor_unavailable:7d",
+                "section": "achievement",
+                "headline_ar": "بيانات الزوار غير متوفرة",
+                "what_ar": "بيانات الزوار غير متوفرة",
+                "why_ar": "—",
+                "action_ar": "",
+                "action_present": "False",
+                "decision_count": "1",
+                "source_decision_ids": [],
+                "aggregation_key": "traffic_visitor_unavailable:7d",
+                "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+                "routing_priority": "120",
+                "routing_version": "v1",
+                "routed_knowledge_id": "route:daily_brief:achievement:traffic_visitor_unavailable:7d",
+                "representative_knowledge_id": "kl:traffic_visitor_unavailable:-_-_-0edb32:7d",
+                "representative_decision_id": "",
+                "decision_id": "",
+                "decision_class": "",
+                "decision_class_label_ar": "—",
+                "priority": "120",
+                "confidence": "insufficient",
+                "confidence_label_ar": "غير كافية",
+                "evidence_source_ar": "حركة الزيارات",
+                "evidence_ids": [
+                  "visitor_behavior"
+                ],
+                "commercial_goal": "",
+                "commercial_goal_label_ar": "—",
+                "merge_key": "traffic_visitor_unavailable:7d",
+                "proof_sources": [
+                  "insight_key:traffic_visitor_unavailable"
+                ],
+                "action_key": "None"
+              }
+            ],
+            "attention_items": [],
+            "items": [],
+            "achievement_count": "12",
+            "attention_count": "0",
+            "item_count": "0",
+            "max_items": "5",
+            "empty": "False",
+            "empty_state_ar": {
+              "title_ar": "يوم هادئ في متجرك",
+              "message_ar": "لا توجد قرارات تتطلب انتباهك اليوم — CartFlow يتابع الحالات الروتينية تلقائياً"
+            },
+            "knowledge_routing_v1": {
+              "routing_version": "v1",
+              "surface": "daily_brief",
+              "observability": {
+                "input_items": "12",
+                "eligible_items": "12",
+                "achievement_groups": "12",
+                "attention_groups": "0"
+              }
+            },
+            "observability": {
+              "decisions_collected": "12",
+              "decisions_composed": "6",
+              "achievement_topics": "12",
+              "attention_topics": "0",
+              "bundles_scanned": "1",
+              "routing_eligible_items": "12"
+            },
+            "ok": "True",
+            "generated_at": "2026-07-15T10:53:09+00:00",
+            "store_slug": "متجر-واقع-صغير-0edb32"
+          },
+          "summary_contract_schema_version": "merchant_home_m1_v1",
+          "_merchant_home_transport": {
+            "summary_source": "live",
+            "cache_hit": "False",
+            "merchant_home_experience_attached": "True",
+            "home_attach_mode": "present",
+            "composition_version": "v1",
+            "summary_contract_schema_version": "merchant_home_m1_v1",
+            "snapshot_version": "0",
+            "snapshot_degraded": "False",
+            "snapshot_stale": "False"
+          }
+        }
+      },
+      "normal_carts": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "merchant_table_rows": [],
+          "merchant_carts_page_rows": [],
+          "merchant_archived_carts_page_rows": [],
+          "merchant_visible_page_counts": {
+            "all": 0,
+            "waiting": 0,
+            "sent": 0,
+            "attention": 0,
+            "recovered": 0,
+            "nophone": 0,
+            "archived": 0
+          },
+          "merchant_store_cart_counts": {
+            "active_total": 0,
+            "waiting_total": 0,
+            "sent_total": 0,
+            "engaged_total": 0,
+            "completed_total": 0,
+            "archived_total": 0,
+            "no_phone_total": 0
+          },
+          "merchant_cart_filter_counts": {
+            "all": 0,
+            "waiting": 0,
+            "sent": 0,
+            "attention": 0,
+            "recovered": 0,
+            "nophone": 0
+          },
+          "merchant_nav_badge_abandoned": 0,
+          "merchant_archived_cart_count": 0,
+          "merchant_counter_health": {
+            "counter_source": "canonical",
+            "counter_generated_at": "2026-07-15T10:53:10.420740+00:00",
+            "counter_snapshot_stale": false,
+            "counter_query_scope": "store_total",
+            "counter_parity_version": "v1",
+            "partial": false,
+            "candidate_rows": 0,
+            "groups_scanned": 0,
+            "row_cap": 2500,
+            "max_pick": 2500
+          },
+          "merchant_counter_generated_at": "2026-07-15T10:53:10.420740+00:00",
+          "merchant_counter_source": "canonical",
+          "merchant_dashboard_refresh_token": "متجر-واقع-صغير-0edb32:0:0:0:0:c0",
+          "merchant_dashboard_refresh_last_log_id": 0,
+          "merchant_dashboard_refresh_last_sent_log_id": 0,
+          "merchant_dashboard_refresh_sent_total": 0,
+          "merchant_dashboard_refresh_archive_rev": 0,
+          "merchant_dashboard_refresh_cart_rev": 0,
+          "_perf": {
+            "query_count": 1,
+            "duration_ms": 583.95,
+            "candidate_rows": 0,
+            "visible_rows": 0,
+            "rows_built": 0,
+            "rows_returned": 0,
+            "partial": false,
+            "degraded": false,
+            "timeout_stage": null,
+            "projection_ms": 0.0,
+            "load_ms": 124.45
+          },
+          "merchant_intelligence_store_v1": {
+            "version": "v1",
+            "authority": "merchant_intelligence_v1",
+            "generated_at": "2026-07-15T10:53:10+00:00",
+            "groups": [],
+            "recommendations": [],
+            "memory": [],
+            "priorities": [],
+            "cart_assignments": [],
+            "observability": {
+              "carts_processed": 0,
+              "groups_active": 0,
+              "patterns_active": 0,
+              "recommendations_count": 0,
+              "memory_beats_count": 0,
+              "priorities_count": 0,
+              "authority": "merchant_intelligence_v1",
+              "reviewable": true
+            }
+          },
+          "merchant_value_stories_v1": {
+            "version": "v1",
+            "authority": "merchant_value_composition_v1",
+            "stories": [],
+            "observability": {
+              "stories_composed": 0,
+              "groups_considered": 0,
+              "authority": "merchant_value_composition_v1",
+              "reviewable": true
+            }
+          },
+          "dashboard_wall_budget_s": 12.0,
+          "dashboard_partial": false,
+          "dashboard_timeout": false,
+          "dashboard_timeout_stage": null
+        }
+      },
+      "vip_carts": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "merchant_vip_banner": null,
+          "merchant_vip_rows": [],
+          "merchant_vip_page_rows": [],
+          "merchant_nav_badge_vip": 0,
+          "merchant_automation_mode": "manual",
+          "merchant_vip_threshold_configured": false,
+          "merchant_vip_alert_state_ar": "لم يُضبط حد VIP للمتجر — فعّل الحد من الإعدادات"
+        }
+      },
+      "followups": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "merchant_followup_rows": [],
+          "merchant_nav_badge_followup": 0
+        }
+      }
+    },
+    "composed": {
+      "knowledge": {
+        "ok": true,
+        "store_slug": "demo",
+        "window_days": 7,
+        "generated_at": "2026-07-15T10:53:11.988903+00:00",
+        "insights": [
+          {
+            "insight_key": "traffic_visitor_unavailable",
+            "category": "traffic",
+            "severity": "notice",
+            "title_ar": "بيانات الزوار غير متوفرة",
+            "message_ar": "CartFlow لا يرى عدد زوار المتجر حالياً — لا يمكن قياس حجم الزيارات من هذه البيانات.",
+            "evidence": {
+              "visitor_data_available": false,
+              "cart_count": 0,
+              "note": "visitor_data_unavailable"
+            },
+            "confidence": "insufficient",
+            "data_window": {
+              "days": 7,
+              "start": "2026-07-08T10:53:11.900923",
+              "end": "2026-07-15T10:53:11.900923"
+            },
+            "sample_size": 0,
+            "source_tables": [
+              "abandoned_carts"
+            ],
+            "recommended_action_ar": "قد تحتاج إلى مراجعة إعدادات التتبع إذا استمر نقص البيانات."
+          },
+          {
+            "insight_key": "conversion_funnel_gaps",
+            "category": "conversion",
+            "severity": "notice",
+            "title_ar": "فجوات في مسار التحويل",
+            "message_ar": "مسار التحويل الكامل غير مرئي بالكامل: بيانات الزوار غير متوفرة؛ بيانات مرحلة الدفع غير متوفرة.",
+            "evidence": {
+              "cart_count": 0,
+              "checkout_signal_count": 0,
+              "purchase_count": 0,
+              "gaps": [
+                "visitor_data_unavailable",
+                "checkout_data_unavailable"
+              ]
+            },
+            "confidence": "insufficient",
+            "data_window": {
+              "days": 7,
+              "start": "2026-07-08T10:53:11.900923",
+              "end": "2026-07-15T10:53:11.900923"
+            },
+            "sample_size": 0,
+            "source_tables": [
+              "abandoned_carts",
+              "purchase_truth_records"
+            ],
+            "recommended_action_ar": "راقب هذا المؤشر خلال الأيام القادمة."
+          },
+          {
+            "insight_key": "conversion_no_carts",
+            "category": "conversion",
+            "severity": "notice",
+            "title_ar": "لا توجد سلال في النافذة",
+            "message_ar": "لم تُسجَّل سلات مهجورة في نافذة البيانات الحالية.",
+            "evidence": {
+              "cart_count": 0,
+              "checkout_signal_count": 0,
+              "purchase_count": 0,
+              "gaps": [
+                "visitor_data_unavailable",
+                "checkout_data_unavailable"
+              ]
+            },
+            "confidence": "insufficient",
+            "data_window": {
+              "days": 7,
+              "start": "2026-07-08T10:53:11.900923",
+              "end": "2026-07-15T10:53:11.900923"
+            },
+            "sample_size": 0,
+            "source_tables": [
+              "abandoned_carts"
+            ],
+            "recommended_action_ar": "تأكد أن بيانات المتجر تصل بشكل صحيح."
+          },
+          {
+            "insight_key": "hesitation_insufficient_sample",
+            "category": "hesitation",
+            "severity": "notice",
+            "title_ar": "بيانات التردد محدودة",
+            "message_ar": "عدد أسباب التردد المسجّلة (0) أقل من الحد الأدنى (3) لاستنتاج موثوق.",
+            "evidence": {
+              "hesitation_total": 0,
+              "distribution": {}
+            },
+            "confidence": "insufficient",
+            "data_window": {
+              "days": 7,
+              "start": "2026-07-08T10:53:11.900923",
+              "end": "2026-07-15T10:53:11.900923"
+            },
+            "sample_size": 0,
+            "source_tables": [
+              "cart_recovery_reasons"
+            ],
+            "recommended_action_ar": "تأكد أن بيانات المتجر تصل بشكل صحيح."
+          },
+          {
+            "insight_key": "recovery_insufficient_sample",
+            "category": "recovery",
+            "severity": "notice",
+            "title_ar": "نشاط الاسترجاع محدود",
+            "message_ar": "عدد أحداث الاسترجاع (0) أقل من الحد الأدنى (2) لتقييم الفعالية.",
+            "evidence": {
+              "messages_sent": 0,
+              "replies": 0,
+              "returns": 0,
+              "purchase_count": 0,
+              "attributed_recovery_purchase_count": 0,
+              "purchase_attribution_unknown_count": 0,
+              "ignored": 0,
+              "stopped": 0,
+              "failed": 0
+            },
+            "confidence": "insufficient",
+            "data_window": {
+              "days": 7,
+              "start": "2026-07-08T10:53:11.900923",
+              "end": "2026-07-15T10:53:11.900923"
+            },
+            "sample_size": 0,
+            "source_tables": [
+              "cart_recovery_logs",
+              "recovery_truth_timeline_events"
+            ],
+            "recommended_action_ar": "تأكد أن بيانات المتجر تصل بشكل صحيح."
+          },
+          {
+            "insight_key": "store_health_overview",
+            "category": "store_health",
+            "severity": "warning",
+            "title_ar": "صحة بيانات المتجر",
+            "message_ar": "لا توجد سلات كافية في النافذة. مسار الاسترجاع نشط. البيانات محدودة لرؤية موثوقة.",
+            "evidence": {
+              "signals": [
+                "not_enough_cart_data",
+                "recovery_is_running",
+                "data_too_limited_for_reliable_insight"
+              ],
+              "metrics": {
+                "store_slug": "demo",
+                "window_days": 7,
+                "window_start": "2026-07-08T10:53:11.900923",
+                "window_end": "2026-07-15T10:53:11.900923",
+                "store_resolved": true,
+                "visitor_data_available": false,
+                "cart_count": 0,
+                "prev_cart_count": 0,
+                "carts_with_phone": 0,
+                "vip_cart_count": 0,
+                "prev_vip_cart_count": 0,
+                "checkout_data_available": false,
+                "checkout_signal_count": 0,
+                "purchase_count": 0,
+                "attributed_recovery_purchase_count": 0,
+                "purchase_attribution_unknown_count": 0,
+                "purchase_attribution_evaluated_count": 0,
+                "hesitation_total": 0,
+                "hesitation_distribution": {},
+                "recovery_messages_sent": 0,
+                "recovery_replies": 0,
+                "recovery_returns": 0,
+                "recovery_ignored": 0,
+                "recovery_stopped": 0,
+                "recovery_failed": 0,
+                "recovery_scheduled_active": 8,
+                "purchase_truth_rows": 0,
+                "lifecycle_closure_rows": 0,
+                "vip_evidence": {
+                  "isolated": true,
+                  "session_count": 0,
+                  "cart_count": 0,
+                  "prev_cart_count": 0,
+                  "hesitation_total": 0,
+                  "hesitation_distribution": {},
+                  "recovery_messages_sent": 0,
+                  "recovery_replies": 0,
+                  "recovery_returns": 0,
+                  "merchant_alert_logs": 0
+                },
+                "source_tables": [
+                  "abandoned_carts",
+                  "cart_recovery_logs",
+                  "cart_recovery_reasons",
+                  "lifecycle_closure_records",
+                  "purchase_truth_records",
+                  "recovery_schedules",
+                  "recovery_truth_timeline_events"
+                ]
+              }
+            },
+            "confidence": "insufficient",
+            "data_window": {
+              "days": 7,
+              "start": "2026-07-08T10:53:11.900923",
+              "end": "2026-07-15T10:53:11.900923"
+            },
+            "sample_size": 0,
+            "source_tables": [
+              "abandoned_carts",
+              "cart_recovery_logs",
+              "cart_recovery_reasons",
+              "lifecycle_closure_records",
+              "purchase_truth_records",
+              "recovery_schedules",
+              "recovery_truth_timeline_events"
+            ],
+            "recommended_action_ar": "تأكد أن بيانات المتجر تصل بشكل صحيح."
+          }
+        ],
+        "metrics_snapshot": {
+          "store_slug": "demo",
+          "window_days": 7,
+          "window_start": "2026-07-08T10:53:11.900923",
+          "window_end": "2026-07-15T10:53:11.900923",
+          "store_resolved": true,
+          "visitor_data_available": false,
+          "cart_count": 0,
+          "prev_cart_count": 0,
+          "carts_with_phone": 0,
+          "vip_cart_count": 0,
+          "prev_vip_cart_count": 0,
+          "checkout_data_available": false,
+          "checkout_signal_count": 0,
+          "purchase_count": 0,
+          "attributed_recovery_purchase_count": 0,
+          "purchase_attribution_unknown_count": 0,
+          "purchase_attribution_evaluated_count": 0,
+          "hesitation_total": 0,
+          "hesitation_distribution": {},
+          "recovery_messages_sent": 0,
+          "recovery_replies": 0,
+          "recovery_returns": 0,
+          "recovery_ignored": 0,
+          "recovery_stopped": 0,
+          "recovery_failed": 0,
+          "recovery_scheduled_active": 8,
+          "purchase_truth_rows": 0,
+          "lifecycle_closure_rows": 0,
+          "vip_evidence": {
+            "isolated": true,
+            "session_count": 0,
+            "cart_count": 0,
+            "prev_cart_count": 0,
+            "hesitation_total": 0,
+            "hesitation_distribution": {},
+            "recovery_messages_sent": 0,
+            "recovery_replies": 0,
+            "recovery_returns": 0,
+            "merchant_alert_logs": 0
+          },
+          "source_tables": [
+            "abandoned_carts",
+            "cart_recovery_logs",
+            "cart_recovery_reasons",
+            "lifecycle_closure_records",
+            "purchase_truth_records",
+            "recovery_schedules",
+            "recovery_truth_timeline_events"
+          ]
+        }
+      },
+      "home": {
+        "version": "v1",
+        "experience_tier": "starter",
+        "tier_capabilities": {
+          "starter": {
+            "max_attention_display": 3,
+            "max_understanding_display": 3,
+            "trend_awareness": false,
+            "executive_summary": false
+          },
+          "growth": {
+            "max_attention_display": 3,
+            "max_understanding_display": 5,
+            "trend_awareness": true,
+            "executive_summary": false
+          },
+          "pro": {
+            "max_attention_display": 5,
+            "max_understanding_display": 5,
+            "trend_awareness": true,
+            "executive_summary": true
+          }
+        },
+        "brief_date": "2026-07-15",
+        "greeting": {
+          "greeting_ar": "مساء الخير",
+          "merchant_name_ar": "متجر واقع صغير",
+          "date_ar": ""
+        },
+        "while_away": {
+          "title_ar": "بينما كنت بعيداً",
+          "lead_ar": "CartFlow يتابع متجرك تلقائياً — هذا ما اكتمل:",
+          "items": [
+            {
+              "headline_ar": "بيانات التردد محدودة",
+              "detail_ar": "ملخص Knowledge Layer للفترة المحددة",
+              "action_ar": "",
+              "aggregation_key": "decision_kl_observation:hesitation_reason:insight_key:hesitation_insufficient_sample",
+              "source_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:hesitation_reason:insight_key:hesitation_insufficient_sample",
+              "routing_priority": 240,
+              "section": "while_away"
+            },
+            {
+              "headline_ar": "نشاط الاسترجاع محدود",
+              "detail_ar": "ملخص Knowledge Layer للفترة المحددة",
+              "action_ar": "",
+              "aggregation_key": "decision_kl_observation:recovery_record:insight_key:recovery_insufficient_sample",
+              "source_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:recovery_record:insight_key:recovery_insufficient_sample",
+              "routing_priority": 240,
+              "section": "while_away"
+            },
+            {
+              "headline_ar": "فجوات في مسار التحويل",
+              "detail_ar": "ملخص Knowledge Layer للفترة المحددة",
+              "action_ar": "",
+              "aggregation_key": "decision_kl_observation:store_activity:insight_key:conversion_funnel_gaps",
+              "source_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:store_activity:insight_key:conversion_funnel_gaps",
+              "routing_priority": 240,
+              "section": "while_away"
+            },
+            {
+              "headline_ar": "لا توجد سلال في النافذة",
+              "detail_ar": "ملخص Knowledge Layer للفترة المحددة",
+              "action_ar": "",
+              "aggregation_key": "decision_kl_observation:store_activity:insight_key:conversion_no_carts",
+              "source_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:store_activity:insight_key:conversion_no_carts",
+              "routing_priority": 240,
+              "section": "while_away"
+            },
+            {
+              "headline_ar": "صحة بيانات المتجر",
+              "detail_ar": "ملخص Knowledge Layer للفترة المحددة",
+              "action_ar": "",
+              "aggregation_key": "decision_kl_observation:store_activity:insight_key:store_health_overview",
+              "source_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:store_activity:insight_key:store_health_overview",
+              "routing_priority": 240,
+              "section": "while_away"
+            },
+            {
+              "headline_ar": "بيانات الزوار غير متوفرة",
+              "detail_ar": "ملخص Knowledge Layer للفترة المحددة",
+              "action_ar": "",
+              "aggregation_key": "decision_kl_observation:visitor_behavior:insight_key:traffic_visitor_unavailable",
+              "source_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:visitor_behavior:insight_key:traffic_visitor_unavailable",
+              "routing_priority": 240,
+              "section": "while_away"
+            },
+            {
+              "headline_ar": "بيانات التردد محدودة",
+              "detail_ar": "—",
+              "action_ar": "",
+              "aggregation_key": "hesitation_insufficient_sample:7d",
+              "source_knowledge_id": "route:daily_brief:achievement:hesitation_insufficient_sample:7d",
+              "routing_priority": 130,
+              "section": "while_away"
+            },
+            {
+              "headline_ar": "فجوات في مسار التحويل",
+              "detail_ar": "—",
+              "action_ar": "",
+              "aggregation_key": "conversion_funnel_gaps:7d",
+              "source_knowledge_id": "route:daily_brief:achievement:conversion_funnel_gaps:7d",
+              "routing_priority": 120,
+              "section": "while_away"
+            },
+            {
+              "headline_ar": "لا توجد سلال في النافذة",
+              "detail_ar": "—",
+              "action_ar": "",
+              "aggregation_key": "conversion_no_carts:7d",
+              "source_knowledge_id": "route:daily_brief:achievement:conversion_no_carts:7d",
+              "routing_priority": 120,
+              "section": "while_away"
+            },
+            {
+              "headline_ar": "نشاط الاسترجاع محدود",
+              "detail_ar": "—",
+              "action_ar": "",
+              "aggregation_key": "recovery_insufficient_sample:7d",
+              "source_knowledge_id": "route:daily_brief:achievement:recovery_insufficient_sample:7d",
+              "routing_priority": 120,
+              "section": "while_away"
+            },
+            {
+              "headline_ar": "صحة بيانات المتجر",
+              "detail_ar": "—",
+              "action_ar": "",
+              "aggregation_key": "store_health_overview:7d",
+              "source_knowledge_id": "route:daily_brief:achievement:store_health_overview:7d",
+              "routing_priority": 120,
+              "section": "while_away"
+            },
+            {
+              "headline_ar": "بيانات الزوار غير متوفرة",
+              "detail_ar": "—",
+              "action_ar": "",
+              "aggregation_key": "traffic_visitor_unavailable:7d",
+              "source_knowledge_id": "route:daily_brief:achievement:traffic_visitor_unavailable:7d",
+              "routing_priority": 120,
+              "section": "while_away"
+            }
+          ],
+          "empty_message_ar": "CartFlow يتابع متجرك — سنُظهر الإنجازات هنا عند توفرها."
+        },
+        "attention_today": {
+          "title_ar": "يحتاج انتباهك اليوم",
+          "lead_ar": "إجراءات مقترحة — بدون تكرار.",
+          "items": [],
+          "max_display": 3,
+          "platform_max": 5,
+          "count": 0,
+          "empty_message_ar": "لا أمور تتطلب انتباهك الآن — CartFlow يتابع الحالات الروتينية."
+        },
+        "store_understanding": {
+          "title_ar": "فهم المتجر",
+          "lead_ar": "فهم تشغيلي — ليس أرقاماً فقط.",
+          "items": [],
+          "max_display": 3,
+          "empty_message_ar": "لا توجد استنتاجات كافية بعد — استمر في جمع النشاط."
+        },
+        "quick_nav": {
+          "title_ar": "انتقال سريع",
+          "items": [
+            {
+              "id": "knowledge",
+              "label_ar": "طبقة المعرفة",
+              "nav_type": "anchor",
+              "href": "#ma-home-understanding"
+            },
+            {
+              "id": "active_carts",
+              "label_ar": "السلال النشطة",
+              "nav_type": "cart_tab",
+              "cart_tab": "all",
+              "badge_count": 0
+            },
+            {
+              "id": "completed",
+              "label_ar": "الاستردادات المكتملة",
+              "nav_type": "cart_tab",
+              "cart_tab": "completed"
+            },
+            {
+              "id": "settings",
+              "label_ar": "الإعدادات",
+              "nav_type": "settings",
+              "settings_page": "settings"
+            },
+            {
+              "id": "waiting",
+              "label_ar": "بانتظار الإرسال",
+              "nav_type": "cart_tab",
+              "cart_tab": "waiting",
+              "badge_count": 0,
+              "visible": false
+            }
+          ]
+        },
+        "empty_calm": false,
+        "knowledge_routing_v1": {
+          "routing_version": "v1",
+          "surface": "merchant_home",
+          "observability": {
+            "input_items": 0,
+            "eligible_items": 0,
+            "achievement_groups": 0,
+            "attention_groups": 0
+          }
+        },
+        "sources": {
+          "daily_brief_version": "v2",
+          "daily_brief_composer": "v2",
+          "achievement_count": 12,
+          "attention_source_count": 0,
+          "understanding_routed_groups": 0
+        },
+        "observability": {
+          "while_away_items": 12,
+          "attention_items": 0,
+          "understanding_items": 0,
+          "dedupe_keys": 12
+        },
+        "ok": true,
+        "generated_at": "2026-07-15T10:53:19+00:00",
+        "store_slug": "demo",
+        "daily_brief_v1": {
+          "version": "v2",
+          "composer_version": "v2",
+          "brief_date": "2026-07-15",
+          "achievements": [
+            {
+              "brief_item_id": "daily_brief:2026-07-15:achievement:decision_kl_observation:hesitation_reason:insight_key:hesitation_insufficient_sample",
+              "section": "achievement",
+              "headline_ar": "بيانات التردد محدودة",
+              "what_ar": "بيانات التردد محدودة",
+              "why_ar": "ملخص Knowledge Layer للفترة المحددة",
+              "action_ar": "",
+              "action_present": false,
+              "decision_count": 1,
+              "source_decision_ids": [
+                "insight:hesitation_insufficient_sample"
+              ],
+              "aggregation_key": "decision_kl_observation:hesitation_reason:insight_key:hesitation_insufficient_sample",
+              "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+              "routing_priority": 240,
+              "routing_version": "v1",
+              "routed_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:hesitation_reason:insight_key:hesitation_insufficient_sample",
+              "representative_knowledge_id": "dec:decision_kl_observation:demo:insight_hesitation_insufficient_sample",
+              "representative_decision_id": "decision_kl_observation:hesitation_insufficient_sample",
+              "decision_id": "decision_kl_observation:hesitation_insufficient_sample",
+              "decision_class": "observation",
+              "decision_class_label_ar": "ملاحظة",
+              "priority": 240,
+              "confidence": "insufficient",
+              "confidence_label_ar": "غير كافية",
+              "evidence_source_ar": "سبب التردد",
+              "evidence_ids": [
+                "hesitation_reason"
+              ],
+              "commercial_goal": "reduce_hesitation",
+              "commercial_goal_label_ar": "تقليل التردد",
+              "merge_key": "decision_kl_observation:hesitation_reason:insight_key:hesitation_insufficient_sample",
+              "proof_sources": [
+                "insight_key:hesitation_insufficient_sample"
+              ],
+              "action_key": null
+            },
+            {
+              "brief_item_id": "daily_brief:2026-07-15:achievement:decision_kl_observation:recovery_record:insight_key:recovery_insufficient_sample",
+              "section": "achievement",
+              "headline_ar": "نشاط الاسترجاع محدود",
+              "what_ar": "نشاط الاسترجاع محدود",
+              "why_ar": "ملخص Knowledge Layer للفترة المحددة",
+              "action_ar": "",
+              "action_present": false,
+              "decision_count": 1,
+              "source_decision_ids": [
+                "insight:recovery_insufficient_sample"
+              ],
+              "aggregation_key": "decision_kl_observation:recovery_record:insight_key:recovery_insufficient_sample",
+              "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+              "routing_priority": 240,
+              "routing_version": "v1",
+              "routed_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:recovery_record:insight_key:recovery_insufficient_sample",
+              "representative_knowledge_id": "dec:decision_kl_observation:demo:insight_recovery_insufficient_sample",
+              "representative_decision_id": "decision_kl_observation:recovery_insufficient_sample",
+              "decision_id": "decision_kl_observation:recovery_insufficient_sample",
+              "decision_class": "observation",
+              "decision_class_label_ar": "ملاحظة",
+              "priority": 240,
+              "confidence": "insufficient",
+              "confidence_label_ar": "غير كافية",
+              "evidence_source_ar": "سجل الاسترجاع",
+              "evidence_ids": [
+                "recovery_record"
+              ],
+              "commercial_goal": "reduce_hesitation",
+              "commercial_goal_label_ar": "تقليل التردد",
+              "merge_key": "decision_kl_observation:recovery_record:insight_key:recovery_insufficient_sample",
+              "proof_sources": [
+                "insight_key:recovery_insufficient_sample"
+              ],
+              "action_key": null
+            },
+            {
+              "brief_item_id": "daily_brief:2026-07-15:achievement:decision_kl_observation:store_activity:insight_key:conversion_funnel_gaps",
+              "section": "achievement",
+              "headline_ar": "فجوات في مسار التحويل",
+              "what_ar": "فجوات في مسار التحويل",
+              "why_ar": "ملخص Knowledge Layer للفترة المحددة",
+              "action_ar": "",
+              "action_present": false,
+              "decision_count": 1,
+              "source_decision_ids": [
+                "insight:conversion_funnel_gaps"
+              ],
+              "aggregation_key": "decision_kl_observation:store_activity:insight_key:conversion_funnel_gaps",
+              "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+              "routing_priority": 240,
+              "routing_version": "v1",
+              "routed_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:store_activity:insight_key:conversion_funnel_gaps",
+              "representative_knowledge_id": "dec:decision_kl_observation:demo:insight_conversion_funnel_gaps",
+              "representative_decision_id": "decision_kl_observation:conversion_funnel_gaps",
+              "decision_id": "decision_kl_observation:conversion_funnel_gaps",
+              "decision_class": "observation",
+              "decision_class_label_ar": "ملاحظة",
+              "priority": 240,
+              "confidence": "insufficient",
+              "confidence_label_ar": "غير كافية",
+              "evidence_source_ar": "بيانات المتجر",
+              "evidence_ids": [
+                "store_activity"
+              ],
+              "commercial_goal": "reduce_hesitation",
+              "commercial_goal_label_ar": "تقليل التردد",
+              "merge_key": "decision_kl_observation:store_activity:insight_key:conversion_funnel_gaps",
+              "proof_sources": [
+                "insight_key:conversion_funnel_gaps"
+              ],
+              "action_key": null
+            },
+            {
+              "brief_item_id": "daily_brief:2026-07-15:achievement:decision_kl_observation:store_activity:insight_key:conversion_no_carts",
+              "section": "achievement",
+              "headline_ar": "لا توجد سلال في النافذة",
+              "what_ar": "لا توجد سلال في النافذة",
+              "why_ar": "ملخص Knowledge Layer للفترة المحددة",
+              "action_ar": "",
+              "action_present": false,
+              "decision_count": 1,
+              "source_decision_ids": [
+                "insight:conversion_no_carts"
+              ],
+              "aggregation_key": "decision_kl_observation:store_activity:insight_key:conversion_no_carts",
+              "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+              "routing_priority": 240,
+              "routing_version": "v1",
+              "routed_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:store_activity:insight_key:conversion_no_carts",
+              "representative_knowledge_id": "dec:decision_kl_observation:demo:insight_conversion_no_carts",
+              "representative_decision_id": "decision_kl_observation:conversion_no_carts",
+              "decision_id": "decision_kl_observation:conversion_no_carts",
+              "decision_class": "observation",
+              "decision_class_label_ar": "ملاحظة",
+              "priority": 240,
+              "confidence": "insufficient",
+              "confidence_label_ar": "غير كافية",
+              "evidence_source_ar": "بيانات المتجر",
+              "evidence_ids": [
+                "store_activity"
+              ],
+              "commercial_goal": "reduce_hesitation",
+              "commercial_goal_label_ar": "تقليل التردد",
+              "merge_key": "decision_kl_observation:store_activity:insight_key:conversion_no_carts",
+              "proof_sources": [
+                "insight_key:conversion_no_carts"
+              ],
+              "action_key": null
+            },
+            {
+              "brief_item_id": "daily_brief:2026-07-15:achievement:decision_kl_observation:store_activity:insight_key:store_health_overview",
+              "section": "achievement",
+              "headline_ar": "صحة بيانات المتجر",
+              "what_ar": "صحة بيانات المتجر",
+              "why_ar": "ملخص Knowledge Layer للفترة المحددة",
+              "action_ar": "",
+              "action_present": false,
+              "decision_count": 1,
+              "source_decision_ids": [
+                "insight:store_health_overview"
+              ],
+              "aggregation_key": "decision_kl_observation:store_activity:insight_key:store_health_overview",
+              "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+              "routing_priority": 240,
+              "routing_version": "v1",
+              "routed_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:store_activity:insight_key:store_health_overview",
+              "representative_knowledge_id": "dec:decision_kl_observation:demo:insight_store_health_overview",
+              "representative_decision_id": "decision_kl_observation:store_health_overview",
+              "decision_id": "decision_kl_observation:store_health_overview",
+              "decision_class": "observation",
+              "decision_class_label_ar": "ملاحظة",
+              "priority": 240,
+              "confidence": "insufficient",
+              "confidence_label_ar": "غير كافية",
+              "evidence_source_ar": "بيانات المتجر",
+              "evidence_ids": [
+                "store_activity"
+              ],
+              "commercial_goal": "reduce_hesitation",
+              "commercial_goal_label_ar": "تقليل التردد",
+              "merge_key": "decision_kl_observation:store_activity:insight_key:store_health_overview",
+              "proof_sources": [
+                "insight_key:store_health_overview"
+              ],
+              "action_key": null
+            },
+            {
+              "brief_item_id": "daily_brief:2026-07-15:achievement:decision_kl_observation:visitor_behavior:insight_key:traffic_visitor_unavailable",
+              "section": "achievement",
+              "headline_ar": "بيانات الزوار غير متوفرة",
+              "what_ar": "بيانات الزوار غير متوفرة",
+              "why_ar": "ملخص Knowledge Layer للفترة المحددة",
+              "action_ar": "",
+              "action_present": false,
+              "decision_count": 1,
+              "source_decision_ids": [
+                "insight:traffic_visitor_unavailable"
+              ],
+              "aggregation_key": "decision_kl_observation:visitor_behavior:insight_key:traffic_visitor_unavailable",
+              "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+              "routing_priority": 240,
+              "routing_version": "v1",
+              "routed_knowledge_id": "route:daily_brief:achievement:decision_kl_observation:visitor_behavior:insight_key:traffic_visitor_unavailable",
+              "representative_knowledge_id": "dec:decision_kl_observation:demo:insight_traffic_visitor_unavailable",
+              "representative_decision_id": "decision_kl_observation:traffic_visitor_unavailable",
+              "decision_id": "decision_kl_observation:traffic_visitor_unavailable",
+              "decision_class": "observation",
+              "decision_class_label_ar": "ملاحظة",
+              "priority": 240,
+              "confidence": "insufficient",
+              "confidence_label_ar": "غير كافية",
+              "evidence_source_ar": "حركة الزيارات",
+              "evidence_ids": [
+                "visitor_behavior"
+              ],
+              "commercial_goal": "reduce_hesitation",
+              "commercial_goal_label_ar": "تقليل التردد",
+              "merge_key": "decision_kl_observation:visitor_behavior:insight_key:traffic_visitor_unavailable",
+              "proof_sources": [
+                "insight_key:traffic_visitor_unavailable"
+              ],
+              "action_key": null
+            },
+            {
+              "brief_item_id": "daily_brief:2026-07-15:achievement:hesitation_insufficient_sample:7d",
+              "section": "achievement",
+              "headline_ar": "بيانات التردد محدودة",
+              "what_ar": "بيانات التردد محدودة",
+              "why_ar": "—",
+              "action_ar": "",
+              "action_present": false,
+              "decision_count": 1,
+              "source_decision_ids": [],
+              "aggregation_key": "hesitation_insufficient_sample:7d",
+              "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+              "routing_priority": 130,
+              "routing_version": "v1",
+              "routed_knowledge_id": "route:daily_brief:achievement:hesitation_insufficient_sample:7d",
+              "representative_knowledge_id": "kl:hesitation_insufficient_sample:demo:7d",
+              "representative_decision_id": "",
+              "decision_id": "",
+              "decision_class": "",
+              "decision_class_label_ar": "—",
+              "priority": 130,
+              "confidence": "insufficient",
+              "confidence_label_ar": "غير كافية",
+              "evidence_source_ar": "سبب التردد",
+              "evidence_ids": [
+                "hesitation_reason"
+              ],
+              "commercial_goal": "",
+              "commercial_goal_label_ar": "—",
+              "merge_key": "hesitation_insufficient_sample:7d",
+              "proof_sources": [
+                "insight_key:hesitation_insufficient_sample"
+              ],
+              "action_key": null
+            },
+            {
+              "brief_item_id": "daily_brief:2026-07-15:achievement:conversion_funnel_gaps:7d",
+              "section": "achievement",
+              "headline_ar": "فجوات في مسار التحويل",
+              "what_ar": "فجوات في مسار التحويل",
+              "why_ar": "—",
+              "action_ar": "",
+              "action_present": false,
+              "decision_count": 1,
+              "source_decision_ids": [],
+              "aggregation_key": "conversion_funnel_gaps:7d",
+              "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+              "routing_priority": 120,
+              "routing_version": "v1",
+              "routed_knowledge_id": "route:daily_brief:achievement:conversion_funnel_gaps:7d",
+              "representative_knowledge_id": "kl:conversion_funnel_gaps:demo:7d",
+              "representative_decision_id": "",
+              "decision_id": "",
+              "decision_class": "",
+              "decision_class_label_ar": "—",
+              "priority": 120,
+              "confidence": "insufficient",
+              "confidence_label_ar": "غير كافية",
+              "evidence_source_ar": "بيانات المتجر",
+              "evidence_ids": [
+                "store_activity"
+              ],
+              "commercial_goal": "",
+              "commercial_goal_label_ar": "—",
+              "merge_key": "conversion_funnel_gaps:7d",
+              "proof_sources": [
+                "insight_key:conversion_funnel_gaps"
+              ],
+              "action_key": null
+            },
+            {
+              "brief_item_id": "daily_brief:2026-07-15:achievement:conversion_no_carts:7d",
+              "section": "achievement",
+              "headline_ar": "لا توجد سلال في النافذة",
+              "what_ar": "لا توجد سلال في النافذة",
+              "why_ar": "—",
+              "action_ar": "",
+              "action_present": false,
+              "decision_count": 1,
+              "source_decision_ids": [],
+              "aggregation_key": "conversion_no_carts:7d",
+              "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+              "routing_priority": 120,
+              "routing_version": "v1",
+              "routed_knowledge_id": "route:daily_brief:achievement:conversion_no_carts:7d",
+              "representative_knowledge_id": "kl:conversion_no_carts:demo:7d",
+              "representative_decision_id": "",
+              "decision_id": "",
+              "decision_class": "",
+              "decision_class_label_ar": "—",
+              "priority": 120,
+              "confidence": "insufficient",
+              "confidence_label_ar": "غير كافية",
+              "evidence_source_ar": "بيانات المتجر",
+              "evidence_ids": [
+                "store_activity"
+              ],
+              "commercial_goal": "",
+              "commercial_goal_label_ar": "—",
+              "merge_key": "conversion_no_carts:7d",
+              "proof_sources": [
+                "insight_key:conversion_no_carts"
+              ],
+              "action_key": null
+            },
+            {
+              "brief_item_id": "daily_brief:2026-07-15:achievement:recovery_insufficient_sample:7d",
+              "section": "achievement",
+              "headline_ar": "نشاط الاسترجاع محدود",
+              "what_ar": "نشاط الاسترجاع محدود",
+              "why_ar": "—",
+              "action_ar": "",
+              "action_present": false,
+              "decision_count": 1,
+              "source_decision_ids": [],
+              "aggregation_key": "recovery_insufficient_sample:7d",
+              "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+              "routing_priority": 120,
+              "routing_version": "v1",
+              "routed_knowledge_id": "route:daily_brief:achievement:recovery_insufficient_sample:7d",
+              "representative_knowledge_id": "kl:recovery_insufficient_sample:demo:7d",
+              "representative_decision_id": "",
+              "decision_id": "",
+              "decision_class": "",
+              "decision_class_label_ar": "—",
+              "priority": 120,
+              "confidence": "insufficient",
+              "confidence_label_ar": "غير كافية",
+              "evidence_source_ar": "سجل الاسترجاع",
+              "evidence_ids": [
+                "recovery_record"
+              ],
+              "commercial_goal": "",
+              "commercial_goal_label_ar": "—",
+              "merge_key": "recovery_insufficient_sample:7d",
+              "proof_sources": [
+                "insight_key:recovery_insufficient_sample"
+              ],
+              "action_key": null
+            },
+            {
+              "brief_item_id": "daily_brief:2026-07-15:achievement:store_health_overview:7d",
+              "section": "achievement",
+              "headline_ar": "صحة بيانات المتجر",
+              "what_ar": "صحة بيانات المتجر",
+              "why_ar": "—",
+              "action_ar": "",
+              "action_present": false,
+              "decision_count": 1,
+              "source_decision_ids": [],
+              "aggregation_key": "store_health_overview:7d",
+              "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+              "routing_priority": 120,
+              "routing_version": "v1",
+              "routed_knowledge_id": "route:daily_brief:achievement:store_health_overview:7d",
+              "representative_knowledge_id": "kl:store_health_overview:demo:7d",
+              "representative_decision_id": "",
+              "decision_id": "",
+              "decision_class": "",
+              "decision_class_label_ar": "—",
+              "priority": 120,
+              "confidence": "insufficient",
+              "confidence_label_ar": "غير كافية",
+              "evidence_source_ar": "بيانات المتجر",
+              "evidence_ids": [
+                "store_activity"
+              ],
+              "commercial_goal": "",
+              "commercial_goal_label_ar": "—",
+              "merge_key": "store_health_overview:7d",
+              "proof_sources": [
+                "insight_key:store_health_overview"
+              ],
+              "action_key": null
+            },
+            {
+              "brief_item_id": "daily_brief:2026-07-15:achievement:traffic_visitor_unavailable:7d",
+              "section": "achievement",
+              "headline_ar": "بيانات الزوار غير متوفرة",
+              "what_ar": "بيانات الزوار غير متوفرة",
+              "why_ar": "—",
+              "action_ar": "",
+              "action_present": false,
+              "decision_count": 1,
+              "source_decision_ids": [],
+              "aggregation_key": "traffic_visitor_unavailable:7d",
+              "aggregation_reason": "routing:aggregation_key+narrative_role+surface",
+              "routing_priority": 120,
+              "routing_version": "v1",
+              "routed_knowledge_id": "route:daily_brief:achievement:traffic_visitor_unavailable:7d",
+              "representative_knowledge_id": "kl:traffic_visitor_unavailable:demo:7d",
+              "representative_decision_id": "",
+              "decision_id": "",
+              "decision_class": "",
+              "decision_class_label_ar": "—",
+              "priority": 120,
+              "confidence": "insufficient",
+              "confidence_label_ar": "غير كافية",
+              "evidence_source_ar": "حركة الزيارات",
+              "evidence_ids": [
+                "visitor_behavior"
+              ],
+              "commercial_goal": "",
+              "commercial_goal_label_ar": "—",
+              "merge_key": "traffic_visitor_unavailable:7d",
+              "proof_sources": [
+                "insight_key:traffic_visitor_unavailable"
+              ],
+              "action_key": null
+            }
+          ],
+          "attention_items": [],
+          "items": [],
+          "achievement_count": 12,
+          "attention_count": 0,
+          "item_count": 0,
+          "max_items": 5,
+          "empty": false,
+          "empty_state_ar": {
+            "title_ar": "يوم هادئ في متجرك",
+            "message_ar": "لا توجد قرارات تتطلب انتباهك اليوم — CartFlow يتابع الحالات الروتينية تلقائياً"
+          },
+          "knowledge_routing_v1": {
+            "routing_version": "v1",
+            "surface": "daily_brief",
+            "observability": {
+              "input_items": 12,
+              "eligible_items": 12,
+              "achievement_groups": 12,
+              "attention_groups": 0
+            }
+          },
+          "observability": {
+            "decisions_collected": 12,
+            "decisions_composed": 6,
+            "achievement_topics": 12,
+            "attention_topics": 0,
+            "bundles_scanned": 28,
+            "routing_eligible_items": 12
+          },
+          "ok": true,
+          "generated_at": "2026-07-15T10:53:19+00:00",
+          "store_slug": "demo"
+        }
+      },
+      "monthly": {
+        "present": false,
+        "note": "no_monthly_summary_snapshot_row"
+      }
+    },
+    "counts": {
+      "abandoned_carts": 27,
+      "purchase_truth_demo": 20,
+      "recovery_schedules": 13,
+      "reasons": 17,
+      "mock_whatsapp_logs": 13,
+      "movement_snapshots": 31,
+      "timeline_events": 26
+    },
+    "samples": {
+      "purchases": [
+        {
+          "recovery_key": "demo:srs_8a93f2dc_2d018a01_4ea49f92",
+          "store_slug": "demo",
+          "source": "store_reality_simulator",
+          "evidence": "srs_phase3_planned_purchase",
+          "purchase_time": "2026-05-01 15:08:00"
+        },
+        {
+          "recovery_key": "demo:srs_cart_4ea49f92d533",
+          "store_slug": "demo",
+          "source": "store_reality_simulator",
+          "evidence": "reconcile_from=demo:srs_8a93f2dc_2d018a01_4ea49f92",
+          "purchase_time": "2026-05-01 15:08:00"
+        },
+        {
+          "recovery_key": "demo:srs_8a93f2dc_353ea00e_848f5c4e",
+          "store_slug": "demo",
+          "source": "store_reality_simulator",
+          "evidence": "srs_phase3_planned_purchase",
+          "purchase_time": "2026-05-01 16:55:00"
+        },
+        {
+          "recovery_key": "demo:srs_cart_848f5c4ee8ca",
+          "store_slug": "demo",
+          "source": "store_reality_simulator",
+          "evidence": "reconcile_from=demo:srs_8a93f2dc_353ea00e_848f5c4e",
+          "purchase_time": "2026-05-01 16:55:00"
+        },
+        {
+          "recovery_key": "demo:srs_8a93f2dc_d74d07e4_7ee92a2f",
+          "store_slug": "demo",
+          "source": "store_reality_simulator",
+          "evidence": "srs_phase3_planned_purchase",
+          "purchase_time": "2026-05-01 19:21:00"
+        },
+        {
+          "recovery_key": "demo:srs_cart_7ee92a2f6513",
+          "store_slug": "demo",
+          "source": "store_reality_simulator",
+          "evidence": "reconcile_from=demo:srs_8a93f2dc_d74d07e4_7ee92a2f",
+          "purchase_time": "2026-05-01 19:21:00"
+        },
+        {
+          "recovery_key": "demo:srs_8a93f2dc_69caf164_deed6aa0",
+          "store_slug": "demo",
+          "source": "store_reality_simulator",
+          "evidence": "srs_phase3_planned_purchase",
+          "purchase_time": "2026-05-02 12:12:00"
+        },
+        {
+          "recovery_key": "demo:srs_cart_deed6aa013a6",
+          "store_slug": "demo",
+          "source": "store_reality_simulator",
+          "evidence": "reconcile_from=demo:srs_8a93f2dc_69caf164_deed6aa0",
+          "purchase_time": "2026-05-02 12:12:00"
+        }
+      ],
+      "reason_distribution": {
+        "other": 1,
+        "thinking": 3,
+        "price": 5,
+        "quality": 3,
+        "delivery": 2,
+        "shipping": 3
+      }
+    }
+  },
+  "screenshots": [
+    "01_desktop_home.png",
+    "02_mobile_home.png",
+    "03_desktop_carts.png",
+    "04_mobile_carts.png"
+  ]
+}
