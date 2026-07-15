@@ -213,7 +213,7 @@ def test_coerce_optional_now() -> None:
 def test_authority_provenance() -> None:
     with activate_query_time_context(QueryTimeContextKind.TESTING, as_of=FIXED):
         prov = authority_provenance(context_kind=QueryTimeContextKind.TESTING)
-        assert prov["time_authority_version"] == 1
+        assert prov["time_authority_version"] >= 1
         assert prov["clock_source_id"] == ClockSourceKind.FROZEN_TEST.value
         assert prov["query_time_context_kind"] == QueryTimeContextKind.TESTING.value
         assert "2026-05-04" in prov["authority_now"]

@@ -1,14 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Platform Time Authority — public façade (WP-1).
+Platform Time Authority — public façade (WP-1 / WP-2).
 
-Stable imports for future consumers. Do not import private provider internals
-from outside this package unless extending providers.
-
-WP-1: foundation only — no Knowledge/Dashboard/Timeline migration.
-Filtering / emptiness / presentation recipes: WP-3 / WP-11.
-HTTP context attach: WP-2.
-Simulation Reality Engine bind: WP-10.
+Stable imports for future consumers.
+Filtering / emptiness: WP-3. Consumer migration: later WPs. Simulation engine bind: WP-10.
 """
 from __future__ import annotations
 
@@ -27,20 +22,38 @@ from services.time_authority.compat import (
     is_using_system_clock,
     legacy_utc_now,
 )
+from services.time_authority.context_scope import (
+    frozen_clock_scope,
+    historical_replay_scope,
+    peek_default_production,
+    production_scope,
+    recovery_replay_scope,
+    request_scope,
+    simulation_scope,
+    worker_scope,
+)
 from services.time_authority.contracts import (
     ClockProvider,
     ClockSourceKind,
     EmptinessType,
     QueryTimeContextKind,
+    TimeProvenance,
+    TimezonePolicy,
     WindowRecipeId,
     ensure_utc,
     provenance_dict,
+    provenance_for_kind,
+    resolve_context_kind,
 )
 from services.time_authority.exceptions import (
     InvalidClockProvider,
     MissingQueryTimeContext,
     QueryTimeContextError,
     TimeAuthorityError,
+)
+from services.time_authority.http_middleware import (
+    QueryTimeContextMiddleware,
+    register_query_time_context_middleware,
 )
 from services.time_authority.providers import (
     FixedAsOfProvider,
@@ -52,13 +65,19 @@ from services.time_authority.providers import (
 )
 from services.time_authority.query_context import (
     QueryTimeContext,
+    activate_built_context,
     activate_query_time_context,
+    build_default_production_context,
+    build_query_time_context,
     clear_query_time_context,
+    context_snapshot,
     get_query_time_context,
     require_query_time_context,
+    resolve_effective_context,
 )
 from services.time_authority.validators import (
     assert_context_kind,
+    assert_not_simulation_when_production_expected,
     assert_provider_valid,
     assert_query_time_context_active,
     assert_source_id,
@@ -77,10 +96,31 @@ __all__ = [
     # Query context
     "QueryTimeContext",
     "QueryTimeContextKind",
+    "TimeProvenance",
+    "TimezonePolicy",
     "activate_query_time_context",
+    "activate_built_context",
+    "build_query_time_context",
+    "build_default_production_context",
     "clear_query_time_context",
+    "context_snapshot",
     "get_query_time_context",
     "require_query_time_context",
+    "resolve_effective_context",
+    "resolve_context_kind",
+    "provenance_for_kind",
+    # Scopes
+    "production_scope",
+    "request_scope",
+    "worker_scope",
+    "frozen_clock_scope",
+    "historical_replay_scope",
+    "recovery_replay_scope",
+    "simulation_scope",
+    "peek_default_production",
+    # HTTP
+    "QueryTimeContextMiddleware",
+    "register_query_time_context_middleware",
     # Providers
     "ClockProvider",
     "ClockSourceKind",
@@ -103,10 +143,11 @@ __all__ = [
     "assert_query_time_context_active",
     "assert_context_kind",
     "assert_source_id",
+    "assert_not_simulation_when_production_expected",
     "TimeAuthorityError",
     "MissingQueryTimeContext",
     "InvalidClockProvider",
     "QueryTimeContextError",
 ]
 
-__version__ = "1"
+__version__ = "2"

@@ -2,7 +2,7 @@
 
 **As of (UTC):** 2026-07-16  
 **Framework:** Product Investigation Framework V1  
-**Phase status:** INV-001 **WP-1 complete (pending Architecture Review)** — do **not** start WP-2
+**Phase status:** INV-001 **WP-2 complete (pending Architecture Review)** — do **not** start WP-3
 
 ---
 

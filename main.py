@@ -213,6 +213,13 @@ from services.cartflow_storefront_cors_v1 import StorefrontWidgetCorsMiddleware 
 
 app.add_middleware(StorefrontWidgetCorsMiddleware)
 
+# INV-001 WP-2: composition-only registration (logic in services.time_authority)
+from services.time_authority.http_middleware import (  # noqa: E402
+    register_query_time_context_middleware,
+)
+
+register_query_time_context_middleware(app)
+
 
 app.state.secret_key = os.getenv("SECRET_KEY", "dev-only-change-in-production")
 _ROOT = os.path.dirname(os.path.abspath(__file__))

@@ -26,10 +26,17 @@ def assert_context_kind(expected: QueryTimeContextKind) -> None:
     ctx = get_query_time_context()
     if ctx is None:
         raise MissingQueryTimeContext("query_time_context_not_active")
-    if ctx.kind != expected:
+    if ctx.mode != expected:
         raise QueryTimeContextError(
-            f"context_kind_mismatch:expected={expected.value}:actual={ctx.kind.value}"
+            f"context_kind_mismatch:expected={expected.value}:actual={ctx.mode.value}"
         )
+
+
+def assert_not_simulation_when_production_expected() -> None:
+    """Guard against simulation→production leakage for callers that opt in."""
+    ctx = get_query_time_context()
+    if ctx is not None and ctx.mode == QueryTimeContextKind.SIMULATION:
+        raise QueryTimeContextError("simulation_context_active_in_production_path")
 
 
 def assert_source_id(expected: str) -> None:

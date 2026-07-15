@@ -79,16 +79,23 @@ def authority_source_id() -> str:
 
 
 def authority_provenance(*, context_kind: Optional[object] = None) -> dict:
-    """Provenance bundle (presentation consume later — WP-11)."""
+    """Internal provenance bundle (not merchant-facing; WP-11 may project later)."""
+    from services.time_authority.query_context import get_query_time_context
+
+    active = get_query_time_context()
+    if active is not None and context_kind is None:
+        return active.internal_provenance()
     kind = None
     if context_kind is not None and hasattr(context_kind, "value"):
         kind = context_kind
     elif context_kind is not None:
-        from services.time_authority.contracts import QueryTimeContextKind
+        from services.time_authority.contracts import resolve_context_kind
 
-        kind = QueryTimeContextKind(str(context_kind))
+        kind = resolve_context_kind(context_kind)
+    corr = active.correlation_id if active is not None else ""
     return provenance_dict(
         source_id=authority_source_id(),
         context_kind=kind,
         authority_now=authority_now(),
+        correlation_id=corr,
     )
