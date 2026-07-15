@@ -401,6 +401,34 @@ def send_whatsapp(
     إرسال واتساب عبر Twilio Conversation API (REST).
     المتغيرات: TWILIO_ACCOUNT_SID، TWILIO_AUTH_TOKEN، TWILIO_WHATSAPP_FROM.
     """
+    try:
+        from services.store_reality_simulator.safe_delivery_adapter_v1 import (
+            guard_send_whatsapp,
+        )
+
+        sim_guard = guard_send_whatsapp(
+            store_slug=wa_trace_store_slug,
+            reason_tag=reason_tag,
+        )
+        if sim_guard is not None:
+            return sim_guard
+    except Exception:  # noqa: BLE001
+        # Adapter import/runtime failure must not open a silent real-send hole
+        # while a simulation context is active — fail closed if possible.
+        try:
+            from services.store_reality_simulator.context_v1 import is_simulation_active
+
+            if is_simulation_active():
+                return {
+                    "ok": False,
+                    "error": "simulation_adapter_unavailable",
+                    "simulation": True,
+                    "provider_suppressed_simulation": True,
+                    "wa_send_allowed": False,
+                }
+        except Exception:  # noqa: BLE001
+            pass
+
     blocked = _blocked_send_whatsapp_if_user_rejected_help(
         wa_trace_store_slug, wa_trace_session_id
     )

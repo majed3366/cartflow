@@ -1000,3 +1000,76 @@ class MovementSnapshot(Base):
             "updated_at",
         ),
     )
+
+
+class SimulationRun(Base):
+    """
+    Store Reality Simulator V1 — orchestration run (Phase 2).
+    Hybrid persistence: run row + JSON for config/accounting/checkpoint/progress.
+    Does not store derived Knowledge / dashboard / attribution truth.
+    """
+
+    __tablename__ = "simulation_runs"
+
+    id = Column(Integer, primary_key=True)
+    simulation_run_id = Column(String(64), nullable=False, unique=True, index=True)
+    store_slug = Column(String(255), nullable=False, default="demo", index=True)
+    scenario_ids_json = Column(Text, nullable=False, default="[]")
+    seed = Column(Integer, nullable=False, default=0)
+    start_date = Column(DateTime, nullable=False)
+    duration_days = Column(Integer, nullable=False, default=1)
+    status = Column(String(32), nullable=False, default="created", index=True)
+    current_day = Column(DateTime, nullable=True)
+    current_step = Column(Integer, nullable=False, default=0)
+    simulated_now = Column(DateTime, nullable=True)
+    config_json = Column(Text, nullable=False, default="{}")
+    accounting_json = Column(Text, nullable=False, default="{}")
+    checkpoint_json = Column(Text, nullable=False, default="{}")
+    progress_json = Column(Text, nullable=False, default="{}")
+    errors_json = Column(Text, nullable=False, default="[]")
+    warnings_json = Column(Text, nullable=False, default="[]")
+    created_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+
+class SimulationRowIndex(Base):
+    """
+    Tagged row index for simulation_run_id cleanup isolation.
+    Phase 3+ registers operational rows; cleanup deletes only indexed rows.
+    """
+
+    __tablename__ = "simulation_row_index"
+
+    id = Column(Integer, primary_key=True)
+    simulation_run_id = Column(String(64), nullable=False, index=True)
+    store_slug = Column(String(255), nullable=False, default="demo", index=True)
+    table_name = Column(String(128), nullable=False, index=True)
+    row_pk = Column(String(128), nullable=False)
+    created_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "simulation_run_id",
+            "table_name",
+            "row_pk",
+            name="uq_simulation_row_index_run_table_pk",
+        ),
+        Index(
+            "ix_simulation_row_index_run_table",
+            "simulation_run_id",
+            "table_name",
+        ),
+    )

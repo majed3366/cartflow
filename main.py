@@ -12503,6 +12503,23 @@ def send_whatsapp_message(
 ) -> Tuple[bool, Optional[str], Any]:
     # إرسال رسالة ‎interactive / cta_url‎ عبر ‎requests.post‎ (جلسة مفتوحة: محتوى حر + زر)
     # يتطلب ‎token‎ و‎phone_number_id‎ من لوحة ‎Meta‎
+    try:
+        from services.store_reality_simulator.safe_delivery_adapter_v1 import (
+            guard_meta_whatsapp_message,
+        )
+
+        sim_meta = guard_meta_whatsapp_message()
+        if sim_meta is not None:
+            return sim_meta
+    except Exception:  # noqa: BLE001
+        try:
+            from services.store_reality_simulator.context_v1 import is_simulation_active
+
+            if is_simulation_active():
+                return False, "simulation_adapter_unavailable", None
+        except Exception:  # noqa: BLE001
+            pass
+
     token = (os.getenv("WHATSAPP_API_TOKEN") or "").strip()
     phone_id = (os.getenv("WHATSAPP_PHONE_ID") or "").strip()
     base = (os.getenv("WHATSAPP_API_URL") or "https://graph.facebook.com/v17.0/").rstrip("/")

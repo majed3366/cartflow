@@ -1,8 +1,8 @@
 # CartFlow Store Reality Simulator V1 — Architecture (Phase 1)
 
-**Status:** Phase 1 design — **STOP for review**  
+**Status:** Phase 1 design (approved). Phase 2 infrastructure implemented — see `store_reality_simulator_v1_phase2_infrastructure.md`.  
 **Date (UTC):** 2026-07-15  
-**Scope:** Design only. No Phase 2 infrastructure, no execution, no product fixes.  
+**Scope:** Design reference. Phase 2 builds clock/run/adapter/cleanup only — still no event generation.  
 **Target store:** `store_slug = demo` (`Store.zid_store_id ∈ {"demo"}` for Lab; `demo2` out of scope)
 
 ---
