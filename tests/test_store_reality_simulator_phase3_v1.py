@@ -157,10 +157,13 @@ def test_execute_small_run_purchase_truth(clean_srs):
     assert result["reality_score"]["overall"] > 0
     assert result["validation_report"]["product_logic_changed"] is False
     assert result["manifest"]["clock_mode"] == "SimulationClock"
-    # Platform remaps demo → linked zid store_slug; match simulator source tag.
+    # Phase 3.1: Purchase Truth must remain under demo (no Zid remapping).
     purchases = (
         db.session.query(PurchaseTruthRecord)
-        .filter(PurchaseTruthRecord.purchase_source == "store_reality_simulator")
+        .filter(
+            PurchaseTruthRecord.purchase_source == "store_reality_simulator",
+            PurchaseTruthRecord.store_slug == "demo",
+        )
         .count()
     )
     assert purchases >= 1

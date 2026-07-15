@@ -26,6 +26,12 @@ from services.store_reality_simulator.contracts_v1 import (
     DEMO_STORE_SLUG,
     provenance_envelope,
 )
+from services.store_reality_simulator.identity_guard_v1 import (
+    SimulationIdentityIsolationError,
+    assert_recovery_key_isolated,
+    assert_written_store_is_demo,
+    require_simulation_write_identity,
+)
 from services.store_reality_simulator.planner_v1 import PlannedEvent, UNSUPPORTED_MARKERS
 from services.store_reality_simulator.row_index_v1 import register_tagged_row
 from services.store_reality_simulator.safe_delivery_adapter_v1 import (
@@ -87,6 +93,26 @@ def execute_planned_event(
             "reason": "no_durable_platform_ingest",
         }
 
+    try:
+        require_simulation_write_identity(
+            store_slug=DEMO_STORE_SLUG,
+            simulation_run_id=simulation_run_id,
+            surface=f"ingress:{ev.event_type}",
+        )
+        if ev.recovery_key:
+            assert_recovery_key_isolated(
+                ev.recovery_key, surface=f"ingress:{ev.event_type}"
+            )
+    except SimulationIdentityIsolationError as exc:
+        db.session.rollback()
+        return {
+            "ok": False,
+            "bucket": "rejected",
+            "event_type": ev.event_type,
+            "error": str(exc.reason),
+            "isolation_failure": True,
+        }
+
     store = _ensure_demo_store()
     at = ev.simulated_at
     if getattr(at, "tzinfo", None) is None:
@@ -115,6 +141,15 @@ def execute_planned_event(
             "event_type": ev.event_type,
             "reason": "executor_unmapped",
         }
+    except SimulationIdentityIsolationError as exc:
+        db.session.rollback()
+        return {
+            "ok": False,
+            "bucket": "rejected",
+            "event_type": ev.event_type,
+            "error": str(exc.reason),
+            "isolation_failure": True,
+        }
     except Exception as exc:  # noqa: BLE001
         db.session.rollback()
         log.exception("SRS ingress failed event=%s", ev.simulated_event_id)
@@ -134,6 +169,14 @@ def _upsert_cart(
     seed: int,
     at: datetime,
 ) -> dict[str, Any]:
+    require_simulation_write_identity(
+        store_slug=DEMO_STORE_SLUG, simulation_run_id=run_id, surface="abandoned_carts"
+    )
+    if str(getattr(store, "zid_store_id", "") or "").strip() != DEMO_STORE_SLUG:
+        raise SimulationIdentityIsolationError(
+            "demo_store_row_escape",
+            details={"zid_store_id": getattr(store, "zid_store_id", None)},
+        )
     ac = (
         db.session.query(AbandonedCart)
         .filter(AbandonedCart.zid_cart_id == ev.cart_id)
@@ -207,6 +250,9 @@ def _abandon_cart(
 def _capture_reason(
     ev: PlannedEvent, *, run_id: str, seed: int, at: datetime
 ) -> dict[str, Any]:
+    require_simulation_write_identity(
+        store_slug=DEMO_STORE_SLUG, simulation_run_id=run_id, surface="reasons"
+    )
     reason = (ev.reason_tag or "other").strip() or "other"
     row = (
         db.session.query(CartRecoveryReason)
@@ -292,6 +338,9 @@ def _movement_return(ev: PlannedEvent, *, run_id: str) -> dict[str, Any]:
         apply_movement_event,
     )
 
+    require_simulation_write_identity(
+        store_slug=DEMO_STORE_SLUG, simulation_run_id=run_id, surface="movement"
+    )
     et = (
         EVENT_PASSIVE_RETURN
         if ev.event_type == "passive_return"
@@ -305,7 +354,6 @@ def _movement_return(ev: PlannedEvent, *, run_id: str) -> dict[str, Any]:
         session_id=ev.session_id,
         cart_id=ev.cart_id,
     )
-    # Index movement snapshot if present
     try:
         from models import MovementSnapshot
 
@@ -315,12 +363,20 @@ def _movement_return(ev: PlannedEvent, *, run_id: str) -> dict[str, Any]:
             .first()
         )
         if ms is not None:
+            assert_written_store_is_demo(
+                getattr(ms, "store_slug", None) or DEMO_STORE_SLUG,
+                surface="movement_snapshots",
+                simulation_run_id=run_id,
+                recovery_key=ev.recovery_key,
+            )
             register_tagged_row(
                 simulation_run_id=run_id,
                 table_name="movement_snapshots",
                 row_pk=str(ms.id),
             )
             db.session.commit()
+    except SimulationIdentityIsolationError:
+        raise
     except Exception:  # noqa: BLE001
         db.session.rollback()
     return {"ok": bool(ok), "bucket": "processed" if ok else "failed", "event_type": et}
@@ -329,6 +385,9 @@ def _movement_return(ev: PlannedEvent, *, run_id: str) -> dict[str, Any]:
 def _schedule_whatsapp(
     ev: PlannedEvent, *, run_id: str, seed: int, at: datetime
 ) -> dict[str, Any]:
+    require_simulation_write_identity(
+        store_slug=DEMO_STORE_SLUG, simulation_run_id=run_id, surface="recovery_schedule"
+    )
     naive = at.replace(tzinfo=None) if at.tzinfo else at
     due = naive
     existing = (
@@ -386,6 +445,9 @@ def _schedule_whatsapp(
 def _mock_whatsapp_send(
     ev: PlannedEvent, *, run_id: str, seed: int, at: datetime
 ) -> dict[str, Any]:
+    require_simulation_write_identity(
+        store_slug=DEMO_STORE_SLUG, simulation_run_id=run_id, surface="whatsapp_mock"
+    )
     guard = simulation_outbound_guard(
         store_slug=DEMO_STORE_SLUG,
         channel="whatsapp_twilio",
@@ -451,6 +513,13 @@ def _purchase(
 ) -> dict[str, Any]:
     from services.purchase_truth import ingest_purchase_truth
 
+    require_simulation_write_identity(
+        store_slug=DEMO_STORE_SLUG,
+        simulation_run_id=run_id,
+        surface="purchase_truth",
+    )
+    assert_recovery_key_isolated(ev.recovery_key, surface="purchase_truth")
+
     written = ingest_purchase_truth(
         recovery_key=ev.recovery_key,
         purchase_source="store_reality_simulator",
@@ -476,16 +545,25 @@ def _purchase(
             .first()
         )
         if pt is not None:
+            assert_written_store_is_demo(
+                pt.store_slug,
+                surface="purchase_truth_records",
+                simulation_run_id=run_id,
+                recovery_key=ev.recovery_key,
+            )
             register_tagged_row(
                 simulation_run_id=run_id,
                 table_name="purchase_truth_records",
                 row_pk=str(pt.id),
             )
             db.session.commit()
+    except SimulationIdentityIsolationError:
+        raise
     except Exception:  # noqa: BLE001
         db.session.rollback()
     return {
         "ok": bool(written),
         "bucket": "processed" if written else "rejected",
         "truth_written": bool(written),
+        "store_slug": DEMO_STORE_SLUG,
     }

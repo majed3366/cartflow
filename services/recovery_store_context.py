@@ -15,6 +15,16 @@ def canonical_store_slug_from_recovery_key(recovery_key: Optional[str]) -> Optio
     head = rk.split(":", 1)[0].strip()[:255]
     if not head:
         return None
+    # Phase 3.1: during simulation, never expand demo (or any head) via alias table
+    try:
+        from services.store_reality_simulator.context_v1 import (  # noqa: PLC0415
+            is_simulation_active,
+        )
+
+        if is_simulation_active():
+            return head
+    except ImportError:
+        pass
     try:
         from services.store_identity_v1 import resolve_canonical_store_slug
 
@@ -44,7 +54,22 @@ def resolve_purchase_truth_store_slug(
     When ``recovery_key`` uses a merchant zid but checkout payload still sends
     ``store_slug=demo``, the recovery_key prefix wins so reconciliation matches
     the active merchant cart.
+
+    Store Reality Simulator (Phase 3.1): while a simulation context is active,
+    identity is pinned to ``demo`` — never remap to a linked merchant / Zid slug.
     """
+    # Isolation pin — simulation must never escape demo via alias/canonical remap
+    try:
+        from services.store_reality_simulator.identity_guard_v1 import (  # noqa: PLC0415
+            pin_store_slug_for_active_simulation,
+        )
+
+        pinned = pin_store_slug_for_active_simulation(payload_store_slug or "demo")
+        if pinned is not None:
+            return pinned
+    except ImportError:
+        pass
+
     from services.merchant_test_widget_store_v1 import (  # noqa: PLC0415
         coerce_cart_event_store_slug,
     )
