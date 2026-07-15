@@ -14,7 +14,7 @@ Implemented governed Query Time Context propagation: enriched immutable model (m
 
 ## 2. Commit hash
 
-_(filled after commit)_
+`47647e83d298409bb480a8b83f9e4237b1a95227`
 
 ## 3. Branch name
 
