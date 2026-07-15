@@ -17,7 +17,7 @@ Introduced first-class `services/time_authority/` with Platform Time Authority, 
 
 ## 2. Commit hash
 
-`ef6c8c52059752b9ad9b062f548a6b32ae0540be`
+`bbea7f933b8a4504b92b9add674c07eb14907b8f` (package tip; this review hash note may trail by one docs-only commit)
 
 ## 3. Branch name
 
