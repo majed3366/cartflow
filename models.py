@@ -1028,6 +1028,14 @@ class SimulationRun(Base):
     progress_json = Column(Text, nullable=False, default="{}")
     errors_json = Column(Text, nullable=False, default="[]")
     warnings_json = Column(Text, nullable=False, default="[]")
+    # Phase 3 Reality Engine artifacts (hot metadata — not merchant dashboard truth)
+    scale_profile = Column(String(32), nullable=True)
+    manifest_json = Column(Text, nullable=True)
+    reality_score_json = Column(Text, nullable=True)
+    validation_report_json = Column(Text, nullable=True)
+    plan_summary_json = Column(Text, nullable=True)
+    throttle_state_json = Column(Text, nullable=True)
+    archived_at = Column(DateTime, nullable=True)
     created_at = Column(
         DateTime,
         default=lambda: datetime.now(timezone.utc),
@@ -1037,6 +1045,70 @@ class SimulationRun(Base):
         DateTime,
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+
+class SimulationEventLedger(Base):
+    """
+    Cold planned/executed simulation events — archive-ready.
+    Must not be scanned by merchant dashboard hot paths.
+    """
+
+    __tablename__ = "simulation_event_ledger"
+
+    id = Column(Integer, primary_key=True)
+    simulation_run_id = Column(String(64), nullable=False, index=True)
+    store_slug = Column(String(255), nullable=False, default="demo", index=True)
+    simulated_event_id = Column(String(128), nullable=False)
+    event_index = Column(Integer, nullable=False, default=0)
+    event_type = Column(String(64), nullable=False, index=True)
+    support = Column(String(32), nullable=False, default="supported")
+    status = Column(String(32), nullable=False, default="planned", index=True)
+    scenario_id = Column(String(128), nullable=True)
+    scenario_version = Column(String(32), nullable=True)
+    scenario_revision = Column(Integer, nullable=False, default=1)
+    simulated_at = Column(DateTime, nullable=True, index=True)
+    payload_json = Column(Text, nullable=False, default="{}")
+    result_json = Column(Text, nullable=False, default="{}")
+    created_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "simulation_run_id",
+            "simulated_event_id",
+            name="uq_simulation_event_ledger_run_event",
+        ),
+        Index(
+            "ix_simulation_event_ledger_run_status",
+            "simulation_run_id",
+            "status",
+        ),
+    )
+
+
+class SimulationRunArchive(Base):
+    """Archived simulation run blob — restore/replay without hot-path pollution."""
+
+    __tablename__ = "simulation_run_archives"
+
+    id = Column(Integer, primary_key=True)
+    simulation_run_id = Column(String(64), nullable=False, unique=True, index=True)
+    store_slug = Column(String(255), nullable=False, default="demo")
+    archive_json = Column(Text, nullable=False, default="{}")
+    archived_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
 

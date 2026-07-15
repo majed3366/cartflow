@@ -56,6 +56,12 @@ def create_simulation_run(
         else load_simulation_config(config)
     )
     assert_demo_store(cfg.store_slug)
+    try:
+        from services.store_reality_simulator.schema_v1 import ensure_srs_phase3_schema
+
+        ensure_srs_phase3_schema()
+    except Exception:  # noqa: BLE001
+        pass
     run_id = (simulation_run_id or new_simulation_run_id()).strip()
     if not run_id:
         raise ValueError("simulation_run_id_required")

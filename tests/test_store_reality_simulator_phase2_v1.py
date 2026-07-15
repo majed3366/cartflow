@@ -199,7 +199,7 @@ def test_config_loader_demo_only_and_scenarios(clean_sim_tables):
 
 def test_scenario_registry_no_execution():
     snap = registry_snapshot()
-    assert snap["execution_implemented"] is False
+    assert snap["execution_implemented"] is True  # Phase 3 Reality Engine
     assert len(list_scenarios()) == 20
     assert require_scenario("S16_insufficient_data").name
 

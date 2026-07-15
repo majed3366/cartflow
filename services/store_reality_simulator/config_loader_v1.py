@@ -54,10 +54,6 @@ def load_simulation_config(raw: Optional[dict[str, Any]]) -> SimulationConfig:
         duration_days = int(body.get("duration_days") or body.get("days") or 0)
     except (TypeError, ValueError) as exc:
         raise ValueError("duration_days_invalid") from exc
-    if duration_days < 1:
-        raise ValueError("duration_days_must_be_positive")
-    if duration_days > 366:
-        raise ValueError("duration_days_exceeds_max_366")
 
     try:
         scale = float(body.get("scale", 1.0))
@@ -75,13 +71,32 @@ def load_simulation_config(raw: Optional[dict[str, Any]]) -> SimulationConfig:
     except (TypeError, ValueError) as exc:
         raise ValueError("batch_size_invalid") from exc
     try:
-        max_events = max(1, min(5000, int(body.get("max_events_per_job", 500))))
+        max_events = max(1, min(12000, int(body.get("max_events_per_job", 500))))
     except (TypeError, ValueError) as exc:
         raise ValueError("max_events_per_job_invalid") from exc
 
     meta = body.get("metadata")
     if meta is not None and not isinstance(meta, dict):
         raise ValueError("metadata_must_be_object")
+    meta_out = dict(meta or {})
+    scale_profile = body.get("scale_profile") or meta_out.get("scale_profile")
+    if scale_profile:
+        meta_out["scale_profile"] = str(scale_profile).strip().lower()
+        # Progressive profiles own duration when explicitly selected
+        from services.store_reality_simulator.scale_profiles_v1 import get_scale_profile
+
+        try:
+            prof = get_scale_profile(meta_out["scale_profile"])
+            duration_days = int(prof.duration_days)
+            batch_size = min(batch_size, int(prof.batch_size))
+            max_events = min(max_events, int(prof.max_events_per_run))
+        except KeyError as exc:
+            raise ValueError("scale_profile_invalid") from exc
+
+    if duration_days < 1:
+        raise ValueError("duration_days_must_be_positive")
+    if duration_days > 120:
+        raise ValueError("duration_days_exceeds_max_120")
 
     return SimulationConfig(
         store_slug=store_slug,
@@ -93,5 +108,5 @@ def load_simulation_config(raw: Optional[dict[str, Any]]) -> SimulationConfig:
         mode=mode,
         batch_size=batch_size,
         max_events_per_job=max_events,
-        metadata=dict(meta or {}),
+        metadata=meta_out,
     )

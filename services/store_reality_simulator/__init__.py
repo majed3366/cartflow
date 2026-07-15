@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Store Reality Simulator V1 — Phase 2 core infrastructure.
+Store Reality Simulator V1 — Phase 2 infra + Phase 3 Reality Engine.
 
 Exercises the real platform. Does not inject derived truth.
-Phase 2: clock, run registry, accounting, checkpoints, identity,
-safe delivery adapter, cleanup — no event generation.
 """
 from __future__ import annotations
 

@@ -164,6 +164,13 @@ def execute_cleanup(
         .filter(SimulationRowIndex.simulation_run_id == run_id)
         .delete(synchronize_session=False)
     )
+    ledger_removed = 0
+    try:
+        from services.store_reality_simulator.event_ledger_v1 import delete_ledger_for_run
+
+        ledger_removed = delete_ledger_for_run(run_id)
+    except Exception:  # noqa: BLE001
+        db.session.rollback()
 
     run_row = require_run(run_id)
     run_row.status = STATUS_CLEANED
@@ -175,6 +182,7 @@ def execute_cleanup(
                 "cleanup_executed_at": report["executed_at"],
                 "deleted": deleted,
                 "index_rows_removed": int(index_removed or 0),
+                "ledger_rows_removed": int(ledger_removed or 0),
             }
         ],
         ensure_ascii=False,
@@ -184,6 +192,7 @@ def execute_cleanup(
 
     report["deleted"] = deleted
     report["index_rows_removed"] = int(index_removed or 0)
+    report["ledger_rows_removed"] = int(ledger_removed or 0)
     report["run_status"] = STATUS_CLEANED
     report["note"] = "tagged_cleanup_executed"
     return report

@@ -10,3 +10,5 @@ node_modules/
 playwright-report/
 test-results/
 playwright/.cache/
+# Store Reality Simulator run artifacts (local dry-run/execute manifests)
+docs/architecture/srs_runs/
