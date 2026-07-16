@@ -6,7 +6,7 @@
 | Work Package ID | WP-4 |
 | Title | Daily Brief Consumer Migration (Execution Architecture Phase 4 surface) |
 | Branch | `feature/inv002-wp4` |
-| Commit hash | *(stamped at delivery)* |
+| Commit hash | `584eaf8` (`584eaf8292b2a6e72d7f8a0597147a80b6bff605`) |
 | Author | Engineering (agent) |
 | Reviewer | ☐ Architecture Board |
 | Date submitted (UTC) | 2026-07-16 |
@@ -79,7 +79,7 @@ Phase 4  Merchant surface consumer migration
 
 ### Rollback boundary
 
-`git revert <WP-4 commit>` **or** `git reset --hard <parent tip before WP-4>`
+`git revert 584eaf8` **or** `git reset --hard 223c66c`
 
 ### Reality Validation impact
 
@@ -127,12 +127,12 @@ Migrated **Daily Brief** to consume Platform Identity Authority MQIC:
 | Field | Value |
 |-------|--------|
 | **Branch** | `feature/inv002-wp4` |
-| **Final commit hash** | *(stamped at commit)* |
+| **Final commit hash** | `584eaf8` (`584eaf8292b2a6e72d7f8a0597147a80b6bff605`) — WP-4 delivery |
 | **Test command** | `python -m pytest tests/identity_authority/ tests/test_merchant_daily_brief_v1.py tests/test_merchant_daily_brief_composer_v2.py tests/time_authority/test_wp6_daily_brief_cross_surface.py -q --tb=line` |
-| **Test result** | *(stamped after run)* |
+| **Test result** | **86 passed** |
 | **`main.py` unchanged** | **Confirmed** |
 | **Query / I/O evidence** | No new query classes; Phase 3 session bind reuse; no global middleware; no migrations |
-| **Rollback boundary** | `git revert <hash>` **or** `git reset --hard <parent>` |
+| **Rollback boundary** | `git revert 584eaf8` **or** `git reset --hard 223c66c` |
 | **WP-5 started** | **No** |
 
 ---
@@ -231,7 +231,7 @@ Migrated **Daily Brief** to consume Platform Identity Authority MQIC:
 
 ## 24. Rollback boundary
 
-Revert WP-4 commit; parent tip before WP-4 on `feature/inv002-wp4`.
+Revert `584eaf8` (and tip stamp if needed); parent tip before WP-4: `223c66c`.
 
 ## 25. Reality Validation impact
 
