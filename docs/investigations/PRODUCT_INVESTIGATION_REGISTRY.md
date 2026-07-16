@@ -12,7 +12,7 @@
 | ID | Title | Severity | Category | Status | Owner | Depends on | Case file |
 |----|-------|----------|----------|--------|-------|------------|-----------|
 | INV-001 | Time Authority Drift | Critical | Architecture / Timeline | Ready for Fix (WP-6 approved; Checkpoint V2 pending review) | Architecture Board | — | [INV-001.md](./INV-001.md) · [INV-001_REVIEW.md](./INV-001_REVIEW.md) · [DoR Cert](./INV_001_DEFINITION_OF_READY_CERTIFICATION.md) |
-| INV-002 | Merchant Identity Drift | Critical | Identity / Dashboard | Open | Architecture Board | — | [INV-002.md](./INV-002.md) |
+| INV-002 | Merchant Identity Drift | Critical | Identity / Dashboard | Root Cause Confirmed | Architecture Board | — | [INV-002.md](./INV-002.md) · [INV-002_REVIEW.md](./INV-002_REVIEW.md) |
 | INV-003 | Knowledge Surface Drift | High | Knowledge / Product | Open | Knowledge + Product | INV-001, INV-002 | [INV-003.md](./INV-003.md) |
 | INV-004 | Attention Semantics Drift | High | UX / Dashboard | Open | Product + UX | INV-002, INV-003 | [INV-004.md](./INV-004.md) |
 | INV-005 | Setup Lifecycle Drift | High | Operational / Product | Open | Product + Ops | INV-002 | [INV-005.md](./INV-005.md) |

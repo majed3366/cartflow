@@ -14,11 +14,14 @@ INV-001 Time Authority Drift
 ├── INV-006 Attribution Semantics Drift
 └── INV-007 Monthly Summary Materialisation Gap
 
-INV-002 Merchant Identity Drift
-├── INV-003 Knowledge Surface Drift
+INV-002 Merchant Identity Drift  ★ Root Cause Confirmed (2026-07-16)
+├── INV-003 Knowledge Surface Drift   (session path contaminated)
 ├── INV-004 Attention Semantics Drift
 ├── INV-005 Setup Lifecycle Drift
 └── INV-007 Monthly Summary Materialisation Gap
+
+Note: After Checkpoint V2, INV-002 is the dominant remaining blocker for
+merchant walkthrough trust. INV-001 reader windows are not the Home emptiness cause.
 
 INV-008 Visitor Truth Coverage Gap
 └── (informs INV-003 eligibility taxonomy — soft dependency)
