@@ -94,29 +94,46 @@ def compose_home_api_payload_from_summary_context(
     store_slug: str = "",
     attach_mode: str = _HOME_ATTACH_COMPOSED,
 ) -> dict[str, Any]:
-    """Build home API payload from summary fields only (snapshot-safe, no hot-path DB)."""
+    """
+    Build home API payload from summary fields only (snapshot-safe, no hot-path DB).
+
+    INV-002 WP-5: ``store_slug`` is sealed via Identity Authority (caller seal;
+    no independent Home resolve; no new DB I/O).
+    """
+    from services.identity_authority import (  # noqa: PLC0415
+        attach_dashboard_home_identity_observability,
+        dashboard_home_identity_scope,
+        ensure_dashboard_home_mqic,
+    )
+
     brief = body.get("merchant_daily_brief_v1")
     if not isinstance(brief, Mapping):
         brief = {}
-    slug = _norm(store_slug) or _store_slug_from_summary(body)
-    composed = compose_merchant_home_experience_v1(
-        merchant_name_ar=_merchant_name_from_summary(body),
-        date_ar=_norm(body.get("merchant_ar_date_header")),
-        brief_date=_norm(brief.get("brief_date")),
-        daily_brief=brief,
-        kl_insights=(),
-        nav_metadata=_nav_metadata_from_summary(body),
-    )
-    home: dict[str, Any] = dict(composed)
-    home["ok"] = True
-    home["generated_at"] = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-    home["store_slug"] = slug
-    home["daily_brief_v1"] = dict(brief) if brief else {}
-    home["_activation"] = {
-        "attach_mode": attach_mode,
-        "transport_safe": True,
-    }
-    return home
+    slug_in = _norm(store_slug) or _store_slug_from_summary(body)
+    with dashboard_home_identity_scope(store_slug=slug_in) as bound:
+        identity = ensure_dashboard_home_mqic(store_slug=slug_in, mqic=bound)
+        slug = identity.store_slug
+        composed = compose_merchant_home_experience_v1(
+            merchant_name_ar=_merchant_name_from_summary(body),
+            date_ar=_norm(body.get("merchant_ar_date_header")),
+            brief_date=_norm(brief.get("brief_date")),
+            daily_brief=brief,
+            kl_insights=(),
+            nav_metadata=_nav_metadata_from_summary(body),
+        )
+        home: dict[str, Any] = dict(composed)
+        home["ok"] = True
+        home["generated_at"] = datetime.now(timezone.utc).replace(
+            microsecond=0
+        ).isoformat()
+        home["store_slug"] = slug
+        home["daily_brief_v1"] = dict(brief) if brief else {}
+        home["_activation"] = {
+            "attach_mode": attach_mode,
+            "transport_safe": True,
+        }
+        attach_dashboard_home_identity_observability(home)
+        return home
 
 
 def stamp_summary_contract_fields(body: dict[str, Any]) -> dict[str, Any]:

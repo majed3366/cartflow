@@ -4,6 +4,9 @@ Merchant Home Composition v1 — presentation-only composition of governed knowl
 
 Consumes Daily Brief (routing-backed), Knowledge Layer projection, and read-model nav
 metadata. Never mints decisions, explanations, routing, or KPI knowledge.
+
+INV-002 WP-5: consumes Platform Identity Authority MQIC — never resolves
+merchant/store identity independently.
 """
 from __future__ import annotations
 
@@ -317,62 +320,112 @@ def compose_merchant_home_experience_v1(
 
 def build_merchant_home_experience_api_payload(
     db_session: Any,
-    store_slug: str,
-    dash_store: Any,
+    store_slug: str = "",
+    dash_store: Any = None,
     *,
     merchant_name_ar: str = "",
     date_ar: str = "",
     nav_metadata: Optional[Mapping[str, Any]] = None,
     experience_tier: str = EXPERIENCE_TIER_STARTER,
+    cookies: Optional[Mapping[str, str]] = None,
+    mqic: Any = None,
 ) -> dict[str, Any]:
-    """Build store home experience by composing certified upstream consumers."""
-    slug = _norm(store_slug)
-    kl_insights: list[Mapping[str, Any]] = []
-    window_days = 7
+    """
+    Build store home experience by composing certified upstream consumers.
 
-    if not _norm(merchant_name_ar):
-        try:
-            from services.merchant_onboarding_store import (  # noqa: PLC0415
-                merchant_store_display_name,
-            )
+    INV-002 WP-5: tenant key from Platform Identity Authority MQIC — Home
+    never resolves store identity independently. Session bind (when cookies
+    provided) shares one MQIC with nested Brief + Knowledge.
+    """
+    from services.identity_authority import (  # noqa: PLC0415
+        attach_dashboard_home_identity_observability,
+        bind_mqic_for_dashboard_home,
+        clear_mqic,
+        dashboard_home_identity_scope,
+        ensure_dashboard_home_mqic,
+    )
 
-            merchant_name_ar = merchant_store_display_name(dash_store) or "متجرك"
-        except (ImportError, TypeError, ValueError):
-            merchant_name_ar = _norm(getattr(dash_store, "store_name", None)) or "متجرك"
-
-    from services.merchant_daily_brief_v1 import build_merchant_daily_brief_api_payload  # noqa: PLC0415
-
-    brief = build_merchant_daily_brief_api_payload(db_session, slug, dash_store)
+    bound_here = False
+    active_mqic = mqic
+    if active_mqic is None and cookies is not None:
+        active_mqic = bind_mqic_for_dashboard_home(cookies=cookies)
+        bound_here = active_mqic is not None
 
     try:
-        from services.knowledge_layer_v1 import build_knowledge_report  # noqa: PLC0415
+        with dashboard_home_identity_scope(
+            store_slug=store_slug, mqic=active_mqic
+        ) as bound:
+            identity = ensure_dashboard_home_mqic(
+                store_slug=store_slug, mqic=bound
+            )
+            slug = identity.store_slug
+            kl_insights: list[Mapping[str, Any]] = []
+            window_days = 7
 
-        report = build_knowledge_report(db_session, slug, window_days=window_days)
-        for raw in report.to_dict().get("insights") or []:
-            if isinstance(raw, Mapping):
-                kl_insights.append(raw)
-    except (OSError, TypeError, ValueError, ImportError):
-        pass
+            if not _norm(merchant_name_ar):
+                try:
+                    from services.merchant_onboarding_store import (  # noqa: PLC0415
+                        merchant_store_display_name,
+                    )
 
-    composed = compose_merchant_home_experience_v1(
-        merchant_name_ar=merchant_name_ar,
-        date_ar=date_ar,
-        brief_date=_norm(brief.get("brief_date")) or brief_date_iso(),
-        daily_brief=brief,
-        kl_insights=kl_insights,
-        window_days=window_days,
-        nav_metadata=nav_metadata,
-        experience_tier=experience_tier,
-    )
-    from services.knowledge_time_authority_v1 import knowledge_stamp_now  # noqa: PLC0415
+                    merchant_name_ar = (
+                        merchant_store_display_name(dash_store) or "متجرك"
+                    )
+                except (ImportError, TypeError, ValueError):
+                    merchant_name_ar = (
+                        _norm(getattr(dash_store, "store_name", None)) or "متجرك"
+                    )
 
-    composed["ok"] = True
-    composed["generated_at"] = (
-        knowledge_stamp_now().replace(microsecond=0).isoformat()
-    )
-    composed["store_slug"] = slug
-    composed["daily_brief_v1"] = brief
-    return composed
+            from services.merchant_daily_brief_v1 import (  # noqa: PLC0415
+                build_merchant_daily_brief_api_payload,
+            )
+
+            brief = build_merchant_daily_brief_api_payload(
+                db_session, slug, dash_store, mqic=identity
+            )
+
+            try:
+                from services.knowledge_layer_v1 import (  # noqa: PLC0415
+                    build_knowledge_report,
+                )
+
+                report = build_knowledge_report(
+                    db_session,
+                    slug,
+                    window_days=window_days,
+                    mqic=identity,
+                )
+                for raw in report.to_dict().get("insights") or []:
+                    if isinstance(raw, Mapping):
+                        kl_insights.append(raw)
+            except (OSError, TypeError, ValueError, ImportError):
+                pass
+
+            composed = compose_merchant_home_experience_v1(
+                merchant_name_ar=merchant_name_ar,
+                date_ar=date_ar,
+                brief_date=_norm(brief.get("brief_date")) or brief_date_iso(),
+                daily_brief=brief,
+                kl_insights=kl_insights,
+                window_days=window_days,
+                nav_metadata=nav_metadata,
+                experience_tier=experience_tier,
+            )
+            from services.knowledge_time_authority_v1 import (  # noqa: PLC0415
+                knowledge_stamp_now,
+            )
+
+            composed["ok"] = True
+            composed["generated_at"] = (
+                knowledge_stamp_now().replace(microsecond=0).isoformat()
+            )
+            composed["store_slug"] = slug
+            composed["daily_brief_v1"] = brief
+            attach_dashboard_home_identity_observability(composed)
+            return composed
+    finally:
+        if bound_here:
+            clear_mqic()
 
 
 __all__ = [

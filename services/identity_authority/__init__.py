@@ -80,6 +80,13 @@ from services.identity_authority.daily_brief_consumer_v1 import (
     daily_brief_identity_scope,
     ensure_daily_brief_mqic,
 )
+from services.identity_authority.dashboard_home_consumer_v1 import (
+    attach_dashboard_home_identity_observability,
+    bind_mqic_for_dashboard_home,
+    dashboard_home_identity_diagnostics,
+    dashboard_home_identity_scope,
+    ensure_dashboard_home_mqic,
+)
 
 __all__ = [
     # Authority
@@ -146,6 +153,12 @@ __all__ = [
     "bind_mqic_for_daily_brief",
     "daily_brief_identity_diagnostics",
     "attach_daily_brief_identity_observability",
+    # Dashboard/Home consumer (WP-5 / Phase 4 surface)
+    "dashboard_home_identity_scope",
+    "ensure_dashboard_home_mqic",
+    "bind_mqic_for_dashboard_home",
+    "dashboard_home_identity_diagnostics",
+    "attach_dashboard_home_identity_observability",
 ]
 
-__version__ = "4"
+__version__ = "5"

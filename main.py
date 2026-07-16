@@ -19517,6 +19517,7 @@ def _api_json_dashboard_summary(
             )
 
             with dashboard_summary_profile_span("build_merchant_home_experience_api_payload"):
+                # INV-002 WP-5: composition wiring only — Home binds MQIC from session.
                 home_payload = build_merchant_home_experience_api_payload(
                     db.session,
                     slug,
@@ -19526,6 +19527,7 @@ def _api_json_dashboard_summary(
                         "active_carts": int(mstats.get("normal_cart_count") or 0),
                         "waiting_send": int(out.get("merchant_nav_badge_abandoned") or 0),
                     },
+                    cookies=cookies,
                 )
                 out["merchant_home_experience_v1"] = home_payload
                 brief_embed = home_payload.get("daily_brief_v1")
