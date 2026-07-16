@@ -6,7 +6,7 @@
 | Work Package ID | WP-5 |
 | Title | Dashboard/Home Consumer Migration (Execution Architecture Phase 4 surface) |
 | Branch | `feature/inv002-wp5` |
-| Commit hash | *(stamped at delivery)* |
+| Commit hash | `03529fc` (`03529fcbc9da774b06fabba93a74fddee2e4e459`) |
 | Author | Engineering (agent) |
 | Reviewer | ☐ Architecture Board |
 | Date submitted (UTC) | 2026-07-16 |
@@ -81,12 +81,12 @@ Migrated **Dashboard/Home** to consume Platform Identity Authority MQIC:
 | Field | Value |
 |-------|--------|
 | **Branch** | `feature/inv002-wp5` |
-| **Final commit hash** | *(stamped at commit)* |
+| **Final commit hash** | `03529fc` (`03529fcbc9da774b06fabba93a74fddee2e4e459`) |
 | **Test command** | `python -m pytest tests/identity_authority/ tests/test_merchant_home_experience_v1.py tests/test_merchant_home_experience_activation_v1.py tests/test_merchant_daily_brief_v1.py -q --tb=line` |
 | **Test result** | **80 passed** |
 | **`main.py` impact** | Composition wiring only (`cookies=` kwarg) — no identity logic |
 | **Query / I/O** | No new query classes; Phase 3 reuse; no global middleware |
-| **Rollback** | `git revert <hash>` **or** `git reset --hard 2add863` |
+| **Rollback** | `git revert 03529fc` **or** `git reset --hard 2add863` |
 | **Phase 5 / Timeline started** | **No** |
 
 ---
