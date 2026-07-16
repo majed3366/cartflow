@@ -1,0 +1,22 @@
+{
+  "gate": "A",
+  "investigation": "INV-001",
+  "after_wp": "WP-5",
+  "store_slug": "demo-gate-a-wp5",
+  "production_july": {
+    "knowledge_cart_count": 0,
+    "dashboard_abandoned_total": 0,
+    "window_start": "2026-07-08T12:00:00",
+    "window_end": "2026-07-15T12:00:00",
+    "windows_equal": true
+  },
+  "simulation_may_end": {
+    "knowledge_cart_count": 27,
+    "dashboard_abandoned_total": 27,
+    "window_start": "2026-04-27T12:00:00",
+    "window_end": "2026-05-04T12:00:00",
+    "simulation_run_id": "srs_gate_a",
+    "windows_equal": true
+  },
+  "verdict": "PASS"
+}

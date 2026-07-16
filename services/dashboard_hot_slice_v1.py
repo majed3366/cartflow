@@ -36,7 +36,13 @@ def dashboard_hot_slice_enabled() -> bool:
 
 
 def hot_slice_last_seen_cutoff(*, now: Optional[datetime] = None) -> datetime:
-    now_u = now or datetime.now(timezone.utc)
+    # WP-5: default "now" from Time Authority (SystemClock ambient = prior wall).
+    if now is None:
+        from services.time_authority import authority_now  # noqa: PLC0415
+
+        now_u = authority_now()
+    else:
+        now_u = now
     if now_u.tzinfo is None:
         now_u = now_u.replace(tzinfo=timezone.utc)
     return now_u - timedelta(hours=HOT_SLICE_HOURS)

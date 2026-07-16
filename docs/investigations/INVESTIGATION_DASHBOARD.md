@@ -2,7 +2,7 @@
 
 **As of (UTC):** 2026-07-16  
 **Framework:** Product Investigation Framework V1  
-**Phase status:** INV-001 **WP-5A complete (pending Architecture Review)** — do **not** start WP-5 migration / Gate A / WP-6
+**Phase status:** INV-001 **WP-5 + Gate A pack complete (pending Architecture Review)** — do **not** start WP-6
 
 ---
 
@@ -13,7 +13,7 @@
 | Open | 7 | INV-002 … INV-008 |
 | Investigating | 0 | — |
 | Root Cause Confirmed | 0 | — |
-| Ready for Fix | 1 | INV-001 (WP-4 pending Architecture Review) |
+| Ready for Fix | 1 | INV-001 (WP-5 + Gate A pending Architecture Review) |
 | Blocked | 0 | — |
 | Fixed | 0 | — |
 | Verified | 0 | — |
@@ -39,6 +39,6 @@
 
 ## Next action (human)
 
-1. Architecture Review of **WP-4** (`docs/investigations/WP-04_REVIEW.md`).  
-2. On approval only: authorize **WP-5** (Dashboard / Home KPI migration).  
+1. Architecture Review of **WP-5** (`docs/investigations/WP-05_REVIEW.md`) + **Gate A** (`docs/architecture/reality_replay_gate_a_wp5/GATE_A_REPORT.md`).  
+2. On dual approval only: authorize **WP-6** (Brief / Routing).  
 3. INV-002 review when ready (separate).

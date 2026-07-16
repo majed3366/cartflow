@@ -221,7 +221,10 @@ def build_merchant_cart_counter_totals(
         except Exception:  # noqa: BLE001
             dash_store = None
 
-    generated_at = datetime.now(timezone.utc).isoformat()
+    from services.time_authority import authority_now  # noqa: PLC0415
+
+    _auth_now = authority_now()
+    generated_at = _auth_now.isoformat()
     out = MerchantCartCounterPayload(
         counts=totals,
         source=source,
@@ -279,7 +282,7 @@ def build_merchant_cart_counter_totals(
             totals.partial = True
 
         batch_reads = _merchant_normal_dashboard_batch_reads(full_rows, dash_store)
-        now_utc = datetime.now(timezone.utc)
+        now_utc = _auth_now
         completed_seen: set[str] = set()
 
         for grp_sorted in picked:

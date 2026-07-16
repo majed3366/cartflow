@@ -366,8 +366,12 @@ def build_merchant_home_experience_api_payload(
         nav_metadata=nav_metadata,
         experience_tier=experience_tier,
     )
+    from services.knowledge_time_authority_v1 import knowledge_stamp_now  # noqa: PLC0415
+
     composed["ok"] = True
-    composed["generated_at"] = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    composed["generated_at"] = (
+        knowledge_stamp_now().replace(microsecond=0).isoformat()
+    )
     composed["store_slug"] = slug
     composed["daily_brief_v1"] = brief
     return composed

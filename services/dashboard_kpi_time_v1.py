@@ -1,23 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-Legacy Dashboard KPI temporal projections (INV-001 WP-5A).
+Dashboard/Home KPI temporal projections (INV-001 WP-5).
 
-TEMPORARY ownership of pre-WP-5 wall-clock window semantics extracted from
-``main.py``. This is **not** Platform Time Authority and must **not** wire
-WP-3 ``window_for`` until INV-001 WP-5 migrates these paths.
+Consumes Platform Time Authority → Query Time Context → WP-3 filtering.
+Rolling windows share ``resolve_knowledge_windows`` with Knowledge so
+Dashboard and Knowledge cannot diverge for the same context.
 
-Legacy semantics preserved exactly:
-- Calendar UTC today: ``[midnight, midnight+1day)``
-- Rolling N-day month/reason windows: ``start = now - N days``, open-ended
-  upper bound (``>= start`` only — no ``< end``)
-- Wall ``datetime.now(timezone.utc)`` when ``now`` is omitted
-
-Owner for migration/removal: **INV-001 WP-5**.
+Interval: half-open ``[start, end)`` naive UTC for DB predicates.
+No private wall-clock window math. Not a second Time Authority.
 """
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from typing import Any, Optional
 
 from sqlalchemy import func
@@ -25,57 +20,57 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from extensions import db
 from models import AbandonedCart, CartRecoveryLog, CartRecoveryReason
+from services.knowledge_time_authority_v1 import (
+    KnowledgeTimeWindow,
+    resolve_knowledge_query_context,
+    resolve_knowledge_windows,
+)
+from services.time_authority import WindowRecipeId, window_for
+from services.time_authority.query_context import QueryTimeContext
 
 log = logging.getLogger("cartflow")
 
-# Mirrors main._NORMAL_RECOVERY_SENT_LOG_STATUSES (legacy KPI WA count filter).
 _LEGACY_SENT_LOG_STATUSES = frozenset({"sent_real", "mock_sent"})
 
-# Temporary debt marker for WP-5 migration inventory.
-LEGACY_KPI_TIME_OWNER = "INV-001 WP-5"
-LEGACY_KPI_TIME_STATUS = "temporary_until_wp5"
+
+def _naive_utc(dt: datetime) -> datetime:
+    from services.time_authority import ensure_utc
+
+    return ensure_utc(dt).replace(tzinfo=None)
 
 
-def legacy_today_utc_bounds(
+def resolve_dashboard_rolling_windows(
+    *,
+    window_days: int = 7,
+    now: Optional[datetime] = None,
+    context: Optional[QueryTimeContext] = None,
+) -> KnowledgeTimeWindow:
+    """
+    Same rolling + comparison windows as Knowledge for the same context.
+
+    Cross-surface contract: identical to ``resolve_knowledge_windows``.
+    """
+    return resolve_knowledge_windows(
+        window_days=window_days, now=now, context=context
+    )
+
+
+def resolve_dashboard_today_window(
     *,
     now: Optional[datetime] = None,
-) -> tuple[datetime, datetime]:
-    """
-    Legacy calendar-today UTC bounds (half-open).
-
-    TEMPORARY — migrate to Time Authority ``today`` in WP-5.
-    Production path (``now is None``) matches former ``main._merchant_ref_today_utc_bounds``.
-    """
-    now_u = datetime.now(timezone.utc) if now is None else now
-    if now is not None and now_u.tzinfo is None:
-        now_u = now_u.replace(tzinfo=timezone.utc)
-    start = now_u.replace(hour=0, minute=0, second=0, microsecond=0)
-    end_day = start + timedelta(days=1)
-    return start, end_day
-
-
-def legacy_rolling_start(
-    *,
-    days: int = 30,
-    now: Optional[datetime] = None,
-) -> datetime:
-    """
-    Legacy rolling-window start (open-ended upper bound at query site).
-
-    TEMPORARY — migrate to Time Authority ``last_n_days`` in WP-5.
-    """
-    now_u = datetime.now(timezone.utc) if now is None else now
-    if now is not None and now_u.tzinfo is None:
-        now_u = now_u.replace(tzinfo=timezone.utc)
-    return now_u - timedelta(days=max(1, int(days)))
+    context: Optional[QueryTimeContext] = None,
+) -> tuple[datetime, datetime, QueryTimeContext]:
+    """Governed calendar UTC today ``[start, end)`` naive bounds."""
+    ctx = resolve_knowledge_query_context(now=now, context=context)
+    tw = window_for(WindowRecipeId.TODAY, context=ctx)
+    if not tw.ok:
+        z = _naive_utc(ctx.authoritative_now)
+        return z, z, ctx
+    return _naive_utc(tw.start_at), _naive_utc(tw.end_at), ctx
 
 
 def non_vip_scoped_base_query(dash_store: Optional[Any]) -> Optional[Any]:
-    """
-    Non-VIP scoped AbandonedCart query for merchant KPI projections.
-
-    Closely coupled helper formerly ``main._merchant_ref_non_vip_scoped_base_query``.
-    """
+    """Non-VIP scoped AbandonedCart query for merchant KPI projections."""
     if dash_store is None:
         return None
     try:
@@ -103,8 +98,9 @@ def merchant_kpi_today_projection(
     dash_store: Optional[Any],
     *,
     now: Optional[datetime] = None,
+    context: Optional[QueryTimeContext] = None,
 ) -> dict[str, Any]:
-    """Daily KPIs — UTC calendar day (legacy). TEMPORARY until WP-5."""
+    """Daily KPIs — Time Authority ``today`` recipe."""
     out = {
         "abandoned_today": 0,
         "recovered_today": 0,
@@ -115,7 +111,7 @@ def merchant_kpi_today_projection(
     if bq is None:
         return out
     slug = (getattr(dash_store, "zid_store_id", None) or "").strip()
-    start, end_day = legacy_today_utc_bounds(now=now)
+    start, end_day, _ctx = resolve_dashboard_today_window(now=now, context=context)
     try:
         out["abandoned_today"] = int(
             bq.filter(
@@ -169,12 +165,9 @@ def merchant_month_window_projection(
     *,
     days: int = 30,
     now: Optional[datetime] = None,
+    context: Optional[QueryTimeContext] = None,
 ) -> dict[str, Any]:
-    """
-    Rolling-window KPI summary (legacy open-ended ``>= start``).
-
-    TEMPORARY until WP-5.
-    """
+    """Rolling KPI summary — Time Authority ``last_n_days`` half-open window."""
     out = {
         "abandoned_total": 0,
         "recovered_total": 0,
@@ -184,13 +177,17 @@ def merchant_month_window_projection(
     bq = non_vip_scoped_base_query(dash_store)
     if bq is None:
         return out
-    start = legacy_rolling_start(days=days, now=now)
+    tw = resolve_dashboard_rolling_windows(
+        window_days=days, now=now, context=context
+    )
+    start, end = tw.start, tw.end
     try:
         out["abandoned_total"] = int(
             bq.filter(
                 AbandonedCart.status == "abandoned",
                 AbandonedCart.last_seen_at.isnot(None),  # type: ignore[union-attr]
                 AbandonedCart.last_seen_at >= start,
+                AbandonedCart.last_seen_at < end,
             ).count()
             or 0
         )
@@ -199,6 +196,7 @@ def merchant_month_window_projection(
                 AbandonedCart.status == "recovered",
                 AbandonedCart.recovered_at.isnot(None),  # type: ignore[union-attr]
                 AbandonedCart.recovered_at >= start,
+                AbandonedCart.recovered_at < end,
             ).count()
             or 0
         )
@@ -207,6 +205,7 @@ def merchant_month_window_projection(
                 AbandonedCart.status == "recovered",
                 AbandonedCart.recovered_at.isnot(None),  # type: ignore[union-attr]
                 AbandonedCart.recovered_at >= start,
+                AbandonedCart.recovered_at < end,
             )
             .with_entities(func.coalesce(func.sum(AbandonedCart.cart_value), 0.0))
             .scalar()
@@ -228,18 +227,18 @@ def merchant_reason_counts_store_window(
     *,
     days: int = 7,
     now: Optional[datetime] = None,
+    context: Optional[QueryTimeContext] = None,
 ) -> dict[str, int]:
-    """
-    Hesitation reason counts in rolling window (legacy open-ended ``>= start``).
-
-    TEMPORARY until WP-5.
-    """
+    """Hesitation reason counts — Time Authority ``last_n_days`` half-open window."""
     if dash_store is None:
         return {}
     slug = (getattr(dash_store, "zid_store_id", None) or "").strip()
     if not slug:
         return {}
-    start = legacy_rolling_start(days=days, now=now)
+    tw = resolve_dashboard_rolling_windows(
+        window_days=days, now=now, context=context
+    )
+    start, end = tw.start, tw.end
     counts: dict[str, int] = {}
     try:
         rows = (
@@ -247,6 +246,7 @@ def merchant_reason_counts_store_window(
             .filter(
                 CartRecoveryReason.store_slug == slug,
                 CartRecoveryReason.updated_at >= start,
+                CartRecoveryReason.updated_at < end,
             )
             .group_by(CartRecoveryReason.reason)
             .all()
@@ -263,12 +263,10 @@ def merchant_reason_counts_store_window(
 
 
 __all__ = [
-    "LEGACY_KPI_TIME_OWNER",
-    "LEGACY_KPI_TIME_STATUS",
-    "legacy_rolling_start",
-    "legacy_today_utc_bounds",
     "merchant_kpi_today_projection",
     "merchant_month_window_projection",
     "merchant_reason_counts_store_window",
     "non_vip_scoped_base_query",
+    "resolve_dashboard_rolling_windows",
+    "resolve_dashboard_today_window",
 ]
