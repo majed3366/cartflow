@@ -14,7 +14,7 @@ CartFlow is a FastAPI application that:
 
 **Product Investigation Framework V1:** after Reality Validation Lab V1, significant weaknesses become permanent **Investigation Cases** (INV-*), not bugs — evidence, RCA, severity, owner, verification, closure criteria; **no symptom fixes** until Architectural review marks Ready for Fix. Registry: **`docs/investigations/`** (INV-001 Time Authority, INV-002 Merchant Identity, … INV-008 Visitor Truth). Wave 0 parents before children. **No Phase 4 / no implementation from this phase.**
 
-**Time Authority / INV-001:** WP-5 on `feature/inv001-wp5` — Dashboard/Home KPI windows via Time Authority (shared `resolve_knowledge_windows` / `today`); WP-5A legacy ownership removed. Reality Replay Gate A automated pack PASS. **Do not start WP-6 until Gate A Architecture Approval.** See `docs/investigations/WP-05_REVIEW.md`.
+**Time Authority / INV-001:** WP-6 on `feature/inv001-wp6` — Daily Brief windows/stamps via Time Authority (shared `resolve_knowledge_windows`); Knowledge + Dashboard + Brief temporal truth unified. **Do not start WP-7 until WP-6 Architecture Approval.** See `docs/investigations/WP-06_REVIEW.md`.
 
 ### 1.1 Commercial packaging (approved foundation — audit only, no billing)
 
@@ -501,6 +501,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-07-16 | **INV-001 WP-6 Daily Brief Time Authority Migration:** `merchant_daily_brief_time_v1` bridges Brief → shared `resolve_knowledge_windows`; `brief_date`/`generated_at`/routing `routed_at` from QTC; removed private `date.today`/`datetime.now` ownership. Branch `feature/inv001-wp6`. Cross-surface Brief≡Knowledge≡Dashboard. **`main.py` unchanged. STOP — await Architecture Review before WP-7.** |
 | 2026-07-16 | **INV-001 WP-5 Dashboard/Home Time Authority Migration:** `dashboard_kpi_time_v1` consumes WP-3 via shared Knowledge windows; half-open rolling predicates; Home/counter/hot-slice authority now; Gate A evidence PASS (`docs/architecture/reality_replay_gate_a_wp5/`). Branch `feature/inv001-wp5`. Tests: time_authority suite **142 passed**. **`main.py` unchanged. STOP — await Gate A / WP-5 Architecture Review before WP-6.** |
 | 2026-07-16 | **INV-001 WP-5A Controlled KPI Time Extraction:** Moved `_merchant_kpi_today_projection` / month / reason-window (+ today bounds + non-VIP base query) from `main.py` → `services/dashboard_kpi_time_v1.py`; legacy wall-clock + open-ended rolling semantics preserved; thin call sites only. Branch `feature/inv001-wp5a`. Tests: `test_dashboard_kpi_time_wp5a` **17 passed**. **WP-5 not started. Gate A not run. STOP.** |
 | 2026-07-16 | **INV-001 WP-4 Knowledge Time Authority Migration:** Knowledge metrics/product/report/health use `resolve_knowledge_windows` (WP-3 recipes); removed private `_window_bounds`/`_utc_now`; Golden Comparison bounds identical to legacy; sim/replay select historical evidence. Branch `feature/inv001-wp4`. Tests: time_authority + KL core **151 passed**. **`main.py` unchanged. STOP — await Architecture Review before WP-5.** |

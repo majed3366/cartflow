@@ -6,9 +6,9 @@ Groups are assigned by Knowledge Routing v1. Composer projects routed items only
 """
 from __future__ import annotations
 
-from datetime import date
 from typing import Any, Iterable, Mapping, Optional
 
+from services.merchant_daily_brief_time_v1 import brief_date_iso
 from services.knowledge_routing_v1 import (
     ROUTING_VERSION,
     route_daily_brief_knowledge_v1,
@@ -35,10 +35,6 @@ _AGGREGATION_REASON = "routing:aggregation_key+narrative_role+surface"
 
 def _norm(value: Any) -> str:
     return str(value or "").strip()
-
-
-def _brief_date_iso() -> str:
-    return date.today().isoformat()
 
 
 def _decision_trace_id(decision: Mapping[str, Any]) -> str:
@@ -104,7 +100,7 @@ def project_routed_topic_v2(
     brief_date: Optional[str] = None,
 ) -> dict[str, Any]:
     """Project one routed knowledge item into a Daily Brief topic (presentation only)."""
-    day = brief_date or _brief_date_iso()
+    day = brief_date or brief_date_iso()
     payload = routed.get("knowledge_payload")
     rep = payload if isinstance(payload, Mapping) else {}
     section = _norm(routed.get("section")) or SECTION_ATTENTION
@@ -162,7 +158,7 @@ def compose_merchant_daily_brief_v2(
     brief_date: Optional[str] = None,
 ) -> dict[str, Any]:
     """Compose executive daily brief from routed knowledge (projection only)."""
-    day = brief_date or _brief_date_iso()
+    day = brief_date or brief_date_iso()
     feed = routed_feed or route_daily_brief_knowledge_v1(
         decision_bundles=decision_bundles,
         kl_insights=kl_insights,
@@ -286,7 +282,7 @@ def group_decisions_into_topics(
     """Deprecated — routing assigns groups; retained for migration tests."""
     from services.knowledge_routing_v1 import route_daily_brief_knowledge_v1
 
-    day = brief_date or _brief_date_iso()
+    day = brief_date or brief_date_iso()
     feed = route_daily_brief_knowledge_v1(decision_bundles=[{"decisions": decisions}])
     achievements = [
         project_routed_topic_v2(r, brief_date=day) for r in feed.get("achievements") or []

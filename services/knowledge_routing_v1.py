@@ -9,7 +9,6 @@ Does not create truth, decisions, explanations, or business-domain rules.
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime, timezone
 from typing import Any, Iterable, Mapping, Optional
 
 from services.knowledge_producer_metadata_v1 import (
@@ -19,6 +18,7 @@ from services.knowledge_producer_metadata_v1 import (
     NARRATIVE_TREND,
     validate_knowledge_metadata_v1,
 )
+from services.knowledge_time_authority_v1 import knowledge_stamp_now
 from services.merchant_daily_brief_v1 import MAX_BRIEF_ITEMS
 
 ROUTING_VERSION = "v1"
@@ -60,7 +60,8 @@ def _norm(value: Any) -> str:
 
 
 def _utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    """Composition-root stamp from Time Authority (no wall-clock ownership)."""
+    return knowledge_stamp_now().replace(microsecond=0).isoformat()
 
 
 def _norm_lower(value: Any) -> str:

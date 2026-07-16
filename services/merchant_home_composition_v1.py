@@ -7,7 +7,6 @@ metadata. Never mints decisions, explanations, routing, or KPI knowledge.
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
 from typing import Any, Iterable, Mapping, Optional
 
 from services.knowledge_layer_projection_v1 import (
@@ -19,6 +18,7 @@ from services.knowledge_routing_v1 import (
     SURFACE_MERCHANT_HOME,
     route_merchant_home_knowledge_v1,
 )
+from services.merchant_daily_brief_time_v1 import brief_date_iso
 from services.merchant_daily_brief_v1 import MAX_BRIEF_ITEMS
 
 COMPOSITION_VERSION = "v1"
@@ -39,14 +39,12 @@ def _norm(value: Any) -> str:
 
 
 def _greeting_ar(hour: Optional[int] = None) -> str:
-    h = hour if hour is not None else datetime.now().hour
+    from services.knowledge_time_authority_v1 import knowledge_stamp_now  # noqa: PLC0415
+
+    h = hour if hour is not None else knowledge_stamp_now().hour
     if 5 <= h < 12:
         return "صباح الخير"
     return "مساء الخير"
-
-
-def _brief_date_iso() -> str:
-    return date.today().isoformat()
 
 
 def _dedupe_key_from_topic(topic: Mapping[str, Any]) -> str:
@@ -210,7 +208,7 @@ def compose_merchant_home_experience_v1(
     routed_home_feed: Optional[Mapping[str, Any]] = None,
 ) -> dict[str, Any]:
     """Compose Merchant Home experience sections from governed upstream payloads."""
-    day = brief_date or _brief_date_iso()
+    day = brief_date or brief_date_iso()
     brief = daily_brief if isinstance(daily_brief, Mapping) else {}
     tier = _norm(experience_tier) or EXPERIENCE_TIER_STARTER
     tier_caps = _tier_capabilities_v1().get(tier, _tier_capabilities_v1()[EXPERIENCE_TIER_STARTER])
@@ -359,7 +357,7 @@ def build_merchant_home_experience_api_payload(
     composed = compose_merchant_home_experience_v1(
         merchant_name_ar=merchant_name_ar,
         date_ar=date_ar,
-        brief_date=_norm(brief.get("brief_date")) or _brief_date_iso(),
+        brief_date=_norm(brief.get("brief_date")) or brief_date_iso(),
         daily_brief=brief,
         kl_insights=kl_insights,
         window_days=window_days,

@@ -7,9 +7,15 @@ Never mints decisions, evaluates truth, or generates recommendations.
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
 from typing import Any, Iterable, Mapping, Optional
 
+from services.merchant_daily_brief_time_v1 import (
+    BRIEF_DEFAULT_WINDOW_DAYS,
+    brief_date_iso,
+    brief_stamp_now,
+    brief_time_observability,
+    resolve_brief_windows,
+)
 from services.merchant_decision_layer_v1 import (
     CLASS_CRITICAL_ACTION,
     CLASS_NEEDS_ATTENTION,
@@ -61,10 +67,6 @@ _ACTION_KEY_LABEL_AR = {
 
 def _norm(value: Any) -> str:
     return str(value or "").strip()
-
-
-def _brief_date_iso() -> str:
-    return date.today().isoformat()
 
 
 def is_decision_brief_eligible_v1(decision: Mapping[str, Any]) -> bool:
@@ -168,7 +170,7 @@ def project_brief_item_v1(
     brief_date: Optional[str] = None,
 ) -> dict[str, Any]:
     """Project one published decision into a brief item (presentation view)."""
-    day = brief_date or _brief_date_iso()
+    day = brief_date or brief_date_iso()
     decision_id = _norm(decision.get("decision_id"))
     explanation = decision.get("decision_explanation")
     if not isinstance(explanation, Mapping):
@@ -210,7 +212,7 @@ def compose_merchant_daily_brief_v1(
 
     Does not read Truth, Proof, or KL insights directly.
     """
-    day = brief_date or _brief_date_iso()
+    day = brief_date or brief_date_iso()
     collected = collect_published_decisions_from_bundles_v1(decision_bundles)
     selected = _select_brief_decisions_v1(collected)
     items = [project_brief_item_v1(d, brief_date=day) for d in selected]
@@ -289,7 +291,9 @@ def build_merchant_daily_brief_api_payload(
             enrich_knowledge_report_merchant_decisions_v1,
         )
 
-        report = build_knowledge_report(db_session, slug, window_days=7)
+        report = build_knowledge_report(
+            db_session, slug, window_days=BRIEF_DEFAULT_WINDOW_DAYS
+        )
         kl_payload = report.to_dict()
         enrich_knowledge_report_claim_evidence_v1(kl_payload)
         enrich_knowledge_report_producer_metadata_v1(kl_payload)
@@ -330,19 +334,27 @@ def build_merchant_daily_brief_api_payload(
     except ImportError:
         compose_merchant_daily_brief_v2 = None  # type: ignore[misc, assignment]
 
+    # One QTC-derived calendar day + window for this brief build
+    tw = resolve_brief_windows(window_days=BRIEF_DEFAULT_WINDOW_DAYS)
+    day = brief_date_iso()
+
     brief_fn = compose_merchant_daily_brief_v2 or compose_merchant_daily_brief_v1
     if compose_merchant_daily_brief_v2 is not None:
         brief = compose_merchant_daily_brief_v2(
             decision_bundles=bundles,
             kl_insights=kl_insights,
+            brief_date=day,
         )
     else:
-        brief = brief_fn(decision_bundles=bundles)
+        brief = brief_fn(decision_bundles=bundles, brief_date=day)
     brief["ok"] = True
-    brief["generated_at"] = (
-        datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-    )
+    brief["generated_at"] = brief_stamp_now().replace(microsecond=0).isoformat()
     brief["store_slug"] = slug
+    obs = brief.get("observability")
+    if not isinstance(obs, dict):
+        obs = {}
+        brief["observability"] = obs
+    obs["time_window"] = brief_time_observability(tw)
     return brief
 
 
