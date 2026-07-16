@@ -1,0 +1,204 @@
+{% extends "layouts/admin_dashboard.html" %}
+{% block admin_title %}CartFlow Admin — Product Investigations{% endblock %}
+{% block admin_main_class %}w-full max-w-[96rem] space-y-6 px-6 py-8 pb-24 lg:px-10{% endblock %}
+
+{% block admin_content %}
+{% set counts = dash.counts or {} %}
+{% set by_status = counts.by_status or {} %}
+{% set by_sev = counts.by_severity or {} %}
+{% set opts = dash.filter_options or {} %}
+{% set invs = dash.investigations or [] %}
+{% set dep = dash.dependency_view or {} %}
+
+{% macro sev_pill(sev) -%}
+{%- set s = (sev or '')|lower -%}
+{%- if s == 'critical' -%}
+<span class="inline-flex rounded-md bg-rose-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-rose-800">Critical</span>
+{%- elif s == 'high' -%}
+<span class="inline-flex rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-amber-900">High</span>
+{%- elif s == 'medium' -%}
+<span class="inline-flex rounded-md bg-sky-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-sky-900">Medium</span>
+{%- else -%}
+<span class="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-slate-700">{{ sev or 'Low' }}</span>
+{%- endif -%}
+{%- endmacro %}
+
+{% macro status_pill(st) -%}
+{%- set s = (st or '')|lower -%}
+{%- if 'ready' in s -%}
+<span class="inline-flex rounded-md bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-900">{{ st }}</span>
+{%- elif 'blocked' in s -%}
+<span class="inline-flex rounded-md bg-rose-100 px-2 py-0.5 text-[11px] font-semibold text-rose-900">{{ st }}</span>
+{%- elif 'root cause' in s or 'investigating' in s -%}
+<span class="inline-flex rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-900">{{ st }}</span>
+{%- elif 'closed' in s or 'verified' in s or 'implementation' in s or 'verification' in s -%}
+<span class="inline-flex rounded-md bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-800">{{ st }}</span>
+{%- else -%}
+<span class="inline-flex rounded-md bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-900">{{ st }}</span>
+{%- endif -%}
+{%- endmacro %}
+
+<section class="admin-card px-6 py-5">
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-wide text-indigo-600">Product Investigation Framework V1</p>
+      <h2 class="mt-1 text-2xl font-bold text-slate-900">Investigations</h2>
+      <p class="mt-2 max-w-3xl text-sm text-slate-600">
+        Canonical registry projection — <code class="text-xs">{{ dash.canonical_registry }}</code>.
+        Read-only. Status changes go through the documentation workflow.
+      </p>
+    </div>
+    <div class="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+      <div class="font-semibold text-slate-900">{{ counts.total or 0 }} total</div>
+      <div class="text-xs text-slate-500">showing {{ counts.filtered or 0 }} after filters</div>
+    </div>
+  </div>
+</section>
+
+<section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+  {% for key in ['Open','Investigating','Root Cause Confirmed','Ready for Fix','Implementation','Verification','Blocked','Closed'] %}
+  <div class="admin-card px-4 py-3">
+    <p class="text-[11px] font-medium uppercase tracking-wide text-slate-500">{{ key }}</p>
+    <p class="mt-1 text-2xl font-bold text-slate-900">{{ by_status.get(key, 0) }}</p>
+  </div>
+  {% endfor %}
+</section>
+
+<section class="grid gap-3 sm:grid-cols-4">
+  {% for key in ['Critical','High','Medium','Low'] %}
+  <div class="admin-card px-4 py-3">
+    <p class="text-[11px] font-medium uppercase tracking-wide text-slate-500">{{ key }}</p>
+    <p class="mt-1 text-xl font-bold text-slate-900">{{ by_sev.get(key, 0) }}</p>
+  </div>
+  {% endfor %}
+</section>
+
+<section class="admin-card px-5 py-5">
+  <h3 class="text-sm font-semibold text-slate-900">Filters</h3>
+  <form method="get" action="/admin/investigations" class="mt-3 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+    <label class="text-xs text-slate-600">Status
+      <select name="status" class="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm">
+        <option value="">All</option>
+        {% for o in opts.status or [] %}
+        <option value="{{ o }}" {% if filters.status == o %}selected{% endif %}>{{ o }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="text-xs text-slate-600">Severity
+      <select name="severity" class="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm">
+        <option value="">All</option>
+        {% for o in opts.severity or [] %}
+        <option value="{{ o }}" {% if filters.severity == o %}selected{% endif %}>{{ o }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="text-xs text-slate-600">Category
+      <select name="category" class="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm">
+        <option value="">All</option>
+        {% for o in opts.category or [] %}
+        <option value="{{ o }}" {% if filters.category == o %}selected{% endif %}>{{ o }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="text-xs text-slate-600">Wave
+      <select name="wave" class="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm">
+        <option value="">All</option>
+        {% for o in opts.wave or [] %}
+        <option value="{{ o }}" {% if filters.wave == o %}selected{% endif %}>{{ o }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="text-xs text-slate-600">Parent investigation
+      <select name="parent" class="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm">
+        <option value="">All</option>
+        {% for o in opts.parent or [] %}
+        {% if o != '—' %}
+        <option value="{{ o }}" {% if filters.parent == o %}selected{% endif %}>{{ o }}</option>
+        {% endif %}
+        {% endfor %}
+      </select>
+    </label>
+    <label class="text-xs text-slate-600">Merchant trust impact
+      <select name="merchant_trust" class="mt-1 w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm">
+        <option value="">All</option>
+        {% for o in opts.merchant_trust or [] %}
+        <option value="{{ o }}" {% if filters.merchant_trust == o %}selected{% endif %}>{{ o }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <div class="md:col-span-3 xl:col-span-6 flex flex-wrap gap-2">
+      <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">Apply</button>
+      <a href="/admin/investigations" class="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700">Reset</a>
+    </div>
+  </form>
+</section>
+
+<section class="admin-card overflow-x-auto px-0 py-0">
+  <table class="min-w-full text-left text-sm" id="investigations-table">
+    <thead class="border-b border-slate-200 bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
+      <tr>
+        <th class="px-4 py-3">ID</th>
+        <th class="px-4 py-3">Title</th>
+        <th class="px-4 py-3">Severity</th>
+        <th class="px-4 py-3">Category</th>
+        <th class="px-4 py-3">Status</th>
+        <th class="px-4 py-3">Parents</th>
+        <th class="px-4 py-3">Could explain</th>
+        <th class="px-4 py-3">Merchant impact</th>
+        <th class="px-4 py-3">Updated</th>
+        <th class="px-4 py-3">Owner</th>
+        <th class="px-4 py-3">Next gate</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for r in invs %}
+      <tr class="align-top hover:bg-slate-50/80" data-inv-id="{{ r.id }}">
+        <td class="px-4 py-3 font-semibold text-indigo-700 whitespace-nowrap">
+          <a href="/admin/investigations/{{ r.id }}" class="underline-offset-2 hover:underline">{{ r.id }}</a>
+        </td>
+        <td class="px-4 py-3 font-medium text-slate-900 max-w-[14rem]">{{ r.title }}</td>
+        <td class="px-4 py-3">{{ sev_pill(r.severity) }}</td>
+        <td class="px-4 py-3 text-xs text-slate-600 max-w-[10rem]">{{ r.category }}</td>
+        <td class="px-4 py-3">{{ status_pill(r.status_display) }}</td>
+        <td class="px-4 py-3 text-xs text-slate-600 whitespace-nowrap">
+          {% if r.parent_investigations %}{{ r.parent_investigations | join(', ') }}{% else %}—{% endif %}
+        </td>
+        <td class="px-4 py-3 text-xs text-slate-600 max-w-[12rem]">{{ r.could_explain }}</td>
+        <td class="px-4 py-3 text-xs text-slate-600 max-w-[14rem]">{{ r.merchant_impact }}</td>
+        <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{{ r.last_updated }}</td>
+        <td class="px-4 py-3 text-xs text-slate-600 max-w-[8rem]">{{ r.owner }}</td>
+        <td class="px-4 py-3 text-xs text-slate-600 max-w-[12rem]">{{ r.next_required_gate }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="11" class="px-4 py-8 text-center text-slate-500">No investigations match filters.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="admin-card px-6 py-5" id="dependency-view">
+  <h3 class="text-base font-semibold text-slate-900">Dependency view</h3>
+  <p class="mt-1 text-xs text-slate-500">Approved structure only — source <code>{{ dep.source }}</code></p>
+  <ul class="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-700">
+    {% for note in dep.approved_notes or [] %}
+    <li>{{ note }}</li>
+    {% endfor %}
+  </ul>
+  <div class="mt-4 overflow-x-auto">
+    <table class="min-w-full text-left text-sm">
+      <thead class="text-[11px] uppercase tracking-wide text-slate-500">
+        <tr><th class="py-2 pr-4">From</th><th class="py-2 pr-4">To</th><th class="py-2">Kind</th></tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for e in dep.edges or [] %}
+        <tr>
+          <td class="py-2 pr-4 font-medium text-slate-800">{{ e.from }}</td>
+          <td class="py-2 pr-4 font-medium text-slate-800">{{ e.to }}</td>
+          <td class="py-2 text-xs text-slate-600">{{ e.kind }}{% if e.note %} — {{ e.note }}{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

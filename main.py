@@ -275,6 +275,7 @@ from routes.cart_recovery_reason import router as cart_recovery_reason_router  #
 from routes.admin_operations import router as admin_operations_router  # noqa: E402
 import routes.admin_ops  # noqa: F401,E402 — registers /admin/ops/* on admin router
 import routes.operational_control_admin  # noqa: F401,E402 — /admin/control targeted controls v1
+import routes.admin_investigations  # noqa: F401,E402 — /admin/investigations (read-only)
 from routes.demo_panel import router as demo_panel_router  # noqa: E402
 from routes.merchant_auth import router as merchant_auth_router  # noqa: E402
 from routes.ops import router as ops_router  # noqa: E402

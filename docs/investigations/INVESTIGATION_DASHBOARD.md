@@ -2,7 +2,7 @@
 
 **As of (UTC):** 2026-07-16  
 **Framework:** Product Investigation Framework V1  
-**Phase status:** INV-001 **WP-6 Daily Brief Time Authority Migration submitted (pending Architecture Review)** — do **not** start WP-7
+**Phase status:** Reality Validation Checkpoint V2 + Admin Investigation Dashboard V1 submitted — do **not** start WP-7 until Architecture/Product review
 
 ---
 
@@ -10,15 +10,26 @@
 
 | Status | Count | IDs |
 |--------|------:|-----|
-| Open | 7 | INV-002 … INV-008 |
+| Open | 8 | INV-002 … INV-009 |
 | Investigating | 0 | — |
 | Root Cause Confirmed | 0 | — |
-| Ready for Fix | 1 | INV-001 (WP-6 pending Architecture Review) |
+| Ready for Fix | 1 | INV-001 (WP-6 approved; Checkpoint V2 pending) |
+| Implementation | 0 | — |
+| Verification | 0 | — |
 | Blocked | 0 | — |
-| Fixed | 0 | — |
-| Verified | 0 | — |
 | Closed | 0 | — |
-| **Total registered** | **8** | Next ID: INV-009 |
+| **Total registered** | **9** | Next ID: INV-010 |
+
+---
+
+## Severity counts
+
+| Severity | Count |
+|----------|------:|
+| Critical | 2 |
+| High | 4 |
+| Medium | 3 |
+| Low | 0 |
 
 ---
 
@@ -34,11 +45,13 @@
 | INV-006 | Attribution Semantics Drift | High | Open | Purchase Truth + Product | INV-001 | — |
 | INV-007 | Monthly Summary Materialisation Gap | Medium | Open | Dashboard | INV-001, INV-002 | — |
 | INV-008 | Visitor Truth Coverage Gap | Medium | Open | Knowledge + Ingress | — | — |
+| INV-009 | WP-5 Cross-Surface Database Fixture Instability | Medium | Open | Engineering + Architecture Board | — | [INV-009.md](./INV-009.md) |
 
 ---
 
 ## Next action (human)
 
-1. Architecture Review of **WP-6** (`docs/investigations/WP-06_REVIEW.md`).  
-2. On approval only: authorize **WP-7** (Timeline + Movement write stamps).  
-3. INV-002 review when ready (separate).
+1. Review **Reality Validation Checkpoint V2** (`REALITY_VALIDATION_CHECKPOINT_V2_REPORT.md`).  
+2. Review **Admin Investigation Dashboard V1** (`/admin/investigations`).  
+3. On dual approval only: authorize **WP-7** (Timeline + Movement write stamps).  
+4. INV-009 remains Open (fixture) — not a WP-6 regression.
