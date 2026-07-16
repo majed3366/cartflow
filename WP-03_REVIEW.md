@@ -6,7 +6,7 @@
 | Work Package ID | WP-3 |
 | Title | Session & membership binding (Execution Architecture Phase 3) |
 | Branch | `feature/inv002-wp3` |
-| Commit hash | `c2abacc` |
+| Commit hash | `1c30004` |
 | Author | Engineering (agent) |
 | Reviewer | âکگ Architecture Board |
 | Date submitted (UTC) | 2026-07-16 |
@@ -83,13 +83,13 @@ Implemented **Phase 3 Session & membership binding** under Identity Authority:
 | Field | Value |
 |-------|--------|
 | **Branch** | `feature/inv002-wp3` |
-| **Final commit hash** | `c2abacc` (`c2abacc7939aba7fa2c4a2923f768971b5ca48f0`) |
+| **Final commit hash** | `1c30004` (`1c30004d67b919d61c7daf097fcce91e4720d15c`) — WP-3 delivery commit on `feature/inv002-wp3` |
 | **Parent tip before WP-3 commit** | `4f17432` |
 | **Test command** | `python -m pytest tests/identity_authority/ -q --tb=line` |
 | **Test result** | **39 passed** |
 | **`main.py` unchanged** | **Confirmed** â€” not in commit; `git show --name-only --pretty="" HEAD` excludes `main.py` |
 | **Query / I/O evidence** | No new query classes; reuses `resolve_merchant_onboarding_store`; no global middleware; no migrations; no scheduler/pool touch |
-| **Rollback boundary** | `git revert b4dcad3c70640a32e6da27208af7941828043ce0` **or** `git reset --hard 4f17432` (branch tip before this WP-3 commit) |
+| **Rollback boundary** | `git revert 1c30004` **or** `git reset --hard 4f17432` (parent before WP-3 delivery commit) |
 | **WP-4 started** | **No** |
 
 ### Exact files in this commit
