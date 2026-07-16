@@ -14,7 +14,7 @@ Implemented the governed Time Filtering Contract: pure O(1) window derivation fr
 
 ## 2. Commit hash
 
-_(recorded after commit)_
+`d217d666589c09099a2f723b28fe8d8806ea738e`
 
 ## 3. Branch name
 
