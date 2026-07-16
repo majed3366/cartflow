@@ -14,7 +14,7 @@ Extracted legacy merchant KPI temporal projections from `main.py` into `services
 
 ## 2. Commit hash
 
-_(recorded after commit)_
+`cc649cb3b55b7d3839491e936f890fa0ddf16f4a`
 
 ## 3. Branch name
 
