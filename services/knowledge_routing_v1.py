@@ -5,6 +5,10 @@ Knowledge Routing v1 — platform-owned routing layer (domain-neutral).
 Consumes standardized published knowledge items only.
 Assigns routing_priority, surface eligibility, aggregation, and lifetime.
 Does not create truth, decisions, explanations, or business-domain rules.
+
+INV-002 WP-2: does not resolve merchant/store identity. Tenant scope on
+routed items must already come from Identity Authority MQIC via Knowledge
+report generation / producer metadata.
 """
 from __future__ import annotations
 
@@ -27,6 +31,7 @@ SURFACE_DAILY_BRIEF = "daily_brief"
 SURFACE_CART_DETAIL = "cart_detail"
 SURFACE_KNOWLEDGE_LAYER = "knowledge_layer"
 SURFACE_MERCHANT_HOME = "merchant_home"
+SURFACE_TIMELINE = "timeline"
 
 SECTION_ACHIEVEMENT = "achievement"
 SECTION_ATTENTION = "attention"
@@ -388,6 +393,54 @@ def route_merchant_home_knowledge_v1(
     )
 
 
+def route_timeline_knowledge_v1(
+    *,
+    store_slug: str,
+    achievements: Iterable[Mapping[str, Any] | None] = (),
+    max_display_items: int = MAX_BRIEF_ITEMS,
+) -> dict[str, Any]:
+    """
+    Route achievement topics for Merchant Timeline (INV-002 WP-6).
+
+    ``store_slug`` must be the MQIC tenant key supplied by Identity Authority —
+    routing never resolves identity.
+    """
+    slug = _norm(store_slug)
+    if not slug:
+        return {
+            "routing_version": ROUTING_VERSION,
+            "surface": SURFACE_TIMELINE,
+            "store_slug": "",
+            "achievements": [],
+            "attention_items": [],
+            "aggregation_reason": _AGGREGATION_REASON,
+            "observability": {
+                "input_items": 0,
+                "eligible_items": 0,
+                "achievement_groups": 0,
+                "attention_groups": 0,
+                "identity_required": True,
+            },
+        }
+    items: list[dict[str, Any]] = []
+    for raw in achievements or ():
+        if not isinstance(raw, Mapping):
+            continue
+        item = dict(raw)
+        surfaces = list(item.get("eligible_surfaces") or [])
+        if SURFACE_TIMELINE not in surfaces:
+            surfaces.append(SURFACE_TIMELINE)
+        item["eligible_surfaces"] = surfaces
+        items.append(item)
+    feed = route_knowledge_for_surface_v1(
+        items,
+        surface=SURFACE_TIMELINE,
+        max_attention_items=max_display_items,
+    )
+    feed["store_slug"] = slug
+    return feed
+
+
 def validate_routed_knowledge_item_v1(item: Mapping[str, Any]) -> list[str]:
     """Validate routed output contract."""
     required = (
@@ -424,6 +477,8 @@ __all__ = [
     "SURFACE_DAILY_BRIEF",
     "SURFACE_CART_DETAIL",
     "SURFACE_KNOWLEDGE_LAYER",
+    "SURFACE_MERCHANT_HOME",
+    "SURFACE_TIMELINE",
     "assign_routing_section_v1",
     "collect_routing_input_items_v1",
     "compute_routing_priority_v1",
@@ -436,5 +491,6 @@ __all__ = [
     "route_daily_brief_knowledge_v1",
     "route_knowledge_for_surface_v1",
     "route_knowledge_layer_knowledge_v1",
+    "route_timeline_knowledge_v1",
     "validate_routed_knowledge_item_v1",
 ]

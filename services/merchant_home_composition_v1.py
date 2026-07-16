@@ -209,6 +209,8 @@ def compose_merchant_home_experience_v1(
     nav_metadata: Optional[Mapping[str, Any]] = None,
     experience_tier: str = EXPERIENCE_TIER_STARTER,
     routed_home_feed: Optional[Mapping[str, Any]] = None,
+    store_slug: str = "",
+    mqic: Any = None,
 ) -> dict[str, Any]:
     """Compose Merchant Home experience sections from governed upstream payloads."""
     day = brief_date or brief_date_iso()
@@ -221,15 +223,24 @@ def compose_merchant_home_experience_v1(
     )
 
     seen_keys: set[str] = set()
-    while_away: list[dict[str, Any]] = []
-    for raw in brief.get("achievements") or []:
-        if not isinstance(raw, Mapping):
-            continue
-        key = _dedupe_key_from_topic(raw)
-        if key in seen_keys:
-            continue
-        seen_keys.add(key)
-        while_away.append(_project_while_away_item(raw))
+    # INV-002 WP-6: Activity Timeline is a first-class MQIC consumer.
+    from services.identity_authority import get_mqic, mqic_from_caller_store_slug  # noqa: PLC0415
+    from services.merchant_timeline_v1 import (  # noqa: PLC0415
+        build_merchant_activity_timeline_v1,
+    )
+
+    tl_slug = _norm(store_slug)
+    tl_mqic = mqic
+    if tl_mqic is None and not tl_slug and get_mqic() is None:
+        # Pure composition fixtures (no session): still seal via Authority (no DB).
+        tl_mqic = mqic_from_caller_store_slug("composition")
+    timeline_section = build_merchant_activity_timeline_v1(
+        daily_brief=brief,
+        store_slug=tl_slug,
+        mqic=tl_mqic,
+        seen_keys=seen_keys,
+    )
+    while_away = list(timeline_section.get("items") or [])
 
     attention: list[dict[str, Any]] = []
     for raw in brief.get("attention_items") or brief.get("items") or []:
@@ -271,10 +282,15 @@ def compose_merchant_home_experience_v1(
             "date_ar": _norm(date_ar),
         },
         "while_away": {
-            "title_ar": "بينما كنت بعيداً",
-            "lead_ar": "CartFlow يتابع متجرك تلقائياً — هذا ما اكتمل:",
+            "title_ar": _norm(timeline_section.get("title_ar")) or "بينما كنت بعيداً",
+            "lead_ar": _norm(timeline_section.get("lead_ar"))
+            or "CartFlow يتابع متجرك تلقائياً — هذا ما اكتمل:",
             "items": while_away,
-            "empty_message_ar": "CartFlow يتابع متجرك — سنُظهر الإنجازات هنا عند توفرها.",
+            "empty_message_ar": _norm(timeline_section.get("empty_message_ar"))
+            or "CartFlow يتابع متجرك — سنُظهر الإنجازات هنا عند توفرها.",
+            "store_slug": _norm(timeline_section.get("store_slug")),
+            "identity_authority_v1": timeline_section.get("identity_authority_v1"),
+            "knowledge_routing_v1": timeline_section.get("knowledge_routing_v1"),
         },
         "attention_today": {
             "title_ar": "يحتاج انتباهك اليوم",
@@ -410,6 +426,8 @@ def build_merchant_home_experience_api_payload(
                 window_days=window_days,
                 nav_metadata=nav_metadata,
                 experience_tier=experience_tier,
+                store_slug=slug,
+                mqic=identity,
             )
             from services.knowledge_time_authority_v1 import (  # noqa: PLC0415
                 knowledge_stamp_now,

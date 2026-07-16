@@ -120,6 +120,8 @@ def compose_home_api_payload_from_summary_context(
             daily_brief=brief,
             kl_insights=(),
             nav_metadata=_nav_metadata_from_summary(body),
+            store_slug=slug,
+            mqic=identity,
         )
         home: dict[str, Any] = dict(composed)
         home["ok"] = True

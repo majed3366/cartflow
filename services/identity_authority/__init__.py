@@ -87,6 +87,13 @@ from services.identity_authority.dashboard_home_consumer_v1 import (
     dashboard_home_identity_scope,
     ensure_dashboard_home_mqic,
 )
+from services.identity_authority.timeline_consumer_v1 import (
+    attach_timeline_identity_observability,
+    bind_mqic_for_timeline,
+    ensure_timeline_mqic,
+    timeline_identity_diagnostics,
+    timeline_identity_scope,
+)
 
 __all__ = [
     # Authority
@@ -159,6 +166,12 @@ __all__ = [
     "bind_mqic_for_dashboard_home",
     "dashboard_home_identity_diagnostics",
     "attach_dashboard_home_identity_observability",
+    # Timeline consumer (WP-6 / Phase 4 surface)
+    "timeline_identity_scope",
+    "ensure_timeline_mqic",
+    "bind_mqic_for_timeline",
+    "timeline_identity_diagnostics",
+    "attach_timeline_identity_observability",
 ]
 
-__version__ = "5"
+__version__ = "6"
