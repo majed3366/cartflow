@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Platform Time Authority — public façade (WP-1 / WP-2).
+Platform Time Authority — public façade (WP-1 / WP-2 / WP-3).
 
 Stable imports for future consumers.
-Filtering / emptiness: WP-3. Consumer migration: later WPs. Simulation engine bind: WP-10.
+Consumer migration: later WPs. Simulation engine bind: WP-10.
 """
 from __future__ import annotations
 
@@ -40,16 +40,31 @@ from services.time_authority.contracts import (
     TimeProvenance,
     TimezonePolicy,
     WindowRecipeId,
+    WindowResultStatus,
     ensure_utc,
     provenance_dict,
     provenance_for_kind,
     resolve_context_kind,
+    resolve_window_recipe,
+)
+from services.time_authority.emptiness import (
+    EmptinessResult,
+    classify_store_history,
+    classify_timestamp,
 )
 from services.time_authority.exceptions import (
+    FilteringError,
     InvalidClockProvider,
     MissingQueryTimeContext,
     QueryTimeContextError,
     TimeAuthorityError,
+)
+from services.time_authority.filtering import (
+    INTERVAL_SHAPE,
+    TimeWindow,
+    filter_contract_meta,
+    window_for,
+    windows_adjacent_non_overlapping,
 )
 from services.time_authority.http_middleware import (
     QueryTimeContextMiddleware,
@@ -134,9 +149,22 @@ __all__ = [
     "legacy_utc_now",
     "coerce_optional_now",
     "is_using_system_clock",
-    # Contracts / validators / errors
+    # Filtering (WP-3)
+    "window_for",
+    "TimeWindow",
     "WindowRecipeId",
+    "WindowResultStatus",
+    "resolve_window_recipe",
+    "INTERVAL_SHAPE",
+    "filter_contract_meta",
+    "windows_adjacent_non_overlapping",
+    "FilteringError",
+    # Emptiness (WP-3)
     "EmptinessType",
+    "EmptinessResult",
+    "classify_timestamp",
+    "classify_store_history",
+    # Contracts / validators / errors
     "ensure_utc",
     "provenance_dict",
     "assert_provider_valid",
@@ -150,4 +178,4 @@ __all__ = [
     "QueryTimeContextError",
 ]
 
-__version__ = "2"
+__version__ = "3"

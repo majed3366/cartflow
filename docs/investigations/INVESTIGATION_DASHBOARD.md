@@ -2,7 +2,7 @@
 
 **As of (UTC):** 2026-07-16  
 **Framework:** Product Investigation Framework V1  
-**Phase status:** INV-001 **WP-2 complete (pending Architecture Review)** — do **not** start WP-3
+**Phase status:** INV-001 **WP-3 complete (pending Architecture Review)** — do **not** start WP-4
 
 ---
 
@@ -13,7 +13,7 @@
 | Open | 7 | INV-002 … INV-008 |
 | Investigating | 0 | — |
 | Root Cause Confirmed | 0 | — |
-| Ready for Fix | 1 | INV-001 (WP-1 not started) |
+| Ready for Fix | 1 | INV-001 (WP-3 pending Architecture Review) |
 | Blocked | 0 | — |
 | Fixed | 0 | — |
 | Verified | 0 | — |
@@ -39,6 +39,6 @@
 
 ## Next action (human)
 
-1. Architecture Review of **WP-1** (`docs/investigations/WP-01_REVIEW.md`).  
-2. On approval only: authorize **WP-2**.  
+1. Architecture Review of **WP-3** (`docs/investigations/WP-03_REVIEW.md`).  
+2. On approval only: authorize **WP-4** (Knowledge migration).  
 3. INV-002 review when ready (separate).

@@ -17,3 +17,7 @@ class InvalidClockProvider(TimeAuthorityError):
 
 class QueryTimeContextError(TimeAuthorityError):
     """Raised for invalid Query Time Context activation or nesting rules."""
+
+
+class FilteringError(TimeAuthorityError):
+    """Raised for invalid window recipe arguments or unsupported policies."""
