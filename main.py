@@ -13767,188 +13767,6 @@ def _normal_carts_dashboard_stats(dash_store: Optional[Any] = None) -> dict[str,
     return out
 
 
-def _merchant_ref_non_vip_scoped_base_query(
-    dash_store: Optional[Any],
-) -> Optional[Any]:
-    """نطاق السلال العادية (غير VIP) لمؤشرات لوحة التاجر — قراءة فقط."""
-    if dash_store is None:
-        return None
-    try:
-        base_q = db.session.query(AbandonedCart)
-        _st_scope = _normal_recovery_abandoned_scope_filter(dash_store)
-        if _st_scope is not None:
-            base_q = base_q.filter(_st_scope)
-        vip_th = merchant_vip_threshold_int(dash_store)
-        if vip_th is not None:
-            base_q = base_q.filter(
-                func.coalesce(AbandonedCart.cart_value, 0) < float(vip_th)
-            )
-        return base_q
-    except (SQLAlchemyError, OSError, TypeError, ValueError):
-        db.session.rollback()
-        return None
-
-
-def _merchant_ref_today_utc_bounds() -> tuple[datetime, datetime]:
-    now = datetime.now(timezone.utc)
-    start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    end_day = start + timedelta(days=1)
-    return start, end_day
-
-
-def _merchant_kpi_today_projection(
-    dash_store: Optional[Any],
-) -> dict[str, Any]:
-    """مؤشرات يومية خفيفة — UTC يوم واحد."""
-    out = {
-        "abandoned_today": 0,
-        "recovered_today": 0,
-        "whatsapp_sent_today": 0,
-        "recovered_revenue_today": 0.0,
-    }
-    bq = _merchant_ref_non_vip_scoped_base_query(dash_store)
-    if bq is None:
-        return out
-    slug = (getattr(dash_store, "zid_store_id", None) or "").strip()
-    start, end_day = _merchant_ref_today_utc_bounds()
-    try:
-        out["abandoned_today"] = int(
-            bq.filter(
-                AbandonedCart.status == "abandoned",
-                AbandonedCart.last_seen_at.isnot(None),  # type: ignore[union-attr]
-                AbandonedCart.last_seen_at >= start,
-                AbandonedCart.last_seen_at < end_day,
-            ).count()
-            or 0
-        )
-        out["recovered_today"] = int(
-            bq.filter(
-                AbandonedCart.status == "recovered",
-                AbandonedCart.recovered_at.isnot(None),  # type: ignore[union-attr]
-                AbandonedCart.recovered_at >= start,
-                AbandonedCart.recovered_at < end_day,
-            ).count()
-            or 0
-        )
-        rev = (
-            bq.filter(
-                AbandonedCart.status == "recovered",
-                AbandonedCart.recovered_at.isnot(None),  # type: ignore[union-attr]
-                AbandonedCart.recovered_at >= start,
-                AbandonedCart.recovered_at < end_day,
-            )
-            .with_entities(func.coalesce(func.sum(AbandonedCart.cart_value), 0.0))
-            .scalar()
-        )
-        out["recovered_revenue_today"] = float(rev or 0.0)
-        if slug:
-            out["whatsapp_sent_today"] = int(
-                db.session.query(func.count(CartRecoveryLog.id))
-                .filter(
-                    CartRecoveryLog.store_slug == slug,
-                    CartRecoveryLog.status.in_(_NORMAL_RECOVERY_SENT_LOG_STATUSES),
-                    CartRecoveryLog.created_at >= start,
-                    CartRecoveryLog.created_at < end_day,
-                )
-                .scalar()
-                or 0
-            )
-    except (SQLAlchemyError, OSError, TypeError, ValueError) as e:
-        db.session.rollback()
-        log.warning("merchant_kpi_today_projection: %s", e)
-    return out
-
-
-def _merchant_month_window_projection(
-    dash_store: Optional[Any],
-    *,
-    days: int = 30,
-) -> dict[str, Any]:
-    """ملخص نافذة زمنية — سلال غير VIP في نطاق اللوحة."""
-    out = {
-        "abandoned_total": 0,
-        "recovered_total": 0,
-        "recovery_pct": 0.0,
-        "recovered_revenue": 0.0,
-    }
-    bq = _merchant_ref_non_vip_scoped_base_query(dash_store)
-    if bq is None:
-        return out
-    now = datetime.now(timezone.utc)
-    start = now - timedelta(days=max(1, int(days)))
-    try:
-        out["abandoned_total"] = int(
-            bq.filter(
-                AbandonedCart.status == "abandoned",
-                AbandonedCart.last_seen_at.isnot(None),  # type: ignore[union-attr]
-                AbandonedCart.last_seen_at >= start,
-            ).count()
-            or 0
-        )
-        out["recovered_total"] = int(
-            bq.filter(
-                AbandonedCart.status == "recovered",
-                AbandonedCart.recovered_at.isnot(None),  # type: ignore[union-attr]
-                AbandonedCart.recovered_at >= start,
-            ).count()
-            or 0
-        )
-        rev = (
-            bq.filter(
-                AbandonedCart.status == "recovered",
-                AbandonedCart.recovered_at.isnot(None),  # type: ignore[union-attr]
-                AbandonedCart.recovered_at >= start,
-            )
-            .with_entities(func.coalesce(func.sum(AbandonedCart.cart_value), 0.0))
-            .scalar()
-        )
-        out["recovered_revenue"] = float(rev or 0.0)
-        denom = int(out["abandoned_total"]) + int(out["recovered_total"])
-        if denom > 0:
-            out["recovery_pct"] = round(
-                100.0 * float(out["recovered_total"]) / float(denom), 1
-            )
-    except (SQLAlchemyError, OSError, TypeError, ValueError) as e:
-        db.session.rollback()
-        log.warning("merchant_month_window_projection: %s", e)
-    return out
-
-
-def _merchant_reason_counts_store_window(
-    dash_store: Optional[Any],
-    *,
-    days: int = 7,
-) -> dict[str, int]:
-    """تجميع أسباب التردد للمتجر الحالي في نافذة زمنية."""
-    if dash_store is None:
-        return {}
-    slug = (getattr(dash_store, "zid_store_id", None) or "").strip()
-    if not slug:
-        return {}
-    now = datetime.now(timezone.utc)
-    start = now - timedelta(days=max(1, int(days)))
-    counts: dict[str, int] = {}
-    try:
-        rows = (
-            db.session.query(CartRecoveryReason.reason, func.count(CartRecoveryReason.id))
-            .filter(
-                CartRecoveryReason.store_slug == slug,
-                CartRecoveryReason.updated_at >= start,
-            )
-            .group_by(CartRecoveryReason.reason)
-            .all()
-        )
-        for rkey, c in rows:
-            k = (rkey or "").strip().lower()
-            if not k:
-                continue
-            counts[k] = int(c or 0)
-    except (SQLAlchemyError, OSError, TypeError, ValueError) as e:
-        db.session.rollback()
-        log.warning("merchant_reason_counts_store_window: %s", e)
-    return counts
-
-
 def _merchant_vip_row_safe_projection(
     vc: dict[str, Any],
     *,
@@ -17881,7 +17699,11 @@ def _api_json_activation_inspect_only(
         "recovered_revenue": 0.0,
     }
     try:
-        month_win = _merchant_month_window_projection(dash_store, days=30)
+        from services.dashboard_kpi_time_v1 import (  # noqa: PLC0415
+            merchant_month_window_projection,
+        )
+
+        month_win = merchant_month_window_projection(dash_store, days=30)
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         pass
     return build_activation_inspect_body(
@@ -19469,10 +19291,16 @@ def _api_json_dashboard_summary(
         build_merchant_whatsapp_readiness_card,
     )
 
+    from services.dashboard_kpi_time_v1 import (  # noqa: PLC0415
+        merchant_kpi_today_projection,
+        merchant_month_window_projection,
+        merchant_reason_counts_store_window,
+    )
+
     now_utc = datetime.now(timezone.utc)
     try:
         with dashboard_summary_profile_span("_merchant_kpi_today_projection"):
-            kpis = _merchant_kpi_today_projection(dash_store)
+            kpis = merchant_kpi_today_projection(dash_store)
     except Exception as exc:  # noqa: BLE001
         log.warning("summary kpi_today: %s", exc)
         db.session.rollback()
@@ -19484,7 +19312,7 @@ def _api_json_dashboard_summary(
         }
     try:
         with dashboard_summary_profile_span("_merchant_month_window_projection_days30"):
-            month_win = _merchant_month_window_projection(dash_store, days=30)
+            month_win = merchant_month_window_projection(dash_store, days=30)
     except Exception as exc:  # noqa: BLE001
         log.warning("summary month_window: %s", exc)
         db.session.rollback()
@@ -19496,12 +19324,12 @@ def _api_json_dashboard_summary(
         }
     try:
         with dashboard_summary_profile_span("_merchant_reason_counts_store_window_days7"):
-            reason_counts_w = _merchant_reason_counts_store_window(dash_store, days=7)
+            reason_counts_w = merchant_reason_counts_store_window(dash_store, days=7)
         reason_rows, reason_insight = merchant_reason_panel_rows_from_counts(
             reason_counts_w
         )
         with dashboard_summary_profile_span("_merchant_reason_counts_store_window_days30"):
-            reason_counts_m = _merchant_reason_counts_store_window(dash_store, days=30)
+            reason_counts_m = merchant_reason_counts_store_window(dash_store, days=30)
         reason_rows_month, reason_insight_month = merchant_reason_panel_rows_from_counts(
             reason_counts_m
         )

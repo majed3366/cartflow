@@ -14,7 +14,7 @@ CartFlow is a FastAPI application that:
 
 **Product Investigation Framework V1:** after Reality Validation Lab V1, significant weaknesses become permanent **Investigation Cases** (INV-*), not bugs — evidence, RCA, severity, owner, verification, closure criteria; **no symptom fixes** until Architectural review marks Ready for Fix. Registry: **`docs/investigations/`** (INV-001 Time Authority, INV-002 Merchant Identity, … INV-008 Visitor Truth). Wave 0 parents before children. **No Phase 4 / no implementation from this phase.**
 
-**Time Authority / INV-001:** WP-4 on `feature/inv001-wp4` — Knowledge Layer temporal windows via `knowledge_time_authority_v1` (`last_n_days` + `comparison_period`). WP-1…WP-3 retained. **`main.py` untouched.** Dashboard and other consumers **Not Started**. Awaiting Architecture approval before WP-5. See `docs/investigations/WP-04_REVIEW.md`.
+**Time Authority / INV-001:** WP-5A on `feature/inv001-wp5a` — extracted legacy Dashboard KPI temporal projections from `main.py` into `services/dashboard_kpi_time_v1.py` (thin call sites only; **no** Time Authority migration yet). WP-1…WP-4 retained. WP-5 (Dashboard TA migrate) still pending. See `docs/investigations/WP-05A_REVIEW.md`.
 
 ### 1.1 Commercial packaging (approved foundation — audit only, no billing)
 
