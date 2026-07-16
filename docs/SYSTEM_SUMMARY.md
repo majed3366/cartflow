@@ -14,7 +14,9 @@ CartFlow is a FastAPI application that:
 
 **Product Investigation Framework V1:** after Reality Validation Lab V1, significant weaknesses become permanent **Investigation Cases** (INV-*), not bugs — evidence, RCA, severity, owner, verification, closure criteria; **no symptom fixes** until Architectural review marks Ready for Fix. Registry: **`docs/investigations/`** (INV-001 Time Authority, INV-002 Merchant Identity, … INV-008 Visitor Truth). Wave 0 parents before children. **No Phase 4 / no implementation from this phase.**
 
-**Investigations / Phase Review:** INV-001 WP-1…WP-6 approved; INV-002 Root Cause Confirmed. **CartFlow Phase Review V1** (`CARTFLOW_PHASE_REVIEW_V1.md`): merchant first-open still does not feel “CartFlow understands my store”; phase decision **A — Continue INV-002** (governance only; no implementation / no INV-002 Architecture / no WP-7 from this review). Admin: `/admin/investigations`.
+**Merchant Trust Constitution V1** (`MERCHANT_TRUST_CONSTITUTION_V1.md`): permanent rules for when CartFlow may speak, stay silent, guide, or admit uncertainty; Trust Ladder T0–T5; Evidence Before Speech. **Proposed for Product + Architecture ratification. No INV-002 Architecture. No WP-7.**  
+
+**Investigations / Phase Review:** INV-001 WP-1…WP-6 approved; INV-002 Root Cause Confirmed; Phase Review V1 decision **A — Continue INV-002** (governance only). Admin: `/admin/investigations`.
 
 ### 1.1 Commercial packaging (approved foundation — audit only, no billing)
 
