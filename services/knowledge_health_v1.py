@@ -8,12 +8,13 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Optional
 
 from services.knowledge_insights_v1 import build_all_insights
 from services.knowledge_metrics_v1 import collect_knowledge_metrics
 from services.knowledge_product_metrics_v1 import collect_knowledge_product_metrics
+from services.knowledge_time_authority_v1 import knowledge_stamp_now
 from services.knowledge_types_v1 import (
     CATEGORY_CONVERSION,
     CATEGORY_HESITATION,
@@ -127,8 +128,9 @@ def build_knowledge_health(
     Build read-only Knowledge Layer health for one store.
 
     Insight builders run exactly once inside this function.
+    Temporal window / stamp from Time Authority (WP-4).
     """
-    generated = (now or datetime.now(timezone.utc)).isoformat()
+    generated = knowledge_stamp_now(now=now).isoformat()
     ss = (store_slug or "").strip()[:255]
     metrics = collect_knowledge_metrics(db, ss, window_days=window_days, now=now)
     insights = build_all_insights(metrics)

@@ -14,7 +14,7 @@ CartFlow is a FastAPI application that:
 
 **Product Investigation Framework V1:** after Reality Validation Lab V1, significant weaknesses become permanent **Investigation Cases** (INV-*), not bugs — evidence, RCA, severity, owner, verification, closure criteria; **no symptom fixes** until Architectural review marks Ready for Fix. Registry: **`docs/investigations/`** (INV-001 Time Authority, INV-002 Merchant Identity, … INV-008 Visitor Truth). Wave 0 parents before children. **No Phase 4 / no implementation from this phase.**
 
-**Time Authority / INV-001:** WP-3 on `feature/inv001-wp3` — Governed Time Filtering Contract (`window_for`, `[start_at, end_at)` UTC, typed emptiness). WP-1/WP-2 retained. **`main.py` untouched in WP-3.** **No consumer migration.** Awaiting Architecture approval before WP-4. See `docs/investigations/WP-03_REVIEW.md`.
+**Time Authority / INV-001:** WP-4 on `feature/inv001-wp4` — Knowledge Layer temporal windows via `knowledge_time_authority_v1` (`last_n_days` + `comparison_period`). WP-1…WP-3 retained. **`main.py` untouched.** Dashboard and other consumers **Not Started**. Awaiting Architecture approval before WP-5. See `docs/investigations/WP-04_REVIEW.md`.
 
 ### 1.1 Commercial packaging (approved foundation — audit only, no billing)
 
@@ -501,6 +501,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-07-16 | **INV-001 WP-4 Knowledge Time Authority Migration:** Knowledge metrics/product/report/health use `resolve_knowledge_windows` (WP-3 recipes); removed private `_window_bounds`/`_utc_now`; Golden Comparison bounds identical to legacy; sim/replay select historical evidence. Branch `feature/inv001-wp4`. Tests: time_authority + KL core **151 passed**. **`main.py` unchanged. STOP — await Architecture Review before WP-5.** |
 | 2026-07-16 | **INV-001 WP-3 Governed Time Filtering Contract:** `services/time_authority/filtering.py` + `emptiness.py` — pure O(1) windows from QTC (`[start_at, end_at)` UTC); recipes (today/yesterday/last_n_days/weeks/months/explicit/comparison/sim+replay ranges); typed statuses; provenance; UTC-only (store-TZ reserved+rejected). Branch `feature/inv001-wp3`. Tests: `tests/time_authority/` **77 passed**. **`main.py` unchanged. No consumer migration. STOP — await Architecture Review before WP-4.** |
 | 2026-07-16 | **INV-001 WP-2 Query Time Context:** Immutable QTC model (mode/provenance/authoritative_now/timezone UTC/correlation/sim/replay ids); `context_scope` helpers; HTTP `QueryTimeContextMiddleware` registered via composition-only `main.py` call; fail-closed simulation_run_id; contextvars isolation tests. Branch `feature/inv001-wp2`. Tests: `tests/time_authority/` **42 passed**. **No consumer migration. STOP — await Architecture Review before WP-3.** |
 | 2026-07-16 | **INV-001 WP-1 Platform Time Authority Foundation:** Added `services/time_authority/` — `authority_now()`, providers, Query Time Context, compat. Branch `feature/inv001-wp1`. **No consumer migration.** |

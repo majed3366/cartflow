@@ -4,16 +4,19 @@ Knowledge Layer v1 — Product Foundation read bridge (ONLY approved KL path).
 
 May read foundation tables and foundation health outputs only.
 No raw payload parsing, widget payload inference, or arbitrary product queries.
+
+Temporal windows: Time Authority via knowledge_time_authority_v1 (WP-4).
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from typing import Any, Optional
 
 from sqlalchemy.exc import SQLAlchemyError
 
 from models import AbandonedCart
+from services.knowledge_time_authority_v1 import resolve_knowledge_windows
 from services.product_data.product_foundation_health_v1 import assess_foundation_health
 
 ALLOWED_BRIDGE_TABLES = frozenset(
@@ -24,22 +27,6 @@ ALLOWED_BRIDGE_TABLES = frozenset(
         "product_purchase_mappings",
     }
 )
-
-
-def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
-
-
-def _naive(dt: datetime) -> datetime:
-    if dt.tzinfo is not None:
-        return dt.replace(tzinfo=None)
-    return dt
-
-
-def _window_bounds(*, window_days: int, now: Optional[datetime] = None) -> tuple[datetime, datetime]:
-    end = _naive(now or _utc_now())
-    start = end - timedelta(days=max(1, int(window_days)))
-    return start, end
 
 
 def _normal_lane_session_ids(
@@ -123,10 +110,14 @@ def collect_knowledge_product_metrics(
     Single approved bridge from Knowledge Layer to Product Foundation (read-only).
     """
     ss = (store_slug or "").strip()[:255]
-    start, end = _window_bounds(window_days=window_days, now=now)
+    tw = resolve_knowledge_windows(window_days=window_days, now=now)
+    start, end = tw.start, tw.end
+    # Foundation health still uses open-ended >= start (deferred upper-bound align).
+    # Pass authority now so lower bound matches Knowledge primary window.
+    authority_now = tw.authoritative_now
     bundle = KnowledgeProductMetricsBundle(
         store_slug=ss,
-        window_days=window_days,
+        window_days=tw.window_days,
         source_tables=sorted(ALLOWED_BRIDGE_TABLES),
     )
     if not ss:
@@ -143,7 +134,7 @@ def collect_knowledge_product_metrics(
         ss,
         session_ids=session_ids,
         window_days=window_days,
-        now=now,
+        now=authority_now,
     )
     bundle.foundation_readiness = foundation.readiness
     bundle.snapshot_rows = foundation.snapshot_rows

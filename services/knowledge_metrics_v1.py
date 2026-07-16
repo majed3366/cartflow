@@ -3,11 +3,12 @@
 Knowledge Layer v1 — read-only metric aggregation.
 
 Accepts db session + store_slug + date window; returns metrics only (no Arabic copy).
+Temporal windows from Time Authority via knowledge_time_authority_v1 (WP-4).
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from typing import Any, Optional
 
 from sqlalchemy import func
@@ -23,6 +24,10 @@ from models import (
     RecoveryTruthTimelineEvent,
 )
 from services.knowledge_purchase_attribution_v1 import count_knowledge_purchase_attribution
+from services.knowledge_time_authority_v1 import (
+    KnowledgeTimeWindow,
+    resolve_knowledge_windows,
+)
 from services.reason_template_recovery import canonical_reason_template_key
 from services.vip_operational_truth_v1 import (
     VIP_MERCHANT_ALERT_LOG_STATUSES,
@@ -48,23 +53,6 @@ _VIP_HESITATION_REASON_TAGS = frozenset(
         "vip_phone_capture_merchant",
     }
 )
-
-
-def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
-
-
-def _naive(dt: datetime) -> datetime:
-    if dt.tzinfo is not None:
-        return dt.replace(tzinfo=None)
-    return dt
-
-
-def _window_bounds(*, window_days: int, now: Optional[datetime] = None) -> tuple[datetime, datetime, datetime]:
-    end = _naive(now or _utc_now())
-    start = end - timedelta(days=max(1, int(window_days)))
-    prev_start = start - timedelta(days=max(1, int(window_days)))
-    return start, end, prev_start
 
 
 def _load_vip_session_ids(db_session: Any, store_id: int) -> set[str]:
@@ -152,6 +140,9 @@ class KnowledgeMetricsBundle:
 
     source_tables: list[str] = field(default_factory=list)
 
+    # Internal Time Authority evidence — never merchant-serialized via to_dict
+    time_window: Optional[KnowledgeTimeWindow] = field(default=None, repr=False)
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "store_slug": self.store_slug,
@@ -215,12 +206,14 @@ def collect_knowledge_metrics(
     VIP activity is counted in ``vip_evidence`` only — not normal lane metrics.
     """
     ss = (store_slug or "").strip()[:255]
-    start, end, prev_start = _window_bounds(window_days=window_days, now=now)
+    tw = resolve_knowledge_windows(window_days=window_days, now=now)
+    start, end, prev_start = tw.start, tw.end, tw.prev_start
     bundle = KnowledgeMetricsBundle(
         store_slug=ss,
-        window_days=window_days,
+        window_days=tw.window_days,
         window_start=start,
         window_end=end,
+        time_window=tw,
     )
     if not ss:
         return bundle
