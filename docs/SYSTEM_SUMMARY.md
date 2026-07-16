@@ -14,7 +14,7 @@ CartFlow is a FastAPI application that:
 
 **Product Investigation Framework V1:** after Reality Validation Lab V1, significant weaknesses become permanent **Investigation Cases** (INV-*), not bugs — evidence, RCA, severity, owner, verification, closure criteria; **no symptom fixes** until Architectural review marks Ready for Fix. Registry: **`docs/investigations/`** (INV-001 Time Authority, INV-002 Merchant Identity, … INV-008 Visitor Truth). Wave 0 parents before children. **No Phase 4 / no implementation from this phase.**
 
-**Investigations:** INV-001 WP-1…WP-6 approved (Checkpoint V2: QTC windows unified). **INV-002 Root Cause Confirmed** — session `primary_store_id` signup store ≠ sim `demo`; Home emptiness is identity drift, not Time Authority (`docs/investigations/INV-002_REVIEW.md`). Admin: `/admin/investigations`. **No INV-002 implementation. No WP-7 from INV-002 review.**
+**Investigations / Phase Review:** INV-001 WP-1…WP-6 approved; INV-002 Root Cause Confirmed. **CartFlow Phase Review V1** (`CARTFLOW_PHASE_REVIEW_V1.md`): merchant first-open still does not feel “CartFlow understands my store”; phase decision **A — Continue INV-002** (governance only; no implementation / no INV-002 Architecture / no WP-7 from this review). Admin: `/admin/investigations`.
 
 ### 1.1 Commercial packaging (approved foundation — audit only, no billing)
 
@@ -501,6 +501,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-07-16 | **CartFlow Phase Review V1 (Product Reality Review):** Merchant first-open still feels like preparing/waiting pages, not “understands my store.” Decision **A — Continue INV-002** (not redesign, not larger lab, not pilot). Doc: `CARTFLOW_PHASE_REVIEW_V1.md`. **No implementation. No architecture. No WP-7. STOP.** |
 | 2026-07-16 | **INV-002 Merchant Identity Drift — Architectural Review (Root Cause Confirmed):** Session `primary_store_id` signup store ≠ sim `demo`; Lab bind never sets `primary_store_id`; product Home/KL/Brief share session identity; Checkpoint “sees data” was demo service probes. Doc: `docs/investigations/INV-002_REVIEW.md`. Branch `feature/inv002-architecture-review`. **No fixes. No Implementation Architecture. No Work Packages. STOP.** |
 | 2026-07-16 | **Reality Validation Checkpoint V2 + Admin Investigation Dashboard V1:** Replayed Lab V1 Small Reality (`seed=20260715`, `demo`); sim QTC Knowledge `cart_count=27` + Brief≡Knowledge≡Dashboard windows; merchant Home still skeleton (INV-002). Admin `/admin/investigations` read-only projection of `PRODUCT_INVESTIGATION_REGISTRY.md`; INV-009 filed. Tests: `test_admin_investigations_v1` **14 passed**. Branch `feature/reality-checkpoint-v2-admin-investigations`. **`main.py` composition-only import. STOP — no WP-7; no fixes from checkpoint.** |
 | 2026-07-16 | **INV-001 WP-6 Daily Brief Time Authority Migration:** `merchant_daily_brief_time_v1` bridges Brief → shared `resolve_knowledge_windows`; `brief_date`/`generated_at`/routing `routed_at` from QTC; removed private `date.today`/`datetime.now` ownership. Branch `feature/inv001-wp6`. Cross-surface Brief≡Knowledge≡Dashboard. **`main.py` unchanged. STOP — await Architecture Review before WP-7.** |
