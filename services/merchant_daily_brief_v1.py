@@ -4,6 +4,9 @@ Merchant Daily Brief v1 — governed consumer of merchant_decisions_v1.
 
 Presentation only: selects and projects published decisions into a daily brief.
 Never mints decisions, evaluates truth, or generates recommendations.
+
+INV-002 WP-4: consumes Platform Identity Authority MQIC — never resolves
+merchant/store identity independently.
 """
 from __future__ import annotations
 
@@ -265,97 +268,111 @@ def validate_merchant_daily_brief_v1(brief: Mapping[str, Any]) -> list[str]:
 
 def build_merchant_daily_brief_api_payload(
     db_session: Any,
-    store_slug: str,
-    dash_store: Any,
+    store_slug: str = "",
+    dash_store: Any = None,
     *,
     page_limit: int = 250,
+    mqic: Any = None,
 ) -> dict[str, Any]:
     """
     Build store daily brief by aggregating existing merchant_decisions_v1 outputs.
 
     Reuses decision-layer enrichment paths — does not evaluate truth directly.
+
+    INV-002 WP-4: tenant key from Platform Identity Authority MQIC — Brief
+    never resolves store identity independently.
     """
-    slug = _norm(store_slug)
-    bundles: list[Mapping[str, Any]] = []
-    kl_insights: list[Mapping[str, Any]] = []
+    from services.identity_authority import (  # noqa: PLC0415
+        daily_brief_identity_scope,
+        ensure_daily_brief_mqic,
+    )
 
-    try:
-        from services.knowledge_layer_v1 import build_knowledge_report  # noqa: PLC0415
-        from services.merchant_claim_evidence_v1 import (  # noqa: PLC0415
-            enrich_knowledge_report_claim_evidence_v1,
-        )
-        from services.knowledge_producer_metadata_v1 import (  # noqa: PLC0415
-            enrich_knowledge_report_producer_metadata_v1,
-        )
-        from services.merchant_decision_layer_v1 import (  # noqa: PLC0415
-            enrich_knowledge_report_merchant_decisions_v1,
-        )
+    with daily_brief_identity_scope(store_slug=store_slug, mqic=mqic) as bound:
+        identity = ensure_daily_brief_mqic(store_slug=store_slug, mqic=bound)
+        slug = identity.store_slug
+        bundles: list[Mapping[str, Any]] = []
+        kl_insights: list[Mapping[str, Any]] = []
 
-        report = build_knowledge_report(
-            db_session, slug, window_days=BRIEF_DEFAULT_WINDOW_DAYS
-        )
-        kl_payload = report.to_dict()
-        enrich_knowledge_report_claim_evidence_v1(kl_payload)
-        enrich_knowledge_report_producer_metadata_v1(kl_payload)
-        enrich_knowledge_report_merchant_decisions_v1(kl_payload)
-        kl_bundle = kl_payload.get("merchant_decisions_v1")
-        if isinstance(kl_bundle, Mapping):
-            bundles.append(kl_bundle)
-        for raw in kl_payload.get("insights") or []:
-            if isinstance(raw, Mapping):
-                kl_insights.append(raw)
-    except (OSError, TypeError, ValueError, ImportError):
-        pass
+        try:
+            from services.knowledge_layer_v1 import build_knowledge_report  # noqa: PLC0415
+            from services.merchant_claim_evidence_v1 import (  # noqa: PLC0415
+                enrich_knowledge_report_claim_evidence_v1,
+            )
+            from services.knowledge_producer_metadata_v1 import (  # noqa: PLC0415
+                enrich_knowledge_report_producer_metadata_v1,
+            )
+            from services.merchant_decision_layer_v1 import (  # noqa: PLC0415
+                enrich_knowledge_report_merchant_decisions_v1,
+            )
 
-    try:
-        from services.normal_carts_dashboard_batch_v1 import (  # noqa: PLC0415
-            build_normal_carts_dashboard_api_payload,
-        )
+            report = build_knowledge_report(
+                db_session,
+                slug,
+                window_days=BRIEF_DEFAULT_WINDOW_DAYS,
+                mqic=identity,
+            )
+            kl_payload = report.to_dict()
+            enrich_knowledge_report_claim_evidence_v1(kl_payload)
+            enrich_knowledge_report_producer_metadata_v1(kl_payload)
+            enrich_knowledge_report_merchant_decisions_v1(kl_payload)
+            kl_bundle = kl_payload.get("merchant_decisions_v1")
+            if isinstance(kl_bundle, Mapping):
+                bundles.append(kl_bundle)
+            for raw in kl_payload.get("insights") or []:
+                if isinstance(raw, Mapping):
+                    kl_insights.append(raw)
+        except (OSError, TypeError, ValueError, ImportError):
+            pass
 
-        body, _, _ = build_normal_carts_dashboard_api_payload(
-            dash_store,
-            page_limit=min(250, max(1, int(page_limit))),
-            page_offset=0,
-            debug_perf=False,
-        )
-        for row in body.get("merchant_carts_page_rows") or []:
-            if not isinstance(row, Mapping):
-                continue
-            cart_bundle = row.get("merchant_decisions_v1")
-            if isinstance(cart_bundle, Mapping):
-                bundles.append(cart_bundle)
-    except (OSError, TypeError, ValueError, ImportError):
-        pass
+        try:
+            from services.normal_carts_dashboard_batch_v1 import (  # noqa: PLC0415
+                build_normal_carts_dashboard_api_payload,
+            )
 
-    try:
-        from services.merchant_daily_brief_composer_v2 import (  # noqa: PLC0415
-            compose_merchant_daily_brief_v2,
-        )
-    except ImportError:
-        compose_merchant_daily_brief_v2 = None  # type: ignore[misc, assignment]
+            body, _, _ = build_normal_carts_dashboard_api_payload(
+                dash_store,
+                page_limit=min(250, max(1, int(page_limit))),
+                page_offset=0,
+                debug_perf=False,
+            )
+            for row in body.get("merchant_carts_page_rows") or []:
+                if not isinstance(row, Mapping):
+                    continue
+                cart_bundle = row.get("merchant_decisions_v1")
+                if isinstance(cart_bundle, Mapping):
+                    bundles.append(cart_bundle)
+        except (OSError, TypeError, ValueError, ImportError):
+            pass
 
-    # One QTC-derived calendar day + window for this brief build
-    tw = resolve_brief_windows(window_days=BRIEF_DEFAULT_WINDOW_DAYS)
-    day = brief_date_iso()
+        try:
+            from services.merchant_daily_brief_composer_v2 import (  # noqa: PLC0415
+                compose_merchant_daily_brief_v2,
+            )
+        except ImportError:
+            compose_merchant_daily_brief_v2 = None  # type: ignore[misc, assignment]
 
-    brief_fn = compose_merchant_daily_brief_v2 or compose_merchant_daily_brief_v1
-    if compose_merchant_daily_brief_v2 is not None:
-        brief = compose_merchant_daily_brief_v2(
-            decision_bundles=bundles,
-            kl_insights=kl_insights,
-            brief_date=day,
-        )
-    else:
-        brief = brief_fn(decision_bundles=bundles, brief_date=day)
-    brief["ok"] = True
-    brief["generated_at"] = brief_stamp_now().replace(microsecond=0).isoformat()
-    brief["store_slug"] = slug
-    obs = brief.get("observability")
-    if not isinstance(obs, dict):
-        obs = {}
-        brief["observability"] = obs
-    obs["time_window"] = brief_time_observability(tw)
-    return brief
+        # One QTC-derived calendar day + window for this brief build
+        tw = resolve_brief_windows(window_days=BRIEF_DEFAULT_WINDOW_DAYS)
+        day = brief_date_iso()
+
+        brief_fn = compose_merchant_daily_brief_v2 or compose_merchant_daily_brief_v1
+        if compose_merchant_daily_brief_v2 is not None:
+            brief = compose_merchant_daily_brief_v2(
+                decision_bundles=bundles,
+                kl_insights=kl_insights,
+                brief_date=day,
+            )
+        else:
+            brief = brief_fn(decision_bundles=bundles, brief_date=day)
+        brief["ok"] = True
+        brief["generated_at"] = brief_stamp_now().replace(microsecond=0).isoformat()
+        brief["store_slug"] = slug
+        obs = brief.get("observability")
+        if not isinstance(obs, dict):
+            obs = {}
+            brief["observability"] = obs
+        obs["time_window"] = brief_time_observability(tw)
+        return brief
 
 
 __all__ = [

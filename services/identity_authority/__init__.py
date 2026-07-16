@@ -73,6 +73,13 @@ from services.identity_authority.session_membership_v1 import (
     resolve_mqic_from_session,
     session_membership_diagnostics,
 )
+from services.identity_authority.daily_brief_consumer_v1 import (
+    attach_daily_brief_identity_observability,
+    bind_mqic_for_daily_brief,
+    daily_brief_identity_diagnostics,
+    daily_brief_identity_scope,
+    ensure_daily_brief_mqic,
+)
 
 __all__ = [
     # Authority
@@ -133,6 +140,12 @@ __all__ = [
     "build_session_resolve_input",
     "resolve_mqic_from_session",
     "session_membership_diagnostics",
+    # Daily Brief consumer (WP-4 / Phase 4 surface)
+    "daily_brief_identity_scope",
+    "ensure_daily_brief_mqic",
+    "bind_mqic_for_daily_brief",
+    "daily_brief_identity_diagnostics",
+    "attach_daily_brief_identity_observability",
 ]
 
-__version__ = "3"
+__version__ = "4"
