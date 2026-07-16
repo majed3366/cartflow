@@ -6,7 +6,7 @@
 | Work Package ID | WP-6 |
 | Title | Timeline Consumer Migration (Execution Architecture Phase 4 — RV-B critical) |
 | Branch | `feature/inv002-wp6` |
-| Delivery commit | *(stamped at commit)* |
+| Delivery commit | 2439969 (24399698bd7df60b0e01486c9c7b847579def539) |
 | Author | Engineering (agent) |
 | Reviewer | ☐ Architecture Board |
 | Date submitted (UTC) | 2026-07-16 |
@@ -43,7 +43,7 @@ Migrated **Timeline** to Platform Identity Authority MQIC:
 | Field | Value |
 |-------|--------|
 | **Branch** | `feature/inv002-wp6` |
-| **Final commit hash** | *(stamped)* |
+| **Final commit hash** | 2439969 (24399698bd7df60b0e01486c9c7b847579def539) |
 | **ICT command** | `python -m pytest tests/identity_authority/ -q --tb=line` |
 | **ICT result** | **66 passed** |
 | **Regression command** | `python -m pytest tests/identity_authority/test_wp6_timeline_consumer.py tests/test_merchant_home_experience_v1.py tests/test_merchant_home_experience_activation_v1.py tests/test_knowledge_routing_v1.py -q --tb=line` |
@@ -131,7 +131,7 @@ Migrated **Timeline** to Platform Identity Authority MQIC:
 ## 19. Rollback boundary
 
 ```text
-git revert <WP-6 delivery hash>
+git revert 2439969
 # or
 git reset --hard 0c9ac34
 ```
