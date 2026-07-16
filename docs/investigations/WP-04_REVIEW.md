@@ -14,7 +14,7 @@ Knowledge merchant temporal windows now derive exclusively from Time Authority v
 
 ## 2. Commit hash
 
-_(recorded after commit)_
+`03d7b30574dcc22fc4c2af639195f141ab5a4dcc`
 
 ## 3. Branch name
 
