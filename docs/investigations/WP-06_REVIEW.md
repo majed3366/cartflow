@@ -14,7 +14,7 @@ Daily Brief is now a Time Authority consumer. Rolling windows and comparison per
 
 ## 2. Commit hash
 
-_(filled after commit)_
+`d12602c3a412c841a148ee39e325bcbc7f54fc1e`
 
 ## 3. Branch
 
