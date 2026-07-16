@@ -14,7 +14,7 @@ Dashboard KPI projections in `dashboard_kpi_time_v1` now consume Time Authority 
 
 ## 2. Commit hash
 
-_(recorded after commit)_
+`0c6f6cba98089984be7e3c285d7352d725cfade0`
 
 ## 3. Branch
 
