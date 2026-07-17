@@ -6,7 +6,7 @@
 | Work Package | Phase 5 — Reality Attach |
 | Title | Bind Reality Simulator to Platform Time + Identity Authorities |
 | Branch | `feature/inv002-phase5` |
-| Delivery commit | *(stamped at commit)* |
+| Delivery commit | 592c62e (592c62efc2ccc6f2655e394de1ebe5493fa0ad6f) |
 | Author | Engineering (agent) |
 | Reviewer | ☐ Architecture Board |
 | Date submitted (UTC) | 2026-07-17 |
@@ -27,7 +27,7 @@ Reality Attach is implemented as an **authority-input binder only**. It register
 |-------|--------|
 | **Branch** | `feature/inv002-phase5` |
 | **Base** | `feature/inv002-wp6` @ `2b076c5` |
-| **Delivery commit** | *(stamped at commit)* |
+| **Delivery commit** | 592c62e (592c62efc2ccc6f2655e394de1ebe5493fa0ad6f) |
 | **ICT command** | `python -m pytest tests/identity_authority/ -q --tb=line` |
 | **ICT result** | **80 passed** |
 | **Phase 5 attach tests** | **14 passed** (`test_phase5_reality_attach.py`) |
