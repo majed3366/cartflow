@@ -56,6 +56,34 @@ def summary_snapshot_contract_stale(payload: Mapping[str, Any]) -> bool:
     return True
 
 
+def _knowledge_cart_count_from_summary(body: Mapping[str, Any]) -> Optional[int]:
+    """Prefer canonical Knowledge cart_count when summary already carries it."""
+    for key in ("knowledge_metrics", "kl_metrics", "metrics_snapshot"):
+        metrics = body.get(key)
+        if isinstance(metrics, Mapping) and "cart_count" in metrics:
+            return int(metrics.get("cart_count") or 0)
+    home = body.get("merchant_home_experience_v1")
+    if isinstance(home, Mapping):
+        sources = home.get("sources")
+        if isinstance(sources, Mapping) and "knowledge_cart_count" in sources:
+            return int(sources.get("knowledge_cart_count") or 0)
+    return None
+
+
+def _kl_insights_from_summary(body: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    """Reuse Knowledge insights already present on the summary payload when available."""
+    for key in ("knowledge_insights", "kl_insights"):
+        raw = body.get(key)
+        if isinstance(raw, list):
+            return [item for item in raw if isinstance(item, Mapping)]
+    report = body.get("knowledge_report") or body.get("knowledge_layer_v1")
+    if isinstance(report, Mapping):
+        insights = report.get("insights")
+        if isinstance(insights, list):
+            return [item for item in insights if isinstance(item, Mapping)]
+    return []
+
+
 def _nav_metadata_from_summary(body: Mapping[str, Any]) -> dict[str, int]:
     stats = body.get("normal_carts_stats")
     if not isinstance(stats, Mapping):
@@ -64,10 +92,14 @@ def _nav_metadata_from_summary(body: Mapping[str, Any]) -> dict[str, int]:
     active = int(stats.get("normal_cart_count") or 0)
     if active <= 0 and isinstance(store_counts, Mapping):
         active = int(store_counts.get("active") or store_counts.get("normal") or 0)
-    return {
-        "active_carts": active,
+    knowledge_cart_count = _knowledge_cart_count_from_summary(body)
+    nav: dict[str, int] = {
+        "active_carts": active if knowledge_cart_count is None else knowledge_cart_count,
         "waiting_send": int(body.get("merchant_nav_badge_abandoned") or 0),
     }
+    if knowledge_cart_count is not None:
+        nav["knowledge_cart_count"] = knowledge_cart_count
+    return nav
 
 
 def _merchant_name_from_summary(body: Mapping[str, Any]) -> str:
@@ -118,7 +150,7 @@ def compose_home_api_payload_from_summary_context(
             date_ar=_norm(body.get("merchant_ar_date_header")),
             brief_date=_norm(brief.get("brief_date")),
             daily_brief=brief,
-            kl_insights=(),
+            kl_insights=_kl_insights_from_summary(body),
             nav_metadata=_nav_metadata_from_summary(body),
             store_slug=slug,
             mqic=identity,

@@ -205,6 +205,7 @@ class KnowledgeLayerMetadataTests(unittest.TestCase):
         )
         self.assertEqual(insight["knowledge_type"], "hesitation_pattern")
         self.assertIn("knowledge_layer", insight["eligible_surfaces"])
+        self.assertIn("merchant_home", insight["eligible_surfaces"])
 
     def test_kl_report_enrichment_and_decision_link(self) -> None:
         payload = {

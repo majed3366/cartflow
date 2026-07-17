@@ -56,7 +56,7 @@ class MerchantHomeExperienceActivationTests(unittest.TestCase):
                 "achievements": [
                     {
                         "headline_ar": "تم إرسال رسالة",
-                        "why_ar": "—",
+                        "why_ar": "أُرسلت رسالة استرجاع واحدة بنجاح.",
                         "aggregation_key": "ach:1",
                     }
                 ],

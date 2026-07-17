@@ -267,6 +267,7 @@ class KnowledgeRoutingV1Tests(unittest.TestCase):
         enrich_kl_insight_knowledge_metadata_v1(insight, store_slug="demo", window_days=7)
         feed = route_merchant_home_knowledge_v1(kl_insights=[insight])
         self.assertEqual(feed["surface"], SURFACE_MERCHANT_HOME)
+        self.assertGreaterEqual(int(feed["observability"]["eligible_items"]), 1)
 
 
 if __name__ == "__main__":

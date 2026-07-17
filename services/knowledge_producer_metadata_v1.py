@@ -96,7 +96,9 @@ _INSIGHT_KNOWLEDGE_TYPE: dict[str, str] = {
     "store_health_overview": "operational_health",
 }
 
-_KL_ELIGIBLE_SURFACES = ("knowledge_layer", "daily_brief")
+# Home Understanding inherits the same KL producer insights Knowledge shows
+# (PRODUCT_REVIEW_SESSION_V1 / PIB-1 — Home Truth Alignment).
+_KL_ELIGIBLE_SURFACES = ("knowledge_layer", "daily_brief", "merchant_home")
 _EXPL_ELIGIBLE_SURFACES = ("cart_detail", "cart_row_chip")
 _DECISION_ELIGIBLE_SURFACES_DEFAULT = ("daily_brief", "cart_detail", "merchant_home")
 
@@ -157,7 +159,25 @@ def resolve_store_scope(
     recovery_key: str = "",
     abandoned_cart_id: Any = None,
 ) -> str:
-    """Resolve store scope segment for knowledge_id."""
+    """
+    Resolve store scope segment for knowledge_id.
+
+    INV-002 WP-2: prefer active MQIC.store_slug when bound (Identity Authority).
+    Does not independently resolve merchant/store identity.
+    """
+    try:
+        from services.identity_authority import get_mqic  # noqa: PLC0415
+
+        active = get_mqic()
+        if active is not None and (active.store_slug or "").strip():
+            slug_in = (store_slug or "").strip()
+            if slug_in and slug_in != active.store_slug:
+                # Mismatch: use Authority slug (fail closed for knowledge_id scope)
+                return sanitize_knowledge_segment(active.store_slug)
+            return sanitize_knowledge_segment(active.store_slug)
+    except Exception:  # noqa: BLE001 — scope minting must not break producers
+        pass
+
     slug = sanitize_knowledge_segment(store_slug)
     if slug != "unknown":
         return slug

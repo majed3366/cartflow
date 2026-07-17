@@ -138,6 +138,11 @@
         (priority.why_ar
           ? '<p class="ma-ecc-hero__priority-body">' + esc(priority.why_ar) + "</p>"
           : "") +
+        (priority.if_ignored_ar
+          ? '<p class="ma-ecc-hero__priority-body ma-ecc-hero__priority-body--muted">' +
+            esc("إذا تجاهلت: " + priority.if_ignored_ar) +
+            "</p>"
+          : "") +
         '<a class="ma-ecc-btn ma-ecc-btn--light" href="#carts" role="button"' +
         goCartsOnclick() +
         ">" +
@@ -356,13 +361,97 @@
     );
   }
 
+  function renderRecoveryJourney(item) {
+    var journey = (item && item.recovery_journey_v1) || null;
+    var stage = String(
+      (journey && journey.recovery_stage_ar) || item.recovery_stage_ar || ""
+    ).trim();
+    if (!stage) return "";
+    var channel = String(
+      (journey && journey.recovery_channel_ar) || item.recovery_channel_ar || ""
+    ).trim();
+    var why = String(
+      (journey && journey.recovery_stage_why_ar) || item.recovery_stage_why_ar || ""
+    ).trim();
+    var blocker = String(
+      (journey && journey.recovery_blocker_ar) || item.recovery_blocker_ar || ""
+    ).trim();
+    var nextPlatform = String(
+      (journey && journey.recovery_next_platform_ar) ||
+        item.recovery_next_platform_ar ||
+        ""
+    ).trim();
+    var nextMerchant = String(
+      (journey && journey.recovery_next_merchant_ar) ||
+        item.recovery_next_merchant_ar ||
+        ""
+    ).trim();
+    var completion = String(
+      (journey && journey.recovery_completion_condition_ar) ||
+        item.recovery_completion_condition_ar ||
+        ""
+    ).trim();
+    var merchantRequired =
+      (journey && journey.recovery_merchant_required) ||
+      item.recovery_merchant_required;
+    return (
+      '<div class="ma-ecc-journey" data-recovery-stage="' +
+      esc(
+        (journey && journey.recovery_stage_key) || item.recovery_stage_key || ""
+      ) +
+      '">' +
+      '<p class="ma-ecc-journey__title">مسار الاسترجاع</p>' +
+      '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">المرحلة الآن:</span> ' +
+      esc(stage) +
+      "</p>" +
+      (channel
+        ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">القناة:</span> ' +
+          esc(channel) +
+          "</p>"
+        : "") +
+      (why
+        ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">لماذا هنا:</span> ' +
+          esc(why) +
+          "</p>"
+        : "") +
+      (blocker
+        ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">الحاجز:</span> ' +
+          esc(blocker) +
+          "</p>"
+        : "") +
+      (nextPlatform
+        ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">CartFlow الآن:</span> ' +
+          esc(nextPlatform) +
+          "</p>"
+        : "") +
+      (nextMerchant
+        ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">' +
+          (merchantRequired ? "دورك الآن:" : "دورك:") +
+          "</span> " +
+          esc(nextMerchant) +
+          "</p>"
+        : "") +
+      (completion
+        ? '<p class="ma-ecc-copy ma-ecc-copy--muted"><span class="ma-ecc-why-k">يكتمل عندما:</span> ' +
+          esc(completion) +
+          "</p>"
+        : "") +
+      "</div>"
+    );
+  }
+
   function renderAttention(home) {
     var att = (home && home.attention_today) || {};
     var items = att.items || [];
     var head =
       '<header class="ma-ecc-band__head">' +
       '<h2 class="ma-ecc-band__title" id="ma-ecc-attention-title">مركز الانتباه</h2>' +
-      '<p class="ma-ecc-band__purpose">ما يستحق تدخلك الآن — ماذا حدث، لماذا يهم، وما الإجراء.</p>' +
+      '<p class="ma-ecc-band__purpose">' +
+      esc(
+        att.lead_ar ||
+          "طابور قرارات — الأهم أولاً. ماذا تفعل، ولماذا، وماذا لو تجاهلت."
+      ) +
+      "</p>" +
       "</header>";
 
     if (!items.length) {
@@ -394,13 +483,21 @@
             : "مهم");
       var action = String(item.action_ar || "").trim();
       if (!action && idx === 0) action = "عرض السلال";
+      var state = String(item.operational_state_ar || "").trim();
+      var evidence = String(item.evidence_ar || "").trim();
+      var outcome = String(item.expected_outcome_ar || "").trim();
+      var ifIgnored = String(item.if_ignored_ar || "").trim();
       list +=
         '<li class="ma-ecc-attention__item ma-ecc-attention__item--' +
         tone +
+        '" data-decision-key="' +
+        esc(item.operational_decision_key || "") +
+        '" data-queue-position="' +
+        (item.queue_position || idx + 1) +
         '">' +
         '<div class="ma-ecc-attention__rail" aria-hidden="true">' +
         '<span class="ma-ecc-attention__index">' +
-        (idx + 1) +
+        (item.queue_position || idx + 1) +
         "</span></div>" +
         '<div class="ma-ecc-attention__body">' +
         '<span class="ma-ecc-chip ma-ecc-chip--' +
@@ -411,11 +508,32 @@
         '<h3 class="ma-ecc-attention__headline">' +
         esc(item.headline_ar || "—") +
         "</h3>" +
+        (state
+          ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">الحالة الآن:</span> ' +
+            esc(state) +
+            "</p>"
+          : "") +
         (item.why_ar
-          ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">لماذا يهم:</span> ' +
+          ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">لماذا الآن:</span> ' +
             esc(item.why_ar) +
             "</p>"
           : "") +
+        (evidence
+          ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">الدليل:</span> ' +
+            esc(evidence) +
+            "</p>"
+          : "") +
+        (outcome
+          ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">النتيجة المتوقعة:</span> ' +
+            esc(outcome) +
+            "</p>"
+          : "") +
+        (ifIgnored
+          ? '<p class="ma-ecc-copy ma-ecc-copy--muted"><span class="ma-ecc-why-k">إذا تجاهلت:</span> ' +
+            esc(ifIgnored) +
+            "</p>"
+          : "") +
+        renderRecoveryJourney(item) +
         (action
           ? '<a class="ma-ecc-btn" href="#carts" role="button"' +
             goCartsOnclick() +

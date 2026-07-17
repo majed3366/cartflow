@@ -96,6 +96,25 @@ body[data-ma-page="home"] #ma-page-hero-global {
   border-color: rgba(220, 38, 38, 0.28);
 }
 
+.ma-ecc-copy--muted {
+  opacity: 0.88;
+}
+.ma-ecc-hero__priority-body--muted {
+  opacity: 0.9;
+  font-size: 0.92em;
+}
+.ma-ecc-journey {
+  margin: 0.65rem 0 0.85rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+.ma-ecc-journey__title {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: rgba(15, 23, 42, 0.72);
+}
 .ma-ecc-why-k {
   font-weight: 700;
   color: var(--pds-ink, var(--v2-ink));

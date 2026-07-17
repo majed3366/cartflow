@@ -132,13 +132,37 @@
     var item = items[0];
     var btnLabel = String(item.action_ar || "عرض السلال").trim();
     return (
-      '<article class="v2-action-card is-attention">' +
+      '<article class="v2-action-card is-attention" data-decision-key="' +
+      esc(item.operational_decision_key || "") +
+      '">' +
       '<p class="v2-action-eyebrow">يحتاجك الآن</p>' +
       '<h2 class="v2-action-headline">' +
       esc(item.headline_ar || "—") +
       "</h2>" +
+      (item.operational_state_ar
+        ? '<p class="v2-action-why">' + esc(item.operational_state_ar) + "</p>"
+        : "") +
       (item.why_ar
         ? '<p class="v2-action-why">' + esc(item.why_ar) + "</p>"
+        : "") +
+      (item.evidence_ar
+        ? '<p class="v2-action-why">' + esc("الدليل: " + item.evidence_ar) + "</p>"
+        : "") +
+      (item.if_ignored_ar
+        ? '<p class="v2-action-why">' + esc("إذا تجاهلت: " + item.if_ignored_ar) + "</p>"
+        : "") +
+      (item.recovery_stage_ar
+        ? '<p class="v2-action-why">' +
+          esc("مسار الاسترجاع: " + item.recovery_stage_ar) +
+          (item.recovery_blocker_ar
+            ? esc(" — الحاجز: " + item.recovery_blocker_ar)
+            : "") +
+          "</p>"
+        : "") +
+      (item.recovery_next_platform_ar
+        ? '<p class="v2-action-why">' +
+          esc("CartFlow الآن: " + item.recovery_next_platform_ar) +
+          "</p>"
         : "") +
       '<a class="v2-btn" href="#" role="button" onclick="if(window.goToSection){goToSection(\'carts\');}return false;">' +
       esc(btnLabel) +
