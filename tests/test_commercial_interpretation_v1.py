@@ -149,8 +149,12 @@ class TestHomeConsumesGovernedOutput(unittest.TestCase):
         )
         self.assertEqual(lead.get("evidence_count"), 50)
         self.assertEqual(lead.get("evidence_label_ar"), primary.get("evidence_text"))
-        self.assertEqual(lead.get("observation_ar"), primary.get("conclusion"))
-        self.assertEqual(lead.get("title_ar"), primary.get("conclusion"))
+        # Knowledge explains (observation), Attention decides — no action on Knowledge.
+        self.assertTrue(lead.get("observation_ar"))
+        self.assertFalse(str(lead.get("action_ar") or "").strip())
+        att = home["attention_today"]["items"][0]
+        self.assertTrue(att.get("action_ar"))
+        self.assertEqual(att.get("drilldown_href"), "#carts?tab=nophone")
         # Must not leave the empty-knowledge contradiction.
         blob = " ".join(
             str(items[0].get(k) or "")
@@ -201,9 +205,10 @@ class TestHomeConsumesGovernedOutput(unittest.TestCase):
             nav_metadata={"canonical_no_phone_total": 50},
             store_slug="demo",
         )
-        lead = home["store_understanding"]["items"][0]
-        self.assertEqual(lead.get("drilldown_href"), DRILLDOWN_NOPHONE)
-        self.assertEqual(lead.get("cta_label_ar"), CTA_AFFECTED_CARTS_AR)
+        # CTA lives on Attention (decision), not Knowledge (explain).
+        att = home["attention_today"]["items"][0]
+        self.assertEqual(att.get("drilldown_href"), DRILLDOWN_NOPHONE)
+        self.assertEqual(att.get("cta_label_ar"), CTA_AFFECTED_CARTS_AR)
 
 
 class TestKnowledgeConsumesSameInterpretation(unittest.TestCase):
@@ -291,35 +296,50 @@ class TestJsCtaAndParity(unittest.TestCase):
         pe = (_REPO / "static" / "merchant_home_experience.js").read_text(
             encoding="utf-8", errors="replace"
         )
+        # CTA drilldown lives on Attention after Knowledge Redistribution V1.
         self.assertIn("goToCartTab", ecc)
         self.assertIn("nophone", ecc)
-        self.assertIn("drilldown_href", ecc)
-        self.assertIn("cartflow_action_ar", ecc)
+        self.assertIn("drilldownHref", ecc)
+        self.assertIn("goDrilldownOnclick", ecc)
         self.assertIn("goToCartTab", pe)
         self.assertIn("nophone", pe)
+        att_fn = ecc[
+            ecc.find("function renderAttention") : ecc.find("function renderTimeline")
+        ]
+        self.assertIn("drilldownHref(item)", att_fn)
+        self.assertIn("goDrilldownOnclick(item)", att_fn)
 
     def test_mobile_and_desktop_share_same_governed_fields(self) -> None:
-        """Both Home shells render the same understanding fields from the package."""
-        home = {"store_understanding": {"items": []}, "observability": {}}
+        """Knowledge explains; Attention owns the governed CTA fields."""
+        home = {
+            "store_understanding": {"items": []},
+            "attention_today": {"items": []},
+            "observability": {},
+        }
         apply_commercial_interpretation_to_home_v1(
             home,
             store_slug="demo",
             no_phone_total=50,
         )
         lead = home["store_understanding"]["items"][0]
-        required = (
+        for key in (
             "observation_ar",
             "evidence_label_ar",
             "impact_ar",
+            "confidence",
+        ):
+            self.assertTrue(lead.get(key), key)
+        self.assertFalse(str(lead.get("action_ar") or "").strip())
+        att = home["attention_today"]["items"][0]
+        for key in (
+            "headline_ar",
+            "why_ar",
             "action_ar",
-            "cartflow_action_ar",
-            "expected_result_ar",
+            "if_ignored_ar",
             "drilldown_href",
             "cta_label_ar",
-            "confidence",
-        )
-        for key in required:
-            self.assertTrue(lead.get(key), key)
+        ):
+            self.assertTrue(att.get(key), key)
 
 
 class TestCountersDoNotRegress(unittest.TestCase):

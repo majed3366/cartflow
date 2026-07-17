@@ -202,17 +202,18 @@ class Pib2AttentionDecisionSurfaceTests(unittest.TestCase):
         home = _mv1_home()
         att = home["attention_today"]
         self.assertTrue(att.get("decision_surface"))
-        self.assertIn("قرارات", att.get("lead_ar") or "")
+        # Natural merchant language (Knowledge Redistribution V1) — not engineering queue copy.
+        self.assertIn("قرار", att.get("lead_ar") or "")
+        self.assertNotIn("طابور", att.get("lead_ar") or "")
 
     def test_ui_renders_decision_contract_fields(self) -> None:
+        # Attention answers: why now, why important, if ignored, action.
         for token in (
-            "operational_state_ar",
-            "evidence_ar",
             "expected_outcome_ar",
             "if_ignored_ar",
             "operational_decision_key",
-            "الحالة الآن:",
-            "الدليل:",
+            "لماذا الآن:",
+            "لماذا مهم:",
             "إذا تجاهلت:",
         ):
             self.assertIn(token, _JS)

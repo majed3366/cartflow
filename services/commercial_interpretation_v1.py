@@ -414,42 +414,93 @@ def build_commercial_interpretation_package_v1(
 def interpretation_to_home_understanding_item(
     interpretation: Mapping[str, Any],
 ) -> dict[str, Any]:
-    """Map governed interpretation → Home ``store_understanding`` card fields."""
+    """
+    Map governed interpretation → Home Knowledge (explain-only).
+
+    Knowledge answers «ماذا تعلّمنا؟» — observation / evidence / explanation /
+    confidence. No merchant action, CTA, or decision language.
+    """
     kp = interpretation.get("knowledge_progression")
     if not isinstance(kp, Mapping):
         kp = {}
     count = int(interpretation.get("evidence_count") or 0)
-    # Home primary headline = commercial conclusion (not the KL observation line).
-    headline = _norm(interpretation.get("home_headline_ar")) or _norm(
-        interpretation.get("conclusion")
+    observation = (
+        _norm(kp.get("observation_ar"))
+        or _norm(interpretation.get("conclusion"))
+    )
+    explanation = (
+        _norm(kp.get("explanation_ar"))
+        or _norm(interpretation.get("home_impact_ar"))
+        or _norm(interpretation.get("business_impact"))
     )
     return {
-        "title_ar": headline,
-        "observation_ar": headline,
+        "title_ar": observation,
+        "observation_ar": observation,
         "evidence_label_ar": _norm(interpretation.get("evidence_text")),
-        "impact_ar": _norm(interpretation.get("home_impact_ar"))
-        or _norm(interpretation.get("business_impact")),
-        "action_ar": _norm(interpretation.get("home_merchant_action_ar"))
-        or _norm(interpretation.get("merchant_action")),
-        "cartflow_action_ar": _norm(interpretation.get("home_cartflow_action_ar"))
-        or _norm(interpretation.get("cartflow_action")),
-        "expected_result_ar": _norm(interpretation.get("expected_result")),
+        "impact_ar": explanation,
+        "action_ar": "",  # Knowledge explains — Attention owns the decision.
+        "cartflow_action_ar": "",
+        "expected_result_ar": "",
         "confidence": _norm(interpretation.get("confidence_level")) or CONFIDENCE_HIGH,
         "confidence_reason_ar": _norm(interpretation.get("confidence_reason")),
         "insight_key": INTERPRETATION_MISSING_CONTACT,
         "fact_key": f"fact:commercial_interpretation:{INTERPRETATION_MISSING_CONTACT}",
         "source_knowledge_id": f"cil:{INTERPRETATION_MISSING_CONTACT}",
         "section": "store_understanding",
+        "knowledge_role": "explain",
         "evidence_count": count,
-        "drilldown_href": _norm(interpretation.get("drilldown_target"))
-        or DRILLDOWN_NOPHONE,
-        "cta_label_ar": _norm(interpretation.get("cta_label_ar"))
-        or CTA_AFFECTED_CARTS_AR,
         "commercial_interpretation_id": INTERPRETATION_MISSING_CONTACT,
         "is_primary_commercial_blocker": bool(
             interpretation.get("is_primary_commercial_blocker")
         ),
         "window_days": 0,
+    }
+
+
+def interpretation_to_attention_decision_v1(
+    interpretation: Mapping[str, Any],
+) -> dict[str, Any]:
+    """
+    Map governed interpretation → Attention decision (action-only role).
+
+    Wording must differ from Knowledge: Attention asks for a decision, not a lesson.
+    """
+    count = int(interpretation.get("evidence_count") or 0)
+    evidence = _norm(interpretation.get("evidence_text"))
+    return {
+        "headline_ar": "راجع السلال المحظورة بسبب نقص بيانات التواصل",
+        "why_ar": (
+            f"يوجد الآن {count} سلة لا يمكن بدء استرجاعها بدون رقم عميل صالح."
+            if count > 0
+            else "سلال محظورة بانتظار بيانات تواصل صالحة."
+        ),
+        "evidence_ar": evidence,
+        "operational_state_ar": "الاسترجاع متوقف — بانتظار رقم عميل صالح",
+        "expected_outcome_ar": _norm(interpretation.get("expected_result"))
+        or "زيادة عدد السلال القابلة للدخول في مسار الاسترجاع.",
+        "if_ignored_ar": "تبقى فرصة الاسترجاع معلّقة لهذه السلال.",
+        "action_ar": _norm(interpretation.get("cta_label_ar")) or CTA_AFFECTED_CARTS_AR,
+        "action_present": True,
+        "cta_label_ar": _norm(interpretation.get("cta_label_ar")) or CTA_AFFECTED_CARTS_AR,
+        "drilldown_href": _norm(interpretation.get("drilldown_target"))
+        or DRILLDOWN_NOPHONE,
+        "operational_decision_key": "decision:obtain_contact",
+        "decision_class": "needs_attention",
+        "decision_class_label_ar": "يحتاج قرارك",
+        "severity": "attention",
+        "priority_class": 0,
+        "queue_rank": 0,
+        "queue_position": 1,
+        "decision_count": count,
+        "fact_key": "fact:obtain_contact",
+        "related_fact_keys": [
+            "fact:obtain_contact",
+            f"fact:commercial_interpretation:{INTERPRETATION_MISSING_CONTACT}",
+        ],
+        "insight_key": INTERPRETATION_MISSING_CONTACT,
+        "commercial_interpretation_id": INTERPRETATION_MISSING_CONTACT,
+        "section": "attention_today",
+        "knowledge_role": "decide",
     }
 
 
@@ -617,7 +668,7 @@ def apply_commercial_interpretation_to_home_v1(
         understanding = {}
         home["store_understanding"] = understanding
     items = list(understanding.get("items") or [])
-    # Dedupe same commercial fact; keep interpretation primary.
+    # Dedupe same commercial fact; keep interpretation primary (explain-only).
     items = [
         it
         for it in items
@@ -628,32 +679,68 @@ def apply_commercial_interpretation_to_home_v1(
     understanding["items"] = [card] + items
     understanding["empty_message_ar"] = ""
     understanding["commercial_interpretation_primary"] = True
+    understanding["knowledge_role"] = "explain"
 
-    # Align Attention CTAs with the same governed drilldown (presentation only).
+    # Attention owns the decision — different wording from Knowledge.
+    decision = interpretation_to_attention_decision_v1(primary)
     attention = home.get("attention_today")
-    if isinstance(attention, Mapping):
-        att_items = list(attention.get("items") or [])
-        for att in att_items:
-            if not isinstance(att, dict):
-                continue
-            op = _norm(att.get("operational_decision_key"))
-            if op == "decision:obtain_contact" or "obtain_contact" in _norm_lower(
-                att.get("action_key")
-            ):
-                att["drilldown_href"] = _norm(primary.get("drilldown_target")) or DRILLDOWN_NOPHONE
-                if not _norm(att.get("cta_label_ar")):
-                    att["cta_label_ar"] = CTA_AFFECTED_CARTS_AR
-                # Prefer governed evidence count when Attention lacks a case count.
-                if not int(att.get("decision_count") or 0):
-                    att["decision_count"] = int(primary.get("evidence_count") or 0)
-        if isinstance(attention, dict):
-            attention["items"] = att_items
+    if not isinstance(attention, dict):
+        attention = {
+            "title_ar": "مركز الانتباه",
+            "lead_ar": "ما الذي يحتاج قرارك الآن؟",
+            "items": [],
+            "empty_message_ar": "لا قرار مطلوب منك الآن.",
+            "decision_surface": True,
+        }
+        home["attention_today"] = attention
+    att_items = [
+        it
+        for it in list(attention.get("items") or [])
+        if isinstance(it, Mapping)
+        and _norm(it.get("operational_decision_key")) != "decision:obtain_contact"
+        and _norm(it.get("commercial_interpretation_id")) != INTERPRETATION_MISSING_CONTACT
+    ]
+    # Keep journey chapter on an existing obtain_contact item when present.
+    prior_contact = next(
+        (
+            it
+            for it in list(attention.get("items") or [])
+            if isinstance(it, Mapping)
+            and _norm(it.get("operational_decision_key")) == "decision:obtain_contact"
+        ),
+        None,
+    )
+    if isinstance(prior_contact, Mapping):
+        for key in (
+            "recovery_journey_v1",
+            "recovery_stage_ar",
+            "recovery_channel_ar",
+            "recovery_stage_why_ar",
+            "recovery_blocker_ar",
+            "recovery_next_platform_ar",
+            "recovery_next_merchant_ar",
+            "recovery_completion_condition_ar",
+            "recovery_merchant_required",
+            "recovery_stage_key",
+            "recovery_journey_complete",
+        ):
+            if prior_contact.get(key) is not None and decision.get(key) is None:
+                decision[key] = prior_contact.get(key)
+    attention["items"] = [decision] + att_items
+    for idx, att in enumerate(attention["items"]):
+        if isinstance(att, dict):
+            att["queue_position"] = idx + 1
+    attention["count"] = len(attention["items"])
+    attention["lead_ar"] = "ما الذي يحتاج قرارك الآن؟"
+    attention["empty_message_ar"] = "لا قرار مطلوب منك الآن."
 
     obs = home.get("observability")
     if isinstance(obs, dict):
         obs["commercial_interpretation_attached"] = True
         obs["commercial_interpretation_primary"] = True
         obs["understanding_items"] = len(understanding["items"])
+        obs["attention_items"] = len(attention["items"])
+        obs["home_knowledge_redistribution_v1"] = True
     home["empty_calm"] = False
     return home
 
@@ -749,6 +836,7 @@ __all__ = [
     "clear_commercial_interpretation_last_valid_cache_v1",
     "enrich_knowledge_report_commercial_interpretation_v1",
     "evaluate_commercial_interpretations_v1",
+    "interpretation_to_attention_decision_v1",
     "interpretation_to_home_understanding_item",
     "interpretation_to_knowledge_display_card",
     "interpretation_to_knowledge_insight",

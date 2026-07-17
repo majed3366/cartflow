@@ -62,7 +62,7 @@ _ACTION_FIX_CHANNEL_AR = "إصلاح قناة واتساب — راجع إعدا
 _ACTION_CONTACT_CUSTOMER_AR = "التواصل مع العميل — افتح السلال التي تحتاج تدخلاً"
 
 _STATE_CONTACT_WAIT_AR = "الاسترجاع متوقف — بانتظار رقم العميل"
-_OUTCOME_CONTACT_AR = "بعد توفر الرقم يمكن لـ CartFlow متابعة الاسترجاع تلقائياً"
+_OUTCOME_CONTACT_AR = "بعد توفر الرقم يمكن متابعة الاسترجاع تلقائياً"
 _IF_IGNORED_CONTACT_AR = "تبقى السلال بدون إرسال استرجاع آلي"
 
 _STATE_FIX_CHANNEL_AR = "قناة الإرسال متعطلة — الاسترجاع لا يصل"
@@ -406,7 +406,7 @@ def _complete_attention_decision(
             ignored if ignored and not _is_placeholder_detail(ignored) else ""
         )
         projected["expected_outcome_ar"] = projected.get("if_ignored_ar") or (
-            "CartFlow يواصل المراقبة — راجع التفاصيل في طبقة المعرفة"
+            "نستمر في المراقبة — التفاصيل في طبقة المعرفة"
             if projected.get("why_ar")
             else ""
         )
@@ -808,6 +808,13 @@ def compose_merchant_home_experience_v1(
         max_understanding=max_understanding,
         seen_facts=seen_facts,
     )
+    # Knowledge Redistribution V1: Understanding explains only — never instructs.
+    for item in understanding:
+        if isinstance(item, dict):
+            item["action_ar"] = ""
+            item["knowledge_role"] = "explain"
+            item.pop("drilldown_href", None)
+            item.pop("cta_label_ar", None)
     understanding_facts = {
         _norm(item.get("fact_key")) for item in understanding if _norm(item.get("fact_key"))
     }
@@ -854,32 +861,37 @@ def compose_merchant_home_experience_v1(
             "date_ar": greeting_date,
         },
         "while_away": {
-            "title_ar": _norm(timeline_section.get("title_ar")) or "بينما كنت بعيداً",
-            "lead_ar": _norm(timeline_section.get("lead_ar"))
-            or "CartFlow يتابع متجرك تلقائياً — هذا ما اكتمل:",
+            "title_ar": "اليوم في متجرك",
+            "lead_ar": "ما الذي تغيّر اليوم؟",
             "items": while_away,
             "empty_message_ar": _norm(timeline_section.get("empty_message_ar"))
-            or "CartFlow يتابع متجرك — سنُظهر الإنجازات هنا عند توفرها.",
+            or "لا تغيّرات تشغيلية بارزة اليوم بعد.",
             "store_slug": _norm(timeline_section.get("store_slug")),
             "identity_authority_v1": timeline_section.get("identity_authority_v1"),
             "knowledge_routing_v1": timeline_section.get("knowledge_routing_v1"),
+            "section_question_ar": "ما الذي تغيّر اليوم؟",
+            "knowledge_role": "today_changes",
         },
         "attention_today": {
-            "title_ar": "يحتاج انتباهك اليوم",
-            "lead_ar": "طابور قرارات — الأهم أولاً. ماذا تفعل، ولماذا، وماذا لو تجاهلت.",
+            "title_ar": "مركز الانتباه",
+            "lead_ar": "ما الذي يحتاج قرارك الآن؟",
             "items": attention,
             "max_display": max_attention,
             "platform_max": MAX_BRIEF_ITEMS,
             "count": attention_count,
-            "empty_message_ar": "لا أمور تتطلب انتباهك الآن — CartFlow يتابع الحالات الروتينية.",
+            "empty_message_ar": "لا قرار مطلوب منك الآن.",
             "decision_surface": True,
+            "section_question_ar": "ما الذي يحتاج قرارك الآن؟",
+            "knowledge_role": "decide",
         },
         "store_understanding": {
-            "title_ar": "فهم المتجر",
-            "lead_ar": "فهم تشغيلي — ليس أرقاماً فقط.",
+            "title_ar": "طبقة المعرفة",
+            "lead_ar": "ماذا تعلّمنا عن المتجر؟",
             "items": understanding,
             "max_display": max_understanding,
-            "empty_message_ar": "لا توجد استنتاجات كافية بعد — استمر في جمع النشاط.",
+            "empty_message_ar": "لا فهم تجاري مؤكد بعد — نجمع أدلة النشاط.",
+            "section_question_ar": "ماذا تعلّمنا؟",
+            "knowledge_role": "explain",
         },
         "quick_nav": {
             "title_ar": "انتقال سريع",
@@ -910,6 +922,7 @@ def compose_merchant_home_experience_v1(
             "pib1_home_truth_alignment": True,
             "pib2_attention_decision_surface": True,
             "pib3_recovery_journey_explainability": True,
+            "home_knowledge_redistribution_v1": True,
         },
     }
 

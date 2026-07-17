@@ -161,7 +161,7 @@
         : "") +
       (item.recovery_next_platform_ar
         ? '<p class="v2-action-why">' +
-          esc("CartFlow الآن: " + item.recovery_next_platform_ar) +
+          esc("المنصة الآن: " + item.recovery_next_platform_ar) +
           "</p>"
         : "") +
       '<a class="v2-btn" href="' +
@@ -185,14 +185,14 @@
       '<h2 class="ma-section-head__title">' +
       esc(section.title_ar || "فهم المتجر") +
       "</h2>" +
-      '<p class="ma-section-head__purpose">ما تعلّمه CartFlow عن متجرك وسلوك عملائك.</p>' +
+      '<p class="ma-section-head__purpose">ماذا تعلّمنا عن المتجر؟</p>' +
       "</header>";
     if (!items.length) {
       return (
         head +
         '<aside class="v2-whisper" id="ma-home-understanding">' +
         '<p class="v2-whisper-text">' +
-        esc(section.empty_message_ar || "لا توجد استنتاجات كافية بعد.") +
+        esc(section.empty_message_ar || "لا فهم تجاري مؤكد بعد.") +
         "</p></aside></section>"
       );
     }
@@ -202,15 +202,7 @@
       "—";
     var evidence = String(item.evidence_label_ar || "").trim();
     var impact = String(item.impact_ar || "").trim();
-    var action = String(item.action_ar || "").trim();
-    var cartflowAction = String(item.cartflow_action_ar || "").trim();
-    var cta =
-      String(item.cta_label_ar || "").trim() || "عرض السلال المتأثرة";
-    var href = String(item.drilldown_href || "#carts").trim() || "#carts";
-    var onclick =
-      href.indexOf("nophone") !== -1
-        ? "if(window.goToCartTab){goToCartTab('nophone');}return false;"
-        : "if(window.goToSection){goToSection('carts');}return false;";
+    var conf = String(item.confidence || "").trim();
     var extra = "";
     if (evidence) {
       extra += '<p class="v2-whisper-text">' + esc(evidence) + "</p>";
@@ -218,21 +210,8 @@
     if (impact && impact !== insightText) {
       extra += '<p class="v2-whisper-text">' + esc(impact) + "</p>";
     }
-    if (cartflowAction) {
-      extra += '<p class="v2-whisper-text">' + esc(cartflowAction) + "</p>";
-    }
-    if (action) {
-      extra += '<p class="v2-whisper-text">' + esc(action) + "</p>";
-    }
-    if (item.drilldown_href || item.commercial_interpretation_id) {
-      extra +=
-        '<a class="v2-btn" href="' +
-        esc(href) +
-        '" role="button" onclick="' +
-        onclick +
-        '">' +
-        esc(cta) +
-        "</a>";
+    if (conf) {
+      extra += '<p class="v2-whisper-text">' + esc("الثقة: " + conf) + "</p>";
     }
     return (
       head +

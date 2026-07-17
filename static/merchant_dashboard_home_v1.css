@@ -32,6 +32,22 @@ body[data-ma-page="home"] #ma-page-hero-global {
   margin: 0;
 }
 
+.ma-ecc-today-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.ma-ecc-today-list__item {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  opacity: 0.92;
+}
+
 .ma-ecc-band__head {
   display: flex;
   flex-direction: column;

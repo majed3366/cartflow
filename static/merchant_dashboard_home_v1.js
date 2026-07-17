@@ -1,7 +1,7 @@
 /**
- * Dashboard Home — Intelligence-First Executive Control Center (V3).
- * Canonical order: Hero → Knowledge → Metrics → Attention → Performance → Timeline.
- * Presentation only — consumes summary + merchant_home_experience_v1. Never invents KPIs.
+ * Dashboard Home — Knowledge Redistribution V1.
+ * Story order: Today → Knowledge → Attention → Quick Indicators → Recent Activity.
+ * One section · one question · no duplicated cognition. Presentation only.
  */
 (function () {
   "use strict";
@@ -85,7 +85,7 @@
     return goCartsOnclick();
   }
 
-  function buildExecutiveSummary(home) {
+  function buildTodayChanges(home) {
     var whileAway = (home && home.while_away) || {};
     var items = whileAway.items || [];
     var parts = [];
@@ -96,14 +96,8 @@
     if (parts.length) return parts.slice(0, 3).join(" · ");
     return (
       String(whileAway.empty_message_ar || "").trim() ||
-      "CartFlow يراقب نشاط متجرك الآن — يظهر الفهم والأولويات هنا عند توفر الأدلة."
+      "لا تغيّرات تشغيلية بارزة اليوم بعد."
     );
-  }
-
-  function primaryAttention(home) {
-    var att = (home && home.attention_today) || {};
-    var items = att.items || [];
-    return items.length ? items[0] : null;
   }
 
   function renderLoading() {
@@ -114,7 +108,7 @@
       '<div class="ma-ecc-skel__metrics">' +
       '<span></span><span></span><span></span><span></span>' +
       "</div>" +
-      '<p class="ma-ecc-whisper">CartFlow يجهّز فهم متجرك…</p>' +
+      '<p class="ma-ecc-whisper">نجهّز صورة متجرك…</p>' +
       "</div>"
     );
   }
@@ -125,7 +119,7 @@
       '<div class="ma-ecc-panel ma-ecc-panel--error">' +
       '<p class="ma-ecc-panel__title">تعذّر تحميل الرئيسية</p>' +
       '<p class="ma-ecc-copy">' +
-      esc(message || "جرّب تحديث الصفحة. CartFlow ما زال يتابع متجرك.") +
+      esc(message || "جرّب تحديث الصفحة. ما زلنا نتابع متجرك.") +
       "</p>" +
       '<button type="button" class="ma-ecc-btn ma-ecc-btn--ghost" onclick="location.reload()">' +
       "تحديث الصفحة" +
@@ -141,44 +135,19 @@
     var date =
       String(greeting.date_ar || "").trim() ||
       String((summary && summary.merchant_ar_date_header) || "").trim();
-    var exec = buildExecutiveSummary(home);
-    var priority = primaryAttention(home);
-
-    var priorityBlock;
-    if (priority) {
-      var actionLabel = String(priority.action_ar || "عرض السلال").trim();
-      priorityBlock =
-        '<div class="ma-ecc-hero__priority">' +
-        '<p class="ma-ecc-hero__priority-label">أعلى أولوية اليوم</p>' +
-        '<p class="ma-ecc-hero__priority-title">' +
-        esc(priority.headline_ar || "—") +
-        "</p>" +
-        (priority.why_ar
-          ? '<p class="ma-ecc-hero__priority-body">' + esc(priority.why_ar) + "</p>"
-          : "") +
-        (priority.if_ignored_ar
-          ? '<p class="ma-ecc-hero__priority-body ma-ecc-hero__priority-body--muted">' +
-            esc("إذا تجاهلت: " + priority.if_ignored_ar) +
-            "</p>"
-          : "") +
-        '<a class="ma-ecc-btn ma-ecc-btn--light" href="' +
-        esc(drilldownHref(priority)) +
-        '" role="button"' +
-        goDrilldownOnclick(priority) +
-        ">" +
-        esc(actionLabel) +
-        "</a>" +
-        "</div>";
-    } else {
-      priorityBlock =
-        '<div class="ma-ecc-hero__priority">' +
-        '<p class="ma-ecc-hero__priority-label">أعلى أولوية اليوم</p>' +
-        '<p class="ma-ecc-hero__priority-body">' +
-        esc(
-          ((home && home.attention_today) || {}).empty_message_ar ||
-            "لا أمور تتطلب انتباهك الآن."
-        ) +
-        "</p></div>";
+    var today = buildTodayChanges(home);
+    var whileAway = (home && home.while_away) || {};
+    var changeItems = whileAway.items || [];
+    var changesHtml = "";
+    if (changeItems.length) {
+      changesHtml = '<ul class="ma-ecc-today-list">';
+      changeItems.slice(0, 4).forEach(function (item) {
+        var h = String((item && item.headline_ar) || "").trim();
+        if (!h) return;
+        changesHtml +=
+          "<li><p class=\"ma-ecc-today-list__item\">" + esc(h) + "</p></li>";
+      });
+      changesHtml += "</ul>";
     }
 
     return (
@@ -193,14 +162,12 @@
       (date ? " · " + esc(date) : "") +
       "</p>" +
       '<h1 class="ma-ecc-hero__title">اليوم في متجرك</h1>' +
-      '<p class="ma-ecc-hero__exec-label">ملخص تنفيذي</p>' +
+      '<p class="ma-ecc-hero__exec-label">ما الذي تغيّر اليوم؟</p>' +
       '<p class="ma-ecc-hero__exec-text">' +
-      esc(exec) +
+      esc(today) +
       "</p>" +
-      '<p class="ma-ecc-hero__monitor">CartFlow يراقب متجرك باستمرار — الفهم والأولويات تتحدّث مع نشاط اليوم.</p>' +
-      "</div>" +
-      priorityBlock +
-      "</div></section>"
+      changesHtml +
+      "</div></div></section>"
     );
   }
 
@@ -225,9 +192,11 @@
     var items = section.items || [];
     var head =
       '<header class="ma-ecc-kl__head">' +
-      '<p class="ma-ecc-kicker">عقل CartFlow لمتجرك</p>' +
-      '<h2 class="ma-ecc-kl__title" id="ma-ecc-knowledge-title">طبقة المعرفة</h2>' +
-      '<p class="ma-ecc-kl__purpose">ملاحظة → دليل → تفسير → توصية → ثقة</p>' +
+      '<p class="ma-ecc-kicker">ماذا تعلّمنا؟</p>' +
+      '<h2 class="ma-ecc-kl__title" id="ma-ecc-knowledge-title">' +
+      esc(section.title_ar || "طبقة المعرفة") +
+      "</h2>" +
+      '<p class="ma-ecc-kl__purpose">ملاحظة → دليل → تفسير → ثقة</p>' +
       "</header>";
 
     if (!items.length) {
@@ -238,23 +207,22 @@
         '<div class="ma-ecc-kl" role="list">' +
         klStep(
           "الملاحظة",
-          '<p class="ma-ecc-kl__observation">لا ملاحظة جاهزة بعد</p>',
+          '<p class="ma-ecc-kl__observation">لا ملاحظة مؤكدة بعد</p>',
           "ma-ecc-kl__step--lead"
         ) +
         klStep(
           "الدليل",
-          '<p class="ma-ecc-copy">نستمر في جمع أدلة نشاط المتجر.</p>'
+          '<p class="ma-ecc-copy">نجمع أدلة نشاط المتجر.</p>'
         ) +
         klStep(
           "التفسير",
           '<p class="ma-ecc-copy">' +
             esc(
               section.empty_message_ar ||
-                "لا تفسير كافٍ بعد — الفهم يظهر عند توفر أدلة كافية."
+                "لا فهم تجاري مؤكد بعد."
             ) +
             "</p>"
         ) +
-        klStep("التوصية", '<p class="ma-ecc-copy">لا توصية قبل الدليل.</p>') +
         klStep(
           "الثقة",
           '<span class="ma-ecc-chip ma-ecc-chip--conf-insufficient">أدلة غير كافية</span>'
@@ -268,40 +236,9 @@
       String(item.observation_ar || item.title_ar || "").trim() || "—";
     var evidence = String(item.evidence_label_ar || "").trim();
     var explanation = String(item.impact_ar || "").trim();
-    var recommendation = String(item.action_ar || "").trim();
-    var cartflowAction = String(item.cartflow_action_ar || "").trim();
-    var expectedResult = String(item.expected_result_ar || "").trim();
-    var ctaLabel =
-      String(item.cta_label_ar || "").trim() || "عرض السلال المتأثرة";
     var confTone = confidenceTone(item.confidence);
     var conf = confidenceLabelAr(item.confidence);
     var confReason = String(item.confidence_reason_ar || "").trim();
-
-    var recommendBody = recommendation
-      ? '<p class="ma-ecc-copy">' + esc(recommendation) + "</p>"
-      : '<p class="ma-ecc-copy">لا توصية جاهزة بعد.</p>';
-    if (cartflowAction) {
-      recommendBody +=
-        '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">ما يفعله CartFlow:</span> ' +
-        esc(cartflowAction) +
-        "</p>";
-    }
-    if (expectedResult) {
-      recommendBody +=
-        '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">بعد الإجراء:</span> ' +
-        esc(expectedResult) +
-        "</p>";
-    }
-    if (recommendation || item.drilldown_href) {
-      recommendBody +=
-        '<a class="ma-ecc-btn ma-ecc-btn--on-kl" href="' +
-        esc(drilldownHref(item)) +
-        '" role="button"' +
-        goDrilldownOnclick(item) +
-        ">" +
-        esc(ctaLabel) +
-        "</a>";
-    }
 
     var flow =
       '<div class="ma-ecc-kl" role="list">' +
@@ -319,10 +256,9 @@
       klStep(
         "التفسير",
         '<p class="ma-ecc-copy">' +
-          esc(explanation || "لا تفسير كافٍ بعد لسلوك العملاء.") +
+          esc(explanation || "لا تفسير كافٍ بعد.") +
           "</p>"
       ) +
-      klStep("التوصية", recommendBody) +
       klStep(
         "الثقة",
         '<span class="ma-ecc-chip ma-ecc-chip--conf-' +
@@ -367,40 +303,45 @@
     );
   }
 
-  function renderMetrics(summary, home) {
+  function renderMetrics(summary) {
     var revenue = String((summary && summary.merchant_kpi_revenue_fmt) || "").trim();
     var purchased = String((summary && summary.merchant_kpi_recovered_fmt) || "").trim();
-    var understanding = (((home && home.store_understanding) || {}).items) || [];
-    var klValue = understanding.length ? String(understanding.length) : "";
-    var klHint = understanding.length
-      ? understanding.length === 1
-        ? "ملاحظة واحدة متاحة"
-        : understanding.length + " ملاحظات متاحة"
-      : "لا ملاحظات كافية بعد";
-
-    // Customers returned: no governed today-KPI on summary — never invent.
-    var returnedValue = "";
-    var returnedHint = "لا بيانات كافية بعد";
+    var abandoned = String((summary && summary.merchant_kpi_abandoned_fmt) || "").trim();
+    var pctRaw = summary && summary.merchant_kpi_recovered_pct_vs_abandoned;
+    var pct =
+      pctRaw === 0 || pctRaw === "0"
+        ? "0٪"
+        : pctRaw != null && String(pctRaw).trim() !== ""
+          ? String(pctRaw).trim() + "٪"
+          : "";
 
     return (
       '<section class="ma-ecc-band" data-ecc-section="metrics" aria-labelledby="ma-ecc-metrics-title">' +
       '<header class="ma-ecc-band__head">' +
       '<h2 class="ma-ecc-band__title" id="ma-ecc-metrics-title">مؤشرات سريعة</h2>' +
-      '<p class="ma-ecc-band__purpose">أربعة مؤشرات تنفيذية فقط — من بيانات متجرك اليوم.</p>' +
+      '<p class="ma-ecc-band__purpose">هل المتجر يتحسّن أم يتراجع؟</p>' +
       "</header>" +
       '<div class="ma-ecc-metrics" role="list">' +
       metricCell(
+        "اتجاه الاسترجاع",
+        abandoned,
+        abandoned ? "سلال متروكة اليوم" : "لا اتجاه كافٍ بعد"
+      ) +
+      metricCell(
+        "اتجاه التحويل",
+        pct,
+        pct ? "مسترد مقابل متروك · اليوم" : "لا اتجاه كافٍ بعد"
+      ) +
+      metricCell(
         "الإيرادات المستعادة",
         revenue,
-        revenue ? "اليوم · ريال" : "لا بيانات كافية بعد"
+        revenue ? "اليوم · ريال" : "لا اتجاه كافٍ بعد"
       ) +
       metricCell(
         "العملاء المشترون",
         purchased,
-        purchased ? "اليوم" : "لا بيانات كافية بعد"
+        purchased ? "اليوم" : "لا اتجاه كافٍ بعد"
       ) +
-      metricCell("العملاء العائدون", returnedValue, returnedHint) +
-      metricCell("حالة المعرفة", klValue, klHint) +
       "</div></section>"
     );
   }
@@ -464,7 +405,7 @@
           "</p>"
         : "") +
       (nextPlatform
-        ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">CartFlow الآن:</span> ' +
+        ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">المنصة الآن:</span> ' +
           esc(nextPlatform) +
           "</p>"
         : "") +
@@ -489,12 +430,11 @@
     var items = att.items || [];
     var head =
       '<header class="ma-ecc-band__head">' +
-      '<h2 class="ma-ecc-band__title" id="ma-ecc-attention-title">مركز الانتباه</h2>' +
+      '<h2 class="ma-ecc-band__title" id="ma-ecc-attention-title">' +
+      esc(att.title_ar || "مركز الانتباه") +
+      "</h2>" +
       '<p class="ma-ecc-band__purpose">' +
-      esc(
-        att.lead_ar ||
-          "طابور قرارات — الأهم أولاً. ماذا تفعل، ولماذا، وماذا لو تجاهلت."
-      ) +
+      esc(att.lead_ar || "ما الذي يحتاج قرارك الآن؟") +
       "</p>" +
       "</header>";
 
@@ -505,12 +445,9 @@
         '<div class="ma-ecc-attention-empty">' +
         '<span class="ma-ecc-attention-empty__mark" aria-hidden="true">✓</span>' +
         '<div>' +
-        '<p class="ma-ecc-attention-empty__title">كل شيء تحت السيطرة</p>' +
+        '<p class="ma-ecc-attention-empty__title">لا قرار مطلوب الآن</p>' +
         '<p class="ma-ecc-copy">' +
-        esc(
-          att.empty_message_ar ||
-            "CartFlow يتابع الحالات الروتينية — لا إجراء مطلوب منك الآن."
-        ) +
+        esc(att.empty_message_ar || "لا قرار مطلوب منك الآن.") +
         "</p></div></div></section>"
       );
     }
@@ -525,10 +462,9 @@
           : tone === "attention"
             ? "يحتاج انتباهك"
             : "مهم");
-      var action = String(item.action_ar || "").trim();
-      if (!action && idx === 0) action = "عرض السلال";
-      var state = String(item.operational_state_ar || "").trim();
-      var evidence = String(item.evidence_ar || "").trim();
+      var action =
+        String(item.action_ar || item.cta_label_ar || "").trim() ||
+        (idx === 0 ? "عرض السلال المتأثرة" : "");
       var outcome = String(item.expected_outcome_ar || "").trim();
       var ifIgnored = String(item.if_ignored_ar || "").trim();
       list +=
@@ -552,23 +488,13 @@
         '<h3 class="ma-ecc-attention__headline">' +
         esc(item.headline_ar || "—") +
         "</h3>" +
-        (state
-          ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">الحالة الآن:</span> ' +
-            esc(state) +
-            "</p>"
-          : "") +
         (item.why_ar
           ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">لماذا الآن:</span> ' +
             esc(item.why_ar) +
             "</p>"
           : "") +
-        (evidence
-          ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">الدليل:</span> ' +
-            esc(evidence) +
-            "</p>"
-          : "") +
         (outcome
-          ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">النتيجة المتوقعة:</span> ' +
+          ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">لماذا مهم:</span> ' +
             esc(outcome) +
             "</p>"
           : "") +
@@ -599,104 +525,20 @@
     );
   }
 
-  function perfTile(label, value, detail) {
-    var v = String(value || "").trim();
-    var empty = !v || v === EMPTY_VALUE;
-    return (
-      '<div class="ma-ecc-perf__tile">' +
-      '<p class="ma-ecc-perf__label">' +
-      esc(label) +
-      "</p>" +
-      '<p class="ma-ecc-perf__value' +
-      (empty ? " ma-ecc-perf__value--empty" : "") +
-      '">' +
-      esc(empty ? EMPTY_VALUE : v) +
-      "</p>" +
-      '<p class="ma-ecc-perf__detail">' +
-      esc(detail) +
-      "</p></div>"
-    );
-  }
-
-  function renderPerformance(summary) {
-    var abandoned = String((summary && summary.merchant_kpi_abandoned_fmt) || "").trim();
-    var wa = String((summary && summary.merchant_kpi_wa_sent_fmt) || "").trim();
-    var pctRaw = summary && summary.merchant_kpi_recovered_pct_vs_abandoned;
-    var pct =
-      pctRaw === 0 || pctRaw === "0"
-        ? "0"
-        : pctRaw != null && String(pctRaw).trim() !== ""
-          ? String(pctRaw).trim()
-          : "";
-
-    return (
-      '<section class="ma-ecc-band" data-ecc-section="performance" aria-labelledby="ma-ecc-perf-title">' +
-      '<header class="ma-ecc-band__head">' +
-      '<h2 class="ma-ecc-band__title" id="ma-ecc-perf-title">ملخص الأداء</h2>' +
-      '<p class="ma-ecc-band__purpose">تشغيل اليوم — بدون تكرار مؤشرات الشبكة.</p>' +
-      "</header>" +
-      '<div class="ma-ecc-perf">' +
-      perfTile(
-        "اتجاه الاسترجاع",
-        abandoned || EMPTY_VALUE,
-        abandoned ? "سلال متروكة رُصدت اليوم" : "لا أدلة كافية بعد"
-      ) +
-      perfTile(
-        "اتجاه التحويل",
-        pct !== "" ? pct + "٪" : EMPTY_VALUE,
-        pct !== "" ? "مسترد مقابل متروك · اليوم" : "لا أدلة كافية لحساب النسبة"
-      ) +
-      perfTile(
-        "نشاط واتساب",
-        wa || EMPTY_VALUE,
-        wa ? "سجلات إرسال اليوم" : "لا أدلة كافية بعد"
-      ) +
-      perfTile(
-        "الصحة التشغيلية",
-        abandoned || wa ? "نشط" : EMPTY_VALUE,
-        abandoned || wa ? "إشارات تشغيل اليوم متاحة" : "لا إشارات كافية بعد"
-      ) +
-      "</div></section>"
-    );
-  }
-
   function renderTimeline(home) {
-    // No governed Home activity feed yet — honest empty / while-away only (never invent).
+    // Pure timeline — what happened. Never invents interpretation.
     var whileAway = (((home && home.while_away) || {}).items) || [];
     var head =
       '<header class="ma-ecc-band__head">' +
       '<h2 class="ma-ecc-band__title" id="ma-ecc-timeline-title">آخر النشاطات</h2>' +
-      '<p class="ma-ecc-band__purpose">شراء · عودة · رسالة · رد · حدث تشغيلي.</p>' +
+      '<p class="ma-ecc-band__purpose">ما الذي حدث فعلياً؟</p>' +
       "</header>";
 
     if (!whileAway.length) {
       return (
         '<section class="ma-ecc-band" data-ecc-section="timeline" aria-labelledby="ma-ecc-timeline-title">' +
         head +
-        '<ul class="ma-ecc-timeline ma-ecc-timeline--empty">' +
-        '<li class="ma-ecc-timeline__item ma-ecc-timeline__item--placeholder">' +
-        '<div class="ma-ecc-timeline__spine" aria-hidden="true"><span class="ma-ecc-timeline__dot"></span></div>' +
-        '<div class="ma-ecc-timeline__main">' +
-        '<p class="ma-ecc-timeline__type">شراء</p>' +
-        '<p class="ma-ecc-timeline__headline">سيظهر هنا عند تسجيل شراء حقيقي</p>' +
-        '<p class="ma-ecc-whisper">التاريخ والوقت · من بيانات المتجر</p>' +
-        "</div></li>" +
-        '<li class="ma-ecc-timeline__item ma-ecc-timeline__item--placeholder">' +
-        '<div class="ma-ecc-timeline__spine" aria-hidden="true"><span class="ma-ecc-timeline__dot"></span></div>' +
-        '<div class="ma-ecc-timeline__main">' +
-        '<p class="ma-ecc-timeline__type">عودة عميل</p>' +
-        '<p class="ma-ecc-timeline__headline">سيظهر هنا عند عودة عميل للمتجر</p>' +
-        '<p class="ma-ecc-whisper">التاريخ والوقت · من بيانات المتجر</p>' +
-        "</div></li>" +
-        '<li class="ma-ecc-timeline__item ma-ecc-timeline__item--placeholder">' +
-        '<div class="ma-ecc-timeline__spine" aria-hidden="true"><span class="ma-ecc-timeline__dot"></span></div>' +
-        '<div class="ma-ecc-timeline__main">' +
-        '<p class="ma-ecc-timeline__type">واتساب</p>' +
-        '<p class="ma-ecc-timeline__headline">سيظهر هنا عند إرسال أو رد رسالة</p>' +
-        '<p class="ma-ecc-whisper">التاريخ والوقت · من سجلات التواصل</p>' +
-        "</div></li>" +
-        "</ul>" +
-        '<p class="ma-ecc-timeline__empty-note">لا أحداث حقيقية بعد — الهيكل جاهز لعرض نشاط متجرك.</p>' +
+        '<p class="ma-ecc-timeline__empty-note">لا أحداث مسجّلة بعد.</p>' +
         "</section>"
       );
     }
@@ -705,7 +547,6 @@
     whileAway.slice(0, 6).forEach(function (item, idx) {
       var headline = String((item && item.headline_ar) || "").trim();
       if (!headline) return;
-      var detail = String((item && item.detail_ar) || "").trim();
       list +=
         '<li class="ma-ecc-timeline__item">' +
         '<div class="ma-ecc-timeline__spine" aria-hidden="true">' +
@@ -713,15 +554,12 @@
         (idx === 0 ? " ma-ecc-timeline__dot--now" : "") +
         '"></span></div>' +
         '<div class="ma-ecc-timeline__main">' +
-        '<p class="ma-ecc-timeline__type">إنجاز</p>' +
+        '<p class="ma-ecc-timeline__type">حدث</p>' +
         '<p class="ma-ecc-timeline__headline">' +
         esc(headline) +
         "</p>" +
-        (detail
-          ? '<p class="ma-ecc-whisper">' + esc(detail) + "</p>"
-          : "") +
         "</div>" +
-        '<span class="ma-ecc-chip ma-ecc-chip--neutral">حدث</span>' +
+        '<span class="ma-ecc-chip ma-ecc-chip--neutral">مسجّل</span>' +
         "</li>";
     });
     list += "</ul>";
@@ -742,16 +580,13 @@
       }
     }
 
-    // Canonical intelligence-first order — do not reorder.
+    // Home story: Today → Knowledge → Attention → Direction → Timeline.
     return (
-      '<div class="ma-ecc ma-ecc--intel-v3">' +
+      '<div class="ma-ecc ma-ecc--intel-v3 ma-ecc--redistribution-v1">' +
       renderHero(home, summary) +
       renderKnowledge(home) +
-      renderMetrics(summary, home) +
-      '<div class="ma-ecc-split">' +
       renderAttention(home) +
-      renderPerformance(summary) +
-      "</div>" +
+      renderMetrics(summary) +
       renderTimeline(home) +
       "</div>"
     );
