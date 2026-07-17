@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8"/>
+  <title>نتائج تجارية — معاينة التاجر</title>
+  <style>
+    body { font-family: "Segoe UI", Tahoma, sans-serif; background:#f4f6f5; color:#14201c; margin:0; padding:24px; }
+    h1 { font-size:1.6rem; margin:0 0 8px; }
+    .sub { color:#4a5c55; margin-bottom:24px; }
+    .grid { display:grid; gap:16px; }
+    .card { background:#fff; border-radius:16px; padding:18px 20px; box-shadow:0 1px 0 rgba(0,0,0,.04); }
+    .kicker { color:#2f6f5e; font-size:.8rem; margin:0 0 6px; }
+    h2 { font-size:1.15rem; margin:0 0 10px; line-height:1.45; }
+    .summary { margin:0 0 10px; line-height:1.6; }
+    .meaning,.evidence,.dir,.meta { margin:6px 0; line-height:1.55; font-size:.95rem; }
+    .meta { color:#5a6b64; }
+    .home { background:#14352c; color:#f3faf7; border-radius:16px; padding:18px 20px; margin-bottom:20px; }
+    .home h2 { color:#fff; }
+    .home li { margin:8px 0; }
+  </style>
+</head>
+<body>
+  <h1>نتائج تجارية مفيدة عن متجرك</h1>
+  <p class="sub">معاينة محكومة من محرك النتائج التجارية — ليست إعادة تصميم للرئيسية.</p>
+  <section class="home">
+    <h2>مرشّحات الرئيسية (للاستهلاك لاحقاً)</h2>
+    <ul><li><strong>الأهم الآن:</strong> نقص بيانات التواصل يعيق استرجاع جزء مهم من السلال</li><li><strong>أقوى فرصة:</strong> منتج X يجذب اهتماماً مرتفعاً لكن نادراً ما يصل إلى الشراء</li><li><strong>أعلى إجراء قيمة:</strong> نقص بيانات التواصل يعيق استرجاع جزء مهم من السلال</li><li><strong>فهم جديد:</strong> تكلفة الشحن هو أبرز سبب للتردّد حالياً ضمن مجموعة منتجات مرتبطة بهذا السبب</li></ul>
+  </section>
+  <div class="grid">
+            <article class="card">
+              <p class="kicker">contact_blocker</p>
+              <h2>نقص بيانات التواصل يعيق استرجاع جزء مهم من السلال</h2>
+              <p class="summary">يوجد حالياً 43 سلة لا يمكن بدء استرجاعها لأن وسيلة التواصل غير متوفرة.</p>
+              <p class="meaning"><strong>المعنى التجاري:</strong> كل سلة بلا تواصل صالح تبقى خارج مسار واتساب، فيتأجل استرجاع الإيراد.</p>
+              <p class="evidence"><strong>الدليل:</strong> 43 سلة نشطة بلا رقم صالح من أصل 60.</p>
+              <p class="meta">الثقة: high
+              · التوصية: act_now
+              · الصفحة: carts</p>
+              <p class="dir">حسّن التقاط رقم العميل قبل مغادرة المتجر، وراجع السلال المحظورة.</p>
+            </article>
+            
+            <article class="card">
+              <p class="kicker">product_conversion</p>
+              <h2>منتج X يجذب اهتماماً مرتفعاً لكن نادراً ما يصل إلى الشراء</h2>
+              <p class="summary">أُضيف منتج X إلى السلة 34 مرة عبر 22 سلة، بينما اكتمل الشراء 2 مرة فقط (6%).</p>
+              <p class="meaning"><strong>المعنى التجاري:</strong> الاهتمام موجود، لكن مسار الشراء يتعثّر قبل الإتمام — الفرصة التجارية معلّقة.</p>
+              <p class="evidence"><strong>الدليل:</strong> add_to_cart=34 unique_carts=22 purchases=2 store_baseline=16%</p>
+              <p class="meta">الثقة: high
+              · التوصية: test
+              · الصفحة: products</p>
+              <p class="dir">اختبر مراجعة السعر أو وضوح العرض أو تفاصيل المنتج — دون الجزم بسبب واحد.</p>
+            </article>
+            
+            <article class="card">
+              <p class="kicker">hesitation</p>
+              <h2>تكلفة الشحن هو أبرز سبب للتردّد حالياً ضمن مجموعة منتجات مرتبطة بهذا السبب</h2>
+              <p class="summary">تكلفة الشحن يتكرر في 16 من أصل 28 سبب مسجّل (57%) — وهو الأعلى بوضوح أمام بقية الأسباب.</p>
+              <p class="meaning"><strong>المعنى التجاري:</strong> هذا النمط يشير إلى عائق شراء متكرر يؤثر على جزء كبير من السلال المترددة.</p>
+              <p class="evidence"><strong>الدليل:</strong> distribution={&#x27;shipping&#x27;: 16, &#x27;price&#x27;: 7, &#x27;thinking&#x27;: 3, &#x27;delivery_time&#x27;: 2}; top=shipping:16; compared_against=[&#x27;delivery_time&#x27;, &#x27;price&#x27;, &#x27;shipping&#x27;, &#x27;thinking&#x27;]</p>
+              <p class="meta">الثقة: high
+              · التوصية: investigate
+              · الصفحة: knowledge_layer</p>
+              <p class="dir">راجع وضوح التكلفة/العرض المرتبط بهذا السبب، واختبر تحسيناً واحداً وقِس الأثر.</p>
+            </article>
+            
+            <article class="card">
+              <p class="kicker">channel_whatsapp</p>
+              <h2>واتساب يُعيد العملاء، لكن إتمام الشراء ما زال ضعيفاً</h2>
+              <p class="summary">عادات العودة واضحة (18/32) بينما الشراء (3) ما زال منخفضاً نسبياً.</p>
+              <p class="meaning"><strong>المعنى التجاري:</strong> القناة تُحرّك العودة، بينما قيمة الإيراد تتحقق عند إغلاق الشراء بعد العودة.</p>
+              <p class="evidence"><strong>الدليل:</strong> sent=32 returned=18 purchased=3 failed=2 suppressed=1</p>
+              <p class="meta">الثقة: high
+              · التوصية: investigate
+              · الصفحة: whatsapp</p>
+              <p class="dir">حافظ على القناة إن كانت تُعيد الاهتمام، وركّز التحسين على ما بعد العودة.</p>
+            </article>
+            
+            <article class="card">
+              <p class="kicker">hesitation_resolution</p>
+              <h2>تردّد «تكلفة الشحن» يبقى غالباً بلا حل حتى بعد التواصل</h2>
+              <p class="summary">حالات غير محلولة ≈ 9 مع مشتريات=1 بعد العودة=10.</p>
+              <p class="meaning"><strong>المعنى التجاري:</strong> التواصل وحده لا يُزيل هذا العائق — يلزم اختبار عرض أو سياسة مرتبطة به.</p>
+              <p class="evidence"><strong>الدليل:</strong> reason=shipping unresolved=9 returned=10 purchased=1</p>
+              <p class="meta">الثقة: medium
+              · التوصية: test
+              · الصفحة: knowledge_layer</p>
+              <p class="dir">اختبر تحسيناً واحداً مرتبطاً بهذا السبب وقِس الشراء بعد العودة.</p>
+            </article>
+            
+            <article class="card">
+              <p class="kicker">return_outcome</p>
+              <h2>العملاء يعودون بعد التواصل لكن أغلبهم لا يُكمل الشراء</h2>
+              <p class="summary">من أصل 22 عودة مسجّلة، غادر 16 دون شراء (73%) واكتمل الشراء في 6 فقط.</p>
+              <p class="meaning"><strong>المعنى التجاري:</strong> الاسترجاع يُعيد الاهتمام، لكن عائق الشراء ما زال قائماً بعد العودة.</p>
+              <p class="evidence"><strong>الدليل:</strong> returns=22 without_purchase=16 with_purchase=6 wa_sent=32</p>
+              <p class="meta">الثقة: high
+              · التوصية: investigate
+              · الصفحة: customers</p>
+              <p class="dir">افحص سبب التردد بعد العودة، واختبر تحسين العرض أو المتابعة — دون ادعاء سبب نهائي.</p>
+            </article>
+            
+            <article class="card">
+              <p class="kicker">repeated_interest</p>
+              <h2>منتج X يجذب اهتماماً متكرراً عبر زيارات متعددة دون شراء</h2>
+              <p class="summary">ظَهرت إعادة إضافة (11) وإشارات عودة (8) حول منتج X، بينما المشتريات = 2 فقط.</p>
+              <p class="meaning"><strong>المعنى التجاري:</strong> اهتمام متكرر غير محسوم غالباً يعني فرصة ضائعة أكثر من ضعف اهتمام.</p>
+              <p class="evidence"><strong>الدليل:</strong> repeat_adds=11 revisits=8 add_to_cart=34 purchases=2</p>
+              <p class="meta">الثقة: medium
+              · التوصية: test
+              · الصفحة: products</p>
+              <p class="dir">اختبر عرضاً أو تذكيراً موجّهاً لهذا المنتج بعد العودة.</p>
+            </article>
+            
+            <article class="card">
+              <p class="kicker">channel_whatsapp_test</p>
+              <h2>العودة بعد واتساب متكررة والشراء ضعيف — يستحق اختبار الرسالة أو التوقيت</h2>
+              <p class="summary">بعد 32 رسالة عاد 18 عميل تقريباً، لكن الشراء اكتمل 3 مرة فقط.</p>
+              <p class="meaning"><strong>المعنى التجاري:</strong> الدليل يبرر اختبار صياغة أو وقت إرسال مختلف — دون الجزم بأن الصياغة الحالية هي السبب.</p>
+              <p class="evidence"><strong>الدليل:</strong> sent=32 returned=18 purchased=3 failed=2 failed_share=6%</p>
+              <p class="meta">الثقة: medium
+              · التوصية: test
+              · الصفحة: whatsapp</p>
+              <p class="dir">اختبر رسالة أو وقت إرسال واحد، وقارن العودة والشراء.</p>
+            </article>
+            
+            <article class="card">
+              <p class="kicker">product_interest</p>
+              <h2>منتج C يحصل على اهتمام أضعف بكثير من منتجات مشابهة</h2>
+              <p class="summary">أُضيف منتج C 2 مرة فقط، بينما منتجات مقارنة تتجاوز حوالي 18 إضافة.</p>
+              <p class="meaning"><strong>المعنى التجاري:</strong> ضعف الاهتمام يقلّل فرص التحويل حتى قبل مرحلة التردد أو الاسترجاع.</p>
+              <p class="evidence"><strong>الدليل:</strong> product_atc=2 peer_median_atc=18</p>
+              <p class="meta">الثقة: medium
+              · التوصية: test
+              · الصفحة: products</p>
+              <p class="dir">اختبر الصور أو طريقة العرض أو السعر أو مصدر الزيارة — كتوصيات اختبار لا كأسباب مؤكدة.</p>
+            </article>
+            
+            <article class="card">
+              <p class="kicker">hesitation_resolution</p>
+              <h2>من يذكرون «وقت التوصيل» كثيراً ما يعودون ويُكملون الشراء</h2>
+              <p class="summary">بعد العودة (2) اكتمل الشراء 2 مرة لهذا السبب — نسبة حل أعلى من غيره.</p>
+              <p class="meaning"><strong>المعنى التجاري:</strong> هذا السبب قابل للحل نسبياً بعد التواصل أو العودة.</p>
+              <p class="evidence"><strong>الدليل:</strong> reason=delivery_time returned=2 purchased=2</p>
+              <p class="meta">الثقة: medium
+              · التوصية: monitor
+              · الصفحة: knowledge_layer</p>
+              <p class="dir">حافظ على مسار المتابعة لهذا السبب ووثّق ما ينجح.</p>
+            </article>
+            
+            <article class="card">
+              <p class="kicker">traffic_conversion</p>
+              <h2>لا يمكن بعد التمييز بين ضعف الزيارات وضعف التحويل</h2>
+              <p class="summary">بيانات زيارات المتجر الموثوقة غير متاحة حالياً، ولا يصح استنتاج حجم الزيارات من عدد السلال وحدها.</p>
+              <p class="meaning"><strong>المعنى التجاري:</strong> أي توصية إعلانية أو مرورية الآن ستكون افتراضاً لا دليلاً.</p>
+              <p class="evidence"><strong>الدليل:</strong> visitor_total=unavailable; carts_not_used_as_traffic_proxy</p>
+              <p class="meta">الثقة: insufficient
+              · التوصية: insufficient_evidence
+              · الصفحة: knowledge_layer</p>
+              <p class="dir">اربط مصدر زيارات موثوقاً قبل الحكم على الزيارات مقابل التحويل.</p>
+            </article>
+            </div>
+</body>
+</html>
