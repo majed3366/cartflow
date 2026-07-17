@@ -5,7 +5,7 @@
 | Investigation ID | INV-002 |
 | Work Package | RC-3 Fix (B3 → B1 → B2) |
 | Branch | `feature/inv002-rc3-fix` |
-| Delivery commit | *(stamped at commit)* |
+| Delivery commit | 32157cf (32157cfc…) |
 | Author | Engineering (agent) |
 | Reviewer | ☐ Architecture Board |
 | Date submitted (UTC) | 2026-07-17 |
@@ -30,7 +30,7 @@ RC-3 Fix closes the three RV-C blockers without rewriting consumers or making Re
 |-------|--------|
 | **Branch** | `feature/inv002-rc3-fix` |
 | **Base** | `feature/inv002-phase5` @ `973b4c2` |
-| **Delivery commit** | *(stamped at commit)* |
+| **Delivery commit** | 32157cf |
 | **RC-3 + Phase 5 tests** | **25 passed** (`test_rc3_fix_composition` + `test_phase5_reality_attach`) |
 | **`main.py` impact** | **None** |
 
