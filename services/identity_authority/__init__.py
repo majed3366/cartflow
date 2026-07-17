@@ -4,7 +4,7 @@ Platform Identity Authority — public façade (INV-002 WP-1).
 
 Stable imports for future consumers.
 Consumer migration: later WPs. HTTP composition middleware: WP-2.
-Simulation Attach product path: WP-5 / Phase 5.
+Simulation Attach product path: Phase 5 (reality_attach_v1).
 """
 from __future__ import annotations
 
@@ -94,6 +94,23 @@ from services.identity_authority.timeline_consumer_v1 import (
     timeline_identity_diagnostics,
     timeline_identity_scope,
 )
+from services.identity_authority.reality_attach_v1 import (
+    ATTACH_LAYER_ID,
+    TIME_AUTHORITY_SOURCE_ID,
+    AttachState,
+    LifecycleState,
+    RealityAttachDeclaration,
+    RealityAttachHandle,
+    attach_diagnostics,
+    attach_from_membership_stores,
+    build_attach_declaration,
+    build_attach_resolve_input,
+    clear_reality_attach,
+    get_active_attach,
+    peek_attach_resolve_inputs,
+    reality_attach_declaration_scope,
+    reality_attach_scope,
+)
 
 __all__ = [
     # Authority
@@ -172,6 +189,22 @@ __all__ = [
     "bind_mqic_for_timeline",
     "timeline_identity_diagnostics",
     "attach_timeline_identity_observability",
+    # Reality Attach (Phase 5)
+    "ATTACH_LAYER_ID",
+    "TIME_AUTHORITY_SOURCE_ID",
+    "AttachState",
+    "LifecycleState",
+    "RealityAttachDeclaration",
+    "RealityAttachHandle",
+    "reality_attach_scope",
+    "reality_attach_declaration_scope",
+    "build_attach_declaration",
+    "build_attach_resolve_input",
+    "attach_from_membership_stores",
+    "attach_diagnostics",
+    "get_active_attach",
+    "peek_attach_resolve_inputs",
+    "clear_reality_attach",
 ]
 
-__version__ = "6"
+__version__ = "7"

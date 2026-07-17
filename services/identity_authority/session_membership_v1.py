@@ -169,10 +169,34 @@ def build_session_resolve_input(
     session_active_store_id: str = "",
     correlation_id: str = "",
 ) -> ResolveIdentityInput:
-    """Compose ResolveIdentityInput for session (Phase 3 contract)."""
+    """
+    Compose ResolveIdentityInput for session (Phase 3 contract).
+
+    Phase 5: when Reality Attach is active, merge simulation fields so the
+    same Phase 3 entry yields ATTACH-path MQIC. Attach never resolves here —
+    it only supplies Authority inputs.
+    """
     session_id = (session_active_store_id or "").strip() or _session_active_canonical_id(
         snap
     )
+    sim_run = ""
+    sim_store = ""
+    replay = ""
+    corr = (correlation_id or "").strip()
+    try:
+        from services.identity_authority.reality_attach_v1 import (  # noqa: PLC0415
+            peek_attach_resolve_inputs,
+        )
+
+        attach = peek_attach_resolve_inputs()
+    except Exception:  # noqa: BLE001
+        attach = None
+    if attach:
+        sim_run = attach.get("simulation_run_id") or ""
+        sim_store = attach.get("simulation_canonical_store_id") or ""
+        replay = attach.get("replay_id") or ""
+        if not corr:
+            corr = attach.get("correlation_id") or ""
     return ResolveIdentityInput(
         merchant_id=snap.merchant_id,
         stores_by_id=snap.stores_by_id,
@@ -182,7 +206,10 @@ def build_session_resolve_input(
         explicit_store_id=(explicit_store_id or "").strip(),
         explicit_store_slug=(explicit_store_slug or "").strip(),
         membership_role=snap.membership_role,
-        correlation_id=correlation_id,
+        simulation_run_id=sim_run,
+        simulation_canonical_store_id=sim_store,
+        replay_id=replay,
+        correlation_id=corr,
     )
 
 
@@ -236,6 +263,7 @@ def session_membership_diagnostics(
             ResolutionPath.EXPLICIT.value,
             ResolutionPath.SESSION.value,
             ResolutionPath.PRIMARY.value,
+            ResolutionPath.ATTACH.value,
         ],
         "identity_diagnostics": identity_diagnostics(active),
     }
