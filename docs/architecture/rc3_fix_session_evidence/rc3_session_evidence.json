@@ -1,0 +1,34 @@
+{
+  "gate": "RC-3",
+  "investigation": "INV-002",
+  "simulation_run_id": "srs_rc3_fix_walkthrough",
+  "merchant_user_id": 50,
+  "store_slug": "demo",
+  "canonical_store_id": "1",
+  "mqic": {
+    "resolution_path": "attach",
+    "simulation_run_id": "srs_rc3_fix_walkthrough",
+    "store_slug": "demo"
+  },
+  "qtc": {
+    "mode": "simulation",
+    "simulation_run_id": "srs_rc3_fix_walkthrough",
+    "authoritative_now": "2026-05-04T12:00:00+00:00"
+  },
+  "home": {
+    "store_slug": "demo",
+    "ok": true,
+    "compose_attach": "demo"
+  },
+  "knowledge": {
+    "store_slug": "demo",
+    "cart_count": 3
+  },
+  "daily_brief": {
+    "store_slug": "demo"
+  },
+  "timeline_evidence_events": 1,
+  "activity_timeline_store_slug": "demo",
+  "detach_path": "primary",
+  "verdict": "PASS"
+}

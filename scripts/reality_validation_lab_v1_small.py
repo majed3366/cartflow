@@ -332,9 +332,14 @@ def _collect_platform_evidence(client, cookies) -> dict:
 
 
 def _signup_and_bind_demo(client) -> dict:
+    """Signup then align Phase 3 primary/membership to demo (RC-3 B3)."""
     from extensions import db
-    from models import MerchantUser, Store
+    from models import MerchantUser
     from services.merchant_auth_http import merchant_cookie_name
+    from services.identity_authority.lab_session_bind_v1 import (
+        align_merchant_session_to_simulation_store,
+        ensure_demo_store_for_lab,
+    )
 
     email = f"reality-lab-{uuid.uuid4().hex[:10]}@example.com"
     r = client.post(
@@ -348,25 +353,22 @@ def _signup_and_bind_demo(client) -> dict:
         follow_redirects=False,
     )
     cookies = dict(r.cookies)
-    # Ensure merchant owns demo for dashboard scoping where possible
-    user = db.session.query(MerchantUser).filter_by(email=email).first()
-    demo = db.session.query(Store).filter_by(zid_store_id="demo").first()
-    if user is not None and demo is not None:
-        try:
-            if hasattr(user, "store_id"):
-                user.store_id = demo.id
-            if hasattr(demo, "merchant_user_id"):
-                demo.merchant_user_id = user.id
-            db.session.add(user)
-            db.session.add(demo)
-            db.session.commit()
-        except Exception:  # noqa: BLE001
-            db.session.rollback()
+    bind_result = {"ok": False, "error": "merchant_missing"}
+    try:
+        ensure_demo_store_for_lab()
+        user = db.session.query(MerchantUser).filter_by(email=email).first()
+        if user is not None:
+            bind_result = align_merchant_session_to_simulation_store(
+                merchant_user_id=int(user.id)
+            )
+    except Exception as exc:  # noqa: BLE001
+        bind_result = {"ok": False, "error": str(exc)}
     return {
         "email": email,
         "signup_status": r.status_code,
         "cookie_name": merchant_cookie_name(),
         "cookies": cookies,
+        "lab_session_bind": bind_result,
     }
 
 

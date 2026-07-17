@@ -345,6 +345,10 @@ def build_merchant_home_experience_api_payload(
     experience_tier: str = EXPERIENCE_TIER_STARTER,
     cookies: Optional[Mapping[str, str]] = None,
     mqic: Any = None,
+    headers: Optional[Mapping[str, Any]] = None,
+    attach_run_id: str = "",
+    attach_start: Any = None,
+    attach_start_iso: str = "",
 ) -> dict[str, Any]:
     """
     Build store home experience by composing certified upstream consumers.
@@ -352,22 +356,20 @@ def build_merchant_home_experience_api_payload(
     INV-002 WP-5: tenant key from Platform Identity Authority MQIC — Home
     never resolves store identity independently. Session bind (when cookies
     provided) shares one MQIC with nested Brief + Knowledge.
+
+    INV-002 RC-3: optional Reality Attach composition before bind (headers /
+    attach_* inputs) — Authority inputs only; consumers unchanged.
     """
     from services.identity_authority import (  # noqa: PLC0415
         attach_dashboard_home_identity_observability,
-        bind_mqic_for_dashboard_home,
-        clear_mqic,
         dashboard_home_identity_scope,
         ensure_dashboard_home_mqic,
     )
+    from services.identity_authority.reality_attach_composition_v1 import (  # noqa: PLC0415
+        merchant_request_identity_bind,
+    )
 
-    bound_here = False
-    active_mqic = mqic
-    if active_mqic is None and cookies is not None:
-        active_mqic = bind_mqic_for_dashboard_home(cookies=cookies)
-        bound_here = active_mqic is not None
-
-    try:
+    def _compose_with_mqic(active_mqic: Any) -> dict[str, Any]:
         with dashboard_home_identity_scope(
             store_slug=store_slug, mqic=active_mqic
         ) as bound:
@@ -377,18 +379,17 @@ def build_merchant_home_experience_api_payload(
             slug = identity.store_slug
             kl_insights: list[Mapping[str, Any]] = []
             window_days = 7
+            name_ar = merchant_name_ar
 
-            if not _norm(merchant_name_ar):
+            if not _norm(name_ar):
                 try:
                     from services.merchant_onboarding_store import (  # noqa: PLC0415
                         merchant_store_display_name,
                     )
 
-                    merchant_name_ar = (
-                        merchant_store_display_name(dash_store) or "متجرك"
-                    )
+                    name_ar = merchant_store_display_name(dash_store) or "متجرك"
                 except (ImportError, TypeError, ValueError):
-                    merchant_name_ar = (
+                    name_ar = (
                         _norm(getattr(dash_store, "store_name", None)) or "متجرك"
                     )
 
@@ -418,7 +419,7 @@ def build_merchant_home_experience_api_payload(
                 pass
 
             composed = compose_merchant_home_experience_v1(
-                merchant_name_ar=merchant_name_ar,
+                merchant_name_ar=name_ar,
                 date_ar=date_ar,
                 brief_date=_norm(brief.get("brief_date")) or brief_date_iso(),
                 daily_brief=brief,
@@ -441,9 +442,21 @@ def build_merchant_home_experience_api_payload(
             composed["daily_brief_v1"] = brief
             attach_dashboard_home_identity_observability(composed)
             return composed
-    finally:
-        if bound_here:
-            clear_mqic()
+
+    if mqic is not None:
+        return _compose_with_mqic(mqic)
+
+    if cookies is not None:
+        with merchant_request_identity_bind(
+            cookies=cookies,
+            headers=headers,
+            attach_run_id=attach_run_id,
+            attach_start=attach_start,
+            attach_start_iso=attach_start_iso,
+        ) as active_mqic:
+            return _compose_with_mqic(active_mqic)
+
+    return _compose_with_mqic(None)
 
 
 __all__ = [

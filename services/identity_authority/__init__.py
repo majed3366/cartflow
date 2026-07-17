@@ -111,6 +111,18 @@ from services.identity_authority.reality_attach_v1 import (
     reality_attach_declaration_scope,
     reality_attach_scope,
 )
+from services.identity_authority.reality_attach_composition_v1 import (
+    HEADER_ATTACH_RUN_ID,
+    HEADER_ATTACH_START,
+    WalkthroughAttachInputs,
+    composition_diagnostics,
+    merchant_request_identity_bind,
+    parse_walkthrough_attach_inputs,
+)
+from services.identity_authority.lab_session_bind_v1 import (
+    align_merchant_session_to_simulation_store,
+    ensure_demo_store_for_lab,
+)
 
 __all__ = [
     # Authority
@@ -205,6 +217,15 @@ __all__ = [
     "get_active_attach",
     "peek_attach_resolve_inputs",
     "clear_reality_attach",
+    # RC-3 composition + Lab bind
+    "HEADER_ATTACH_RUN_ID",
+    "HEADER_ATTACH_START",
+    "WalkthroughAttachInputs",
+    "merchant_request_identity_bind",
+    "parse_walkthrough_attach_inputs",
+    "composition_diagnostics",
+    "align_merchant_session_to_simulation_store",
+    "ensure_demo_store_for_lab",
 ]
 
-__version__ = "7"
+__version__ = "8"

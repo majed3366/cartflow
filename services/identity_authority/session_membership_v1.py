@@ -125,10 +125,44 @@ def load_session_membership(
             store_slug=primary.store_slug,
             store_display_name=display,
         )
+    merchant_id = str(int(mid))
+    membership_ids = set(snap.membership_store_ids)
+    # RC-3 B3: when Lab linked demo.merchant_user_id to this merchant, include
+    # demo in membership so Reality Attach can authorize the sim tenant.
+    # Primary remains the signup store (onboarding rejects system slug demo).
+    try:
+        from extensions import db  # noqa: PLC0415
+        from models import Store  # noqa: PLC0415
+        from services.store_reality_simulator.contracts_v1 import (  # noqa: PLC0415
+            DEMO_STORE_SLUG,
+        )
+
+        demo_row = (
+            db.session.query(Store)
+            .filter(
+                Store.zid_store_id == DEMO_STORE_SLUG,
+                Store.merchant_user_id == int(mid),
+            )
+            .first()
+        )
+    except Exception:  # noqa: BLE001
+        demo_row = None
+    if demo_row is not None:
+        # _store_to_canonical rejects demo (widget-recovery guard). Lab Attach
+        # membership must admit the sim tenant explicitly when owned.
+        demo_pk = str(int(demo_row.id))
+        stores[demo_pk] = CanonicalStoreIdentity(
+            canonical_store_id=demo_pk,
+            store_slug=DEMO_STORE_SLUG,
+            store_display_name=(getattr(demo_row, "name", None) or "").strip()
+            or DEMO_STORE_SLUG,
+        )
+        membership_ids.add(demo_pk)
+
     return SessionMembershipSnapshot(
-        merchant_id=str(int(mid)),
+        merchant_id=merchant_id,
         primary_store_id=snap.primary_store_id,
-        membership_store_ids=snap.membership_store_ids,
+        membership_store_ids=frozenset(membership_ids),
         stores_by_id=stores,
         membership_role=MembershipRole.OWNER,
         source=str(getattr(meta, "source", None) or snap.source),
