@@ -91,7 +91,12 @@ def _nav_metadata_from_summary(body: Mapping[str, Any]) -> dict[str, int]:
     store_counts = body.get("merchant_store_cart_counts")
     active = int(stats.get("normal_cart_count") or 0)
     if active <= 0 and isinstance(store_counts, Mapping):
-        active = int(store_counts.get("active") or store_counts.get("normal") or 0)
+        active = int(
+            store_counts.get("active_total")
+            or store_counts.get("active")
+            or store_counts.get("normal")
+            or 0
+        )
     knowledge_cart_count = _knowledge_cart_count_from_summary(body)
     nav: dict[str, int] = {
         "active_carts": active if knowledge_cart_count is None else knowledge_cart_count,
@@ -99,6 +104,23 @@ def _nav_metadata_from_summary(body: Mapping[str, Any]) -> dict[str, int]:
     }
     if knowledge_cart_count is not None:
         nav["knowledge_cart_count"] = knowledge_cart_count
+    # Canonical Cart-page no-phone total — Commercial Interpretation evidence SoT.
+    if isinstance(store_counts, Mapping) and "no_phone_total" in store_counts:
+        try:
+            nav["canonical_no_phone_total"] = max(
+                0, int(store_counts.get("no_phone_total") or 0)
+            )
+        except (TypeError, ValueError):
+            pass
+    else:
+        filters = body.get("merchant_cart_filter_counts")
+        if isinstance(filters, Mapping) and "nophone" in filters:
+            try:
+                nav["canonical_no_phone_total"] = max(
+                    0, int(filters.get("nophone") or 0)
+                )
+            except (TypeError, ValueError):
+                pass
     return nav
 
 

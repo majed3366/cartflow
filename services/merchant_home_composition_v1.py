@@ -843,7 +843,7 @@ def compose_merchant_home_experience_v1(
     empty_calm = not while_away and not attention and not understanding
     greeting_date = _resolve_greeting_date_ar(date_ar=date_ar, brief_date=day)
 
-    return {
+    home: dict[str, Any] = {
         "version": COMPOSITION_VERSION,
         "experience_tier": tier,
         "tier_capabilities": _tier_capabilities_v1(),
@@ -912,6 +912,35 @@ def compose_merchant_home_experience_v1(
             "pib3_recovery_journey_explainability": True,
         },
     }
+
+    # Commercial Interpretation Layer V1 — Home consumes governed output only.
+    try:
+        from services.commercial_interpretation_v1 import (  # noqa: PLC0415
+            apply_commercial_interpretation_to_home_v1,
+        )
+
+        nav = nav_metadata if isinstance(nav_metadata, Mapping) else {}
+        no_phone = nav.get("canonical_no_phone_total")
+        try:
+            no_phone_i = int(no_phone) if no_phone is not None else None
+        except (TypeError, ValueError):
+            no_phone_i = None
+        active = nav.get("active_carts")
+        try:
+            active_i = int(active) if active is not None else None
+        except (TypeError, ValueError):
+            active_i = None
+        apply_commercial_interpretation_to_home_v1(
+            home,
+            store_slug=_norm(store_slug) or _norm(timeline_section.get("store_slug")),
+            no_phone_total=no_phone_i,
+            active_total=active_i,
+            payload={"nav_metadata": nav},
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
+    return home
 
 
 def build_merchant_home_experience_api_payload(

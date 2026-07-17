@@ -164,7 +164,13 @@
           esc("CartFlow الآن: " + item.recovery_next_platform_ar) +
           "</p>"
         : "") +
-      '<a class="v2-btn" href="#" role="button" onclick="if(window.goToSection){goToSection(\'carts\');}return false;">' +
+      '<a class="v2-btn" href="' +
+      esc(String(item.drilldown_href || "#carts").trim() || "#carts") +
+      '" role="button" onclick="' +
+      (String(item.drilldown_href || "").indexOf("nophone") !== -1
+        ? "if(window.goToCartTab){goToCartTab('nophone');}return false;"
+        : "if(window.goToSection){goToSection('carts');}return false;") +
+      '">' +
       esc(btnLabel) +
       "</a></article>"
     );
@@ -194,12 +200,48 @@
     var insightText =
       String(item.observation_ar || item.impact_ar || item.title_ar || "").trim() ||
       "—";
+    var evidence = String(item.evidence_label_ar || "").trim();
+    var impact = String(item.impact_ar || "").trim();
+    var action = String(item.action_ar || "").trim();
+    var cartflowAction = String(item.cartflow_action_ar || "").trim();
+    var cta =
+      String(item.cta_label_ar || "").trim() || "عرض السلال المتأثرة";
+    var href = String(item.drilldown_href || "#carts").trim() || "#carts";
+    var onclick =
+      href.indexOf("nophone") !== -1
+        ? "if(window.goToCartTab){goToCartTab('nophone');}return false;"
+        : "if(window.goToSection){goToSection('carts');}return false;";
+    var extra = "";
+    if (evidence) {
+      extra += '<p class="v2-whisper-text">' + esc(evidence) + "</p>";
+    }
+    if (impact && impact !== insightText) {
+      extra += '<p class="v2-whisper-text">' + esc(impact) + "</p>";
+    }
+    if (cartflowAction) {
+      extra += '<p class="v2-whisper-text">' + esc(cartflowAction) + "</p>";
+    }
+    if (action) {
+      extra += '<p class="v2-whisper-text">' + esc(action) + "</p>";
+    }
+    if (item.drilldown_href || item.commercial_interpretation_id) {
+      extra +=
+        '<a class="v2-btn" href="' +
+        esc(href) +
+        '" role="button" onclick="' +
+        onclick +
+        '">' +
+        esc(cta) +
+        "</a>";
+    }
     return (
       head +
       '<aside class="v2-whisper" id="ma-home-understanding">' +
       '<p class="v2-whisper-text">' +
       esc(insightText) +
-      "</p></aside></section>"
+      "</p>" +
+      extra +
+      "</aside></section>"
     );
   }
 

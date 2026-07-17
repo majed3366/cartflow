@@ -67,6 +67,24 @@
     return ' onclick="if(window.goToSection){goToSection(\'carts\');}else if(window.goTo){goTo(\'carts\');}return false;"';
   }
 
+  function drilldownHref(item) {
+    var href = String((item && item.drilldown_href) || "").trim();
+    if (href) return href;
+    return "#carts";
+  }
+
+  function goDrilldownOnclick(item) {
+    var href = drilldownHref(item);
+    if (href.indexOf("tab=nophone") !== -1 || href.indexOf("tab=no_phone") !== -1) {
+      return (
+        ' onclick="if(window.goToCartTab){goToCartTab(\'nophone\');}else{location.hash=' +
+        JSON.stringify(href) +
+        ';}return false;"'
+      );
+    }
+    return goCartsOnclick();
+  }
+
   function buildExecutiveSummary(home) {
     var whileAway = (home && home.while_away) || {};
     var items = whileAway.items || [];
@@ -143,8 +161,10 @@
             esc("إذا تجاهلت: " + priority.if_ignored_ar) +
             "</p>"
           : "") +
-        '<a class="ma-ecc-btn ma-ecc-btn--light" href="#carts" role="button"' +
-        goCartsOnclick() +
+        '<a class="ma-ecc-btn ma-ecc-btn--light" href="' +
+        esc(drilldownHref(priority)) +
+        '" role="button"' +
+        goDrilldownOnclick(priority) +
         ">" +
         esc(actionLabel) +
         "</a>" +
@@ -249,8 +269,39 @@
     var evidence = String(item.evidence_label_ar || "").trim();
     var explanation = String(item.impact_ar || "").trim();
     var recommendation = String(item.action_ar || "").trim();
+    var cartflowAction = String(item.cartflow_action_ar || "").trim();
+    var expectedResult = String(item.expected_result_ar || "").trim();
+    var ctaLabel =
+      String(item.cta_label_ar || "").trim() || "عرض السلال المتأثرة";
     var confTone = confidenceTone(item.confidence);
     var conf = confidenceLabelAr(item.confidence);
+    var confReason = String(item.confidence_reason_ar || "").trim();
+
+    var recommendBody = recommendation
+      ? '<p class="ma-ecc-copy">' + esc(recommendation) + "</p>"
+      : '<p class="ma-ecc-copy">لا توصية جاهزة بعد.</p>';
+    if (cartflowAction) {
+      recommendBody +=
+        '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">ما يفعله CartFlow:</span> ' +
+        esc(cartflowAction) +
+        "</p>";
+    }
+    if (expectedResult) {
+      recommendBody +=
+        '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">بعد الإجراء:</span> ' +
+        esc(expectedResult) +
+        "</p>";
+    }
+    if (recommendation || item.drilldown_href) {
+      recommendBody +=
+        '<a class="ma-ecc-btn ma-ecc-btn--on-kl" href="' +
+        esc(drilldownHref(item)) +
+        '" role="button"' +
+        goDrilldownOnclick(item) +
+        ">" +
+        esc(ctaLabel) +
+        "</a>";
+    }
 
     var flow =
       '<div class="ma-ecc-kl" role="list">' +
@@ -271,26 +322,19 @@
           esc(explanation || "لا تفسير كافٍ بعد لسلوك العملاء.") +
           "</p>"
       ) +
-      klStep(
-        "التوصية",
-        recommendation
-          ? '<p class="ma-ecc-copy">' +
-              esc(recommendation) +
-              "</p>" +
-              '<a class="ma-ecc-btn ma-ecc-btn--on-kl" href="#carts" role="button"' +
-              goCartsOnclick() +
-              ">" +
-              esc(recommendation) +
-              "</a>"
-          : '<p class="ma-ecc-copy">لا توصية جاهزة بعد.</p>'
-      ) +
+      klStep("التوصية", recommendBody) +
       klStep(
         "الثقة",
         '<span class="ma-ecc-chip ma-ecc-chip--conf-' +
           confTone +
           '">' +
           esc(conf) +
-          "</span>"
+          "</span>" +
+          (confReason
+            ? '<p class="ma-ecc-copy ma-ecc-copy--muted">' +
+              esc(confReason) +
+              "</p>"
+            : "")
       ) +
       "</div>";
 
@@ -535,8 +579,10 @@
           : "") +
         renderRecoveryJourney(item) +
         (action
-          ? '<a class="ma-ecc-btn" href="#carts" role="button"' +
-            goCartsOnclick() +
+          ? '<a class="ma-ecc-btn" href="' +
+            esc(drilldownHref(item)) +
+            '" role="button"' +
+            goDrilldownOnclick(item) +
             ">" +
             esc(action) +
             "</a>"

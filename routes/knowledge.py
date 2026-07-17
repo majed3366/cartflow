@@ -77,6 +77,14 @@ def api_knowledge_report(
             )
 
             enrich_knowledge_report_kl_routing_and_projection_v1(payload)
+            from services.commercial_interpretation_v1 import (  # noqa: PLC0415
+                enrich_knowledge_report_commercial_interpretation_v1,
+            )
+
+            enrich_knowledge_report_commercial_interpretation_v1(
+                payload,
+                store_slug=mqic.store_slug,
+            )
             attach_knowledge_identity_observability(payload)
             return j(payload)
     except IdentityError as exc:

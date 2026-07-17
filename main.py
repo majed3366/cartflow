@@ -19518,15 +19518,24 @@ def _api_json_dashboard_summary(
 
             with dashboard_summary_profile_span("build_merchant_home_experience_api_payload"):
                 # INV-002 WP-5: composition wiring only — Home binds MQIC from session.
+                _store_counts = dict(mstats.get("merchant_store_cart_counts") or {})
+                _nav_meta = {
+                    "active_carts": int(mstats.get("normal_cart_count") or 0),
+                    "waiting_send": int(out.get("merchant_nav_badge_abandoned") or 0),
+                }
+                if "no_phone_total" in _store_counts:
+                    try:
+                        _nav_meta["canonical_no_phone_total"] = max(
+                            0, int(_store_counts.get("no_phone_total") or 0)
+                        )
+                    except (TypeError, ValueError):
+                        pass
                 home_payload = build_merchant_home_experience_api_payload(
                     db.session,
                     slug,
                     dash_store,
                     date_ar=str(out.get("merchant_ar_date_header") or ""),
-                    nav_metadata={
-                        "active_carts": int(mstats.get("normal_cart_count") or 0),
-                        "waiting_send": int(out.get("merchant_nav_badge_abandoned") or 0),
-                    },
+                    nav_metadata=_nav_meta,
                     cookies=cookies,
                 )
                 out["merchant_home_experience_v1"] = home_payload
