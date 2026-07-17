@@ -1077,14 +1077,23 @@ def finalize_home_daily_business_brief_v1(
         nav=nav,
         risk_fact_key=risk_fact,
     )
-    # Opportunity must not reuse risk/priority fact keys.
+    # Opportunity must not reuse risk/priority fact keys; never ship empty headlines.
     opp = home["biggest_opportunity"]
     opp_item = opp.get("item") if isinstance(opp.get("item"), Mapping) else None
-    if opp_item and _norm(opp_item.get("fact_key")) in {
-        risk_fact,
-        "fact:obtain_contact",
-        f"fact:commercial_interpretation:missing_contact_blocks_recovery_v1",
-    }:
+    if opp_item and (
+        not _norm(opp_item.get("headline_ar"))
+        or _norm(opp_item.get("fact_key"))
+        in {
+            risk_fact,
+            "fact:obtain_contact",
+            "fact:commercial_interpretation:missing_contact_blocks_recovery_v1",
+        }
+    ):
+        opp["item"] = None
+        opp["items"] = []
+    elif opp_item:
+        opp["items"] = [dict(opp_item)]
+    else:
         opp["item"] = None
         opp["items"] = []
 

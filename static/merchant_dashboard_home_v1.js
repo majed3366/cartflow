@@ -258,6 +258,7 @@
   function renderOpportunity(home) {
     var section = (home && home.biggest_opportunity) || {};
     var item = section.item || (section.items && section.items[0]) || null;
+    if (item && !String(item.headline_ar || "").trim()) item = null;
     var head = sectionHead(
       "ma-ecc-opportunity-title",
       section.title_ar || "أكبر فرصة اليوم",
@@ -281,7 +282,7 @@
       '<div class="ma-ecc-panel">' +
       '<span class="ma-ecc-chip ma-ecc-chip--neutral">فرصة</span>' +
       '<h3 class="ma-ecc-attention__headline">' +
-      esc(item.headline_ar || "—") +
+      esc(String(item.headline_ar || "").trim()) +
       "</h3>" +
       (item.why_ar
         ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">لماذا الآن:</span> ' +
