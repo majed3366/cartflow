@@ -419,11 +419,13 @@ def interpretation_to_home_understanding_item(
     if not isinstance(kp, Mapping):
         kp = {}
     count = int(interpretation.get("evidence_count") or 0)
+    # Home primary headline = commercial conclusion (not the KL observation line).
+    headline = _norm(interpretation.get("home_headline_ar")) or _norm(
+        interpretation.get("conclusion")
+    )
     return {
-        "title_ar": _norm(interpretation.get("home_headline_ar"))
-        or _norm(interpretation.get("conclusion")),
-        "observation_ar": _norm(kp.get("observation_ar"))
-        or _norm(interpretation.get("conclusion")),
+        "title_ar": headline,
+        "observation_ar": headline,
         "evidence_label_ar": _norm(interpretation.get("evidence_text")),
         "impact_ar": _norm(interpretation.get("home_impact_ar"))
         or _norm(interpretation.get("business_impact")),

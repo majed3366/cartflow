@@ -149,7 +149,8 @@ class TestHomeConsumesGovernedOutput(unittest.TestCase):
         )
         self.assertEqual(lead.get("evidence_count"), 50)
         self.assertEqual(lead.get("evidence_label_ar"), primary.get("evidence_text"))
-        self.assertEqual(lead.get("observation_ar") or lead.get("title_ar"), primary.get("knowledge_progression", {}).get("observation_ar") or primary.get("conclusion"))
+        self.assertEqual(lead.get("observation_ar"), primary.get("conclusion"))
+        self.assertEqual(lead.get("title_ar"), primary.get("conclusion"))
         # Must not leave the empty-knowledge contradiction.
         blob = " ".join(
             str(items[0].get(k) or "")
