@@ -114,6 +114,13 @@ class TestHomeKnowledgeRedistributionV1(unittest.TestCase):
         kn = js[js.find("function renderKnowledge") : js.find("function metricCell")]
         self.assertNotIn("عرض السلال المتأثرة", kn)
         self.assertNotIn("التوصية", kn)
+        # Today must not re-list Timeline events (one surface, one list).
+        hero = js[js.find("function renderHero") : js.find("function klStep")]
+        self.assertNotIn("ma-ecc-today-list", hero)
+        self.assertNotIn("changeItems", hero)
+        # Timeline owns the event list.
+        self.assertIn("function renderTimeline", js)
+        self.assertNotIn("CartFlow يتابع", js)
 
 
 if __name__ == "__main__":

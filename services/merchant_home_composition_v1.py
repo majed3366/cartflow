@@ -864,8 +864,8 @@ def compose_merchant_home_experience_v1(
             "title_ar": "اليوم في متجرك",
             "lead_ar": "ما الذي تغيّر اليوم؟",
             "items": while_away,
-            "empty_message_ar": _norm(timeline_section.get("empty_message_ar"))
-            or "لا تغيّرات تشغيلية بارزة اليوم بعد.",
+            # Merchant language only — never inherit product-name empty copy.
+            "empty_message_ar": "لا تغيّرات تشغيلية بارزة اليوم بعد.",
             "store_slug": _norm(timeline_section.get("store_slug")),
             "identity_authority_v1": timeline_section.get("identity_authority_v1"),
             "knowledge_routing_v1": timeline_section.get("knowledge_routing_v1"),

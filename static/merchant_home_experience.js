@@ -46,12 +46,12 @@
 
   function buildHeroTitle(attention, whileAway) {
     var n = ((attention && attention.items) || []).length;
-    if (n === 1) return "CartFlow يتابع — أمر واحد يحتاجك";
-    if (n > 1) return "CartFlow يتابع — " + n + " أمور تحتاجك";
+    if (n === 1) return "نتابع متجرك — أمر واحد يحتاجك";
+    if (n > 1) return "نتابع متجرك — " + n + " أمور تحتاجك";
     if (((whileAway && whileAway.items) || []).length) {
-      return "CartFlow يتابع متجرك";
+      return "نتابع متجرك";
     }
-    return "CartFlow يتابع متجرك — يوم هادئ";
+    return "نتابع متجرك — يوم هادئ";
   }
 
   function buildHeroStory(whileAway, attention) {
@@ -67,7 +67,7 @@
     if (!parts.length) {
       return (
         (whileAway && whileAway.empty_message_ar) ||
-        "CartFlow يتابع متجرك."
+        "نتابع متجرك."
       );
     }
     return parts.slice(0, 4).join(" · ");
@@ -84,7 +84,7 @@
     var items = (whileAway && whileAway.items) || [];
     var statsHtml = "";
     if (items.length) {
-      statsHtml = '<div class="v2-hero-stats" aria-label="ما أنجزه CartFlow">';
+      statsHtml = '<div class="v2-hero-stats" aria-label="ما اكتمل اليوم">';
       items.slice(0, 4).forEach(function (item) {
         statsHtml +=
           '<span class="v2-hero-stat"><span class="v2-hero-stat-icon">✓</span> ' +
@@ -278,7 +278,7 @@
       root.classList.add("ma-home-experience--calm");
       root.innerHTML =
         renderPeV2Hero(null, null, null) +
-        '<aside class="v2-whisper ma-pe-v2-calm"><p class="v2-whisper-text">CartFlow يتابع متجرك — جرّب تحديث الصفحة.</p></aside>';
+        '<aside class="v2-whisper ma-pe-v2-calm"><p class="v2-whisper-text">نتابع متجرك — جرّب تحديث الصفحة.</p></aside>';
       return;
     }
 

@@ -25,7 +25,7 @@ CHANNEL_WHATSAPP_AR = "واتساب"
 CHANNEL_MERCHANT_AR = "تدخل التاجر"
 CHANNEL_SITE_RETURN_AR = "الموقع بعد رسالة الاسترجاع"
 
-_NO_MERCHANT_ACTION_AR = "لا يلزم إجراء منك الآن — CartFlow يتابع تلقائياً"
+_NO_MERCHANT_ACTION_AR = "لا يلزم إجراء منك الآن — نتابع تلقائياً"
 _NO_BLOCKER_AR = "لا يوجد حاجز حالياً"
 
 _JOURNEY_REQUIRED_FIELDS = (
@@ -81,7 +81,7 @@ def build_recovery_journey_for_attention_v1(
                 else "لا يوجد رقم عميل — واتساب لا يُرسل"
             ),
             "recovery_next_platform_ar": (
-                "بعد توفر الرقم: يجهّز CartFlow جدولة/إرسال رسالة واتساب تلقائياً."
+                "بعد توفر الرقم: تُجهَّز جدولة/إرسال رسالة واتساب تلقائياً."
             ),
             "recovery_next_merchant_ar": _norm(action_ar)
             or "الحصول على رقم العميل من السلال بانتظار التواصل",
@@ -102,7 +102,7 @@ def build_recovery_journey_for_attention_v1(
             "recovery_stage_ar": f"{LABEL_AR[stage_key]}{case_suffix}",
             "recovery_channel_ar": CHANNEL_WHATSAPP_AR,
             "recovery_stage_why_ar": (
-                "تعذّر على CartFlow إكمال إرسال الاسترجاع عبر واتساب."
+                "تعذّر إكمال إرسال الاسترجاع عبر واتساب."
             ),
             "recovery_blocker_ar": (
                 f"قناة واتساب متعطلة أو فشل الإرسال{case_suffix}"
@@ -139,7 +139,7 @@ def build_recovery_journey_for_attention_v1(
                 else "يلزم تدخل التاجر لإكمال الاسترجاع"
             ),
             "recovery_next_platform_ar": (
-                "CartFlow يحافظ على سياق السلة والدليل — لا يرسل بديلاً عن تدخلك هنا."
+                "نحافظ على سياق السلة والدليل — لا إرسال بديلاً عن تدخلك هنا."
             ),
             "recovery_next_merchant_ar": _norm(action_ar)
             or "التواصل مع العميل من لوحة السلال",
@@ -167,7 +167,7 @@ def build_recovery_journey_for_attention_v1(
             ),
             "recovery_blocker_ar": _NO_BLOCKER_AR,
             "recovery_next_platform_ar": (
-                "CartFlow يراقب ما إذا أكمل العميل الشراء دون إزعاج إضافي."
+                "نراقب ما إذا أكمل العميل الشراء دون إزعاج إضافي."
             ),
             "recovery_next_merchant_ar": _NO_MERCHANT_ACTION_AR,
             "recovery_completion_condition_ar": (

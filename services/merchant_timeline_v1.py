@@ -169,10 +169,10 @@ def build_merchant_activity_timeline_v1(
         section = {
             "version": TIMELINE_VERSION,
             "title_ar": "بينما كنت بعيداً",
-            "lead_ar": "CartFlow يتابع متجرك تلقائياً — هذا ما اكتمل:",
+            "lead_ar": "نتابع متجرك تلقائياً — هذا ما اكتمل:",
             "items": items,
             "empty_message_ar": (
-                "CartFlow يتابع متجرك — سنُظهر الإنجازات هنا عند توفرها."
+                "نتابع متجرك — سنُظهر الإنجازات هنا عند توفرها."
             ),
             "store_slug": identity.store_slug,
             "canonical_store_id": identity.canonical_store_id,

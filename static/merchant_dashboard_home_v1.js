@@ -129,6 +129,7 @@
   }
 
   function renderHero(home, summary) {
+    // Today = what changed (one summary). Event list belongs to Timeline only.
     var greeting = (home && home.greeting) || {};
     var greet = String(greeting.greeting_ar || greetingArFallback()).trim();
     var name = String(greeting.merchant_name_ar || "متجرك").trim();
@@ -136,19 +137,6 @@
       String(greeting.date_ar || "").trim() ||
       String((summary && summary.merchant_ar_date_header) || "").trim();
     var today = buildTodayChanges(home);
-    var whileAway = (home && home.while_away) || {};
-    var changeItems = whileAway.items || [];
-    var changesHtml = "";
-    if (changeItems.length) {
-      changesHtml = '<ul class="ma-ecc-today-list">';
-      changeItems.slice(0, 4).forEach(function (item) {
-        var h = String((item && item.headline_ar) || "").trim();
-        if (!h) return;
-        changesHtml +=
-          "<li><p class=\"ma-ecc-today-list__item\">" + esc(h) + "</p></li>";
-      });
-      changesHtml += "</ul>";
-    }
 
     return (
       '<section class="ma-ecc-hero" aria-label="اليوم في متجرك" data-ecc-section="hero">' +
@@ -166,7 +154,6 @@
       '<p class="ma-ecc-hero__exec-text">' +
       esc(today) +
       "</p>" +
-      changesHtml +
       "</div></div></section>"
     );
   }
