@@ -202,9 +202,10 @@ class Pib2AttentionDecisionSurfaceTests(unittest.TestCase):
         home = _mv1_home()
         att = home["attention_today"]
         self.assertTrue(att.get("decision_surface"))
-        # Natural merchant language (Knowledge Redistribution V1) — not engineering queue copy.
-        self.assertIn("قرار", att.get("lead_ar") or "")
-        self.assertNotIn("طابور", att.get("lead_ar") or "")
+        # Daily Business Brief V1 — one primary priority; never engineering queue copy.
+        lead = att.get("lead_ar") or ""
+        self.assertTrue("أهم" in lead or "قرار" in lead)
+        self.assertNotIn("طابور", lead)
 
     def test_ui_renders_decision_contract_fields(self) -> None:
         # Attention answers: why now, why important, if ignored, action.

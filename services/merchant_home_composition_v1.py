@@ -16,6 +16,10 @@ PIB-2 — Attention Decision Surface: Attention is an ordered merchant decision 
 
 PIB-3 — Recovery Journey Explainability: each recovery Attention decision exposes
 stage / channel / blocker / next platform & merchant actions from canonical LT-C1 labels.
+
+Home Daily Business Brief V1 — Constitution V3: seven sections, one business
+question each (health / risk / opportunity / priority / understanding / learning /
+timeline). Home consumes governed upstream truth; never mints commercial meaning.
 """
 from __future__ import annotations
 
@@ -42,8 +46,10 @@ EXPERIENCE_TIER_STARTER = "starter"
 EXPERIENCE_TIER_GROWTH = "growth"
 EXPERIENCE_TIER_PRO = "pro"
 
-HOME_MAX_ATTENTION_DISPLAY = 3
+# Constitution V3 — Today's Priority is exactly one primary recommendation.
+HOME_MAX_ATTENTION_DISPLAY = 1
 HOME_MAX_UNDERSTANDING_DISPLAY = 3
+HOME_DAILY_BUSINESS_BRIEF_V1 = True
 
 _SECTION_WHILE_AWAY = "while_away"
 _SECTION_ATTENTION = "attention_today"
@@ -679,12 +685,451 @@ def _tier_capabilities_v1() -> dict[str, dict[str, Any]]:
             "executive_summary": False,
         },
         EXPERIENCE_TIER_PRO: {
-            "max_attention_display": MAX_BRIEF_ITEMS,
+            # Home Daily Brief: still one primary priority (Constitution V3).
+            "max_attention_display": HOME_MAX_ATTENTION_DISPLAY,
             "max_understanding_display": HOME_MAX_UNDERSTANDING_DISPLAY + 2,
             "trend_awareness": True,
             "executive_summary": True,
         },
     }
+
+
+def _nav_int(nav: Mapping[str, Any], *keys: str) -> int:
+    for key in keys:
+        if key not in nav:
+            continue
+        try:
+            return max(0, int(nav.get(key) or 0))
+        except (TypeError, ValueError):
+            continue
+    return 0
+
+
+def _compose_business_health_v1(
+    *,
+    nav: Mapping[str, Any],
+    attention_count: int,
+    has_primary_risk: bool,
+    understanding_confidence: str,
+) -> dict[str, Any]:
+    """Section 1 — How is my business today? Status first; never an event list."""
+    no_phone = _nav_int(nav, "canonical_no_phone_total")
+    active = _nav_int(nav, "knowledge_cart_count", "active_carts")
+    attention_required = bool(attention_count > 0 or has_primary_risk or no_phone > 0)
+
+    if has_primary_risk or no_phone > 0:
+        status_ar = "يحتاج انتباهك"
+        summary_ar = (
+            "المتجر يعمل، لكن عائقاً تجارياً يحدّ من استرجاع الإيراد الآن."
+        )
+        direction_ar = "يتراجع تحت ضغط الاسترجاع"
+        direction_key = "declining_pressure"
+    elif attention_count > 0:
+        status_ar = "يحتاج قراراً"
+        summary_ar = "يوجد قرار تجاري واحد يستحق تركيزك اليوم."
+        direction_ar = "مستقر مع قرار معلق"
+        direction_key = "stable_with_decision"
+    else:
+        status_ar = "مستقر"
+        summary_ar = "لا عائق تجاري بارز اليوم — المتجر في وضع تشغيلي هادئ."
+        direction_ar = "مستقر"
+        direction_key = "stable"
+
+    conf = _norm(understanding_confidence).lower()
+    if conf in ("high", "confirmed"):
+        confidence_ar = "عالية"
+        confidence = "high"
+    elif conf == "medium":
+        confidence_ar = "متوسطة"
+        confidence = "medium"
+    elif attention_required:
+        confidence_ar = "متوسطة"
+        confidence = "medium"
+    else:
+        confidence_ar = "أدلة غير كافية"
+        confidence = "insufficient"
+
+    evidence_bits: list[str] = []
+    if active > 0:
+        evidence_bits.append(f"{active} سلة نشطة")
+    if no_phone > 0:
+        evidence_bits.append(f"{no_phone} بانتظار بيانات تواصل")
+    if attention_count > 0:
+        evidence_bits.append("قرار واحد اليوم")
+
+    return {
+        "title_ar": "صحة العمل",
+        "lead_ar": "كيف حال عملي اليوم؟",
+        "section_question_ar": "كيف حال عملي اليوم؟",
+        "knowledge_role": "business_health",
+        "status_ar": status_ar,
+        "summary_ar": summary_ar,
+        "confidence": confidence,
+        "confidence_ar": confidence_ar,
+        "attention_required": attention_required,
+        "direction_ar": direction_ar,
+        "direction_key": direction_key,
+        "evidence_summary_ar": " · ".join(evidence_bits) if evidence_bits else "",
+        "empty_message_ar": "نجمع صورة أوضح لصحة العمل.",
+    }
+
+
+def _compose_biggest_opportunity_v1(
+    *,
+    nav: Mapping[str, Any],
+    risk_fact_key: str = "",
+) -> dict[str, Any]:
+    """
+    Section 3 — Where is today's best opportunity?
+
+    Evidence-backed only. Never duplicates the primary revenue-risk fact.
+    """
+    active = _nav_int(nav, "knowledge_cart_count", "active_carts")
+    no_phone = _nav_int(nav, "canonical_no_phone_total")
+    waiting = _nav_int(nav, "waiting_send")
+    recoverable = max(0, active - no_phone)
+    risk_fact = _norm(risk_fact_key)
+
+    item: Optional[dict[str, Any]] = None
+    if recoverable > 0:
+        fact = "fact:opportunity:recoverable_with_contact"
+        if fact != risk_fact:
+            item = {
+                "headline_ar": f"أفضل فرصة اليوم: {recoverable} سلة جاهزة للمتابعة",
+                "why_ar": (
+                    "هذه السلال لديها بيانات تواصل كافية لبدء أو متابعة الاسترجاع."
+                ),
+                "evidence_ar": (
+                    f"{recoverable} سلة نشطة ببيانات تواصل"
+                    + (f" من أصل {active}" if active > 0 else "")
+                    + "."
+                ),
+                "commercial_value_ar": "فرصة أقرب لحماية واستعادة إيراد قابل للتنفيذ.",
+                "confidence": "medium" if recoverable >= 3 else "low",
+                "fact_key": fact,
+                "drilldown_href": "#carts",
+                "cta_label_ar": "عرض السلال النشطة",
+            }
+    if item is None and waiting > 0:
+        fact = "fact:opportunity:waiting_send"
+        if fact != risk_fact:
+            item = {
+                "headline_ar": f"أفضل فرصة اليوم: {waiting} سلة بانتظار المتابعة",
+                "why_ar": "هناك سلال في مسار الاسترجاع جاهزة لخطوة المتابعة التالية.",
+                "evidence_ar": f"{waiting} سلة بانتظار الإرسال أو المتابعة.",
+                "commercial_value_ar": "تسريع المتابعة يزيد فرصة إكمال الشراء.",
+                "confidence": "medium" if waiting >= 3 else "low",
+                "fact_key": fact,
+                "drilldown_href": "#carts?tab=waiting",
+                "cta_label_ar": "عرض سلال المتابعة",
+            }
+
+    return {
+        "title_ar": "أكبر فرصة اليوم",
+        "lead_ar": "أين أفضل فرصة اليوم؟",
+        "section_question_ar": "أين أفضل فرصة اليوم؟",
+        "knowledge_role": "opportunity",
+        "item": item,
+        "items": [item] if item else [],
+        "empty_message_ar": "لا فرصة تجارية مؤكدة بأدلة كافية اليوم.",
+    }
+
+
+def _compose_learning_progress_v1(
+    *,
+    understanding_items: list[Mapping[str, Any]],
+    has_primary_risk: bool,
+    risk_confidence: str = "",
+) -> dict[str, Any]:
+    """Section 6 — How is our understanding of the business evolving?"""
+    items: list[dict[str, Any]] = []
+    if has_primary_risk:
+        conf = _norm(risk_confidence).lower() or "high"
+        items.append(
+            {
+                "kind": "pattern_confirmed",
+                "progress_ar": "تأكّد نمط يمنع استرجاع الإيراد",
+                "detail_ar": (
+                    "نقص بيانات التواصل ليس حادثاً منفرداً — بل عائقاً تجارياً متكرراً."
+                ),
+                "confidence": conf,
+                "fact_key": "fact:learning:contact_blocker_pattern",
+            }
+        )
+    for raw in understanding_items[:2]:
+        if not isinstance(raw, Mapping):
+            continue
+        if raw.get("commercial_interpretation_id") and has_primary_risk:
+            continue
+        conf = _norm(raw.get("confidence")).lower()
+        obs = _norm(raw.get("observation_ar") or raw.get("title_ar"))
+        if not obs:
+            continue
+        if conf in ("high", "confirmed"):
+            kind = "confidence_increased"
+            progress = "ارتفعت ثقة الفهم التجاري"
+        elif conf == "medium":
+            kind = "new_behaviour"
+            progress = "ظهر سلوك تجاري يحتاج متابعة"
+        else:
+            kind = "more_evidence_required"
+            progress = "ما زلنا نحتاج أدلة إضافية"
+        items.append(
+            {
+                "kind": kind,
+                "progress_ar": progress,
+                "detail_ar": obs,
+                "confidence": conf or "insufficient",
+                "fact_key": _norm(raw.get("fact_key"))
+                or f"fact:learning:{_norm(raw.get('insight_key'))}",
+            }
+        )
+        if len(items) >= 2:
+            break
+    if not items:
+        items.append(
+            {
+                "kind": "unknown_becoming_known",
+                "progress_ar": "الفهم يتراكم مع كل يوم تشغيل",
+                "detail_ar": (
+                    "كل نشاط في المتجر يغذّي صورة أوضح عن التردد والاسترجاع والشراء."
+                ),
+                "confidence": "low",
+                "fact_key": "fact:learning:accumulating",
+            }
+        )
+    return {
+        "title_ar": "تقدّم الفهم",
+        "lead_ar": "كيف يتطوّر فهمنا للعمل؟",
+        "section_question_ar": "كيف يتطوّر فهمنا للعمل؟",
+        "knowledge_role": "learning_progress",
+        "items": items[:3],
+        "empty_message_ar": "ما زال فهم العمل في طور البناء.",
+    }
+
+
+def _enrich_timeline_why_it_matters_v1(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Section 7 — Timeline stays historical; each event may say why it matters."""
+    enriched: list[dict[str, Any]] = []
+    for raw in items:
+        if not isinstance(raw, dict):
+            continue
+        item = dict(raw)
+        why = _norm(item.get("why_it_matters_ar"))
+        if not why:
+            detail = _norm(item.get("detail_ar"))
+            headline = _norm(item.get("headline_ar"))
+            if detail and detail != headline:
+                why = detail
+            elif "استرجع" in headline or "استرد" in headline:
+                why = "يؤثر مباشرة على مسار استرجاع الإيراد."
+            elif "شراء" in headline or "اشتر" in headline:
+                why = "يعزّز وضوح التحويل التجاري اليوم."
+            elif headline:
+                why = "حدث تشغيلي يساعد على قراءة حركة المتجر اليوم."
+            else:
+                why = ""
+        if why:
+            item["why_it_matters_ar"] = why
+        enriched.append(item)
+    return enriched
+
+
+def _enrich_understanding_business_meaning_v1(
+    items: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Evolve Knowledge → Business Understanding structure (explain the business)."""
+    out: list[dict[str, Any]] = []
+    for raw in items:
+        if not isinstance(raw, dict):
+            continue
+        item = dict(raw)
+        observation = _norm(item.get("observation_ar") or item.get("title_ar"))
+        evidence = _norm(item.get("evidence_label_ar"))
+        meaning = _norm(
+            item.get("business_meaning_ar")
+            or item.get("impact_ar")
+            or item.get("explanation_ar")
+        )
+        commercial = _norm(
+            item.get("commercial_impact_ar")
+            or item.get("expected_result_ar")
+            or meaning
+        )
+        direction = _norm(
+            item.get("recommended_direction_ar")
+            or item.get("cartflow_action_ar")
+        )
+        if not direction and meaning:
+            direction = "راقب هذا النمط في قرارات اليوم التالية."
+        item["observation_ar"] = observation
+        item["evidence_label_ar"] = evidence
+        item["business_meaning_ar"] = meaning
+        item["commercial_impact_ar"] = commercial
+        item["recommended_direction_ar"] = direction
+        # Keep impact_ar as business meaning for older consumers.
+        if meaning and not _norm(item.get("impact_ar")):
+            item["impact_ar"] = meaning
+        item["action_ar"] = ""
+        item["knowledge_role"] = "explain"
+        item.pop("drilldown_href", None)
+        item.pop("cta_label_ar", None)
+        out.append(item)
+    return out
+
+
+def finalize_home_daily_business_brief_v1(
+    home: dict[str, Any],
+    *,
+    nav_metadata: Optional[Mapping[str, Any]] = None,
+) -> dict[str, Any]:
+    """
+    Shape composed Home into Constitution V3 Daily Business Brief sections.
+
+    Preserves upstream keys (attention_today / store_understanding / while_away)
+    while attaching first-class brief sections and enforcing one-question ownership.
+    """
+    if not isinstance(home, dict):
+        return home
+    nav = nav_metadata if isinstance(nav_metadata, Mapping) else {}
+
+    attention = home.get("attention_today")
+    if not isinstance(attention, dict):
+        attention = {"items": []}
+        home["attention_today"] = attention
+    att_items = [
+        it for it in list(attention.get("items") or []) if isinstance(it, Mapping)
+    ]
+    # Exactly one primary recommendation.
+    if len(att_items) > HOME_MAX_ATTENTION_DISPLAY:
+        att_items = att_items[:HOME_MAX_ATTENTION_DISPLAY]
+    for idx, it in enumerate(att_items):
+        if isinstance(it, dict):
+            it["queue_position"] = idx + 1
+    attention["items"] = att_items
+    attention["count"] = len(att_items)
+    attention["max_display"] = HOME_MAX_ATTENTION_DISPLAY
+    attention["title_ar"] = "أولوية اليوم"
+    attention["lead_ar"] = "ما أهم شيء أفعله اليوم؟"
+    attention["section_question_ar"] = "ما أهم شيء أفعله اليوم؟"
+    attention["knowledge_role"] = "priority"
+    attention["decision_surface"] = True
+    attention["empty_message_ar"] = "لا أولوية تجارية واحدة مطلوبة منك الآن."
+
+    understanding = home.get("store_understanding")
+    if not isinstance(understanding, dict):
+        understanding = {"items": []}
+        home["store_understanding"] = understanding
+    u_items = _enrich_understanding_business_meaning_v1(
+        [dict(it) for it in list(understanding.get("items") or []) if isinstance(it, Mapping)]
+    )
+    understanding["items"] = u_items
+    understanding["title_ar"] = "فهم العمل"
+    understanding["lead_ar"] = "ماذا نفهم عن عملك الآن؟"
+    understanding["section_question_ar"] = "ماذا نفهم عن عملك الآن؟"
+    understanding["knowledge_role"] = "explain"
+    understanding["purpose_ar"] = (
+        "ملاحظة → دليل → معنى تجاري → أثر تجاري → اتجاه موصى به → ثقة"
+    )
+    understanding["empty_message_ar"] = (
+        "لا فهم تجاري مؤكد بعد — نبني صورة أوضح مع كل يوم تشغيل."
+    )
+
+    risk = home.get("biggest_revenue_risk")
+    if not isinstance(risk, dict):
+        risk = {
+            "title_ar": "أكبر خطر على الإيراد",
+            "lead_ar": "أين أخسر أكثر الآن؟",
+            "section_question_ar": "أين أخسر أكثر الآن؟",
+            "knowledge_role": "revenue_risk",
+            "item": None,
+            "items": [],
+            "empty_message_ar": "لا خطر إيراد مؤكد بأدلة كافية الآن.",
+        }
+        home["biggest_revenue_risk"] = risk
+    else:
+        risk.setdefault("title_ar", "أكبر خطر على الإيراد")
+        risk.setdefault("lead_ar", "أين أخسر أكثر الآن؟")
+        risk.setdefault("section_question_ar", "أين أخسر أكثر الآن؟")
+        risk["knowledge_role"] = "revenue_risk"
+
+    risk_item = risk.get("item") if isinstance(risk.get("item"), Mapping) else None
+    if risk_item is None:
+        r_items = [it for it in list(risk.get("items") or []) if isinstance(it, Mapping)]
+        risk_item = r_items[0] if r_items else None
+    has_primary_risk = bool(risk_item)
+    risk_fact = _norm((risk_item or {}).get("fact_key"))
+    risk_conf = _norm((risk_item or {}).get("confidence"))
+
+    u_conf = ""
+    if u_items:
+        u_conf = _norm(u_items[0].get("confidence"))
+    if not u_conf and risk_conf:
+        u_conf = risk_conf
+
+    home["business_health"] = _compose_business_health_v1(
+        nav=nav,
+        attention_count=len(att_items),
+        has_primary_risk=has_primary_risk,
+        understanding_confidence=u_conf,
+    )
+    home["biggest_opportunity"] = _compose_biggest_opportunity_v1(
+        nav=nav,
+        risk_fact_key=risk_fact,
+    )
+    # Opportunity must not reuse risk/priority fact keys.
+    opp = home["biggest_opportunity"]
+    opp_item = opp.get("item") if isinstance(opp.get("item"), Mapping) else None
+    if opp_item and _norm(opp_item.get("fact_key")) in {
+        risk_fact,
+        "fact:obtain_contact",
+        f"fact:commercial_interpretation:missing_contact_blocks_recovery_v1",
+    }:
+        opp["item"] = None
+        opp["items"] = []
+
+    home["learning_progress"] = _compose_learning_progress_v1(
+        understanding_items=u_items,
+        has_primary_risk=has_primary_risk,
+        risk_confidence=risk_conf,
+    )
+
+    while_away = home.get("while_away")
+    if isinstance(while_away, dict):
+        tl_items = _enrich_timeline_why_it_matters_v1(
+            [dict(it) for it in list(while_away.get("items") or []) if isinstance(it, Mapping)]
+        )
+        while_away["items"] = tl_items
+        while_away["title_ar"] = "سجل العمل"
+        while_away["lead_ar"] = "ما الذي حدث — ولماذا يهم؟"
+        while_away["section_question_ar"] = "ما الذي حدث — ولماذا يهم؟"
+        while_away["knowledge_role"] = "business_timeline"
+        while_away["empty_message_ar"] = "لا أحداث بارزة مسجّلة بعد."
+
+    home["business_understanding"] = understanding
+    home["todays_priority"] = attention
+    home["business_timeline"] = while_away if isinstance(while_away, dict) else {
+        "title_ar": "سجل العمل",
+        "items": [],
+        "knowledge_role": "business_timeline",
+    }
+    home["daily_business_brief_v1"] = True
+    home["constitution_ref"] = "MERCHANT_DAILY_BUSINESS_BRIEF_CONSTITUTION_V3"
+
+    obs = home.get("observability")
+    if not isinstance(obs, dict):
+        obs = {}
+        home["observability"] = obs
+    obs["home_daily_business_brief_v1"] = True
+    obs["home_knowledge_redistribution_v1"] = True
+    obs["attention_items"] = len(att_items)
+    obs["understanding_items"] = len(u_items)
+    obs["has_revenue_risk"] = has_primary_risk
+    obs["has_opportunity"] = bool(
+        isinstance(home.get("biggest_opportunity"), Mapping)
+        and home["biggest_opportunity"].get("item")
+    )
+    return home
 
 
 def _resolve_greeting_date_ar(*, date_ar: str, brief_date: str) -> str:
@@ -861,37 +1306,51 @@ def compose_merchant_home_experience_v1(
             "date_ar": greeting_date,
         },
         "while_away": {
-            "title_ar": "اليوم في متجرك",
-            "lead_ar": "ما الذي تغيّر اليوم؟",
+            "title_ar": "سجل العمل",
+            "lead_ar": "ما الذي حدث — ولماذا يهم؟",
             "items": while_away,
             # Merchant language only — never inherit product-name empty copy.
-            "empty_message_ar": "لا تغيّرات تشغيلية بارزة اليوم بعد.",
+            "empty_message_ar": "لا أحداث بارزة مسجّلة بعد.",
             "store_slug": _norm(timeline_section.get("store_slug")),
             "identity_authority_v1": timeline_section.get("identity_authority_v1"),
             "knowledge_routing_v1": timeline_section.get("knowledge_routing_v1"),
-            "section_question_ar": "ما الذي تغيّر اليوم؟",
-            "knowledge_role": "today_changes",
+            "section_question_ar": "ما الذي حدث — ولماذا يهم؟",
+            "knowledge_role": "business_timeline",
         },
         "attention_today": {
-            "title_ar": "مركز الانتباه",
-            "lead_ar": "ما الذي يحتاج قرارك الآن؟",
+            "title_ar": "أولوية اليوم",
+            "lead_ar": "ما أهم شيء أفعله اليوم؟",
             "items": attention,
             "max_display": max_attention,
             "platform_max": MAX_BRIEF_ITEMS,
             "count": attention_count,
-            "empty_message_ar": "لا قرار مطلوب منك الآن.",
+            "empty_message_ar": "لا أولوية تجارية واحدة مطلوبة منك الآن.",
             "decision_surface": True,
-            "section_question_ar": "ما الذي يحتاج قرارك الآن؟",
-            "knowledge_role": "decide",
+            "section_question_ar": "ما أهم شيء أفعله اليوم؟",
+            "knowledge_role": "priority",
         },
         "store_understanding": {
-            "title_ar": "طبقة المعرفة",
-            "lead_ar": "ماذا تعلّمنا عن المتجر؟",
+            "title_ar": "فهم العمل",
+            "lead_ar": "ماذا نفهم عن عملك الآن؟",
             "items": understanding,
             "max_display": max_understanding,
-            "empty_message_ar": "لا فهم تجاري مؤكد بعد — نجمع أدلة النشاط.",
-            "section_question_ar": "ماذا تعلّمنا؟",
+            "empty_message_ar": (
+                "لا فهم تجاري مؤكد بعد — نبني صورة أوضح مع كل يوم تشغيل."
+            ),
+            "section_question_ar": "ماذا نفهم عن عملك الآن؟",
             "knowledge_role": "explain",
+            "purpose_ar": (
+                "ملاحظة → دليل → معنى تجاري → أثر تجاري → اتجاه موصى به → ثقة"
+            ),
+        },
+        "biggest_revenue_risk": {
+            "title_ar": "أكبر خطر على الإيراد",
+            "lead_ar": "أين أخسر أكثر الآن؟",
+            "section_question_ar": "أين أخسر أكثر الآن؟",
+            "knowledge_role": "revenue_risk",
+            "item": None,
+            "items": [],
+            "empty_message_ar": "لا خطر إيراد مؤكد بأدلة كافية الآن.",
         },
         "quick_nav": {
             "title_ar": "انتقال سريع",
@@ -923,6 +1382,7 @@ def compose_merchant_home_experience_v1(
             "pib2_attention_decision_surface": True,
             "pib3_recovery_journey_explainability": True,
             "home_knowledge_redistribution_v1": True,
+            "home_daily_business_brief_v1": HOME_DAILY_BUSINESS_BRIEF_V1,
         },
     }
 
@@ -953,7 +1413,10 @@ def compose_merchant_home_experience_v1(
     except Exception:  # noqa: BLE001
         pass
 
-    return home
+    return finalize_home_daily_business_brief_v1(
+        home,
+        nav_metadata=nav_metadata if isinstance(nav_metadata, Mapping) else {},
+    )
 
 
 def build_merchant_home_experience_api_payload(

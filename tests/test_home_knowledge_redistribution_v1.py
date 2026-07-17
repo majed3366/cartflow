@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Home Knowledge Redistribution V1 — one section, one question."""
+"""
+Home Knowledge Redistribution V1 — compatibility with Daily Business Brief V1.
+
+Section roles evolved under Constitution V3; explain-vs-decide separation remains.
+"""
 from __future__ import annotations
 
 import unittest
@@ -35,17 +39,18 @@ class TestHomeKnowledgeRedistributionV1(unittest.TestCase):
 
     def test_section_roles_are_distinct(self) -> None:
         home = self._home_with_cil()
-        self.assertEqual(home["while_away"].get("knowledge_role"), "today_changes")
+        self.assertEqual(home["while_away"].get("knowledge_role"), "business_timeline")
         self.assertEqual(home["store_understanding"].get("knowledge_role"), "explain")
-        self.assertEqual(home["attention_today"].get("knowledge_role"), "decide")
+        self.assertEqual(home["attention_today"].get("knowledge_role"), "priority")
         self.assertTrue(home["observability"].get("home_knowledge_redistribution_v1"))
+        self.assertTrue(home["observability"].get("home_daily_business_brief_v1"))
 
     def test_knowledge_explains_without_action(self) -> None:
         home = self._home_with_cil()
         lead = home["store_understanding"]["items"][0]
         self.assertTrue(lead.get("observation_ar"))
         self.assertTrue(lead.get("evidence_label_ar"))
-        self.assertTrue(lead.get("impact_ar"))
+        self.assertTrue(lead.get("impact_ar") or lead.get("business_meaning_ar"))
         self.assertTrue(lead.get("confidence"))
         self.assertFalse(str(lead.get("action_ar") or "").strip())
         self.assertFalse(str(lead.get("cta_label_ar") or "").strip())
@@ -73,53 +78,52 @@ class TestHomeKnowledgeRedistributionV1(unittest.TestCase):
             str(attention.get("headline_ar") or ""),
         )
 
-    def test_today_section_has_no_attention_language(self) -> None:
+    def test_today_section_evolved_to_health_not_attention_language(self) -> None:
         home = self._home_with_cil()
-        today = home["while_away"]
+        health = home["business_health"]
         blob = " ".join(
             [
-                str(today.get("title_ar") or ""),
-                str(today.get("lead_ar") or ""),
-                str(today.get("empty_message_ar") or ""),
+                str(health.get("title_ar") or ""),
+                str(health.get("lead_ar") or ""),
+                str(health.get("summary_ar") or ""),
             ]
         )
-        self.assertIn("تغيّر", blob)
+        self.assertIn("عمل", blob)
         self.assertNotIn("طابور", blob)
-        self.assertNotIn("قرار", blob)
 
     def test_no_engineering_queue_copy_in_composition(self) -> None:
         home = self._home_with_cil()
         att = home["attention_today"]
         self.assertNotIn("طابور", str(att.get("lead_ar") or ""))
-        self.assertIn("قرار", str(att.get("lead_ar") or ""))
+        self.assertIn("أهم", str(att.get("lead_ar") or ""))
 
     def test_js_story_order_and_language(self) -> None:
         js = (_REPO / "static" / "merchant_dashboard_home_v1.js").read_text(
             encoding="utf-8", errors="replace"
         )
-        # Story order inside renderHome (not function-definition order).
         home_fn = js[js.find("function renderHome") : js.find("function applyDashboardHomeV1")]
-        i_hero = home_fn.find("renderHero(home, summary)")
-        i_kl = home_fn.find("renderKnowledge(home)")
-        i_att = home_fn.find("renderAttention(home)")
-        i_metrics = home_fn.find("renderMetrics(summary)")
-        i_tl = home_fn.find("renderTimeline(home)")
-        self.assertTrue(0 <= i_hero < i_kl < i_att < i_metrics < i_tl)
+        i_health = home_fn.find("renderBusinessHealth(home, summary)")
+        i_risk = home_fn.find("renderRevenueRisk(home)")
+        i_opp = home_fn.find("renderOpportunity(home)")
+        i_pri = home_fn.find("renderTodaysPriority(home)")
+        i_und = home_fn.find("renderBusinessUnderstanding(home)")
+        i_learn = home_fn.find("renderLearningProgress(home)")
+        i_tl = home_fn.find("renderBusinessTimeline(home)")
+        self.assertTrue(
+            0 <= i_health < i_risk < i_opp < i_pri < i_und < i_learn < i_tl
+        )
         self.assertNotIn("طابور قرارات", js)
         self.assertNotIn("حالة المعرفة", js)
         self.assertNotIn("renderPerformance", js)
-        self.assertIn("ملاحظة → دليل → تفسير → ثقة", js)
-        self.assertNotIn("→ توصية →", js)
-        # Knowledge must not render CTA/action instruct step
-        kn = js[js.find("function renderKnowledge") : js.find("function metricCell")]
+        self.assertIn("المعنى التجاري", js)
+        # Understanding must not render CTA/action instruct step
+        kn = js[
+            js.find("function renderBusinessUnderstanding") : js.find(
+                "function renderLearningProgress"
+            )
+        ]
         self.assertNotIn("عرض السلال المتأثرة", kn)
-        self.assertNotIn("التوصية", kn)
-        # Today must not re-list Timeline events (one surface, one list).
-        hero = js[js.find("function renderHero") : js.find("function klStep")]
-        self.assertNotIn("ma-ecc-today-list", hero)
-        self.assertNotIn("changeItems", hero)
-        # Timeline owns the event list.
-        self.assertIn("function renderTimeline", js)
+        self.assertNotIn("ma-ecc-today-list", js)
         self.assertNotIn("CartFlow يتابع", js)
 
 

@@ -411,14 +411,47 @@ def build_commercial_interpretation_package_v1(
     return package
 
 
+def interpretation_to_revenue_risk_item_v1(
+    interpretation: Mapping[str, Any],
+) -> dict[str, Any]:
+    """
+    Map governed interpretation → Home Biggest Revenue Risk (single ranked risk).
+
+    Risk answers «أين أخسر أكثر الآن؟» — commercial loss framing only.
+    Priority owns the action; Understanding owns business meaning.
+    """
+    count = int(interpretation.get("evidence_count") or 0)
+    return {
+        "headline_ar": _norm(interpretation.get("conclusion"))
+        or "أكبر عائق أمام الاسترجاع حاليًا هو نقص بيانات التواصل.",
+        "why_ar": _norm(interpretation.get("business_impact"))
+        or _norm(interpretation.get("home_impact_ar")),
+        "evidence_ar": _norm(interpretation.get("evidence_text")),
+        "commercial_impact_ar": _norm(interpretation.get("expected_result"))
+        or "كل يوم دون تواصل صالح يُبقي إيراد الاسترجاع معلّقاً.",
+        "confidence": _norm(interpretation.get("confidence_level")) or CONFIDENCE_HIGH,
+        "confidence_reason_ar": _norm(interpretation.get("confidence_reason")),
+        "fact_key": f"fact:commercial_interpretation:{INTERPRETATION_MISSING_CONTACT}",
+        "insight_key": INTERPRETATION_MISSING_CONTACT,
+        "commercial_interpretation_id": INTERPRETATION_MISSING_CONTACT,
+        "evidence_count": count,
+        "is_primary_commercial_blocker": bool(
+            interpretation.get("is_primary_commercial_blocker")
+        ),
+        "knowledge_role": "revenue_risk",
+        "section": "biggest_revenue_risk",
+    }
+
+
 def interpretation_to_home_understanding_item(
     interpretation: Mapping[str, Any],
 ) -> dict[str, Any]:
     """
-    Map governed interpretation → Home Knowledge (explain-only).
+    Map governed interpretation → Home Business Understanding (explain-only).
 
-    Knowledge answers «ماذا تعلّمنا؟» — observation / evidence / explanation /
-    confidence. No merchant action, CTA, or decision language.
+    Explains the business — not merely the event:
+    observation → evidence → business meaning → commercial impact →
+    recommended direction → confidence. No merchant CTA.
     """
     kp = interpretation.get("knowledge_progression")
     if not isinstance(kp, Mapping):
@@ -428,19 +461,31 @@ def interpretation_to_home_understanding_item(
         _norm(kp.get("observation_ar"))
         or _norm(interpretation.get("conclusion"))
     )
-    explanation = (
+    meaning = (
         _norm(kp.get("explanation_ar"))
         or _norm(interpretation.get("home_impact_ar"))
         or _norm(interpretation.get("business_impact"))
+    )
+    commercial = (
+        _norm(interpretation.get("business_impact"))
+        or _norm(interpretation.get("expected_result"))
+        or meaning
+    )
+    direction = (
+        _norm(kp.get("recommendation_ar"))
+        or "حسّن التقاط وسيلة التواصل قبل أن تغادر السلة مسار الاسترجاع."
     )
     return {
         "title_ar": observation,
         "observation_ar": observation,
         "evidence_label_ar": _norm(interpretation.get("evidence_text")),
-        "impact_ar": explanation,
-        "action_ar": "",  # Knowledge explains — Attention owns the decision.
+        "impact_ar": meaning,
+        "business_meaning_ar": meaning,
+        "commercial_impact_ar": commercial,
+        "recommended_direction_ar": direction,
+        "action_ar": "",  # Understanding explains — Priority owns the decision.
         "cartflow_action_ar": "",
-        "expected_result_ar": "",
+        "expected_result_ar": _norm(interpretation.get("expected_result")),
         "confidence": _norm(interpretation.get("confidence_level")) or CONFIDENCE_HIGH,
         "confidence_reason_ar": _norm(interpretation.get("confidence_reason")),
         "insight_key": INTERPRETATION_MISSING_CONTACT,
@@ -681,25 +726,31 @@ def apply_commercial_interpretation_to_home_v1(
     understanding["commercial_interpretation_primary"] = True
     understanding["knowledge_role"] = "explain"
 
-    # Attention owns the decision — different wording from Knowledge.
+    # Biggest Revenue Risk owns the commercial-loss framing (single ranked risk).
+    risk_item = interpretation_to_revenue_risk_item_v1(primary)
+    home["biggest_revenue_risk"] = {
+        "title_ar": "أكبر خطر على الإيراد",
+        "lead_ar": "أين أخسر أكثر الآن؟",
+        "section_question_ar": "أين أخسر أكثر الآن؟",
+        "knowledge_role": "revenue_risk",
+        "item": risk_item,
+        "items": [risk_item],
+        "empty_message_ar": "لا خطر إيراد مؤكد بأدلة كافية الآن.",
+        "commercial_interpretation_primary": True,
+    }
+
+    # Today's Priority owns the single decision — different wording from Risk/Understanding.
     decision = interpretation_to_attention_decision_v1(primary)
     attention = home.get("attention_today")
     if not isinstance(attention, dict):
         attention = {
-            "title_ar": "مركز الانتباه",
-            "lead_ar": "ما الذي يحتاج قرارك الآن؟",
+            "title_ar": "أولوية اليوم",
+            "lead_ar": "ما أهم شيء أفعله اليوم؟",
             "items": [],
-            "empty_message_ar": "لا قرار مطلوب منك الآن.",
+            "empty_message_ar": "لا أولوية تجارية واحدة مطلوبة منك الآن.",
             "decision_surface": True,
         }
         home["attention_today"] = attention
-    att_items = [
-        it
-        for it in list(attention.get("items") or [])
-        if isinstance(it, Mapping)
-        and _norm(it.get("operational_decision_key")) != "decision:obtain_contact"
-        and _norm(it.get("commercial_interpretation_id")) != INTERPRETATION_MISSING_CONTACT
-    ]
     # Keep journey chapter on an existing obtain_contact item when present.
     prior_contact = next(
         (
@@ -726,13 +777,22 @@ def apply_commercial_interpretation_to_home_v1(
         ):
             if prior_contact.get(key) is not None and decision.get(key) is None:
                 decision[key] = prior_contact.get(key)
-    attention["items"] = [decision] + att_items
-    for idx, att in enumerate(attention["items"]):
-        if isinstance(att, dict):
-            att["queue_position"] = idx + 1
-    attention["count"] = len(attention["items"])
-    attention["lead_ar"] = "ما الذي يحتاج قرارك الآن؟"
-    attention["empty_message_ar"] = "لا قرار مطلوب منك الآن."
+    # Constitution: exactly one primary recommendation on Home.
+    decision["queue_position"] = 1
+    attention["items"] = [decision]
+    attention["count"] = 1
+    attention["title_ar"] = "أولوية اليوم"
+    attention["lead_ar"] = "ما أهم شيء أفعله اليوم؟"
+    attention["section_question_ar"] = "ما أهم شيء أفعله اليوم؟"
+    attention["knowledge_role"] = "priority"
+    attention["empty_message_ar"] = "لا أولوية تجارية واحدة مطلوبة منك الآن."
+
+    understanding["title_ar"] = "فهم العمل"
+    understanding["lead_ar"] = "ماذا نفهم عن عملك الآن؟"
+    understanding["section_question_ar"] = "ماذا نفهم عن عملك الآن؟"
+    understanding["purpose_ar"] = (
+        "ملاحظة → دليل → معنى تجاري → أثر تجاري → اتجاه موصى به → ثقة"
+    )
 
     obs = home.get("observability")
     if isinstance(obs, dict):
@@ -741,6 +801,8 @@ def apply_commercial_interpretation_to_home_v1(
         obs["understanding_items"] = len(understanding["items"])
         obs["attention_items"] = len(attention["items"])
         obs["home_knowledge_redistribution_v1"] = True
+        obs["home_daily_business_brief_v1"] = True
+        obs["has_revenue_risk"] = True
     home["empty_calm"] = False
     return home
 

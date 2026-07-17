@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Dashboard Home Intelligence-First V3 — presentation + readiness contract."""
+"""Dashboard Home — Daily Business Brief V1 presentation + readiness contract."""
 from __future__ import annotations
 
 import re
@@ -20,17 +20,18 @@ def _section_order_positions(js: str) -> list[int]:
     assert m, "renderHome body not found"
     body = m.group(1)
     keys = [
-        "renderHero(",
-        "renderKnowledge(",
-        "renderMetrics(",
-        "renderAttention(",
-        "renderPerformance(",
-        "renderTimeline(",
+        "renderBusinessHealth(",
+        "renderRevenueRisk(",
+        "renderOpportunity(",
+        "renderTodaysPriority(",
+        "renderBusinessUnderstanding(",
+        "renderLearningProgress(",
+        "renderBusinessTimeline(",
     ]
     return [body.index(k) for k in keys]
 
 
-class DashboardHomeIntelV3Tests(unittest.TestCase):
+class DashboardHomeDailyBriefV1Tests(unittest.TestCase):
     def test_assets_wired_in_template(self) -> None:
         self.assertIn("merchant_dashboard_home_v1.js", _TMPL)
         self.assertIn("merchant_dashboard_home_v1.css", _TMPL)
@@ -39,54 +40,51 @@ class DashboardHomeIntelV3Tests(unittest.TestCase):
         self.assertIn("maApplyDashboardHomeV1", _JS)
         self.assertIn("maApplyDashboardHomeV1", _LAZY)
 
-    def test_canonical_section_order_hero_knowledge_first(self) -> None:
+    def test_canonical_brief_section_order(self) -> None:
         positions = _section_order_positions(_JS)
         self.assertEqual(positions, sorted(positions))
-        # Explicit markers for intelligence-first order
-        self.assertIn('data-ecc-section="hero"', _JS)
-        self.assertIn('data-ecc-section="knowledge"', _JS)
-        self.assertIn('data-ecc-section="metrics"', _JS)
-        self.assertIn('data-ecc-section="attention"', _JS)
-        self.assertIn('data-ecc-section="performance"', _JS)
-        self.assertIn('data-ecc-section="timeline"', _JS)
-        hero_i = _JS.index('data-ecc-section="hero"')
-        kl_i = _JS.index('data-ecc-section="knowledge"')
-        metrics_i = _JS.index('data-ecc-section="metrics"')
-        self.assertLess(hero_i, kl_i)
-        self.assertLess(kl_i, metrics_i)
-
-    def test_exactly_four_quick_metrics(self) -> None:
-        for label in (
-            "الإيرادات المستعادة",
-            "العملاء المشترون",
-            "العملاء العائدون",
-            "حالة المعرفة",
+        for section in (
+            "health",
+            "risk",
+            "opportunity",
+            "priority",
+            "understanding",
+            "learning",
+            "timeline",
         ):
-            self.assertIn(label, _JS)
-        # Only one metrics block
-        self.assertEqual(_JS.count('data-ecc-section="metrics"'), 1)
+            self.assertIn(f'data-ecc-section="{section}"', _JS)
+        self.assertIn("daily-brief-v1", _JS)
+        # Retired redistribution KPI band — health owns direction.
+        self.assertNotIn('data-ecc-section="metrics"', _JS)
+        self.assertNotIn("renderMetrics", _JS)
 
-    def test_knowledge_structure(self) -> None:
-        for step in ("الملاحظة", "الدليل", "التفسير", "التوصية", "الثقة"):
+    def test_understanding_business_meaning_structure(self) -> None:
+        for step in (
+            "الملاحظة",
+            "الدليل",
+            "المعنى التجاري",
+            "الأثر التجاري",
+            "الاتجاه الموصى به",
+            "الثقة",
+        ):
             self.assertIn(step, _JS)
         self.assertIn("ma-ecc-band--knowledge", _CSS)
 
-    def test_timeline_empty_preserves_structure(self) -> None:
-        self.assertIn("ma-ecc-timeline--empty", _JS)
-        self.assertIn("ma-ecc-timeline__item--placeholder", _JS)
-        self.assertIn("سيظهر هنا عند تسجيل شراء حقيقي", _JS)
+    def test_timeline_contextual_why(self) -> None:
+        self.assertIn("لماذا يهم:", _JS)
+        self.assertIn("why_it_matters_ar", _JS)
+        self.assertIn("renderBusinessTimeline", _JS)
 
-    def test_no_fake_returned_kpi(self) -> None:
-        self.assertIn("Customers returned: no governed today-KPI", _JS)
-        self.assertIn("never invent", _JS.lower())
-
-    def test_mobile_metric_grid_2x2(self) -> None:
-        self.assertIn("grid-template-columns: 1fr 1fr", _CSS)
-        self.assertIn(".ma-ecc-metrics", _CSS)
-
-    def test_desktop_split_grid(self) -> None:
-        self.assertIn(".ma-ecc-split", _CSS)
-        self.assertIn("grid-template-columns: 1.15fr 0.85fr", _CSS)
+    def test_priority_is_single_recommendation_surface(self) -> None:
+        self.assertIn("renderTodaysPriority", _JS)
+        self.assertIn("أولوية اليوم", _JS)
+        # No multi-item queue list markup for priority.
+        pri = _JS[
+            _JS.find("function renderTodaysPriority") : _JS.find(
+                "function renderBusinessUnderstanding"
+            )
+        ]
+        self.assertNotIn("<ol class=\"ma-ecc-attention\">", pri)
 
     def test_diagnostics_absent_from_home(self) -> None:
         self.assertNotIn('data-home-nav="test-tools"', _TMPL)
@@ -96,7 +94,6 @@ class DashboardHomeIntelV3Tests(unittest.TestCase):
         self.assertIn("settings-diagnostics", _APP)
 
     def test_store_readiness_no_recovery_row(self) -> None:
-        # Extract applySetupReadinessPanel body
         m = re.search(
             r"function applySetupReadinessPanel\(d\)\s*\{([\s\S]*?)\n  function ",
             _LAZY,

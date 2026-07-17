@@ -296,7 +296,7 @@ class TestJsCtaAndParity(unittest.TestCase):
         pe = (_REPO / "static" / "merchant_home_experience.js").read_text(
             encoding="utf-8", errors="replace"
         )
-        # CTA drilldown lives on Attention after Knowledge Redistribution V1.
+        # CTA drilldown lives on Today's Priority (Daily Business Brief V1).
         self.assertIn("goToCartTab", ecc)
         self.assertIn("nophone", ecc)
         self.assertIn("drilldownHref", ecc)
@@ -304,7 +304,9 @@ class TestJsCtaAndParity(unittest.TestCase):
         self.assertIn("goToCartTab", pe)
         self.assertIn("nophone", pe)
         att_fn = ecc[
-            ecc.find("function renderAttention") : ecc.find("function renderTimeline")
+            ecc.find("function renderTodaysPriority") : ecc.find(
+                "function renderBusinessUnderstanding"
+            )
         ]
         self.assertIn("drilldownHref(item)", att_fn)
         self.assertIn("goDrilldownOnclick(item)", att_fn)
