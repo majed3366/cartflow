@@ -1,12 +1,23 @@
 /**
  * Dashboard Home — Daily Business Brief V1 (Constitution V3).
- * Story: Health → Risk → Opportunity → Priority → Understanding → Learning → Timeline.
+ * Adaptive Cognition V2: section *order* follows cognitive_sequence; components unchanged.
  * One section · one business question · merchant value only. Presentation only.
  */
 (function () {
   "use strict";
 
   var EMPTY_VALUE = "—";
+  var ACF_SESSION_KEY = "cf_acf_home_session_v1";
+  var ACF_LOCK_KEY = "cf_acf_home_lock_v1";
+  var DEFAULT_SECTION_ORDER = [
+    "business_health",
+    "biggest_revenue_risk",
+    "biggest_opportunity",
+    "todays_priority",
+    "business_understanding",
+    "learning_progress",
+    "business_timeline",
+  ];
 
   function byId(id) {
     return document.getElementById(id);
@@ -723,6 +734,62 @@
     );
   }
 
+  function readAcfQuery() {
+    try {
+      var q = new URLSearchParams(window.location.search || "");
+      return {
+        fixture: String(q.get("acf_fixture") || "").trim(),
+        trigger: String(q.get("acf_trigger") || "").trim(),
+        session: String(q.get("acf_session") || "").trim(),
+      };
+    } catch (e) {
+      return { fixture: "", trigger: "", session: "" };
+    }
+  }
+
+  function resolveSectionOrder(home) {
+    var acf = (home && home.adaptive_cognition_v1) || {};
+    var order = acf.section_order;
+    if (!order || !order.length) {
+      try {
+        var locked = sessionStorage.getItem(ACF_LOCK_KEY);
+        if (locked) {
+          var parsed = JSON.parse(locked);
+          if (parsed && parsed.section_order && parsed.section_order.length) {
+            order = parsed.section_order;
+          }
+        }
+      } catch (e2) {
+        order = null;
+      }
+    }
+    if (!order || !order.length) order = DEFAULT_SECTION_ORDER.slice();
+    var seen = {};
+    var out = [];
+    for (var i = 0; i < order.length; i++) {
+      var key = String(order[i] || "");
+      if (!key || seen[key]) continue;
+      seen[key] = 1;
+      out.push(key);
+    }
+    for (var j = 0; j < DEFAULT_SECTION_ORDER.length; j++) {
+      var k = DEFAULT_SECTION_ORDER[j];
+      if (!seen[k]) out.push(k);
+    }
+    return out;
+  }
+
+  function renderSectionByKey(key, home, summary) {
+    if (key === "business_health") return renderBusinessHealth(home, summary);
+    if (key === "biggest_revenue_risk") return renderRevenueRisk(home);
+    if (key === "biggest_opportunity") return renderOpportunity(home);
+    if (key === "todays_priority") return renderTodaysPriority(home);
+    if (key === "business_understanding") return renderBusinessUnderstanding(home);
+    if (key === "learning_progress") return renderLearningProgress(home);
+    if (key === "business_timeline") return renderBusinessTimeline(home);
+    return "";
+  }
+
   function renderHome(summary) {
     var home = (summary && summary.merchant_home_experience_v1) || {};
     if (!home || home.ok === false) {
@@ -731,18 +798,55 @@
       }
     }
 
-    // Daily Business Brief story (Constitution V3).
+    var order = resolveSectionOrder(home);
+    var html = "";
+    for (var i = 0; i < order.length; i++) {
+      html += renderSectionByKey(order[i], home, summary);
+    }
+
+    var acf = home.adaptive_cognition_v1 || {};
+    var pathAttr = acf.selected_path
+      ? ' data-acf-path="' + esc(String(acf.selected_path)) + '"'
+      : "";
+    var labelAttr = acf.path_label
+      ? ' data-acf-label="' + esc(String(acf.path_label)) + '"'
+      : "";
+
     return (
-      '<div class="ma-ecc ma-ecc--intel-v3 ma-ecc--daily-brief-v1">' +
-      renderBusinessHealth(home, summary) +
-      renderRevenueRisk(home) +
-      renderOpportunity(home) +
-      renderTodaysPriority(home) +
-      renderBusinessUnderstanding(home) +
-      renderLearningProgress(home) +
-      renderBusinessTimeline(home) +
+      '<div class="ma-ecc ma-ecc--intel-v3 ma-ecc--daily-brief-v1 ma-ecc--acf-v2"' +
+      pathAttr +
+      labelAttr +
+      ">" +
+      html +
       "</div>"
     );
+  }
+
+  function persistAcfSession(home) {
+    var acf = (home && home.adaptive_cognition_v1) || {};
+    if (!acf || !acf.session_id) return;
+    try {
+      sessionStorage.setItem(ACF_SESSION_KEY, String(acf.session_id));
+      sessionStorage.setItem(
+        ACF_LOCK_KEY,
+        JSON.stringify({
+          session_id: acf.session_id,
+          selected_path: acf.selected_path,
+          section_order: acf.section_order || [],
+          locked_at: Date.now(),
+        })
+      );
+    } catch (e) {
+      /* ignore */
+    }
+    try {
+      document.cookie =
+        "cf_acf_session=" +
+        encodeURIComponent(String(acf.session_id)) +
+        "; path=/; SameSite=Lax";
+    } catch (e2) {
+      /* ignore */
+    }
   }
 
   function applyDashboardHomeV1(summary) {
@@ -777,12 +881,59 @@
       ) {
         root.classList.add("ma-home-experience--calm");
       }
+      persistAcfSession(summary.merchant_home_experience_v1 || {});
       return true;
     } catch (err) {
       root.innerHTML = renderError("حدث خطأ أثناء عرض الرئيسية.");
       return true;
     }
   }
+
+  /** Build /api/dashboard/summary query for Adaptive Cognition session stability. */
+  function maAcfSummaryQuery() {
+    var q = readAcfQuery();
+    var params = [];
+    var trigger = q.trigger;
+    if (!trigger) {
+      try {
+        var nav = performance.getEntriesByType && performance.getEntriesByType("navigation");
+        if (nav && nav[0] && nav[0].type === "reload") {
+          trigger = "full_page_refresh";
+        }
+      } catch (e) {
+        /* ignore */
+      }
+    }
+    if (!trigger) {
+      try {
+        if (!sessionStorage.getItem(ACF_SESSION_KEY)) trigger = "session_start";
+        else trigger = "view_stable";
+      } catch (e2) {
+        trigger = "session_start";
+      }
+    }
+    var sid = q.session;
+    if (!sid) {
+      try {
+        sid = sessionStorage.getItem(ACF_SESSION_KEY) || "";
+      } catch (e3) {
+        sid = "";
+      }
+    }
+    if (trigger) params.push("acf_trigger=" + encodeURIComponent(trigger));
+    if (sid) params.push("acf_session=" + encodeURIComponent(sid));
+    if (q.fixture) params.push("acf_fixture=" + encodeURIComponent(q.fixture));
+    return params.length ? params.join("&") : "";
+  }
+
+  window.maAcfSummaryQuery = maAcfSummaryQuery;
+  window.maAcfMarkReturnFromSurface = function () {
+    try {
+      sessionStorage.setItem("cf_acf_pending_trigger", "return_from_surface");
+    } catch (e) {
+      /* ignore */
+    }
+  };
 
   function paintLoadingShell() {
     var root = byId("ma-home-experience-root");

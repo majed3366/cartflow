@@ -17856,6 +17856,22 @@ def api_dashboard_summary(request: Request):
     )
 
     inspect_mode = wants_activation_inspect(request)
+    try:
+        from services.home_adaptive_cognition_home_bridge_v1 import (  # noqa: PLC0415
+            set_acf_home_request_context_v1,
+        )
+
+        set_acf_home_request_context_v1(
+            trigger=str(request.query_params.get("acf_trigger") or "").strip(),
+            session_id=str(
+                request.query_params.get("acf_session")
+                or request.cookies.get("cf_acf_session")
+                or ""
+            ).strip(),
+            fixture=str(request.query_params.get("acf_fixture") or "").strip(),
+        )
+    except Exception:  # noqa: BLE001
+        pass
     if not inspect_mode:
         from services.dashboard_snapshot_v1 import dashboard_snapshot_mode_enabled
         from services.dashboard_snapshot_enforcement_guard_v1 import (
