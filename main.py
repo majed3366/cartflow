@@ -1047,6 +1047,10 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/dashboard-snapshot-archive",
         "/dev/business-findings-review",
         "/dev/business-reasoning-review",
+        "/dev/adaptive-cognition-lab",
+        "/dev/adaptive-cognition-lab/start",
+        "/dev/adaptive-cognition-lab/view-tick",
+        "/dev/adaptive-cognition-lab/reeval",
     }
 )
 
@@ -1329,6 +1333,69 @@ def dev_business_reasoning_review(
     )
 
 
+@app.get("/dev/adaptive-cognition-lab", response_class=HTMLResponse)
+def dev_adaptive_cognition_lab(
+    request: Request,
+    fixture: str = Query("vip"),
+) -> Any:
+    """
+    Adaptive Cognition Lab V2 — Product validation of Cognitive Router.
+
+    Path selection + session stability + governed re-evaluation only.
+    Not Home. Not Wireframe. Not merchant nav.
+    """
+    from services.home_adaptive_cognition_lab_v1 import (  # noqa: PLC0415
+        build_adaptive_cognition_lab_payload_v1,
+    )
+
+    payload = build_adaptive_cognition_lab_payload_v1(
+        fixture=(fixture or "vip").strip() or "vip",
+    )
+    return templates.TemplateResponse(
+        request,
+        "home_adaptive_cognition_lab_v1.html",
+        {"request": request, "payload": payload},
+    )
+
+
+@app.post("/dev/adaptive-cognition-lab/start")
+def dev_adaptive_cognition_lab_start(body: dict[str, Any] | None = None) -> Any:
+    from services.home_adaptive_cognition_lab_v1 import (  # noqa: PLC0415
+        build_adaptive_cognition_lab_payload_v1,
+    )
+
+    payload_in = body if isinstance(body, dict) else {}
+    fixture = str(payload_in.get("fixture") or "vip").strip() or "vip"
+    payload = build_adaptive_cognition_lab_payload_v1(fixture=fixture)
+    return payload
+
+
+@app.post("/dev/adaptive-cognition-lab/view-tick")
+def dev_adaptive_cognition_lab_view_tick(body: dict[str, Any] | None = None) -> Any:
+    from services.home_adaptive_cognition_lab_v1 import (  # noqa: PLC0415
+        lab_view_tick_v1,
+    )
+
+    payload_in = body if isinstance(body, dict) else {}
+    return lab_view_tick_v1(str(payload_in.get("session_id") or ""))
+
+
+@app.post("/dev/adaptive-cognition-lab/reeval")
+def dev_adaptive_cognition_lab_reeval(body: dict[str, Any] | None = None) -> Any:
+    from services.home_adaptive_cognition_lab_v1 import (  # noqa: PLC0415
+        lab_reeval_v1,
+    )
+
+    payload_in = body if isinstance(body, dict) else {}
+    return lab_reeval_v1(
+        str(payload_in.get("session_id") or ""),
+        trigger=str(payload_in.get("trigger") or ""),
+        fixture=(
+            str(payload_in.get("fixture")).strip()
+            if payload_in.get("fixture") is not None
+            else None
+        ),
+    )
 
 
 def _track_objection_cors(resp: Response) -> Response:
