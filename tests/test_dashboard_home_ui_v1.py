@@ -30,9 +30,19 @@ class DashboardHomeDailyBriefV1Tests(unittest.TestCase):
         self.assertIn("renderSectionByKey", _JS)
         self.assertIn("adaptive_cognition_v1", _JS)
         self.assertIn("ma-ecc--acf-v2", _JS)
+        self.assertIn("ma-ecc--reality-v1", _JS)
+        self.assertIn("ma-ecc-focus", _JS)
+        self.assertIn("PATH_FOCUS_AR", _JS)
         self.assertIn("maAcfSummaryQuery", _JS)
         self.assertIn("maAcfSummaryQuery", _LAZY)
         self.assertIn("acf_trigger", _LAZY)
+        # Layout integrity: attention cards must not force a 40px-only first column.
+        self.assertIn("ma-ecc-attention__item", _CSS)
+        self.assertIn("display: flex", _CSS)
+        self.assertIn(
+            "A single-child 40px|1fr grid collapses body text",
+            _CSS,
+        )
         for section in (
             "health",
             "risk",
