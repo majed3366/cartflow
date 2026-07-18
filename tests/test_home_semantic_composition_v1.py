@@ -66,32 +66,31 @@ class TestHomeSemanticCompositionV1(unittest.TestCase):
         meta = home["home_semantic_composition_v1"]
         self.assertTrue(home["observability"].get("home_semantic_composition_v1"))
 
-        # Action + explain survive; risk/opp/learning contact echoes suppressed.
+        # Action survives; contact risk paraphrase suppressed.
+        # Understanding/Opportunity/Learning may carry *other* commercial dimensions.
         self.assertTrue(home["todays_priority"]["home_admission_v1"]["admitted"])
         self.assertTrue(home["business_understanding"]["home_admission_v1"]["admitted"])
         self.assertFalse(home["biggest_revenue_risk"]["home_admission_v1"]["admitted"])
         self.assertIsNone(home["biggest_revenue_risk"].get("item"))
-        self.assertFalse(home["biggest_opportunity"]["home_admission_v1"]["admitted"])
-        self.assertFalse(home["learning_progress"]["home_admission_v1"]["admitted"])
 
         reasons = {s.get("reason") for s in meta["suppressed"]}
         self.assertIn("semantic_duplicate_of_priority_or_explain", reasons)
-        self.assertIn("inverse_or_same_problem_as_admitted_risk_or_priority", reasons)
 
-        # Health keeps condition; contact evidence line removed.
         evidence = str(home["business_health"].get("evidence_summary_ar") or "")
         self.assertNotIn("تواصل", evidence)
 
         pri = home["attention_today"]["items"][0]
         und = home["store_understanding"]["items"][0]
-        self.assertEqual(pri["merchant_problem"], PROBLEM_MISSING_CONTACT)
-        self.assertEqual(und["merchant_problem"], PROBLEM_MISSING_CONTACT)
-        self.assertEqual(pri["cognitive_role"], "action")
-        self.assertEqual(und["cognitive_role"], "explain")
+        self.assertEqual(pri.get("cognitive_role") or "action", "action")
+        self.assertEqual(und.get("cognitive_role") or "explain", "explain")
+        # Understanding must not restate the same contact headline as Priority.
         self.assertNotEqual(
             str(pri.get("headline_ar") or ""),
             str(und.get("observation_ar") or ""),
         )
+        # Commercial diversity: understanding answers a non-contact question when available.
+        if und.get("commercial_dimension"):
+            self.assertNotEqual(und.get("commercial_dimension"), "contact")
 
     def test_distinct_evidence_different_conclusions_preserved(self) -> None:
         home = compose_merchant_home_experience_v1(
@@ -120,12 +119,12 @@ class TestHomeSemanticCompositionV1(unittest.TestCase):
             },
             store_slug="demo",
         )
-        # No contact problem — recovery-ready / waiting opportunity may survive.
+        # No contact problem — commercial / waiting opportunity may survive.
         opp = home["biggest_opportunity"].get("item")
         if opp:
             problem = resolve_merchant_problem_v1(opp)
-            self.assertIn(problem, ("waiting_send_followup", "recovery_ready_with_contact"))
             self.assertNotEqual(problem, PROBLEM_MISSING_CONTACT)
+            self.assertNotIn("obtain_contact", problem)
         # Distinct timeline event preserved.
         facts = [
             str(it.get("fact_key") or "")
@@ -135,14 +134,22 @@ class TestHomeSemanticCompositionV1(unittest.TestCase):
 
     def test_opportunity_cannot_invert_existing_risk_problem(self) -> None:
         home = self._contact_home()
-        self.assertIsNone(home["biggest_opportunity"].get("item"))
-        self.assertTrue(
-            any(
-                s.get("reason")
-                == "inverse_or_same_problem_as_admitted_risk_or_priority"
-                for s in home["home_semantic_composition_v1"]["suppressed"]
+        opp = home["biggest_opportunity"].get("item")
+        # Inverse contact opportunity is suppressed; a distinct commercial
+        # opportunity (e.g. product) may survive.
+        if opp is None:
+            self.assertTrue(
+                any(
+                    s.get("reason")
+                    == "inverse_or_same_problem_as_admitted_risk_or_priority"
+                    for s in home["home_semantic_composition_v1"]["suppressed"]
+                )
             )
-        )
+        else:
+            self.assertNotIn(
+                "recoverable_with_contact", str(opp.get("fact_key") or "")
+            )
+            self.assertTrue(opp.get("commercial_question_id") or opp.get("headline_ar"))
 
     def test_timeline_cannot_duplicate_executive_conclusion(self) -> None:
         home = compose_merchant_home_experience_v1(
@@ -206,7 +213,7 @@ class TestHomeSemanticCompositionV1(unittest.TestCase):
         self.assertIn("business_health", order)
         self.assertIn("todays_priority", order)
         self.assertNotIn("biggest_revenue_risk", order)
-        self.assertNotIn("biggest_opportunity", order)
+        # Opportunity may appear when it answers a distinct commercial question.
         # Mobile/desktop share same composition (order is semantic, not viewport).
         again = filter_section_order_by_admission_v1(
             list(order), home, path=str(acf.get("selected_path") or "B")

@@ -51,6 +51,21 @@ _TOPIC_ALIASES: dict[str, str] = {
     "insight:missing_contact": PROBLEM_MISSING_CONTACT,
     "fact:opportunity:waiting_send": PROBLEM_WAITING_SEND,
     "decision:waiting_send": PROBLEM_WAITING_SEND,
+    # Commercial findings — distinct problems (must not collapse into contact).
+    "high_interest_low_purchase_product_v1": "product_conversion_gap",
+    "repeated_interest_v1": "product_repeated_interest",
+    "low_product_interest_v1": "product_low_interest",
+    "dominant_hesitation_reason_v1": "hesitation_dominant",
+    "hesitation_resolution_effectiveness_v1": "hesitation_resolution",
+    "traffic_versus_conversion_v1": "traffic_quality_unknown",
+    "return_without_purchase_v1": "recovery_return_without_purchase",
+    "recovery_channel_effectiveness_v1": "recovery_channel_effect",
+    "whatsapp_message_timing_test_v1": "whatsapp_timing_test",
+    "insufficient_or_conflicting_evidence_v1": "missing_evidence",
+    "fact:finding:high_interest_low_purchase_product_v1": "product_conversion_gap",
+    "fact:finding:dominant_hesitation_reason_v1": "hesitation_dominant",
+    "fact:finding:traffic_versus_conversion_v1": "traffic_quality_unknown",
+    "fact:finding:insufficient_or_conflicting_evidence_v1": "missing_evidence",
 }
 
 # Opportunity topic → problem it must not invert

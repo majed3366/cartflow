@@ -982,6 +982,10 @@ def finalize_home_daily_business_brief_v1(
     home: dict[str, Any],
     *,
     nav_metadata: Optional[Mapping[str, Any]] = None,
+    findings_package: Optional[Mapping[str, Any]] = None,
+    commercial_intel_load_db: bool = False,
+    commercial_intel_demo: bool = True,
+    dash_store: Any = None,
 ) -> dict[str, Any]:
     """
     Shape composed Home into Constitution V3 Daily Business Brief sections.
@@ -1139,6 +1143,24 @@ def finalize_home_daily_business_brief_v1(
         and home["biggest_opportunity"].get("item")
     )
 
+    # Commercial Intelligence Transition V1 — admit insights that answer
+    # commercial questions (products/hesitation/traffic/recovery/…), not counts.
+    try:
+        from services.home_commercial_intelligence_v1 import (  # noqa: PLC0415
+            apply_home_commercial_intelligence_v1,
+        )
+
+        apply_home_commercial_intelligence_v1(
+            home,
+            store_slug=_norm(home.get("store_slug")),
+            findings_package=findings_package,
+            dash_store=dash_store,
+            load_db=bool(commercial_intel_load_db),
+            demo_fixture=bool(commercial_intel_demo) and not commercial_intel_load_db,
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
     # Cross-section semantic composition — one coherent story (no paraphrase fan-out).
     try:
         from services.home_semantic_composition_v1 import (  # noqa: PLC0415
@@ -1172,6 +1194,10 @@ def compose_merchant_home_experience_v1(
     routed_home_feed: Optional[Mapping[str, Any]] = None,
     store_slug: str = "",
     mqic: Any = None,
+    findings_package: Optional[Mapping[str, Any]] = None,
+    commercial_intel_load_db: bool = False,
+    commercial_intel_demo: bool = True,
+    dash_store: Any = None,
 ) -> dict[str, Any]:
     """Compose Merchant Home experience sections from governed upstream payloads."""
     day = brief_date or brief_date_iso()
@@ -1433,9 +1459,14 @@ def compose_merchant_home_experience_v1(
     except Exception:  # noqa: BLE001
         pass
 
+    home["store_slug"] = _norm(store_slug) or _norm(home.get("store_slug"))
     return finalize_home_daily_business_brief_v1(
         home,
         nav_metadata=nav_metadata if isinstance(nav_metadata, Mapping) else {},
+        findings_package=findings_package,
+        commercial_intel_load_db=commercial_intel_load_db,
+        commercial_intel_demo=commercial_intel_demo,
+        dash_store=dash_store,
     )
 
 
@@ -1534,6 +1565,22 @@ def build_merchant_home_experience_api_payload(
                 # Home badge equals Knowledge cart_count for the session.
                 nav["active_carts"] = knowledge_cart_count
 
+            findings_package = None
+            try:
+                from services.business_findings_engine_v1 import (  # noqa: PLC0415
+                    run_business_findings_engine_v1,
+                )
+
+                findings_package = run_business_findings_engine_v1(
+                    store_slug=slug,
+                    load_db=True,
+                    dash_store=dash_store,
+                    demo_fixture=False,
+                    window_days=max(14, int(window_days or 7)),
+                )
+            except Exception:  # noqa: BLE001
+                findings_package = None
+
             composed = compose_merchant_home_experience_v1(
                 merchant_name_ar=name_ar,
                 date_ar=date_ar,
@@ -1545,6 +1592,10 @@ def build_merchant_home_experience_api_payload(
                 experience_tier=experience_tier,
                 store_slug=slug,
                 mqic=identity,
+                findings_package=findings_package,
+                commercial_intel_load_db=False,
+                commercial_intel_demo=findings_package is None,
+                dash_store=dash_store,
             )
             from services.knowledge_time_authority_v1 import (  # noqa: PLC0415
                 knowledge_stamp_now,

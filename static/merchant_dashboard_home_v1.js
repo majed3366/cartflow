@@ -563,10 +563,17 @@
       (home && home.store_understanding) ||
       {};
     var items = section.items || [];
+    var leadItem = items[0] || null;
+    var commercialQ = String(
+      (leadItem && leadItem.commercial_question_ar) ||
+        section.section_question_ar ||
+        section.lead_ar ||
+        "ماذا نفهم عن عملك الآن؟"
+    ).trim();
     var head =
       '<header class="ma-ecc-kl__head">' +
       '<p class="ma-ecc-kicker">' +
-      esc(section.section_question_ar || section.lead_ar || "ماذا نفهم عن عملك الآن؟") +
+      esc(commercialQ) +
       "</p>" +
       '<h2 class="ma-ecc-kl__title" id="ma-ecc-understanding-title">' +
       esc(section.title_ar || "فهم العمل") +
@@ -574,7 +581,7 @@
       '<p class="ma-ecc-kl__purpose">' +
       esc(
         section.purpose_ar ||
-          "ملاحظة → دليل → معنى تجاري → أثر تجاري → اتجاه موصى به → ثقة"
+          "سؤال تجاري → إجابة → دليل → ثقة → معنى للتاجر"
       ) +
       "</p>" +
       "</header>";
