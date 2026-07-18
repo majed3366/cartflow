@@ -324,6 +324,14 @@ def finalize_dashboard_summary_payload(
         store_slug=store_slug,
         cache_hit=cache_hit,
     )
+    try:
+        from services.home_adaptive_cognition_home_bridge_v1 import (  # noqa: PLC0415
+            attach_adaptive_cognition_to_summary_v1,
+        )
+
+        attach_adaptive_cognition_to_summary_v1(body)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("adaptive cognition summary attach: %s", exc)
     _attach_commerce_signals_then_pulse(body, store_slug=store_slug)
     return body
 

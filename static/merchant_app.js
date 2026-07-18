@@ -786,7 +786,34 @@
 
   window.goToSection = function (section) {
     var sec = (section || "home").trim();
+    var leavingHome =
+      sec !== "home" &&
+      String(location.hash || "")
+        .split("?")[0]
+        .replace(/^#/, "") === "home";
+    if (leavingHome) {
+      try {
+        sessionStorage.setItem("cf_acf_left_home", "1");
+      } catch (eLeave) {
+        /* ignore */
+      }
+    }
     if (sec === "home") {
+      try {
+        if (sessionStorage.getItem("cf_acf_left_home") === "1") {
+          sessionStorage.removeItem("cf_acf_left_home");
+          if (window.maAcfMarkReturnFromSurface) {
+            window.maAcfMarkReturnFromSurface();
+          } else {
+            sessionStorage.setItem(
+              "cf_acf_pending_trigger",
+              "return_from_surface"
+            );
+          }
+        }
+      } catch (eRet) {
+        /* ignore */
+      }
       goTo("home");
       return;
     }

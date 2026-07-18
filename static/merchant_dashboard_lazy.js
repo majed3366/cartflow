@@ -7006,6 +7006,26 @@
     var u = String(url || "");
     var sep = u.indexOf("?") >= 0 ? "&" : "?";
     var bust = "_ts=" + Date.now();
+    if (u.indexOf("/api/dashboard/summary") === 0 && window.maAcfSummaryQuery) {
+      try {
+        var pending = "";
+        try {
+          pending = sessionStorage.getItem("cf_acf_pending_trigger") || "";
+          if (pending) sessionStorage.removeItem("cf_acf_pending_trigger");
+        } catch (ePend) {
+          pending = "";
+        }
+        var acf = window.maAcfSummaryQuery() || "";
+        if (pending) {
+          acf = acf.replace(/acf_trigger=[^&]*/g, "");
+          if (acf && acf.charAt(acf.length - 1) !== "&" && acf.length) acf += "&";
+          acf += "acf_trigger=" + encodeURIComponent(pending);
+        }
+        if (acf) bust += "&" + acf;
+      } catch (eAcf) {
+        /* ignore */
+      }
+    }
     return fetch(u + sep + bust, { credentials: "same-origin", cache: "no-store" })
       .then(function (r) {
         return r.json();
