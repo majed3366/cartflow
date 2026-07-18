@@ -1,0 +1,16 @@
+{
+  "path": "C:\\Users\\Toshiba\\Desktop\\cartflow\\docs\\business_findings\\preview\\merchant_findings_preview_v1.html",
+  "finding_count": 11,
+  "families": [
+    "channel_whatsapp",
+    "channel_whatsapp_test",
+    "contact_blocker",
+    "hesitation",
+    "hesitation_resolution",
+    "product_conversion",
+    "product_interest",
+    "repeated_interest",
+    "return_outcome",
+    "traffic_conversion"
+  ]
+}
