@@ -1046,6 +1046,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/data-growth-measurement",
         "/dev/dashboard-snapshot-archive",
         "/dev/business-findings-review",
+        "/dev/business-reasoning-review",
     }
 )
 
@@ -1296,6 +1297,34 @@ def dev_business_findings_review(
     return templates.TemplateResponse(
         request,
         "business_findings_review_lab_v1.html",
+        {"request": request, "payload": payload},
+    )
+
+
+@app.get("/dev/business-reasoning-review", response_class=HTMLResponse)
+def dev_business_reasoning_review(
+    request: Request,
+    source: str = Query("fixture"),
+    store: str = Query("demo"),
+) -> Any:
+    """
+    Business Reasoning Review Lab V1 — Product acceptance only.
+
+    Merchant-facing reasoning cards + Product review questions.
+    Not Home. Not Products. Not Knowledge. Not nav.
+    Do not wire Business Reasoning to any merchant surface until Product approval.
+    """
+    from services.business_reasoning_review_lab_v1 import (  # noqa: PLC0415
+        build_reasoning_review_lab_payload_v1,
+    )
+
+    payload = build_reasoning_review_lab_payload_v1(
+        store_slug=(store or "demo").strip() or "demo",
+        source=(source or "fixture").strip() or "fixture",
+    )
+    return templates.TemplateResponse(
+        request,
+        "business_reasoning_review_lab_v1.html",
         {"request": request, "payload": payload},
     )
 

@@ -75,6 +75,11 @@ Merchant-facing acceptance surface (not Home):
 
 See `MERCHANT_FINDINGS_REVIEW_LAB_V1.md`.
 
+## Downstream
+
+Approved findings are the only valid input to **Business Reasoning Engine V1**  
+(`BUSINESS_REASONING_ENGINE_V1.md`). Reasoning must not bypass Findings.
+
 ## STOP
 
 Await Product review on the Review Lab. Do not wire findings into Home UI until approved.
