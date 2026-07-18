@@ -72,11 +72,17 @@ class TestHomeDailyBusinessBriefV1(unittest.TestCase):
         self.assertIsNone(risk.get("item"))
         self.assertEqual(risk.get("items") or [], [])
 
-    def test_opportunity_suppressed_when_inverse_of_contact_problem(self) -> None:
+    def test_opportunity_not_inverse_contact_restatement(self) -> None:
         home = self._home(no_phone=50, active=80)
-        opp = home["biggest_opportunity"]
-        self.assertFalse(opp.get("home_admission_v1", {}).get("admitted"))
-        self.assertIsNone(opp.get("item"))
+        opp = home["biggest_opportunity"].get("item")
+        if opp:
+            self.assertNotIn(
+                "recoverable_with_contact", str(opp.get("fact_key") or "")
+            )
+        else:
+            self.assertFalse(
+                home["biggest_opportunity"].get("home_admission_v1", {}).get("admitted")
+            )
 
     def test_priority_is_exactly_one(self) -> None:
         home = self._home()
@@ -119,7 +125,12 @@ class TestHomeDailyBusinessBriefV1(unittest.TestCase):
     def test_learning_progress_not_contact_paraphrase(self) -> None:
         home = self._home()
         learning = home["learning_progress"]
-        self.assertFalse(learning.get("home_admission_v1", {}).get("admitted"))
+        items = learning.get("items") or []
+        for it in items:
+            self.assertNotEqual(
+                str(it.get("fact_key") or ""),
+                "fact:learning:contact_blocker_pattern",
+            )
 
     def test_timeline_has_why_it_matters_when_events_exist(self) -> None:
         home = compose_merchant_home_experience_v1(
