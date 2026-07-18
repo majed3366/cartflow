@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Adaptive Cognition Lab V2 — Validation</title>
+  <style>
+    :root { --bg:#0f1419; --card:#1a222c; --text:#e8eef4; --muted:#8b9aab; --ok:#3dbe7f; --warn:#e0a84a; --bad:#e25b5b; --line:#2a3542; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, Segoe UI, sans-serif; background:var(--bg); color:var(--text); line-height:1.45; }
+    header { padding:1.25rem 1.5rem; border-bottom:1px solid var(--line); }
+    h1 { margin:0 0 .35rem; font-size:1.25rem; font-weight:650; }
+    .sub { color:var(--muted); font-size:.9rem; max-width:52rem; }
+    main { padding:1.25rem 1.5rem 3rem; display:grid; gap:1rem; max-width:960px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:1rem 1.1rem; }
+    .row { display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; }
+    label { color:var(--muted); font-size:.85rem; }
+    select, button { background:#10161d; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:.5rem .75rem; font:inherit; }
+    button { cursor:pointer; }
+    button:hover { border-color:#4a5d72; }
+    button.primary { background:#1e3a2f; border-color:#2f6b52; }
+    button.danger { background:#3a1e1e; border-color:#6b2f2f; }
+    .path { font-size:1.6rem; font-weight:700; letter-spacing:.02em; }
+    .ok { color:var(--ok); }
+    .warn { color:var(--warn); }
+    .bad { color:var(--bad); }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:.78rem; }
+    pre { background:#10161d; border:1px solid var(--line); border-radius:8px; padding:.75rem; overflow:auto; max-height:22rem; white-space:pre-wrap; }
+    ul { margin:.4rem 0 0; padding-left:1.2rem; color:var(--muted); }
+    .pill { display:inline-block; padding:.15rem .5rem; border-radius:999px; border:1px solid var(--line); font-size:.75rem; color:var(--muted); }
+    .banner { border-left:3px solid var(--warn); padding-left:.75rem; color:var(--muted); font-size:.9rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Adaptive Cognition Lab V2</h1>
+    <p class="sub">Production validation of Cognitive Router sequencing + session stability. Not Home. Not Wireframe. Not nav.</p>
+    <p class="banner">{{ payload.ownership_principle }}</p>
+  </header>
+  <main>
+    <section class="card">
+      <div class="row">
+        <label for="fixture">Governed truth fixture</label>
+        <select id="fixture">
+          {% for f in payload.fixtures %}
+          <option value="{{ f }}" {% if f == payload.fixture_id %}selected{% endif %}>{{ f }}</option>
+          {% endfor %}
+        </select>
+        <button type="button" class="primary" id="btn-start">Start / reset session</button>
+        <span class="pill">lab={{ payload.lab }}</span>
+        <span class="pill">not_home={{ payload.not_home }}</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <div class="muted" style="color:var(--muted);font-size:.8rem">Active cognition path (locked)</div>
+          <div class="path ok" id="path-label">—</div>
+          <div style="color:var(--muted);font-size:.85rem">session <code id="session-id">—</code></div>
+        </div>
+        <div style="text-align:right;color:var(--muted);font-size:.85rem">
+          <div>locked: <span class="ok" id="locked">yes</span></div>
+          <div>view ticks: <span id="ticks">0</span></div>
+          <div>reevals: <span id="reevals">0</span></div>
+          <div>last trigger: <code id="last-trigger">—</code></div>
+        </div>
+      </div>
+      <ul id="nodes"></ul>
+    </section>
+
+    <section class="card">
+      <h2 style="margin:0 0 .6rem;font-size:1rem">Path stability (no live reshuffle)</h2>
+      <p style="color:var(--muted);font-size:.9rem;margin:0 0 .75rem">Simulate continued reading. Path must not change.</p>
+      <div class="row">
+        <button type="button" id="btn-tick">View tick (must stay stable)</button>
+        <span id="stability-msg" class="ok"></span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 style="margin:0 0 .6rem;font-size:1rem">Governed re-evaluation only</h2>
+      <div class="row" id="trigger-buttons"></div>
+      <p style="color:var(--muted);font-size:.85rem;margin:.75rem 0 0">Forbidden triggers must be rejected.</p>
+      <div class="row" style="margin-top:.5rem">
+        <button type="button" class="danger" id="btn-forbidden">Try periodic_poll (must reject)</button>
+        <span id="reject-msg"></span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 style="margin:0 0 .6rem;font-size:1rem">Evidence JSON</h2>
+      <pre id="evidence">{}</pre>
+    </section>
+  </main>
+  <script>
+    const initial = {{ payload | tojson }};
+    let session = initial.session;
+    let fixture = initial.fixture_id;
+
+    const el = (id) => document.getElementById(id);
+
+    function render() {
+      const d = session.decision || {};
+      el("path-label").textContent = (session.path_label || "?") + " (" + (session.selected_path || "?") + ")";
+      el("session-id").textContent = session.session_id || "—";
+      el("ticks").textContent = String(session.view_ticks_while_locked ?? 0);
+      el("reevals").textContent = String(session.reeval_count ?? 0);
+      el("last-trigger").textContent = session.last_eval_trigger || "—";
+      el("locked").textContent = session.locked ? "yes" : "no";
+      const nodes = d.active_nodes || [];
+      el("nodes").innerHTML = nodes.map(n => "<li>active: " + n + "</li>").join("")
+        + (d.skipped_nodes || []).map(n => "<li>skipped: " + n + "</li>").join("")
+        + (d.deferred_nodes || []).map(n => "<li>deferred: " + n + "</li>").join("");
+      el("evidence").textContent = JSON.stringify({
+        ownership_principle: initial.ownership_principle,
+        fixture,
+        session_id: session.session_id,
+        selected_path: session.selected_path,
+        path_label: session.path_label,
+        locked: session.locked,
+        view_ticks_while_locked: session.view_ticks_while_locked,
+        reeval_count: session.reeval_count,
+        last_eval_trigger: session.last_eval_trigger,
+        decision: d,
+        history: session.history || [],
+        path_unchanged: session.path_unchanged,
+        path_changed: session.path_changed,
+        previous_path: session.previous_path,
+        reevaluated: session.reevaluated,
+        error: session.error,
+      }, null, 2);
+    }
+
+    async function api(path, body) {
+      const res = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body || {}),
+      });
+      return res.json();
+    }
+
+    el("btn-start").onclick = async () => {
+      fixture = el("fixture").value;
+      const data = await api("/dev/adaptive-cognition-lab/start", { fixture });
+      session = data.session || data;
+      el("stability-msg").textContent = "";
+      el("reject-msg").textContent = "";
+      render();
+    };
+
+    el("btn-tick").onclick = async () => {
+      const data = await api("/dev/adaptive-cognition-lab/view-tick", {
+        session_id: session.session_id,
+      });
+      session = { ...session, ...data };
+      if (data.path_unchanged && data.reevaluated === false) {
+        el("stability-msg").textContent = "PASS — path unchanged during view tick";
+        el("stability-msg").className = "ok";
+      } else {
+        el("stability-msg").textContent = "FAIL — unexpected re-route";
+        el("stability-msg").className = "bad";
+      }
+      render();
+    };
+
+    const triggers = initial.triggers || [];
+    const host = el("trigger-buttons");
+    triggers.filter(t => t.allowed === "yes").forEach(t => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = t.label;
+      b.onclick = async () => {
+        let nextFixture = fixture;
+        if (t.id === "significant_business_state_transition") nextFixture = "vip_resolved";
+        if (t.id === "return_from_surface") nextFixture = fixture;
+        const data = await api("/dev/adaptive-cognition-lab/reeval", {
+          session_id: session.session_id,
+          trigger: t.id,
+          fixture: nextFixture,
+        });
+        session = { ...session, ...data };
+        fixture = nextFixture;
+        el("fixture").value = fixture;
+        el("stability-msg").textContent = data.path_changed
+          ? ("Re-evaluated — path " + data.previous_path + " → " + data.selected_path)
+          : ("Re-evaluated — path remained " + data.selected_path);
+        el("stability-msg").className = "warn";
+        render();
+      };
+      host.appendChild(b);
+    });
+
+    el("btn-forbidden").onclick = async () => {
+      const data = await api("/dev/adaptive-cognition-lab/reeval", {
+        session_id: session.session_id,
+        trigger: "periodic_poll",
+        fixture,
+      });
+      if (data.ok === false && data.error === "ungoverned_trigger") {
+        el("reject-msg").textContent = "PASS — periodic_poll rejected";
+        el("reject-msg").className = "ok";
+      } else {
+        el("reject-msg").textContent = "FAIL — forbidden trigger accepted";
+        el("reject-msg").className = "bad";
+      }
+      session = { ...session, ...data };
+      render();
+    };
+
+    render();
+  </script>
+</body>
+</html>
