@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>مراجعة نتائج المتجر — Product Review Lab</title>
+  <style>
+    :root {
+      --ink: #13241f;
+      --muted: #5b6f68;
+      --line: #d7e2dd;
+      --paper: #f3f6f4;
+      --card: #ffffff;
+      --accent: #1f5c4c;
+      --accent-soft: #e7f3ef;
+      --warn: #8a5a12;
+      --wow: #1b4d8c;
+      --useful: #1f5c4c;
+      --good: #5b6f68;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, "Noto Sans Arabic", sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      line-height: 1.65;
+    }
+    .wrap { max-width: 820px; margin: 0 auto; padding: 28px 18px 80px; }
+    .banner {
+      background: #fff8e8;
+      border: 1px solid #f0dfa8;
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin-bottom: 22px;
+      color: var(--warn);
+      font-size: 0.95rem;
+    }
+    h1 { font-size: 1.7rem; margin: 0 0 8px; line-height: 1.35; }
+    .lead { color: var(--muted); margin: 0 0 22px; font-size: 1.02rem; }
+    .scoreboard {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: var(--accent);
+      color: #f4fbf8;
+      border-radius: 16px;
+      padding: 16px 18px;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 24px rgba(20, 53, 44, 0.18);
+    }
+    .scoreboard h2 { margin: 0 0 8px; font-size: 1.05rem; font-weight: 650; }
+    .scoreboard .row { display: flex; flex-wrap: wrap; gap: 14px 22px; font-size: 0.95rem; }
+    .scoreboard .gate { margin-top: 10px; font-weight: 650; }
+    .scoreboard .gate.pass { color: #b8f0d4; }
+    .scoreboard .gate.fail { color: #ffe2a8; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 22px 22px 18px;
+      margin-bottom: 18px;
+    }
+    .card-num {
+      display: inline-block;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-size: 0.8rem;
+      margin-bottom: 10px;
+    }
+    .card h3 {
+      margin: 0 0 12px;
+      font-size: 1.22rem;
+      line-height: 1.45;
+    }
+    .block { margin: 0 0 14px; }
+    .block .label {
+      display: block;
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+      font-weight: 650;
+    }
+    .block p { margin: 0; }
+    .badge {
+      display: inline-block;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-radius: 999px;
+      padding: 4px 12px;
+      font-size: 0.88rem;
+      font-weight: 650;
+    }
+    details.evidence {
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+      margin-top: 4px;
+    }
+    details.evidence summary {
+      cursor: pointer;
+      color: var(--accent);
+      font-weight: 650;
+      list-style: none;
+    }
+    details.evidence summary::-webkit-details-marker { display: none; }
+    details.evidence ul {
+      margin: 10px 0 0;
+      padding: 0 18px 0 0;
+      color: var(--muted);
+    }
+    .review {
+      margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px dashed #c7d5cf;
+      background: #fafcfb;
+      border-radius: 12px;
+      padding: 14px 14px 8px;
+    }
+    .review h4 {
+      margin: 0 0 12px;
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+    .q {
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #e7eeea;
+    }
+    .q:last-child { border-bottom: 0; margin-bottom: 0; }
+    .q .qt { font-size: 0.95rem; margin-bottom: 6px; }
+    .opts { display: flex; flex-wrap: wrap; gap: 8px; }
+    .opts label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 999px;
+      padding: 5px 12px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .opts label:has(input:checked) {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 650;
+    }
+    .opts input { accent-color: var(--accent); }
+    .class-good:has(input:checked) { color: var(--good); border-color: #b7c4be; background: #eef1f0; }
+    .class-useful:has(input:checked) { color: var(--useful); }
+    .class-wow:has(input:checked) { color: var(--wow); border-color: #9db7d8; background: #eef4fb; }
+    .empty {
+      background: #fff;
+      border: 1px dashed var(--line);
+      border-radius: 14px;
+      padding: 28px;
+      text-align: center;
+      color: var(--muted);
+    }
+    footer.note {
+      margin-top: 28px;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="banner">
+      مراجعة منتج فقط — ليست الصفحة الرئيسية، وليست للتجّار في الإنتاج.
+      صنّف كل نتيجة قبل اتخاذ قرار الربط لاحقاً.
+    </div>
+
+    <h1>ماذا تعرف CartFlow عن هذا المتجر؟</h1>
+    <p class="lead">
+      متجر العرض · بيانات العرض المرجعية ·
+      11 نتيجة تجارية
+    </p>
+
+    <section class="scoreboard" id="scoreboard" aria-live="polite">
+      <h2>بوابة قبول المنتج</h2>
+      <div class="row">
+        <span>Useful أو Wow: <strong id="useful-wow-count">0</strong> / 5</span>
+        <span>Wow: <strong id="wow-count">0</strong> / 3</span>
+        <span>مصنّفة: <strong id="rated-count">0</strong> / 11</span>
+      </div>
+      <div class="gate fail" id="gate-status">لم تكتمل معايير القبول بعد</div>
+      <p style="margin:10px 0 0;opacity:.9;font-size:.9rem">صنّف كل نتيجة. الموافقة تتطلب 5 نتائج Useful أو Wow على الأقل، ومنها 3 Wow على الأقل.</p>
+    </section>
+
+    
+
+    
+    <article class="card" data-review-key="finding:missing_contact_blocks_recovery_v1">
+      <span class="card-num">نتيجة 1</span>
+      <h3>نقص بيانات التواصل يعيق استرجاع جزء مهم من السلال</h3>
+
+      
+      <div class="block">
+        <span class="label">الخلاصة</span>
+        <p>يوجد حالياً 43 سلة لا يمكن بدء استرجاعها لأن وسيلة التواصل غير متوفرة.</p>
+      </div>
+      
+
+      <div class="block">
+        <span class="label">لماذا يهم؟</span>
+        <p>كل سلة بلا تواصل صالح تبقى خارج مسار واتساب، فيتأجل استرجاع الإيراد.</p>
+      </div>
+
+      <div class="block">
+        <span class="label">الإجراء المقترح</span>
+        <p>حسّن التقاط رقم العميل قبل مغادرة المتجر، وراجع السلال المحظورة.</p>
+      </div>
+
+      <div class="block">
+        <span class="label">الثقة</span>
+        <span class="badge">مرتفعة</span>
+      </div>
+
+      <details class="evidence">
+        <summary>عرض الأدلة الداعمة</summary>
+        <ul>
+          
+          <li>حجم الحالات المعتمدة في هذا الاستنتاج: 43.</li>
+          
+          <li>43 سلة نشطة بلا رقم صالح من أصل 60.</li>
+          
+        </ul>
+      </details>
+
+      <div class="review" data-review-panel>
+        <h4>أسئلة مراجعة المنتج (لا تظهر للتجّار)</h4>
+
+        <div class="q" data-q="useful">
+          <div class="qt">1) هل هذه النتيجة مفيدة؟</div>
+          <div class="opts">
+            <label><input type="radio" name="useful-finding:missing_contact_blocks_recovery_v1" value="yes" /> نعم</label>
+            <label><input type="radio" name="useful-finding:missing_contact_blocks_recovery_v1" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="new_info">
+          <div class="qt">2) هل هذه معلومة جديدة؟</div>
+          <div class="opts">
+            <label><input type="radio" name="new-finding:missing_contact_blocks_recovery_v1" value="yes" /> نعم</label>
+            <label><input type="radio" name="new-finding:missing_contact_blocks_recovery_v1" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="would_act">
+          <div class="qt">3) هل سيتصرّف التاجر بسببها؟</div>
+          <div class="opts">
+            <label><input type="radio" name="act-finding:missing_contact_blocks_recovery_v1" value="yes" /> نعم</label>
+            <label><input type="radio" name="act-finding:missing_contact_blocks_recovery_v1" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="loyalty">
+          <div class="qt">4) هل تزيد ولاء التاجر لـ CartFlow؟</div>
+          <div class="opts">
+            <label><input type="radio" name="loyalty-finding:missing_contact_blocks_recovery_v1" value="yes" /> نعم</label>
+            <label><input type="radio" name="loyalty-finding:missing_contact_blocks_recovery_v1" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="classification">
+          <div class="qt">5) التصنيف</div>
+          <div class="opts">
+            <label class="class-good"><input type="radio" name="class-finding:missing_contact_blocks_recovery_v1" value="good" /> Good</label>
+            <label class="class-useful"><input type="radio" name="class-finding:missing_contact_blocks_recovery_v1" value="useful" /> Useful</label>
+            <label class="class-wow"><input type="radio" name="class-finding:missing_contact_blocks_recovery_v1" value="wow" /> Wow</label>
+          </div>
+        </div>
+      </div>
+    </article>
+    
+    <article class="card" data-review-key="finding:high_interest_low_purchase_product_v1:prod_x">
+      <span class="card-num">نتيجة 2</span>
+      <h3>منتج X يجذب اهتماماً مرتفعاً لكن نادراً ما يصل إلى الشراء</h3>
+
+      
+      <div class="block">
+        <span class="label">الخلاصة</span>
+        <p>أُضيف منتج X إلى السلة 34 مرة عبر 22 سلة، بينما اكتمل الشراء 2 مرة فقط (6%).</p>
+      </div>
+      
+
+      <div class="block">
+        <span class="label">لماذا يهم؟</span>
+        <p>الاهتمام موجود، لكن مسار الشراء يتعثّر قبل الإتمام — الفرصة التجارية معلّقة.</p>
+      </div>
+
+      <div class="block">
+        <span class="label">الإجراء المقترح</span>
+        <p>اختبر مراجعة السعر أو وضوح العرض أو تفاصيل المنتج — دون الجزم بسبب واحد.</p>
+      </div>
+
+      <div class="block">
+        <span class="label">الثقة</span>
+        <span class="badge">مرتفعة</span>
+      </div>
+
+      <details class="evidence">
+        <summary>عرض الأدلة الداعمة</summary>
+        <ul>
+          
+          <li>حجم الحالات المعتمدة في هذا الاستنتاج: 34.</li>
+          
+          <li>مرات الإضافة إلى السلة=34 سلال فريدة=22 مشتريات=2 متوسط المتجر=16%</li>
+          
+        </ul>
+      </details>
+
+      <div class="review" data-review-panel>
+        <h4>أسئلة مراجعة المنتج (لا تظهر للتجّار)</h4>
+
+        <div class="q" data-q="useful">
+          <div class="qt">1) هل هذه النتيجة مفيدة؟</div>
+          <div class="opts">
+            <label><input type="radio" name="useful-finding:high_interest_low_purchase_product_v1:prod_x" value="yes" /> نعم</label>
+            <label><input type="radio" name="useful-finding:high_interest_low_purchase_product_v1:prod_x" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="new_info">
+          <div class="qt">2) هل هذه معلومة جديدة؟</div>
+          <div class="opts">
+            <label><input type="radio" name="new-finding:high_interest_low_purchase_product_v1:prod_x" value="yes" /> نعم</label>
+            <label><input type="radio" name="new-finding:high_interest_low_purchase_product_v1:prod_x" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="would_act">
+          <div class="qt">3) هل سيتصرّف التاجر بسببها؟</div>
+          <div class="opts">
+            <label><input type="radio" name="act-finding:high_interest_low_purchase_product_v1:prod_x" value="yes" /> نعم</label>
+            <label><input type="radio" name="act-finding:high_interest_low_purchase_product_v1:prod_x" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="loyalty">
+          <div class="qt">4) هل تزيد ولاء التاجر لـ CartFlow؟</div>
+          <div class="opts">
+            <label><input type="radio" name="loyalty-finding:high_interest_low_purchase_product_v1:prod_x" value="yes" /> نعم</label>
+            <label><input type="radio" name="loyalty-finding:high_interest_low_purchase_product_v1:prod_x" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="classification">
+          <div class="qt">5) التصنيف</div>
+          <div class="opts">
+            <label class="class-good"><input type="radio" name="class-finding:high_interest_low_purchase_product_v1:prod_x" value="good" /> Good</label>
+            <label class="class-useful"><input type="radio" name="class-finding:high_interest_low_purchase_product_v1:prod_x" value="useful" /> Useful</label>
+            <label class="class-wow"><input type="radio" name="class-finding:high_interest_low_purchase_product_v1:prod_x" value="wow" /> Wow</label>
+          </div>
+        </div>
+      </div>
+    </article>
+    
+    <article class="card" data-review-key="finding:dominant_hesitation_reason_v1:shipping">
+      <span class="card-num">نتيجة 3</span>
+      <h3>تكلفة الشحن هو أبرز سبب للتردّد حالياً ضمن مجموعة منتجات مرتبطة بهذا السبب</h3>
+
+      
+      <div class="block">
+        <span class="label">الخلاصة</span>
+        <p>تكلفة الشحن يتكرر في 16 من أصل 28 سبب مسجّل (57%) — وهو الأعلى بوضوح أمام بقية الأسباب.</p>
+      </div>
+      
+
+      <div class="block">
+        <span class="label">لماذا يهم؟</span>
+        <p>هذا النمط يشير إلى عائق شراء متكرر يؤثر على جزء كبير من السلال المترددة.</p>
+      </div>
+
+      <div class="block">
+        <span class="label">الإجراء المقترح</span>
+        <p>راجع وضوح التكلفة/العرض المرتبط بهذا السبب، واختبر تحسيناً واحداً وقِس الأثر.</p>
+      </div>
+
+      <div class="block">
+        <span class="label">الثقة</span>
+        <span class="badge">مرتفعة</span>
+      </div>
+
+      <details class="evidence">
+        <summary>عرض الأدلة الداعمة</summary>
+        <ul>
+          
+          <li>حجم الحالات المعتمدة في هذا الاستنتاج: 28.</li>
+          
+          <li>توزيع الأسباب={&#39;shipping&#39;: 16, &#39;price&#39;: 7, &#39;thinking&#39;: 3, &#39;delivery_time&#39;: 2}; الأبرز=shipping:16; مقارنة مع=[&#39;delivery_time&#39;, &#39;price&#39;, &#39;shipping&#39;, &#39;thinking&#39;]</li>
+          
+        </ul>
+      </details>
+
+      <div class="review" data-review-panel>
+        <h4>أسئلة مراجعة المنتج (لا تظهر للتجّار)</h4>
+
+        <div class="q" data-q="useful">
+          <div class="qt">1) هل هذه النتيجة مفيدة؟</div>
+          <div class="opts">
+            <label><input type="radio" name="useful-finding:dominant_hesitation_reason_v1:shipping" value="yes" /> نعم</label>
+            <label><input type="radio" name="useful-finding:dominant_hesitation_reason_v1:shipping" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="new_info">
+          <div class="qt">2) هل هذه معلومة جديدة؟</div>
+          <div class="opts">
+            <label><input type="radio" name="new-finding:dominant_hesitation_reason_v1:shipping" value="yes" /> نعم</label>
+            <label><input type="radio" name="new-finding:dominant_hesitation_reason_v1:shipping" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="would_act">
+          <div class="qt">3) هل سيتصرّف التاجر بسببها؟</div>
+          <div class="opts">
+            <label><input type="radio" name="act-finding:dominant_hesitation_reason_v1:shipping" value="yes" /> نعم</label>
+            <label><input type="radio" name="act-finding:dominant_hesitation_reason_v1:shipping" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="loyalty">
+          <div class="qt">4) هل تزيد ولاء التاجر لـ CartFlow؟</div>
+          <div class="opts">
+            <label><input type="radio" name="loyalty-finding:dominant_hesitation_reason_v1:shipping" value="yes" /> نعم</label>
+            <label><input type="radio" name="loyalty-finding:dominant_hesitation_reason_v1:shipping" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="classification">
+          <div class="qt">5) التصنيف</div>
+          <div class="opts">
+            <label class="class-good"><input type="radio" name="class-finding:dominant_hesitation_reason_v1:shipping" value="good" /> Good</label>
+            <label class="class-useful"><input type="radio" name="class-finding:dominant_hesitation_reason_v1:shipping" value="useful" /> Useful</label>
+            <label class="class-wow"><input type="radio" name="class-finding:dominant_hesitation_reason_v1:shipping" value="wow" /> Wow</label>
+          </div>
+        </div>
+      </div>
+    </article>
+    
+    <article class="card" data-review-key="finding:recovery_channel_effectiveness_v1:whatsapp">
+      <span class="card-num">نتيجة 4</span>
+      <h3>واتساب يُعيد العملاء، لكن إتمام الشراء ما زال ضعيفاً</h3>
+
+      
+      <div class="block">
+        <span class="label">الخلاصة</span>
+        <p>عادات العودة واضحة (18/32) بينما الشراء (3) ما زال منخفضاً نسبياً.</p>
+      </div>
+      
+
+      <div class="block">
+        <span class="label">لماذا يهم؟</span>
+        <p>القناة تُحرّك العودة، بينما قيمة الإيراد تتحقق عند إغلاق الشراء بعد العودة.</p>
+      </div>
+
+      <div class="block">
+        <span class="label">الإجراء المقترح</span>
+        <p>حافظ على القناة إن كانت تُعيد الاهتمام، وركّز التحسين على ما بعد العودة.</p>
+      </div>
+
+      <div class="block">
+        <span class="label">الثقة</span>
+        <span class="badge">مرتفعة</span>
+      </div>
+
+      <details class="evidence">
+        <summary>عرض الأدلة الداعمة</summary>
+        <ul>
+          
+          <li>حجم الحالات المعتمدة في هذا الاستنتاج: 32.</li>
+          
+          <li>رسائل أُرسلت=32 عودة=18 شراء=3 فشل=2 موقوف=1</li>
+          
+        </ul>
+      </details>
+
+      <div class="review" data-review-panel>
+        <h4>أسئلة مراجعة المنتج (لا تظهر للتجّار)</h4>
+
+        <div class="q" data-q="useful">
+          <div class="qt">1) هل هذه النتيجة مفيدة؟</div>
+          <div class="opts">
+            <label><input type="radio" name="useful-finding:recovery_channel_effectiveness_v1:whatsapp" value="yes" /> نعم</label>
+            <label><input type="radio" name="useful-finding:recovery_channel_effectiveness_v1:whatsapp" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="new_info">
+          <div class="qt">2) هل هذه معلومة جديدة؟</div>
+          <div class="opts">
+            <label><input type="radio" name="new-finding:recovery_channel_effectiveness_v1:whatsapp" value="yes" /> نعم</label>
+            <label><input type="radio" name="new-finding:recovery_channel_effectiveness_v1:whatsapp" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="would_act">
+          <div class="qt">3) هل سيتصرّف التاجر بسببها؟</div>
+          <div class="opts">
+            <label><input type="radio" name="act-finding:recovery_channel_effectiveness_v1:whatsapp" value="yes" /> نعم</label>
+            <label><input type="radio" name="act-finding:recovery_channel_effectiveness_v1:whatsapp" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="loyalty">
+          <div class="qt">4) هل تزيد ولاء التاجر لـ CartFlow؟</div>
+          <div class="opts">
+            <label><input type="radio" name="loyalty-finding:recovery_channel_effectiveness_v1:whatsapp" value="yes" /> نعم</label>
+            <label><input type="radio" name="loyalty-finding:recovery_channel_effectiveness_v1:whatsapp" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="classification">
+          <div class="qt">5) التصنيف</div>
+          <div class="opts">
+            <label class="class-good"><input type="radio" name="class-finding:recovery_channel_effectiveness_v1:whatsapp" value="good" /> Good</label>
+            <label class="class-useful"><input type="radio" name="class-finding:recovery_channel_effectiveness_v1:whatsapp" value="useful" /> Useful</label>
+            <label class="class-wow"><input type="radio" name="class-finding:recovery_channel_effectiveness_v1:whatsapp" value="wow" /> Wow</label>
+          </div>
+        </div>
+      </div>
+    </article>
+    
+    <article class="card" data-review-key="finding:hesitation_resolution_effectiveness_v1:unresolved:shipping">
+      <span class="card-num">نتيجة 5</span>
+      <h3>تردّد «تكلفة الشحن» يبقى غالباً بلا حل حتى بعد التواصل</h3>
+
+      
+      <div class="block">
+        <span class="label">الخلاصة</span>
+        <p>حالات غير محلولة ≈ 9 مع مشتريات=1 بعد العودة=10.</p>
+      </div>
+      
+
+      <div class="block">
+        <span class="label">لماذا يهم؟</span>
+        <p>التواصل وحده لا يُزيل هذا العائق — يلزم اختبار عرض أو سياسة مرتبطة به.</p>
+      </div>
+
+      <div class="block">
+        <span class="label">الإجراء المقترح</span>
+        <p>اختبر تحسيناً واحداً مرتبطاً بهذا السبب وقِس الشراء بعد العودة.</p>
+      </div>
+
+      <div class="block">
+        <span class="label">الثقة</span>
+        <span class="badge">متوسطة</span>
+      </div>
+
+      <details class="evidence">
+        <summary>عرض الأدلة الداعمة</summary>
+        <ul>
+          
+          <li>حجم الحالات المعتمدة في هذا الاستنتاج: 19.</li>
+          
+          <li>reason=shipping غير محلولة=9 عودة=10 شراء=1</li>
+          
+        </ul>
+      </details>
+
+      <div class="review" data-review-panel>
+        <h4>أسئلة مراجعة المنتج (لا تظهر للتجّار)</h4>
+
+        <div class="q" data-q="useful">
+          <div class="qt">1) هل هذه النتيجة مفيدة؟</div>
+          <div class="opts">
+            <label><input type="radio" name="useful-finding:hesitation_resolution_effectiveness_v1:unresolved:shipping" value="yes" /> نعم</label>
+            <label><input type="radio" name="useful-finding:hesitation_resolution_effectiveness_v1:unresolved:shipping" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="new_info">
+          <div class="qt">2) هل هذه معلومة جديدة؟</div>
+          <div class="opts">
+            <label><input type="radio" name="new-finding:hesitation_resolution_effectiveness_v1:unresolved:shipping" value="yes" /> نعم</label>
+            <label><input type="radio" name="new-finding:hesitation_resolution_effectiveness_v1:unresolved:shipping" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="would_act">
+          <div class="qt">3) هل سيتصرّف التاجر بسببها؟</div>
+          <div class="opts">
+            <label><input type="radio" name="act-finding:hesitation_resolution_effectiveness_v1:unresolved:shipping" value="yes" /> نعم</label>
+            <label><input type="radio" name="act-finding:hesitation_resolution_effectiveness_v1:unresolved:shipping" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="loyalty">
+          <div class="qt">4) هل تزيد ولاء التاجر لـ CartFlow؟</div>
+          <div class="opts">
+            <label><input type="radio" name="loyalty-finding:hesitation_resolution_effectiveness_v1:unresolved:shipping" value="yes" /> نعم</label>
+            <label><input type="radio" name="loyalty-finding:hesitation_resolution_effectiveness_v1:unresolved:shipping" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="classification">
+          <div class="qt">5) التصنيف</div>
+          <div class="opts">
+            <label class="class-good"><input type="radio" name="class-finding:hesitation_resolution_effectiveness_v1:unresolved:shipping" value="good" /> Good</label>
+            <label class="class-useful"><input type="radio" name="class-finding:hesitation_resolution_effectiveness_v1:unresolved:shipping" value="useful" /> Useful</label>
+            <label class="class-wow"><input type="radio" name="class-finding:hesitation_resolution_effectiveness_v1:unresolved:shipping" value="wow" /> Wow</label>
+          </div>
+        </div>
+      </div>
+    </article>
+    
+    <article class="card" data-review-key="finding:return_without_purchase_v1">
+      <span class="card-num">نتيجة 6</span>
+      <h3>العملاء يعودون بعد التواصل لكن أغلبهم لا يُكمل الشراء</h3>
+
+      
+      <div class="block">
+        <span class="label">الخلاصة</span>
+        <p>من أصل 22 عودة مسجّلة، غادر 16 دون شراء (73%) واكتمل الشراء في 6 فقط.</p>
+      </div>
+      
+
+      <div class="block">
+        <span class="label">لماذا يهم؟</span>
+        <p>الاسترجاع يُعيد الاهتمام، لكن عائق الشراء ما زال قائماً بعد العودة.</p>
+      </div>
+
+      <div class="block">
+        <span class="label">الإجراء المقترح</span>
+        <p>افحص سبب التردد بعد العودة، واختبر تحسين العرض أو المتابعة — دون ادعاء سبب نهائي.</p>
+      </div>
+
+      <div class="block">
+        <span class="label">الثقة</span>
+        <span class="badge">مرتفعة</span>
+      </div>
+
+      <details class="evidence">
+        <summary>عرض الأدلة الداعمة</summary>
+        <ul>
+          
+          <li>حجم الحالات المعتمدة في هذا الاستنتاج: 22.</li>
+          
+          <li>حالات عودة=22 بدون شراء=16 مع شراء=6 wa_رسائل أُرسلت=32</li>
+          
+        </ul>
+      </details>
+
+      <div class="review" data-review-panel>
+        <h4>أسئلة مراجعة المنتج (لا تظهر للتجّار)</h4>
+
+        <div class="q" data-q="useful">
+          <div class="qt">1) هل هذه النتيجة مفيدة؟</div>
+          <div class="opts">
+            <label><input type="radio" name="useful-finding:return_without_purchase_v1" value="yes" /> نعم</label>
+            <label><input type="radio" name="useful-finding:return_without_purchase_v1" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="new_info">
+          <div class="qt">2) هل هذه معلومة جديدة؟</div>
+          <div class="opts">
+            <label><input type="radio" name="new-finding:return_without_purchase_v1" value="yes" /> نعم</label>
+            <label><input type="radio" name="new-finding:return_without_purchase_v1" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="would_act">
+          <div class="qt">3) هل سيتصرّف التاجر بسببها؟</div>
+          <div class="opts">
+            <label><input type="radio" name="act-finding:return_without_purchase_v1" value="yes" /> نعم</label>
+            <label><input type="radio" name="act-finding:return_without_purchase_v1" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="loyalty">
+          <div class="qt">4) هل تزيد ولاء التاجر لـ CartFlow؟</div>
+          <div class="opts">
+            <label><input type="radio" name="loyalty-finding:return_without_purchase_v1" value="yes" /> نعم</label>
+            <label><input type="radio" name="loyalty-finding:return_without_purchase_v1" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="classification">
+          <div class="qt">5) التصنيف</div>
+          <div class="opts">
+            <label class="class-good"><input type="radio" name="class-finding:return_without_purchase_v1" value="good" /> Good</label>
+            <label class="class-useful"><input type="radio" name="class-finding:return_without_purchase_v1" value="useful" /> Useful</label>
+            <label class="class-wow"><input type="radio" name="class-finding:return_without_purchase_v1" value="wow" /> Wow</label>
+          </div>
+        </div>
+      </div>
+    </article>
+    
+    <article class="card" data-review-key="finding:repeated_interest_v1:prod_x">
+      <span class="card-num">نتيجة 7</span>
+      <h3>منتج X يجذب اهتماماً متكرراً عبر زيارات متعددة دون شراء</h3>
+
+      
+      <div class="block">
+        <span class="label">الخلاصة</span>
+        <p>ظَهرت إعادة إضافة (11) وإشارات عودة (8) حول منتج X، بينما المشتريات = 2 فقط.</p>
+      </div>
+      
+
+      <div class="block">
+        <span class="label">لماذا يهم؟</span>
+        <p>اهتمام متكرر غير محسوم غالباً يعني فرصة ضائعة أكثر من ضعف اهتمام.</p>
+      </div>
+
+      <div class="block">
+        <span class="label">الإجراء المقترح</span>
+        <p>اختبر عرضاً أو تذكيراً موجّهاً لهذا المنتج بعد العودة.</p>
+      </div>
+
+      <div class="block">
+        <span class="label">الثقة</span>
+        <span class="badge">متوسطة</span>
+      </div>
+
+      <details class="evidence">
+        <summary>عرض الأدلة الداعمة</summary>
+        <ul>
+          
+          <li>حجم الحالات المعتمدة في هذا الاستنتاج: 34.</li>
+          
+          <li>إضافات متكررة=11 عودة متكررة=8 مرات الإضافة إلى السلة=34 مشتريات=2</li>
+          
+        </ul>
+      </details>
+
+      <div class="review" data-review-panel>
+        <h4>أسئلة مراجعة المنتج (لا تظهر للتجّار)</h4>
+
+        <div class="q" data-q="useful">
+          <div class="qt">1) هل هذه النتيجة مفيدة؟</div>
+          <div class="opts">
+            <label><input type="radio" name="useful-finding:repeated_interest_v1:prod_x" value="yes" /> نعم</label>
+            <label><input type="radio" name="useful-finding:repeated_interest_v1:prod_x" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="new_info">
+          <div class="qt">2) هل هذه معلومة جديدة؟</div>
+          <div class="opts">
+            <label><input type="radio" name="new-finding:repeated_interest_v1:prod_x" value="yes" /> نعم</label>
+            <label><input type="radio" name="new-finding:repeated_interest_v1:prod_x" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="would_act">
+          <div class="qt">3) هل سيتصرّف التاجر بسببها؟</div>
+          <div class="opts">
+            <label><input type="radio" name="act-finding:repeated_interest_v1:prod_x" value="yes" /> نعم</label>
+            <label><input type="radio" name="act-finding:repeated_interest_v1:prod_x" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="loyalty">
+          <div class="qt">4) هل تزيد ولاء التاجر لـ CartFlow؟</div>
+          <div class="opts">
+            <label><input type="radio" name="loyalty-finding:repeated_interest_v1:prod_x" value="yes" /> نعم</label>
+            <label><input type="radio" name="loyalty-finding:repeated_interest_v1:prod_x" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="classification">
+          <div class="qt">5) التصنيف</div>
+          <div class="opts">
+            <label class="class-good"><input type="radio" name="class-finding:repeated_interest_v1:prod_x" value="good" /> Good</label>
+            <label class="class-useful"><input type="radio" name="class-finding:repeated_interest_v1:prod_x" value="useful" /> Useful</label>
+            <label class="class-wow"><input type="radio" name="class-finding:repeated_interest_v1:prod_x" value="wow" /> Wow</label>
+          </div>
+        </div>
+      </div>
+    </article>
+    
+    <article class="card" data-review-key="finding:whatsapp_message_timing_test_v1">
+      <span class="card-num">نتيجة 8</span>
+      <h3>العودة بعد واتساب متكررة والشراء ضعيف — يستحق اختبار الرسالة أو التوقيت</h3>
+
+      
+      <div class="block">
+        <span class="label">الخلاصة</span>
+        <p>بعد 32 رسالة عاد 18 عميل تقريباً، لكن الشراء اكتمل 3 مرة فقط.</p>
+      </div>
+      
+
+      <div class="block">
+        <span class="label">لماذا يهم؟</span>
+        <p>الدليل يبرر اختبار صياغة أو وقت إرسال مختلف — دون الجزم بأن الصياغة الحالية هي السبب.</p>
+      </div>
+
+      <div class="block">
+        <span class="label">الإجراء المقترح</span>
+        <p>اختبر رسالة أو وقت إرسال واحد، وقارن العودة والشراء.</p>
+      </div>
+
+      <div class="block">
+        <span class="label">الثقة</span>
+        <span class="badge">متوسطة</span>
+      </div>
+
+      <details class="evidence">
+        <summary>عرض الأدلة الداعمة</summary>
+        <ul>
+          
+          <li>حجم الحالات المعتمدة في هذا الاستنتاج: 32.</li>
+          
+          <li>رسائل أُرسلت=32 عودة=18 شراء=3 فشل=2 نسبة الفشل=6%</li>
+          
+        </ul>
+      </details>
+
+      <div class="review" data-review-panel>
+        <h4>أسئلة مراجعة المنتج (لا تظهر للتجّار)</h4>
+
+        <div class="q" data-q="useful">
+          <div class="qt">1) هل هذه النتيجة مفيدة؟</div>
+          <div class="opts">
+            <label><input type="radio" name="useful-finding:whatsapp_message_timing_test_v1" value="yes" /> نعم</label>
+            <label><input type="radio" name="useful-finding:whatsapp_message_timing_test_v1" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="new_info">
+          <div class="qt">2) هل هذه معلومة جديدة؟</div>
+          <div class="opts">
+            <label><input type="radio" name="new-finding:whatsapp_message_timing_test_v1" value="yes" /> نعم</label>
+            <label><input type="radio" name="new-finding:whatsapp_message_timing_test_v1" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="would_act">
+          <div class="qt">3) هل سيتصرّف التاجر بسببها؟</div>
+          <div class="opts">
+            <label><input type="radio" name="act-finding:whatsapp_message_timing_test_v1" value="yes" /> نعم</label>
+            <label><input type="radio" name="act-finding:whatsapp_message_timing_test_v1" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="loyalty">
+          <div class="qt">4) هل تزيد ولاء التاجر لـ CartFlow؟</div>
+          <div class="opts">
+            <label><input type="radio" name="loyalty-finding:whatsapp_message_timing_test_v1" value="yes" /> نعم</label>
+            <label><input type="radio" name="loyalty-finding:whatsapp_message_timing_test_v1" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="classification">
+          <div class="qt">5) التصنيف</div>
+          <div class="opts">
+            <label class="class-good"><input type="radio" name="class-finding:whatsapp_message_timing_test_v1" value="good" /> Good</label>
+            <label class="class-useful"><input type="radio" name="class-finding:whatsapp_message_timing_test_v1" value="useful" /> Useful</label>
+            <label class="class-wow"><input type="radio" name="class-finding:whatsapp_message_timing_test_v1" value="wow" /> Wow</label>
+          </div>
+        </div>
+      </div>
+    </article>
+    
+    <article class="card" data-review-key="finding:low_product_interest_v1:prod_c">
+      <span class="card-num">نتيجة 9</span>
+      <h3>منتج C يحصل على اهتمام أضعف بكثير من منتجات مشابهة</h3>
+
+      
+      <div class="block">
+        <span class="label">الخلاصة</span>
+        <p>أُضيف منتج C 2 مرة فقط، بينما منتجات مقارنة تتجاوز حوالي 18 إضافة.</p>
+      </div>
+      
+
+      <div class="block">
+        <span class="label">لماذا يهم؟</span>
+        <p>ضعف الاهتمام يقلّل فرص التحويل حتى قبل مرحلة التردد أو الاسترجاع.</p>
+      </div>
+
+      <div class="block">
+        <span class="label">الإجراء المقترح</span>
+        <p>اختبر الصور أو طريقة العرض أو السعر أو مصدر الزيارة — كتوصيات اختبار لا كأسباب مؤكدة.</p>
+      </div>
+
+      <div class="block">
+        <span class="label">الثقة</span>
+        <span class="badge">متوسطة</span>
+      </div>
+
+      <details class="evidence">
+        <summary>عرض الأدلة الداعمة</summary>
+        <ul>
+          
+          <li>حجم الحالات المعتمدة في هذا الاستنتاج: 20.</li>
+          
+          <li>إضافات المنتج=2 متوسط منتجات مقارنة=18</li>
+          
+        </ul>
+      </details>
+
+      <div class="review" data-review-panel>
+        <h4>أسئلة مراجعة المنتج (لا تظهر للتجّار)</h4>
+
+        <div class="q" data-q="useful">
+          <div class="qt">1) هل هذه النتيجة مفيدة؟</div>
+          <div class="opts">
+            <label><input type="radio" name="useful-finding:low_product_interest_v1:prod_c" value="yes" /> نعم</label>
+            <label><input type="radio" name="useful-finding:low_product_interest_v1:prod_c" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="new_info">
+          <div class="qt">2) هل هذه معلومة جديدة؟</div>
+          <div class="opts">
+            <label><input type="radio" name="new-finding:low_product_interest_v1:prod_c" value="yes" /> نعم</label>
+            <label><input type="radio" name="new-finding:low_product_interest_v1:prod_c" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="would_act">
+          <div class="qt">3) هل سيتصرّف التاجر بسببها؟</div>
+          <div class="opts">
+            <label><input type="radio" name="act-finding:low_product_interest_v1:prod_c" value="yes" /> نعم</label>
+            <label><input type="radio" name="act-finding:low_product_interest_v1:prod_c" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="loyalty">
+          <div class="qt">4) هل تزيد ولاء التاجر لـ CartFlow؟</div>
+          <div class="opts">
+            <label><input type="radio" name="loyalty-finding:low_product_interest_v1:prod_c" value="yes" /> نعم</label>
+            <label><input type="radio" name="loyalty-finding:low_product_interest_v1:prod_c" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="classification">
+          <div class="qt">5) التصنيف</div>
+          <div class="opts">
+            <label class="class-good"><input type="radio" name="class-finding:low_product_interest_v1:prod_c" value="good" /> Good</label>
+            <label class="class-useful"><input type="radio" name="class-finding:low_product_interest_v1:prod_c" value="useful" /> Useful</label>
+            <label class="class-wow"><input type="radio" name="class-finding:low_product_interest_v1:prod_c" value="wow" /> Wow</label>
+          </div>
+        </div>
+      </div>
+    </article>
+    
+    <article class="card" data-review-key="finding:hesitation_resolution_effectiveness_v1:resolved:delivery_time">
+      <span class="card-num">نتيجة 10</span>
+      <h3>من يذكرون «وقت التوصيل» كثيراً ما يعودون ويُكملون الشراء</h3>
+
+      
+      <div class="block">
+        <span class="label">الخلاصة</span>
+        <p>بعد العودة (2) اكتمل الشراء 2 مرة لهذا السبب — نسبة حل أعلى من غيره.</p>
+      </div>
+      
+
+      <div class="block">
+        <span class="label">لماذا يهم؟</span>
+        <p>هذا السبب قابل للحل نسبياً بعد التواصل أو العودة.</p>
+      </div>
+
+      <div class="block">
+        <span class="label">الإجراء المقترح</span>
+        <p>حافظ على مسار المتابعة لهذا السبب ووثّق ما ينجح.</p>
+      </div>
+
+      <div class="block">
+        <span class="label">الثقة</span>
+        <span class="badge">متوسطة</span>
+      </div>
+
+      <details class="evidence">
+        <summary>عرض الأدلة الداعمة</summary>
+        <ul>
+          
+          <li>حجم الحالات المعتمدة في هذا الاستنتاج: 2.</li>
+          
+          <li>reason=delivery_time عودة=2 شراء=2</li>
+          
+        </ul>
+      </details>
+
+      <div class="review" data-review-panel>
+        <h4>أسئلة مراجعة المنتج (لا تظهر للتجّار)</h4>
+
+        <div class="q" data-q="useful">
+          <div class="qt">1) هل هذه النتيجة مفيدة؟</div>
+          <div class="opts">
+            <label><input type="radio" name="useful-finding:hesitation_resolution_effectiveness_v1:resolved:delivery_time" value="yes" /> نعم</label>
+            <label><input type="radio" name="useful-finding:hesitation_resolution_effectiveness_v1:resolved:delivery_time" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="new_info">
+          <div class="qt">2) هل هذه معلومة جديدة؟</div>
+          <div class="opts">
+            <label><input type="radio" name="new-finding:hesitation_resolution_effectiveness_v1:resolved:delivery_time" value="yes" /> نعم</label>
+            <label><input type="radio" name="new-finding:hesitation_resolution_effectiveness_v1:resolved:delivery_time" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="would_act">
+          <div class="qt">3) هل سيتصرّف التاجر بسببها؟</div>
+          <div class="opts">
+            <label><input type="radio" name="act-finding:hesitation_resolution_effectiveness_v1:resolved:delivery_time" value="yes" /> نعم</label>
+            <label><input type="radio" name="act-finding:hesitation_resolution_effectiveness_v1:resolved:delivery_time" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="loyalty">
+          <div class="qt">4) هل تزيد ولاء التاجر لـ CartFlow؟</div>
+          <div class="opts">
+            <label><input type="radio" name="loyalty-finding:hesitation_resolution_effectiveness_v1:resolved:delivery_time" value="yes" /> نعم</label>
+            <label><input type="radio" name="loyalty-finding:hesitation_resolution_effectiveness_v1:resolved:delivery_time" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="classification">
+          <div class="qt">5) التصنيف</div>
+          <div class="opts">
+            <label class="class-good"><input type="radio" name="class-finding:hesitation_resolution_effectiveness_v1:resolved:delivery_time" value="good" /> Good</label>
+            <label class="class-useful"><input type="radio" name="class-finding:hesitation_resolution_effectiveness_v1:resolved:delivery_time" value="useful" /> Useful</label>
+            <label class="class-wow"><input type="radio" name="class-finding:hesitation_resolution_effectiveness_v1:resolved:delivery_time" value="wow" /> Wow</label>
+          </div>
+        </div>
+      </div>
+    </article>
+    
+    <article class="card" data-review-key="finding:traffic_versus_conversion_v1">
+      <span class="card-num">نتيجة 11</span>
+      <h3>لا يمكن بعد التمييز بين ضعف الزيارات وضعف التحويل</h3>
+
+      
+      <div class="block">
+        <span class="label">الخلاصة</span>
+        <p>بيانات زيارات المتجر الموثوقة غير متاحة حالياً، ولا يصح استنتاج حجم الزيارات من عدد السلال وحدها.</p>
+      </div>
+      
+
+      <div class="block">
+        <span class="label">لماذا يهم؟</span>
+        <p>أي توصية إعلانية أو مرورية الآن ستكون افتراضاً لا دليلاً.</p>
+      </div>
+
+      <div class="block">
+        <span class="label">الإجراء المقترح</span>
+        <p>اربط مصدر زيارات موثوقاً قبل الحكم على الزيارات مقابل التحويل.</p>
+      </div>
+
+      <div class="block">
+        <span class="label">الثقة</span>
+        <span class="badge">غير كافية بعد</span>
+      </div>
+
+      <details class="evidence">
+        <summary>عرض الأدلة الداعمة</summary>
+        <ul>
+          
+          <li>حجم الحالات المعتمدة في هذا الاستنتاج: 60.</li>
+          
+          <li>بيانات الزيارات غير متاحة; لا نستخدم عدد السلال كبديل عن الزيارات</li>
+          
+        </ul>
+      </details>
+
+      <div class="review" data-review-panel>
+        <h4>أسئلة مراجعة المنتج (لا تظهر للتجّار)</h4>
+
+        <div class="q" data-q="useful">
+          <div class="qt">1) هل هذه النتيجة مفيدة؟</div>
+          <div class="opts">
+            <label><input type="radio" name="useful-finding:traffic_versus_conversion_v1" value="yes" /> نعم</label>
+            <label><input type="radio" name="useful-finding:traffic_versus_conversion_v1" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="new_info">
+          <div class="qt">2) هل هذه معلومة جديدة؟</div>
+          <div class="opts">
+            <label><input type="radio" name="new-finding:traffic_versus_conversion_v1" value="yes" /> نعم</label>
+            <label><input type="radio" name="new-finding:traffic_versus_conversion_v1" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="would_act">
+          <div class="qt">3) هل سيتصرّف التاجر بسببها؟</div>
+          <div class="opts">
+            <label><input type="radio" name="act-finding:traffic_versus_conversion_v1" value="yes" /> نعم</label>
+            <label><input type="radio" name="act-finding:traffic_versus_conversion_v1" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="loyalty">
+          <div class="qt">4) هل تزيد ولاء التاجر لـ CartFlow؟</div>
+          <div class="opts">
+            <label><input type="radio" name="loyalty-finding:traffic_versus_conversion_v1" value="yes" /> نعم</label>
+            <label><input type="radio" name="loyalty-finding:traffic_versus_conversion_v1" value="no" /> لا</label>
+          </div>
+        </div>
+
+        <div class="q" data-q="classification">
+          <div class="qt">5) التصنيف</div>
+          <div class="opts">
+            <label class="class-good"><input type="radio" name="class-finding:traffic_versus_conversion_v1" value="good" /> Good</label>
+            <label class="class-useful"><input type="radio" name="class-finding:traffic_versus_conversion_v1" value="useful" /> Useful</label>
+            <label class="class-wow"><input type="radio" name="class-finding:traffic_versus_conversion_v1" value="wow" /> Wow</label>
+          </div>
+        </div>
+      </div>
+    </article>
+    
+
+    <footer class="note">
+      هذه الصفحة للاعتماد المنتج فقط. لا تُربط بالرئيسية ولا تُعرض في تنقّل التاجر
+      حتى تتم الموافقة الصريحة.
+    </footer>
+  </div>
+
+  <script>
+    (function () {
+      var STORAGE_KEY = "cartflow_findings_review_lab_v1";
+      var usefulNeed = 5;
+      var wowNeed = 3;
+      var totalCards = 11;
+
+      function loadState() {
+        try {
+          return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") || {};
+        } catch (e) {
+          return {};
+        }
+      }
+
+      function saveState(state) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      }
+
+      function cardKey(card) {
+        return card.getAttribute("data-review-key");
+      }
+
+      function readCardAnswers(card) {
+        var key = cardKey(card);
+        function val(prefix) {
+          var el = card.querySelector('input[name="' + prefix + "-" + key + '"]:checked');
+          return el ? el.value : "";
+        }
+        return {
+          useful: val("useful"),
+          new_info: val("new"),
+          would_act: val("act"),
+          loyalty: val("loyalty"),
+          classification: val("class"),
+        };
+      }
+
+      function applySaved(card, saved) {
+        if (!saved) return;
+        var key = cardKey(card);
+        function check(prefix, value) {
+          if (!value) return;
+          var el = card.querySelector(
+            'input[name="' + prefix + "-" + key + '"][value="' + value + '"]'
+          );
+          if (el) el.checked = true;
+        }
+        check("useful", saved.useful);
+        check("new", saved.new_info);
+        check("act", saved.would_act);
+        check("loyalty", saved.loyalty);
+        check("class", saved.classification);
+      }
+
+      function recompute() {
+        var state = {};
+        var usefulWow = 0;
+        var wow = 0;
+        var rated = 0;
+        document.querySelectorAll("article.card").forEach(function (card) {
+          var answers = readCardAnswers(card);
+          state[cardKey(card)] = answers;
+          if (answers.classification) {
+            rated += 1;
+            if (answers.classification === "useful" || answers.classification === "wow") {
+              usefulWow += 1;
+            }
+            if (answers.classification === "wow") wow += 1;
+          }
+        });
+        saveState(state);
+        document.getElementById("useful-wow-count").textContent = String(usefulWow);
+        document.getElementById("wow-count").textContent = String(wow);
+        document.getElementById("rated-count").textContent = String(rated);
+        var gate = document.getElementById("gate-status");
+        var pass = usefulWow >= usefulNeed && wow >= wowNeed && rated >= totalCards;
+        if (pass) {
+          gate.textContent = "معايير القبول متحققة — يمكن اعتماد النتائج لربط لاحق بالرئيسية";
+          gate.className = "gate pass";
+        } else if (rated === 0) {
+          gate.textContent = "ابدأ بتصنيف النتائج أدناه";
+          gate.className = "gate fail";
+        } else {
+          gate.textContent =
+            "لم تكتمل معايير القبول بعد (يلزم " +
+            usefulNeed +
+            " Useful/Wow منها " +
+            wowNeed +
+            " Wow، مع تصنيف كل النتائج)";
+          gate.className = "gate fail";
+        }
+      }
+
+      var saved = loadState();
+      document.querySelectorAll("article.card").forEach(function (card) {
+        applySaved(card, saved[cardKey(card)]);
+        card.querySelectorAll("input[type=radio]").forEach(function (input) {
+          input.addEventListener("change", recompute);
+        });
+      });
+      recompute();
+    })();
+  </script>
+</body>
+</html>
