@@ -822,6 +822,27 @@
     }
   }
 
+  function sectionAdmitted(home, key) {
+    if (!home) return true;
+    var section = null;
+    if (key === "business_health") section = home.business_health;
+    else if (key === "todays_priority")
+      section = home.todays_priority || home.attention_today;
+    else if (key === "biggest_revenue_risk") section = home.biggest_revenue_risk;
+    else if (key === "biggest_opportunity") section = home.biggest_opportunity;
+    else if (key === "business_understanding")
+      section = home.business_understanding || home.store_understanding;
+    else if (key === "learning_progress") section = home.learning_progress;
+    else if (key === "business_timeline")
+      section = home.business_timeline || home.while_away;
+    if (!section) return false;
+    if (key === "business_health") return true;
+    var adm = section.home_admission_v1;
+    if (adm && typeof adm.admitted === "boolean") return !!adm.admitted;
+    if (section.suppressed === true) return false;
+    return true;
+  }
+
   function resolveSectionOrder(home) {
     var acf = (home && home.adaptive_cognition_v1) || {};
     var order = acf.section_order;
@@ -844,14 +865,13 @@
     for (var i = 0; i < order.length; i++) {
       var key = String(order[i] || "");
       if (!key || seen[key]) continue;
+      if (!sectionAdmitted(home, key)) continue;
       seen[key] = 1;
       out.push(key);
     }
-    for (var j = 0; j < DEFAULT_SECTION_ORDER.length; j++) {
-      var k = DEFAULT_SECTION_ORDER[j];
-      if (!seen[k]) out.push(k);
-    }
-    return out;
+    // Do NOT re-append suppressed sections. Composition owns admission.
+    if (!seen.business_health) out.unshift("business_health");
+    return out.length ? out : ["business_health"];
   }
 
   function renderSectionByKey(key, home, summary) {

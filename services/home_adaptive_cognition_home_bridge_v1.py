@@ -430,17 +430,48 @@ def attach_adaptive_cognition_to_home_v1(
     session = resolve_home_cognition_session_v1(
         router_truth, trigger=trigger, session_id=session_id
     )
+    def _eligible_order(selected_path: str) -> list[str]:
+        try:
+            from services.home_semantic_composition_v1 import (  # noqa: PLC0415
+                apply_path_eligibility_v1,
+                filter_section_order_by_admission_v1,
+            )
+
+            # Semantic composition already ran in finalize; path eligibility only.
+            if not isinstance(home.get("home_semantic_composition_v1"), Mapping):
+                from services.home_semantic_composition_v1 import (  # noqa: PLC0415
+                    apply_home_semantic_composition_v1,
+                )
+
+                apply_home_semantic_composition_v1(home)
+            apply_path_eligibility_v1(home, path=selected_path)
+            return filter_section_order_by_admission_v1(
+                section_order_for_path_v1(selected_path),
+                home,
+                path=selected_path,
+            )
+        except Exception:  # noqa: BLE001
+            return section_order_for_path_v1(selected_path)
+
     if not session.get("ok"):
         # Fallback: deterministic evaluate without session (never blank Home)
         decision = evaluate_cognitive_route_v1(router_truth, segment="ENTRY")
         path = str(decision.get("selected_path") or "A")
+        order = _eligible_order(path)
         home["adaptive_cognition_v1"] = {
             "ok": True,
             "engine": "home_cognitive_router_v1",
             "consumer": "merchant_home",
             "selected_path": path,
             "path_label": decision.get("path_label"),
-            "section_order": section_order_for_path_v1(path),
+            "section_order": order,
+            "admitted_sections": list(
+                (home.get("home_semantic_composition_v1") or {}).get("admitted_sections")
+                or order
+            ),
+            "suppressed_sections": list(
+                (home.get("home_semantic_composition_v1") or {}).get("suppressed") or []
+            ),
             "active_nodes": decision.get("active_nodes"),
             "skipped_nodes": decision.get("skipped_nodes"),
             "deferred_nodes": decision.get("deferred_nodes"),
@@ -452,18 +483,29 @@ def attach_adaptive_cognition_to_home_v1(
             "stability_rule": (
                 "Path remains locked until a governed re-evaluation trigger."
             ),
+            "eligibility_rule": (
+                "section_order includes only semantically admitted sections for this path"
+            ),
         }
         return home
 
     path = str(session.get("selected_path") or "A")
     decision = session.get("decision") if isinstance(session.get("decision"), Mapping) else {}
+    order = _eligible_order(path)
     home["adaptive_cognition_v1"] = {
         "ok": True,
         "engine": "home_cognitive_router_v1",
         "consumer": "merchant_home",
         "selected_path": path,
         "path_label": session.get("path_label"),
-        "section_order": section_order_for_path_v1(path),
+        "section_order": order,
+        "admitted_sections": list(
+            (home.get("home_semantic_composition_v1") or {}).get("admitted_sections")
+            or order
+        ),
+        "suppressed_sections": list(
+            (home.get("home_semantic_composition_v1") or {}).get("suppressed") or []
+        ),
         "active_nodes": decision.get("active_nodes"),
         "skipped_nodes": decision.get("skipped_nodes"),
         "deferred_nodes": decision.get("deferred_nodes"),
@@ -481,6 +523,9 @@ def attach_adaptive_cognition_to_home_v1(
         "stability_rule": session.get("stability_rule"),
         "fixture_override": fixture or None,
         "truth_source": router_truth.get("truth_source"),
+        "eligibility_rule": (
+            "section_order includes only semantically admitted sections for this path"
+        ),
     }
     return home
 

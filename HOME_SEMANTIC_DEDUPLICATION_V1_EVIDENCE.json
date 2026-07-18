@@ -1,0 +1,459 @@
+{
+  "contact_scenario": {
+    "admitted_sections": [
+      "business_health",
+      "todays_priority",
+      "business_understanding"
+    ],
+    "suppressed": [
+      {
+        "section": "biggest_revenue_risk",
+        "merchant_problem": "missing_contact_blocks_recovery",
+        "reason": "semantic_duplicate_of_priority_or_explain",
+        "truth_id": "fact:commercial_interpretation:missing_contact_blocks_recovery_v1",
+        "headline_ar": "أكبر عائق أمام الاسترجاع حاليًا هو نقص بيانات التواصل."
+      },
+      {
+        "section": "biggest_opportunity",
+        "merchant_problem": "recovery_ready_with_contact",
+        "reason": "inverse_or_same_problem_as_admitted_risk_or_priority",
+        "truth_id": "fact:opportunity:recoverable_with_contact",
+        "headline_ar": "أفضل فرصة اليوم: 34 سلة جاهزة للمتابعة"
+      },
+      {
+        "section": "learning_progress",
+        "merchant_problem": "missing_contact_blocks_recovery",
+        "reason": "learning_restates_admitted_problem",
+        "truth_id": "fact:learning:contact_blocker_pattern"
+      }
+    ],
+    "claimed_roles": {
+      "missing_contact_blocks_recovery": [
+        "action",
+        "condition",
+        "explain"
+      ]
+    },
+    "cards": [
+      {
+        "section": "business_health",
+        "admitted": true,
+        "admission_reason": "orientation_condition",
+        "cognitive_role": "condition",
+        "merchant_problem": "missing_contact_blocks_recovery",
+        "truth_id": "truth:missing_contact_blocks_recovery:condition",
+        "headline": "المتجر يعمل، لكن عائقاً تجارياً يحدّ من استرجاع الإيراد الآن."
+      },
+      {
+        "section": "todays_priority",
+        "admitted": true,
+        "admission_reason": "owns_action_for_problem",
+        "cognitive_role": "action",
+        "merchant_problem": "missing_contact_blocks_recovery",
+        "truth_id": "missing_contact_blocks_recovery_v1",
+        "headline": "راجع السلال المحظورة بسبب نقص بيانات التواصل"
+      },
+      {
+        "section": "biggest_revenue_risk",
+        "admitted": false,
+        "admission_reason": "semantic_duplicate_of_priority_or_explain",
+        "cognitive_role": "risk",
+        "merchant_problem": null,
+        "truth_id": null,
+        "headline": null
+      },
+      {
+        "section": "biggest_opportunity",
+        "admitted": false,
+        "admission_reason": "inverse_or_same_problem_as_admitted_risk_or_priority",
+        "cognitive_role": "opportunity",
+        "merchant_problem": null,
+        "truth_id": null,
+        "headline": null
+      },
+      {
+        "section": "business_understanding",
+        "admitted": true,
+        "admission_reason": "owns_explain",
+        "cognitive_role": "explain",
+        "merchant_problem": "missing_contact_blocks_recovery",
+        "truth_id": "missing_contact_blocks_recovery_v1",
+        "headline": "نقص بيانات التواصل يمنع بدء الاسترجاع لعدد كبير من السلال."
+      },
+      {
+        "section": "learning_progress",
+        "admitted": false,
+        "admission_reason": "suppressed_duplicate_learning",
+        "cognitive_role": "learning_progress",
+        "merchant_problem": null,
+        "truth_id": null,
+        "headline": null
+      },
+      {
+        "section": "business_timeline",
+        "admitted": false,
+        "admission_reason": "empty_or_duplicate_timeline",
+        "cognitive_role": "event",
+        "merchant_problem": null,
+        "truth_id": null,
+        "headline": null
+      }
+    ]
+  },
+  "paths": {
+    "healthy": {
+      "selected_path": "A",
+      "section_order": [
+        "business_health",
+        "business_understanding",
+        "todays_priority"
+      ],
+      "suppressed": [
+        {
+          "section": "biggest_revenue_risk",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "reason": "semantic_duplicate_of_priority_or_explain",
+          "truth_id": "fact:commercial_interpretation:missing_contact_blocks_recovery_v1",
+          "headline_ar": "أكبر عائق أمام الاسترجاع حاليًا هو نقص بيانات التواصل."
+        },
+        {
+          "section": "biggest_opportunity",
+          "merchant_problem": "recovery_ready_with_contact",
+          "reason": "inverse_or_same_problem_as_admitted_risk_or_priority",
+          "truth_id": "fact:opportunity:recoverable_with_contact",
+          "headline_ar": "أفضل فرصة اليوم: 34 سلة جاهزة للمتابعة"
+        },
+        {
+          "section": "learning_progress",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "reason": "learning_restates_admitted_problem",
+          "truth_id": "fact:learning:contact_blocker_pattern"
+        }
+      ],
+      "cards": [
+        {
+          "section": "business_health",
+          "admitted": true,
+          "admission_reason": "orientation_condition",
+          "cognitive_role": "condition",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "truth_id": "truth:missing_contact_blocks_recovery:condition",
+          "headline": "المتجر يعمل، لكن عائقاً تجارياً يحدّ من استرجاع الإيراد الآن."
+        },
+        {
+          "section": "business_understanding",
+          "admitted": true,
+          "admission_reason": "owns_explain",
+          "cognitive_role": "explain",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "truth_id": "missing_contact_blocks_recovery_v1",
+          "headline": "نقص بيانات التواصل يمنع بدء الاسترجاع لعدد كبير من السلال."
+        },
+        {
+          "section": "todays_priority",
+          "admitted": true,
+          "admission_reason": "owns_action_for_problem",
+          "cognitive_role": "action",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "truth_id": "missing_contact_blocks_recovery_v1",
+          "headline": "راجع السلال المحظورة بسبب نقص بيانات التواصل"
+        }
+      ]
+    },
+    "vip": {
+      "selected_path": "C",
+      "section_order": [
+        "business_health",
+        "todays_priority",
+        "business_understanding"
+      ],
+      "suppressed": [
+        {
+          "section": "biggest_revenue_risk",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "reason": "semantic_duplicate_of_priority_or_explain",
+          "truth_id": "fact:commercial_interpretation:missing_contact_blocks_recovery_v1",
+          "headline_ar": "أكبر عائق أمام الاسترجاع حاليًا هو نقص بيانات التواصل."
+        },
+        {
+          "section": "biggest_opportunity",
+          "merchant_problem": "recovery_ready_with_contact",
+          "reason": "inverse_or_same_problem_as_admitted_risk_or_priority",
+          "truth_id": "fact:opportunity:recoverable_with_contact",
+          "headline_ar": "أفضل فرصة اليوم: 34 سلة جاهزة للمتابعة"
+        },
+        {
+          "section": "learning_progress",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "reason": "learning_restates_admitted_problem",
+          "truth_id": "fact:learning:contact_blocker_pattern"
+        }
+      ],
+      "cards": [
+        {
+          "section": "business_health",
+          "admitted": true,
+          "admission_reason": "orientation_condition",
+          "cognitive_role": "condition",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "truth_id": "truth:missing_contact_blocks_recovery:condition",
+          "headline": "المتجر يعمل، لكن عائقاً تجارياً يحدّ من استرجاع الإيراد الآن."
+        },
+        {
+          "section": "todays_priority",
+          "admitted": true,
+          "admission_reason": "owns_action_for_problem",
+          "cognitive_role": "action",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "truth_id": "missing_contact_blocks_recovery_v1",
+          "headline": "راجع السلال المحظورة بسبب نقص بيانات التواصل"
+        },
+        {
+          "section": "business_understanding",
+          "admitted": true,
+          "admission_reason": "owns_explain",
+          "cognitive_role": "explain",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "truth_id": "missing_contact_blocks_recovery_v1",
+          "headline": "نقص بيانات التواصل يمنع بدء الاسترجاع لعدد كبير من السلال."
+        }
+      ]
+    },
+    "operational": {
+      "selected_path": "D",
+      "section_order": [
+        "business_health",
+        "todays_priority",
+        "business_understanding"
+      ],
+      "suppressed": [
+        {
+          "section": "biggest_revenue_risk",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "reason": "semantic_duplicate_of_priority_or_explain",
+          "truth_id": "fact:commercial_interpretation:missing_contact_blocks_recovery_v1",
+          "headline_ar": "أكبر عائق أمام الاسترجاع حاليًا هو نقص بيانات التواصل."
+        },
+        {
+          "section": "biggest_opportunity",
+          "merchant_problem": "recovery_ready_with_contact",
+          "reason": "inverse_or_same_problem_as_admitted_risk_or_priority",
+          "truth_id": "fact:opportunity:recoverable_with_contact",
+          "headline_ar": "أفضل فرصة اليوم: 34 سلة جاهزة للمتابعة"
+        },
+        {
+          "section": "learning_progress",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "reason": "learning_restates_admitted_problem",
+          "truth_id": "fact:learning:contact_blocker_pattern"
+        }
+      ],
+      "cards": [
+        {
+          "section": "business_health",
+          "admitted": true,
+          "admission_reason": "orientation_condition",
+          "cognitive_role": "condition",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "truth_id": "truth:missing_contact_blocks_recovery:condition",
+          "headline": "المتجر يعمل، لكن عائقاً تجارياً يحدّ من استرجاع الإيراد الآن."
+        },
+        {
+          "section": "todays_priority",
+          "admitted": true,
+          "admission_reason": "owns_action_for_problem",
+          "cognitive_role": "action",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "truth_id": "missing_contact_blocks_recovery_v1",
+          "headline": "راجع السلال المحظورة بسبب نقص بيانات التواصل"
+        },
+        {
+          "section": "business_understanding",
+          "admitted": true,
+          "admission_reason": "owns_explain",
+          "cognitive_role": "explain",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "truth_id": "missing_contact_blocks_recovery_v1",
+          "headline": "نقص بيانات التواصل يمنع بدء الاسترجاع لعدد كبير من السلال."
+        }
+      ]
+    },
+    "attention": {
+      "selected_path": "B",
+      "section_order": [
+        "business_health",
+        "todays_priority",
+        "business_understanding"
+      ],
+      "suppressed": [
+        {
+          "section": "biggest_revenue_risk",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "reason": "semantic_duplicate_of_priority_or_explain",
+          "truth_id": "fact:commercial_interpretation:missing_contact_blocks_recovery_v1",
+          "headline_ar": "أكبر عائق أمام الاسترجاع حاليًا هو نقص بيانات التواصل."
+        },
+        {
+          "section": "biggest_opportunity",
+          "merchant_problem": "recovery_ready_with_contact",
+          "reason": "inverse_or_same_problem_as_admitted_risk_or_priority",
+          "truth_id": "fact:opportunity:recoverable_with_contact",
+          "headline_ar": "أفضل فرصة اليوم: 34 سلة جاهزة للمتابعة"
+        },
+        {
+          "section": "learning_progress",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "reason": "learning_restates_admitted_problem",
+          "truth_id": "fact:learning:contact_blocker_pattern"
+        }
+      ],
+      "cards": [
+        {
+          "section": "business_health",
+          "admitted": true,
+          "admission_reason": "orientation_condition",
+          "cognitive_role": "condition",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "truth_id": "truth:missing_contact_blocks_recovery:condition",
+          "headline": "المتجر يعمل، لكن عائقاً تجارياً يحدّ من استرجاع الإيراد الآن."
+        },
+        {
+          "section": "todays_priority",
+          "admitted": true,
+          "admission_reason": "owns_action_for_problem",
+          "cognitive_role": "action",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "truth_id": "missing_contact_blocks_recovery_v1",
+          "headline": "راجع السلال المحظورة بسبب نقص بيانات التواصل"
+        },
+        {
+          "section": "business_understanding",
+          "admitted": true,
+          "admission_reason": "owns_explain",
+          "cognitive_role": "explain",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "truth_id": "missing_contact_blocks_recovery_v1",
+          "headline": "نقص بيانات التواصل يمنع بدء الاسترجاع لعدد كبير من السلال."
+        }
+      ]
+    },
+    "pending": {
+      "selected_path": "F",
+      "section_order": [
+        "business_health",
+        "business_understanding",
+        "todays_priority"
+      ],
+      "suppressed": [
+        {
+          "section": "biggest_revenue_risk",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "reason": "semantic_duplicate_of_priority_or_explain",
+          "truth_id": "fact:commercial_interpretation:missing_contact_blocks_recovery_v1",
+          "headline_ar": "أكبر عائق أمام الاسترجاع حاليًا هو نقص بيانات التواصل."
+        },
+        {
+          "section": "biggest_opportunity",
+          "merchant_problem": "recovery_ready_with_contact",
+          "reason": "inverse_or_same_problem_as_admitted_risk_or_priority",
+          "truth_id": "fact:opportunity:recoverable_with_contact",
+          "headline_ar": "أفضل فرصة اليوم: 34 سلة جاهزة للمتابعة"
+        },
+        {
+          "section": "learning_progress",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "reason": "learning_restates_admitted_problem",
+          "truth_id": "fact:learning:contact_blocker_pattern"
+        }
+      ],
+      "cards": [
+        {
+          "section": "business_health",
+          "admitted": true,
+          "admission_reason": "orientation_condition",
+          "cognitive_role": "condition",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "truth_id": "truth:missing_contact_blocks_recovery:condition",
+          "headline": "المتجر يعمل، لكن عائقاً تجارياً يحدّ من استرجاع الإيراد الآن."
+        },
+        {
+          "section": "business_understanding",
+          "admitted": true,
+          "admission_reason": "owns_explain",
+          "cognitive_role": "explain",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "truth_id": "missing_contact_blocks_recovery_v1",
+          "headline": "نقص بيانات التواصل يمنع بدء الاسترجاع لعدد كبير من السلال."
+        },
+        {
+          "section": "todays_priority",
+          "admitted": true,
+          "admission_reason": "owns_action_for_problem",
+          "cognitive_role": "action",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "truth_id": "missing_contact_blocks_recovery_v1",
+          "headline": "راجع السلال المحظورة بسبب نقص بيانات التواصل"
+        }
+      ]
+    },
+    "insufficient": {
+      "selected_path": "E",
+      "section_order": [
+        "business_health",
+        "business_understanding",
+        "todays_priority"
+      ],
+      "suppressed": [
+        {
+          "section": "biggest_revenue_risk",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "reason": "semantic_duplicate_of_priority_or_explain",
+          "truth_id": "fact:commercial_interpretation:missing_contact_blocks_recovery_v1",
+          "headline_ar": "أكبر عائق أمام الاسترجاع حاليًا هو نقص بيانات التواصل."
+        },
+        {
+          "section": "biggest_opportunity",
+          "merchant_problem": "recovery_ready_with_contact",
+          "reason": "inverse_or_same_problem_as_admitted_risk_or_priority",
+          "truth_id": "fact:opportunity:recoverable_with_contact",
+          "headline_ar": "أفضل فرصة اليوم: 34 سلة جاهزة للمتابعة"
+        },
+        {
+          "section": "learning_progress",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "reason": "learning_restates_admitted_problem",
+          "truth_id": "fact:learning:contact_blocker_pattern"
+        }
+      ],
+      "cards": [
+        {
+          "section": "business_health",
+          "admitted": true,
+          "admission_reason": "orientation_condition",
+          "cognitive_role": "condition",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "truth_id": "truth:missing_contact_blocks_recovery:condition",
+          "headline": "المتجر يعمل، لكن عائقاً تجارياً يحدّ من استرجاع الإيراد الآن."
+        },
+        {
+          "section": "business_understanding",
+          "admitted": true,
+          "admission_reason": "owns_explain",
+          "cognitive_role": "explain",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "truth_id": "missing_contact_blocks_recovery_v1",
+          "headline": "نقص بيانات التواصل يمنع بدء الاسترجاع لعدد كبير من السلال."
+        },
+        {
+          "section": "todays_priority",
+          "admitted": true,
+          "admission_reason": "owns_action_for_problem",
+          "cognitive_role": "action",
+          "merchant_problem": "missing_contact_blocks_recovery",
+          "truth_id": "missing_contact_blocks_recovery_v1",
+          "headline": "راجع السلال المحظورة بسبب نقص بيانات التواصل"
+        }
+      ]
+    }
+  }
+}

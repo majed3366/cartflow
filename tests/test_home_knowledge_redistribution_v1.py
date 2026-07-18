@@ -101,22 +101,13 @@ class TestHomeKnowledgeRedistributionV1(unittest.TestCase):
         js = (_REPO / "static" / "merchant_dashboard_home_v1.js").read_text(
             encoding="utf-8", errors="replace"
         )
-        home_fn = js[js.find("function renderHome") : js.find("function applyDashboardHomeV1")]
-        i_health = home_fn.find("renderBusinessHealth(home, summary)")
-        i_risk = home_fn.find("renderRevenueRisk(home)")
-        i_opp = home_fn.find("renderOpportunity(home)")
-        i_pri = home_fn.find("renderTodaysPriority(home)")
-        i_und = home_fn.find("renderBusinessUnderstanding(home)")
-        i_learn = home_fn.find("renderLearningProgress(home)")
-        i_tl = home_fn.find("renderBusinessTimeline(home)")
-        self.assertTrue(
-            0 <= i_health < i_risk < i_opp < i_pri < i_und < i_learn < i_tl
-        )
+        self.assertIn("resolveSectionOrder", js)
+        self.assertIn("sectionAdmitted", js)
+        self.assertIn("renderSectionByKey", js)
         self.assertNotIn("طابور قرارات", js)
         self.assertNotIn("حالة المعرفة", js)
         self.assertNotIn("renderPerformance", js)
         self.assertIn("المعنى التجاري", js)
-        # Understanding must not render CTA/action instruct step
         kn = js[
             js.find("function renderBusinessUnderstanding") : js.find(
                 "function renderLearningProgress"
