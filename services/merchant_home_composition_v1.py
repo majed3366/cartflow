@@ -1138,6 +1138,17 @@ def finalize_home_daily_business_brief_v1(
         isinstance(home.get("biggest_opportunity"), Mapping)
         and home["biggest_opportunity"].get("item")
     )
+
+    # Cross-section semantic composition — one coherent story (no paraphrase fan-out).
+    try:
+        from services.home_semantic_composition_v1 import (  # noqa: PLC0415
+            apply_home_semantic_composition_v1,
+        )
+
+        apply_home_semantic_composition_v1(home)
+    except Exception:  # noqa: BLE001
+        pass
+
     return home
 
 

@@ -46,10 +46,8 @@ def test_vip_attention_maps_to_path_c() -> None:
     assert acf["selected_path"] == PATH_C_VIP
     assert acf["section_order"][0] == "business_health"
     assert acf["section_order"][1] == "todays_priority"
-    # Understanding deferred later in VIP path
-    assert acf["section_order"].index("business_understanding") > acf[
-        "section_order"
-    ].index("todays_priority")
+    # Empty understanding is not admitted — must not force-render a hollow section.
+    assert "business_understanding" not in acf["section_order"]
 
 
 def test_ops_item_maps_to_path_d() -> None:
