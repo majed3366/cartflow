@@ -137,12 +137,12 @@ def run_business_reasoning_engine_v1(
         raw_findings = list(source_package.get("findings") or [])
         findings_source = "findings_engine_demo_fixture"
     else:
-        # Safe default for Product demos — never invent findings locally.
+        # PI-F1: default is DB/empty — never silent demo fixture on merchant paths
         source_package = run_business_findings_engine_v1(
-            store_slug=slug, demo_fixture=True, window_days=window_days
+            store_slug=slug, load_db=True, demo_fixture=False, window_days=window_days
         )
         raw_findings = list(source_package.get("findings") or [])
-        findings_source = "findings_engine_demo_fixture"
+        findings_source = "findings_engine_db_or_empty"
 
     approved = select_approved_findings_v1(raw_findings)
     raw_cards = evaluate_all_reasoning_rules_v1(slug, approved)

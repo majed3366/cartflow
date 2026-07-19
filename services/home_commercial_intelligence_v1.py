@@ -276,12 +276,16 @@ def apply_home_commercial_intelligence_v1(
     dash_store: Any = None,
     load_db: bool = False,
     demo_fixture: bool = False,
+    admit_review_fixtures: bool = False,
 ) -> MutableMapping[str, Any]:
     """
     Admit commercial insights into Home sections.
 
     Call after Daily Brief finalize builders, before or after semantic composition
     (caller should re-run semantic composition afterward).
+
+    PI-F1: Merchant surfaces never admit demo fixtures or placeholder product
+    identities unless ``admit_review_fixtures=True`` (explicit /dev review only).
     """
     if not isinstance(home, MutableMapping):
         return home
@@ -296,11 +300,12 @@ def apply_home_commercial_intelligence_v1(
                 run_business_findings_engine_v1,
             )
 
+            # PI-F1: never default demo_fixture when load_db is false
             package = run_business_findings_engine_v1(
                 store_slug=slug,
                 load_db=bool(load_db),
                 dash_store=dash_store,
-                demo_fixture=bool(demo_fixture) or not load_db,
+                demo_fixture=bool(demo_fixture) and bool(admit_review_fixtures),
             )
         except Exception as exc:  # noqa: BLE001
             log.warning("commercial intelligence findings failed: %s", exc)
@@ -310,6 +315,20 @@ def apply_home_commercial_intelligence_v1(
                 "engine": ENGINE_VERSION,
             }
             return home
+
+    try:
+        from services.product_data.product_identity_authenticity_v1 import (  # noqa: PLC0415
+            sanitize_findings_package_for_merchant_v1,
+        )
+
+        package = sanitize_findings_package_for_merchant_v1(
+            package,
+            admit_review_fixtures=bool(admit_review_fixtures),
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.warning("product identity authenticity sanitize failed: %s", exc)
+        if not admit_review_fixtures:
+            package = {"findings": [], "evidence": {"loaded_from": "authenticity_sanitize_failed"}}
 
     findings = [
         f for f in list(package.get("findings") or []) if isinstance(f, Mapping)
@@ -524,6 +543,9 @@ def apply_home_commercial_intelligence_v1(
         "registry_version": REGISTRY_VERSION,
         "findings_engine": package.get("engine_version"),
         "evidence_loaded_from": (package.get("evidence") or {}).get("loaded_from"),
+        "product_identity_authenticity_v1": package.get(
+            "product_identity_authenticity_v1"
+        ),
         "admitted": admitted,
         "rejected": rejected,
         "dimensions_answered": dims,
@@ -535,6 +557,7 @@ def apply_home_commercial_intelligence_v1(
         ),
         "findings_produced": len(findings),
         "ai_used": False,
+        "merchant_fixture_admitted": bool(admit_review_fixtures),
     }
     obs = home.get("observability")
     if not isinstance(obs, dict):

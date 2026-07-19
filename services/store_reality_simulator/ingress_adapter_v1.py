@@ -75,6 +75,85 @@ def _prov(ev: PlannedEvent, run_id: str, seed: int) -> dict[str, Any]:
     )
 
 
+def _persist_sim_cart_line_snapshot(
+    *,
+    store_slug: str,
+    session_id: str,
+    cart_id: str,
+    line: dict[str, Any],
+    captured_at: datetime,
+) -> None:
+    """Insert-only CartLineSnapshot for SRS — no main.py import."""
+    import hashlib
+    import json
+
+    from models import CartLineSnapshot  # noqa: PLC0415
+    from schema_cart_line_snapshots_v1 import (  # noqa: PLC0415
+        ensure_cart_line_snapshots_schema,
+    )
+
+    ensure_cart_line_snapshots_schema(db)
+    pid = str(line.get("product_id") or "").strip()[:128]
+    sku = str(line.get("sku") or "").strip()[:128]
+    name = str(line.get("name") or "").strip()[:200]
+    if not any((pid, sku, name)):
+        return
+    try:
+        unit_price = float(line.get("unit_price"))
+    except (TypeError, ValueError):
+        unit_price = None
+    qty = 1
+    try:
+        qty = max(1, int(line.get("quantity") or 1))
+    except (TypeError, ValueError):
+        qty = 1
+    canonical = {
+        "product_id": pid,
+        "variant_id": "",
+        "sku": sku,
+        "name": name,
+        "unit_price": unit_price,
+        "quantity": qty,
+    }
+    content_hash = hashlib.sha256(
+        json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    exists = (
+        db.session.query(CartLineSnapshot.id)
+        .filter(
+            CartLineSnapshot.store_slug == store_slug[:255],
+            CartLineSnapshot.session_id == session_id[:512],
+            CartLineSnapshot.cart_id == (cart_id or "")[:255],
+            CartLineSnapshot.capture_source == "cart_state_sync",
+            CartLineSnapshot.content_hash == content_hash,
+        )
+        .limit(1)
+        .first()
+    )
+    if exists is not None:
+        return
+    when = captured_at.replace(tzinfo=None) if getattr(captured_at, "tzinfo", None) else captured_at
+    conf = "high" if pid else ("medium" if sku else "low")
+    db.session.add(
+        CartLineSnapshot(
+            store_slug=store_slug[:255],
+            session_id=session_id[:512],
+            cart_id=(cart_id or "")[:255],
+            recovery_key=None,
+            product_id=pid or None,
+            variant_id=None,
+            sku=sku or None,
+            name=name or None,
+            unit_price=unit_price,
+            quantity=qty,
+            captured_at=when,
+            capture_source="cart_state_sync",
+            capture_confidence=conf,
+            content_hash=content_hash,
+        )
+    )
+
+
 def execute_planned_event(
     ev: PlannedEvent,
     *,
@@ -182,6 +261,40 @@ def _upsert_cart(
         .filter(AbandonedCart.zid_cart_id == ev.cart_id)
         .first()
     )
+    # PI-F4: catalog display name — never degrade to product_key
+    from services.store_reality_simulator.behavior_catalog_v1 import (  # noqa: PLC0415
+        catalog_product,
+    )
+
+    cat = catalog_product(str(ev.product_key or ""))
+    display_name = str(cat.get("name") or "").strip() or str(ev.product_id or "").strip()
+    sku = str(cat.get("sku") or "").strip()
+    line = {
+        "product_id": str(ev.product_id or cat.get("id") or "").strip(),
+        "sku": sku,
+        "name": display_name,
+        "unit_price": float(ev.product_price),
+        "quantity": 1,
+    }
+    identity_payload = {
+        "event": "cart_state_sync",
+        "store": DEMO_STORE_SLUG,
+        "session_id": ev.session_id,
+        "cart_id": ev.cart_id,
+        "lines": [line],
+        "items": [
+            {
+                "id": line["product_id"],
+                "product_id": line["product_id"],
+                "sku": sku,
+                "name": display_name,
+                "price": float(ev.product_price),
+                "qty": 1,
+            }
+        ],
+        **_prov(ev, run_id, seed),
+    }
+
     if ac is None:
         ac = AbandonedCart(
             store_id=int(store.id),
@@ -193,20 +306,7 @@ def _upsert_cart(
             first_seen_at=at.replace(tzinfo=None) if at.tzinfo else at,
             last_seen_at=at.replace(tzinfo=None) if at.tzinfo else at,
         )
-        AbandonedCart.set_raw(
-            ac,
-            {
-                "items": [
-                    {
-                        "id": ev.product_id,
-                        "name": ev.product_key,
-                        "price": ev.product_price,
-                        "qty": 1,
-                    }
-                ],
-                **_prov(ev, run_id, seed),
-            },
-        )
+        AbandonedCart.set_raw(ac, identity_payload)
         db.session.add(ac)
         db.session.flush()
         register_tagged_row(
@@ -219,7 +319,21 @@ def _upsert_cart(
         ac.last_seen_at = at.replace(tzinfo=None) if at.tzinfo else at
         if ev.customer_phone:
             ac.customer_phone = ev.customer_phone
+        AbandonedCart.set_raw(ac, identity_payload)
         db.session.add(ac)
+
+    # PI-F4: immutable snapshot without importing main (avoids circular load)
+    try:
+        _persist_sim_cart_line_snapshot(
+            store_slug=DEMO_STORE_SLUG,
+            session_id=str(ev.session_id or ""),
+            cart_id=str(ev.cart_id or ""),
+            line=line,
+            captured_at=at,
+        )
+    except Exception:  # noqa: BLE001
+        log.debug("SRS product identity snapshot skipped", exc_info=True)
+
     db.session.commit()
     return {"ok": True, "bucket": "persisted", "abandoned_cart_id": ac.id}
 

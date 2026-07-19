@@ -984,8 +984,9 @@ def finalize_home_daily_business_brief_v1(
     nav_metadata: Optional[Mapping[str, Any]] = None,
     findings_package: Optional[Mapping[str, Any]] = None,
     commercial_intel_load_db: bool = False,
-    commercial_intel_demo: bool = True,
+    commercial_intel_demo: bool = False,
     dash_store: Any = None,
+    admit_review_fixtures: bool = False,
 ) -> dict[str, Any]:
     """
     Shape composed Home into Constitution V3 Daily Business Brief sections.
@@ -1156,7 +1157,11 @@ def finalize_home_daily_business_brief_v1(
             findings_package=findings_package,
             dash_store=dash_store,
             load_db=bool(commercial_intel_load_db),
-            demo_fixture=bool(commercial_intel_demo) and not commercial_intel_load_db,
+            # PI-F1: merchant Home never defaults to demo fixture
+            demo_fixture=bool(commercial_intel_demo)
+            and bool(admit_review_fixtures)
+            and not commercial_intel_load_db,
+            admit_review_fixtures=bool(admit_review_fixtures),
         )
     except Exception:  # noqa: BLE001
         pass
@@ -1196,8 +1201,9 @@ def compose_merchant_home_experience_v1(
     mqic: Any = None,
     findings_package: Optional[Mapping[str, Any]] = None,
     commercial_intel_load_db: bool = False,
-    commercial_intel_demo: bool = True,
+    commercial_intel_demo: bool = False,
     dash_store: Any = None,
+    admit_review_fixtures: bool = False,
 ) -> dict[str, Any]:
     """Compose Merchant Home experience sections from governed upstream payloads."""
     day = brief_date or brief_date_iso()
@@ -1467,6 +1473,7 @@ def compose_merchant_home_experience_v1(
         commercial_intel_load_db=commercial_intel_load_db,
         commercial_intel_demo=commercial_intel_demo,
         dash_store=dash_store,
+        admit_review_fixtures=admit_review_fixtures,
     )
 
 
@@ -1593,8 +1600,9 @@ def build_merchant_home_experience_api_payload(
                 store_slug=slug,
                 mqic=identity,
                 findings_package=findings_package,
-                commercial_intel_load_db=False,
-                commercial_intel_demo=findings_package is None,
+                commercial_intel_load_db=True,
+                commercial_intel_demo=False,
+                admit_review_fixtures=False,
                 dash_store=dash_store,
             )
             from services.knowledge_time_authority_v1 import (  # noqa: PLC0415

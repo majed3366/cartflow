@@ -64,10 +64,27 @@ class EvidenceBundle:
     has_visitor_truth: bool = False
     query_cost: int = 0
     source_tables: list[str] = field(default_factory=list)
-    loaded_from: str = "fixture"
+    loaded_from: str = "no_evidence_source"
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+def build_empty_evidence_bundle_v1(
+    *,
+    store_slug: str = "",
+    window_days: int = DEFAULT_WINDOW_DAYS,
+    loaded_from: str = "no_evidence_source",
+) -> EvidenceBundle:
+    """Honest empty evidence — never substitutes demo fixture placeholders."""
+    return EvidenceBundle(
+        store_slug=norm(store_slug),
+        window_days=window_days,
+        observed_period=evidence_period(window_days),
+        loaded_from=loaded_from or "no_evidence_source",
+        source_tables=[],
+        query_cost=0,
+    )
 
 
 def evidence_period(window_days: int = DEFAULT_WINDOW_DAYS) -> dict[str, str]:
@@ -385,55 +402,125 @@ def _load_cart_counters_v1(
 def _load_product_interest_v1(
     store_slug: str, *, window_days: int
 ) -> tuple[dict[str, dict[str, Any]], int, list[str]]:
-    """Aggregate cart_line_snapshots + purchase mappings (bounded)."""
+    """
+    Aggregate cart_line_snapshots + purchase mappings (bounded).
+
+    Canonical fields only: ``CartLineSnapshot.name`` / ``captured_at``
+    (Product Identity Foundation PI-F2). Prefer stable_identity_key when resolvable.
+    Never invents placeholder product names.
+    """
     products: dict[str, dict[str, Any]] = {}
     try:
         from database import SessionLocal  # noqa: PLC0415
         from models import CartLineSnapshot  # noqa: PLC0415
         from sqlalchemy import func  # noqa: PLC0415
+        from services.product_data.product_catalog_normalizer_v1 import (  # noqa: PLC0415
+            catalog_input_from_line,
+            resolve_canonical_identity,
+        )
+        from services.product_data.product_identity_authenticity_v1 import (  # noqa: PLC0415
+            text_has_forbidden_product_placeholder,
+        )
 
         since = datetime.now(timezone.utc) - timedelta(days=max(1, window_days))
+        since_naive = since.replace(tzinfo=None) if since.tzinfo else since
         db = SessionLocal()
         try:
             rows = (
                 db.query(
                     CartLineSnapshot.product_id,
-                    CartLineSnapshot.product_name,
+                    CartLineSnapshot.variant_id,
+                    CartLineSnapshot.sku,
+                    CartLineSnapshot.name,
                     func.count(CartLineSnapshot.id),
                     func.count(func.distinct(CartLineSnapshot.session_id)),
                 )
                 .filter(
                     CartLineSnapshot.store_slug == store_slug,
-                    CartLineSnapshot.created_at >= since,
+                    CartLineSnapshot.captured_at >= since_naive,
                 )
-                .group_by(CartLineSnapshot.product_id, CartLineSnapshot.product_name)
+                .group_by(
+                    CartLineSnapshot.product_id,
+                    CartLineSnapshot.variant_id,
+                    CartLineSnapshot.sku,
+                    CartLineSnapshot.name,
+                )
                 .order_by(func.count(CartLineSnapshot.id).desc())
                 .limit(MAX_PRODUCT_ROWS)
                 .all()
             )
-            for pid, pname, adds, unique_carts in rows:
-                key = norm(pid) or norm(pname) or "unknown"
+            for pid, variant_id, sku, pname, adds, unique_carts in rows:
+                display = norm(pname)
+                if text_has_forbidden_product_placeholder(display):
+                    continue
+                # Reject internal keys used as names (sim degradation residue)
+                if display and "_" in display and " " not in display and all(
+                    ord(c) < 128 for c in display
+                ):
+                    display = ""
+                line = {
+                    "product_id": pid,
+                    "variant_id": variant_id,
+                    "sku": sku,
+                    "name": pname,
+                }
+                product = catalog_input_from_line(line)
+                resolution = (
+                    resolve_canonical_identity(product) if product is not None else None
+                )
+                key = (
+                    (resolution.stable_identity_key if resolution else "")
+                    or norm(pid)
+                    or (f"name:{display}" if display else "")
+                )
+                if not key:
+                    continue
+                if key in products:
+                    products[key]["add_to_cart"] += int(adds or 0)
+                    products[key]["unique_carts"] += int(unique_carts or 0)
+                    products[key]["repeat_adds"] = max(
+                        0,
+                        int(products[key]["add_to_cart"])
+                        - int(products[key]["unique_carts"]),
+                    )
+                    if display and not products[key].get("name_ar"):
+                        products[key]["name_ar"] = display
+                    continue
+                # Honest unresolved: no placeholder; skip nameless aggregates for merchant findings
+                if not display:
+                    continue
                 products[key] = {
-                    "name_ar": norm(pname) or key,
+                    "name_ar": display,
+                    "product_id": norm(pid) or None,
+                    "stable_identity_key": (
+                        resolution.stable_identity_key if resolution else None
+                    ),
                     "add_to_cart": int(adds or 0),
                     "unique_carts": int(unique_carts or 0),
                     "purchases": 0,
                     "revisits": 0,
                     "repeat_adds": max(0, int(adds or 0) - int(unique_carts or 0)),
                 }
-            # Purchase counts (bounded join via mapping table when present)
+            # Purchase counts via stable key or product_id
             try:
                 from models import ProductPurchaseMapping  # noqa: PLC0415
 
-                for key in list(products.keys())[:MAX_PRODUCT_ROWS]:
-                    cnt = (
-                        db.query(func.count(ProductPurchaseMapping.id))
-                        .filter(
-                            ProductPurchaseMapping.store_slug == store_slug,
-                            ProductPurchaseMapping.product_id == key,
-                        )
-                        .scalar()
+                for key, pdata in list(products.items())[:MAX_PRODUCT_ROWS]:
+                    sid_key = norm(pdata.get("stable_identity_key")) or key
+                    pid_key = norm(pdata.get("product_id"))
+                    q = db.query(func.count(ProductPurchaseMapping.id)).filter(
+                        ProductPurchaseMapping.store_slug == store_slug,
                     )
+                    if sid_key.startswith(("a|", "b|", "c|", "d|", "e|")):
+                        cnt = q.filter(
+                            ProductPurchaseMapping.stable_identity_key == sid_key
+                        ).scalar()
+                    elif pid_key:
+                        cnt = q.filter(
+                            ProductPurchaseMapping.product_id == pid_key
+                        ).scalar()
+                    else:
+                        cnt = 0
                     products[key]["purchases"] = int(cnt or 0)
             except Exception:  # noqa: BLE001
                 pass
