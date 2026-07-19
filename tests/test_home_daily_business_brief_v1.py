@@ -64,6 +64,30 @@ class TestHomeDailyBusinessBriefV1(unittest.TestCase):
         self.assertTrue(health.get("attention_required"))
         self.assertNotIn("items", health)
 
+    def test_e1_business_health_executive_contract(self) -> None:
+        """Executive Home Sprint 1 — E1 answers EQ-01; proof in disclosure only."""
+        home = self._home()
+        health = home["business_health"]
+        self.assertEqual(health.get("executive_band"), "E1")
+        self.assertEqual(health.get("executive_question_id"), "EQ-01")
+        self.assertEqual(
+            health.get("section_question_ar"), "هل عملي بصحة جيدة اليوم؟"
+        )
+        self.assertEqual(health.get("evidence_summary_ar") or "", "")
+        disc = health.get("disclosure") or {}
+        self.assertTrue(disc.get("label_ar"))
+        self.assertTrue(disc.get("trend_ar") or disc.get("evidence_ar"))
+        blob = (
+            f"{health.get('status_ar')} {health.get('summary_ar')} "
+            f"{health.get('confidence_ar')} {disc.get('evidence_ar')} "
+            f"{disc.get('trend_ar')}"
+        )
+        self.assertNotIn("hesitation_total", blob)
+        self.assertNotIn("returns=", blob)
+        self.assertNotRegex(blob, r"\d+\s*سلة")
+        self.assertNotIn("hesitation_", blob)
+        self.assertNotIn("loaded_from", blob)
+
     def test_revenue_risk_suppressed_when_same_problem_as_priority(self) -> None:
         """Semantic composition: risk must not paraphrase Priority's contact problem."""
         home = self._home()

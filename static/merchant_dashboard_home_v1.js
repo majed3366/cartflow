@@ -186,10 +186,11 @@
     );
   }
 
-  /** Section 1 — Business Health */
+  /** E1 — Business Health (Executive Home Constitution V1 · Sprint 1 only). */
   function renderBusinessHealth(home, summary) {
     var greeting = (home && home.greeting) || {};
     var health = (home && home.business_health) || {};
+    var disclosure = health.disclosure || {};
     var greet = String(greeting.greeting_ar || greetingArFallback()).trim();
     var name = String(greeting.merchant_name_ar || "متجرك").trim();
     var date =
@@ -199,17 +200,39 @@
     var summaryText =
       String(health.summary_ar || "").trim() ||
       String(health.empty_message_ar || "").trim() ||
-      "نجمع صورة أوضح لصحة العمل.";
-    var direction = String(health.direction_ar || "").trim();
+      "نجمع صورة أوضح لصحة عملك.";
     var confTone = confidenceTone(health.confidence);
     var conf =
       String(health.confidence_ar || "").trim() ||
       confidenceLabelAr(health.confidence);
-    var evidence = String(health.evidence_summary_ar || "").trim();
     var attentionNeeded = !!health.attention_required;
+    var question = String(
+      health.section_question_ar ||
+        health.lead_ar ||
+        "هل عملي بصحة جيدة اليوم؟"
+    ).trim();
+    var trend = String(
+      disclosure.trend_ar || health.direction_ar || ""
+    ).trim();
+    var evidence = String(
+      disclosure.evidence_ar || health.evidence_summary_ar || ""
+    ).trim();
+    // Never paint engineering / counter-style proof on L0 or disclosure body
+    if (/[=_]/.test(evidence) || /\d+\s*سلة/.test(evidence)) {
+      evidence = "";
+    }
+    var discLabel = String(
+      disclosure.label_ar || "كيف وصلنا لهذه الصورة؟"
+    ).trim();
+    var hasDisclosure = !!(trend || evidence);
+    var statusTone = attentionNeeded
+      ? "attention"
+      : status.indexOf("جيدة") >= 0 || status.indexOf("مستقر") >= 0
+        ? "ok"
+        : "neutral";
 
     return (
-      '<section class="ma-ecc-hero" aria-label="صحة العمل" data-ecc-section="health">' +
+      '<section class="ma-ecc-hero ma-ecc-hero--e1" aria-label="صحة العمل" data-ecc-section="health" data-executive-band="E1">' +
       '<div class="ma-ecc-hero__atmosphere" aria-hidden="true"></div>' +
       '<div class="ma-ecc-hero__grid">' +
       '<div class="ma-ecc-hero__main">' +
@@ -223,29 +246,36 @@
       esc(health.title_ar || "صحة العمل") +
       "</h1>" +
       '<p class="ma-ecc-hero__exec-label">' +
-      esc(health.section_question_ar || health.lead_ar || "كيف حال عملي اليوم؟") +
+      esc(question) +
       "</p>" +
       '<p class="ma-ecc-hero__exec-text">' +
       '<span class="ma-ecc-chip ma-ecc-chip--' +
-      (attentionNeeded ? "attention" : "neutral") +
+      statusTone +
       '">' +
       esc(status) +
       "</span> " +
       esc(summaryText) +
       "</p>" +
-      (direction
-        ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">الاتجاه:</span> ' +
-          esc(direction) +
-          "</p>"
-        : "") +
-      '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">الثقة:</span> ' +
+      '<p class="ma-ecc-copy ma-ecc-hero__confidence" data-e1-confidence="1">' +
       '<span class="ma-ecc-chip ma-ecc-chip--conf-' +
       confTone +
       '">' +
       esc(conf) +
       "</span></p>" +
-      (evidence
-        ? '<p class="ma-ecc-copy ma-ecc-copy--muted">' + esc(evidence) + "</p>"
+      (hasDisclosure
+        ? '<details class="ma-ecc-e1-disclosure">' +
+          "<summary>" +
+          esc(discLabel) +
+          "</summary>" +
+          (trend
+            ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">الاتجاه:</span> ' +
+              esc(trend) +
+              "</p>"
+            : "") +
+          (evidence
+            ? '<p class="ma-ecc-copy ma-ecc-copy--muted">' + esc(evidence) + "</p>"
+            : "") +
+          "</details>"
         : "") +
       "</div></div></section>"
     );
