@@ -873,6 +873,39 @@ class ProductPurchaseMapping(Base):
     dedup_hash = Column(String(64), nullable=False)
 
 
+class ProductSignalEvent(Base):
+    """
+    Immutable Product Signal Collection V1 row — atomic product fact.
+
+    Insert-only history of what happened about a Product Identity. No scoring,
+    ranking, recommendations, or presentation fields.
+    """
+
+    __tablename__ = "product_signal_events"
+    __table_args__ = (
+        UniqueConstraint(
+            "dedup_hash",
+            name="uq_product_signal_dedup",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    session_id = Column(String(512), nullable=False, default="", index=True)
+    cart_id = Column(String(255), nullable=False, default="", index=True)
+    recovery_key = Column(String(512), nullable=True, index=True)
+    stable_identity_key = Column(String(256), nullable=False, index=True)
+    identity_tier = Column(String(8), nullable=False, default="")
+    product_id = Column(String(128), nullable=True, index=True)
+    signal_family = Column(String(64), nullable=False, index=True)
+    signal_type = Column(String(64), nullable=False, index=True)
+    observed_at = Column(DateTime, nullable=False, index=True)
+    source = Column(String(128), nullable=False, index=True)
+    evidence_ref_type = Column(String(64), nullable=True)
+    evidence_ref_id = Column(String(128), nullable=True)
+    dedup_hash = Column(String(64), nullable=False)
+
+
 class DashboardSnapshot(Base):
     """
     Precomputed merchant dashboard payload — read-only on API hot path
