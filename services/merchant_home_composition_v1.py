@@ -712,7 +712,13 @@ def _compose_business_health_v1(
     has_primary_risk: bool,
     understanding_confidence: str,
 ) -> dict[str, Any]:
-    """Section 1 — How is my business today? Status first; never an event list."""
+    """
+    E1 — Business Health (Executive Home Constitution V1 / Sprint 1).
+
+    L0 answers only: «هل عملي بصحة جيدة اليوم؟»
+    Trend / supporting meaning live in progressive disclosure — never raw
+    counters, field names, or engineering diagnostics.
+    """
     no_phone = _nav_int(nav, "canonical_no_phone_total")
     active = _nav_int(nav, "knowledge_cart_count", "active_carts")
     attention_required = bool(attention_count > 0 or has_primary_risk or no_phone > 0)
@@ -722,55 +728,64 @@ def _compose_business_health_v1(
         summary_ar = (
             "المتجر يعمل، لكن عائقاً تجارياً يحدّ من استرجاع الإيراد الآن."
         )
-        direction_ar = "يتراجع تحت ضغط الاسترجاع"
+        direction_ar = "الصحة تحت ضغط اليوم — الاسترجاع أضعف مما ينبغي."
         direction_key = "declining_pressure"
+        evidence_ar = (
+            "عائق تجاري بارز يحدّ من قدرة المتجر على استرجاع الإيراد اليوم."
+        )
     elif attention_count > 0:
         status_ar = "يحتاج قراراً"
-        summary_ar = "يوجد قرار تجاري واحد يستحق تركيزك اليوم."
-        direction_ar = "مستقر مع قرار معلق"
+        summary_ar = "الصحة العامة مستقرة، لكن قراراً واحداً يستحق تركيزك اليوم."
+        direction_ar = "مستقرة مع قرار معلّق يؤثر على اليوم."
         direction_key = "stable_with_decision"
+        evidence_ar = "يوجد قرار تجاري واحد معلّق — لا يظهر كأزمة شاملة."
     else:
-        status_ar = "مستقر"
-        summary_ar = "لا عائق تجاري بارز اليوم — المتجر في وضع تشغيلي هادئ."
-        direction_ar = "مستقر"
+        status_ar = "بصحة جيدة"
+        summary_ar = "لا عائق تجاري بارز اليوم — عملك في وضع هادئ ومفهوم."
+        direction_ar = "مستقرة دون ضغط بارز."
         direction_key = "stable"
+        if active > 0:
+            evidence_ar = "لا مؤشرات تدهور بارزة في صحة العمل اليوم."
+        else:
+            evidence_ar = "ما زلنا نبني صورة أوضح — لا أزمة ظاهرة الآن."
 
     conf = _norm(understanding_confidence).lower()
     if conf in ("high", "confirmed"):
-        confidence_ar = "عالية"
+        confidence_ar = "ثقتنا بهذه الصورة عالية"
         confidence = "high"
     elif conf == "medium":
-        confidence_ar = "متوسطة"
+        confidence_ar = "ثقتنا بهذه الصورة متوسطة"
         confidence = "medium"
     elif attention_required:
-        confidence_ar = "متوسطة"
+        confidence_ar = "ثقتنا بهذه الصورة متوسطة"
         confidence = "medium"
     else:
-        confidence_ar = "أدلة غير كافية"
+        confidence_ar = "ما زلنا نتعلم — الأدلة غير كافية بعد"
         confidence = "insufficient"
 
-    evidence_bits: list[str] = []
-    if active > 0:
-        evidence_bits.append(f"{active} سلة نشطة")
-    if no_phone > 0:
-        evidence_bits.append(f"{no_phone} بانتظار بيانات تواصل")
-    if attention_count > 0:
-        evidence_bits.append("قرار واحد اليوم")
-
+    question_ar = "هل عملي بصحة جيدة اليوم؟"
     return {
         "title_ar": "صحة العمل",
-        "lead_ar": "كيف حال عملي اليوم؟",
-        "section_question_ar": "كيف حال عملي اليوم؟",
+        "lead_ar": question_ar,
+        "section_question_ar": question_ar,
+        "executive_band": "E1",
+        "executive_question_id": "EQ-01",
         "knowledge_role": "business_health",
         "status_ar": status_ar,
         "summary_ar": summary_ar,
         "confidence": confidence,
         "confidence_ar": confidence_ar,
         "attention_required": attention_required,
+        # Kept for ACF / legacy readers — UI prefers disclosure.*
         "direction_ar": direction_ar,
         "direction_key": direction_key,
-        "evidence_summary_ar": " · ".join(evidence_bits) if evidence_bits else "",
-        "empty_message_ar": "نجمع صورة أوضح لصحة العمل.",
+        "evidence_summary_ar": "",
+        "disclosure": {
+            "label_ar": "كيف وصلنا لهذه الصورة؟",
+            "trend_ar": direction_ar,
+            "evidence_ar": evidence_ar,
+        },
+        "empty_message_ar": "نجمع صورة أوضح لصحة عملك.",
     }
 
 

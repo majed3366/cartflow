@@ -331,6 +331,55 @@ body[data-ma-page="home"] #ma-page-hero-global {
   opacity: 0.95;
 }
 
+/* E1 — Business Health executive band (Sprint 1) */
+.ma-ecc-hero--e1 .ma-ecc-hero__confidence {
+  margin: 10px 0 0;
+}
+
+.ma-ecc-chip--ok {
+  background: rgba(34, 140, 98, 0.16);
+  color: #0f6b45;
+}
+
+.ma-ecc-hero .ma-ecc-chip--ok {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+.ma-ecc-e1-disclosure {
+  margin: 12px 0 0;
+  max-width: 48ch;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 0 12px;
+}
+
+.ma-ecc-e1-disclosure > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 10px 0;
+  font-size: var(--pds-type-whisper, 11px);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  opacity: 0.85;
+}
+
+.ma-ecc-e1-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.ma-ecc-e1-disclosure[open] > summary {
+  opacity: 1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  margin-bottom: 8px;
+}
+
+.ma-ecc-e1-disclosure .ma-ecc-copy {
+  margin: 0 0 8px;
+  padding-bottom: 4px;
+}
+
 .ma-ecc-hero__monitor {
   margin: 4px 0 0;
   font-size: var(--pds-type-whisper, 11px);

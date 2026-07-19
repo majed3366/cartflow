@@ -478,34 +478,39 @@ def apply_home_commercial_intelligence_v1(
             }
         )
 
-    # --- Health: commercial orientation, not cart counts ---
+    # --- E1 Health: commercial orientation only; proof stays in disclosure ---
     health = home.get("business_health")
     if isinstance(health, dict):
         dims_answered = sorted(
             {a["dimension"] for a in admitted if a.get("dimension")}
         )
-        evidence_bits = []
+        disclosure = health.get("disclosure")
+        if not isinstance(disclosure, dict):
+            disclosure = {}
+            health["disclosure"] = disclosure
+        disclosure.setdefault(
+            "label_ar", "كيف وصلنا لهذه الصورة؟"
+        )
+        if not _norm(disclosure.get("trend_ar")):
+            disclosure["trend_ar"] = _norm(health.get("direction_ar"))
+        # Merchant-language supporting note — never raw counters / field names
         if dims_answered:
-            evidence_bits.append(f"{len(dims_answered)} أسئلة تجارية بأدلة")
-        # Drop phone/cart operational evidence lines
-        prev = _norm(health.get("evidence_summary_ar"))
-        if prev:
-            parts = [
-                p.strip()
-                for p in prev.split("·")
-                if p.strip()
-                and "تواصل" not in p
-                and "سلة" not in p
-                and "رقم" not in p
-            ]
-            evidence_bits.extend(parts[:1])
-        health["evidence_summary_ar"] = " · ".join(evidence_bits)
-        if und_insight or opp_insight:
-            health["summary_ar"] = (
-                "المتجر يعمل — ولدينا فهم تجاري متعدد الأبعاد يحتاج انتباهك."
-                if dims_answered
-                else health.get("summary_ar")
+            disclosure["evidence_ar"] = (
+                "لدينا فهم تجاري من عدة زوايا يدعم صورة صحة العمل اليوم."
             )
+        elif not _norm(disclosure.get("evidence_ar")):
+            prev = _norm(health.get("evidence_summary_ar"))
+            if prev and "سلة" not in prev and "تواصل" not in prev and "=" not in prev:
+                disclosure["evidence_ar"] = prev
+        # L0 must stay verdict-only (Constitution EP-2 / E1 ownership)
+        health["evidence_summary_ar"] = ""
+        if und_insight or opp_insight:
+            if dims_answered and health.get("attention_required"):
+                health["summary_ar"] = (
+                    "المتجر يعمل — وصحة العمل تحتاج انتباهك لقرار اليوم."
+                )
+        health["executive_band"] = "E1"
+        health["executive_question_id"] = "EQ-01"
         health["commercial_questions_answered"] = len(
             {a.get("question_id") for a in admitted}
         )
