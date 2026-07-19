@@ -3419,6 +3419,15 @@
       '<p class="v2-conv-status">' +
       esc(merchantPeV2ConvStatus(mc)) +
       "</p>" +
+      '<p class="v2-conv-product ma-cart-product-identity" data-pi-status="' +
+      esc(mc.merchant_product_identity_status || "unresolved") +
+      '">' +
+      esc(
+        mc.merchant_product_name ||
+          (mc.product_identity_v1 && mc.product_identity_v1.display_name_ar) ||
+          "اسم المنتج غير متوفر"
+      ) +
+      "</p>" +
       '<h2 class="v2-conv-headline">' +
       esc(merchantPeV2ConvHeadline(expl, mc)) +
       "</h2>" +
@@ -3438,6 +3447,15 @@
       '<div class="ma-pe-v2-mobile-panel v2-conversation v2-conversation--mobile" data-mxp="carts-pe-v2" aria-label="محادثة السلة">' +
       '<p class="v2-action-eyebrow">المحددة · ' +
       formatMerchantSarHtml(v) +
+      "</p>" +
+      '<p class="v2-conv-product ma-cart-product-identity" data-pi-status="' +
+      esc(mc.merchant_product_identity_status || "unresolved") +
+      '">' +
+      esc(
+        mc.merchant_product_name ||
+          (mc.product_identity_v1 && mc.product_identity_v1.display_name_ar) ||
+          "اسم المنتج غير متوفر"
+      ) +
       "</p>" +
       '<h2 class="v2-action-headline">' +
       esc(merchantPeV2ConvHeadline(expl, mc)) +
