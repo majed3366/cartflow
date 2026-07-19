@@ -3501,6 +3501,15 @@
       '"></span>' +
       '<div class="v2-queue-body">' +
       queueAmountHtml(v) +
+      '<p class="v2-queue-scan ma-cart-product-identity" data-pi-status="' +
+      esc(mc.merchant_product_identity_status || "unresolved") +
+      '">' +
+      esc(
+        mc.merchant_product_name ||
+          (mc.product_identity_v1 && mc.product_identity_v1.display_name_ar) ||
+          "اسم المنتج غير متوفر"
+      ) +
+      "</p>" +
       '<p class="v2-queue-scan">' +
       esc(scan) +
       "</p></div>" +
@@ -3564,6 +3573,15 @@
       formatMerchantSar(v) +
       '</div><div class="ctime">' +
       esc(mc.merchant_time_relative_ar || "—") +
+      "</div>" +
+      '<div class="ctime ma-cart-product-identity" data-pi-status="' +
+      esc(mc.merchant_product_identity_status || "unresolved") +
+      '">' +
+      esc(
+        mc.merchant_product_name ||
+          (mc.product_identity_v1 && mc.product_identity_v1.display_name_ar) ||
+          "اسم المنتج غير متوفر"
+      ) +
       "</div></td>" +
       '<td><span class="chip ' +
       esc(mc.merchant_reason_chip_class || "c-other") +

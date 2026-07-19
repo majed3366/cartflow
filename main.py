@@ -16564,6 +16564,14 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
     except Exception:  # noqa: BLE001
         pass
     try:
+        from services.product_data.product_identity_cart_projection_v1 import (  # noqa: PLC0415
+            attach_product_identity_cart_projection_v1,
+        )
+
+        attach_product_identity_cart_projection_v1(out, abandoned_cart=ac0)
+    except Exception:  # noqa: BLE001
+        pass
+    try:
         from services.merchant_intelligence_v1 import attach_merchant_intelligence_v1  # noqa: PLC0415
 
         attach_merchant_intelligence_v1(out)
@@ -16725,6 +16733,14 @@ def _merchant_normal_recovery_light_payload(
             attempt_cap=cap_lc,
             store_slug=_ac_store_slug,
         )
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from services.product_data.product_identity_cart_projection_v1 import (  # noqa: PLC0415
+            attach_product_identity_cart_projection_v1,
+        )
+
+        attach_product_identity_cart_projection_v1(out, abandoned_cart=ac0)
     except Exception:  # noqa: BLE001
         pass
     return out

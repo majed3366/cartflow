@@ -171,14 +171,48 @@ def _identity_from_payload(payload: dict[str, Any]) -> tuple[str, str, str, str]
     return store_slug, session_id, cart_id, recovery_key
 
 
+def _coerce_line_dict(item: Any) -> Optional[dict[str, Any]]:
+    if not isinstance(item, dict):
+        return None
+    return item
+
+
 def _extract_lines(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    raw = payload.get("lines")
-    if not isinstance(raw, list) or not raw:
-        return []
+    """
+    Prefer Product Identity ``lines[]``; fall back to cart/items/products
+    (PI-F3 capture completeness — same shape normalization as widget).
+    """
     out: list[dict[str, Any]] = []
-    for item in raw[:MAX_LINES]:
-        if isinstance(item, dict):
-            out.append(item)
+    raw = payload.get("lines")
+    if isinstance(raw, list) and raw:
+        for item in raw[:MAX_LINES]:
+            d = _coerce_line_dict(item)
+            if d is not None:
+                out.append(d)
+        if out:
+            return out
+
+    # Fallback: legacy / simulator / platform arrays without lines[]
+    for key in ("cart", "items", "products", "line_items"):
+        candidate = payload.get(key)
+        if key == "cart" and isinstance(candidate, dict):
+            for nested in ("products", "items"):
+                arr = candidate.get(nested)
+                if isinstance(arr, list) and arr:
+                    for item in arr[:MAX_LINES]:
+                        d = _coerce_line_dict(item)
+                        if d is not None:
+                            out.append(d)
+                    if out:
+                        return out
+            continue
+        if isinstance(candidate, list) and candidate:
+            for item in candidate[:MAX_LINES]:
+                d = _coerce_line_dict(item)
+                if d is not None:
+                    out.append(d)
+            if out:
+                return out
     return out
 
 

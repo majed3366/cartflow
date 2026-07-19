@@ -31,6 +31,7 @@ from services.business_findings_contract_v1 import (
 from services.business_findings_evidence_v1 import (
     EvidenceBundle,
     build_demo_rich_evidence_bundle_v1,
+    build_empty_evidence_bundle_v1,
     load_evidence_bundle_from_db_v1,
 )
 from services.business_findings_families_v1 import evaluate_all_families_v1
@@ -288,7 +289,8 @@ def run_business_findings_engine_v1(
     Execute the engine and return a governed package.
 
     Prefer injecting ``evidence`` in tests. ``demo_fixture=True`` uses the rich
-    demo bundle. ``load_db=True`` attempts a bounded DB load.
+    demo bundle (review/dev only). ``load_db=True`` attempts a bounded DB load.
+    Default (no flags) is honest empty evidence — never merchant fixture placeholders.
     """
     t0 = time.perf_counter()
     slug = norm(store_slug)
@@ -319,7 +321,12 @@ def run_business_findings_engine_v1(
             store_slug=slug, window_days=window_days, dash_store=dash_store
         )
     else:
-        ev = build_demo_rich_evidence_bundle_v1(store_slug=slug or "demo", window_days=window_days)
+        # PI-F1: no silent demo_rich_fixture on merchant/default paths
+        ev = build_empty_evidence_bundle_v1(
+            store_slug=slug or "",
+            window_days=window_days,
+            loaded_from="no_evidence_source",
+        )
     obs["slow_stages_ms"]["evidence_ms"] = round((time.perf_counter() - t_ev) * 1000.0, 2)
     obs["query_cost"] = int(ev.query_cost or 0)
     if not ev.has_visitor_truth:

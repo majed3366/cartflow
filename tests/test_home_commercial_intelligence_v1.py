@@ -66,6 +66,7 @@ class TestHomeCommercialIntelligenceV1(unittest.TestCase):
             store_slug="demo",
             findings_package=pkg,
             commercial_intel_demo=False,
+            admit_review_fixtures=True,
         )
         meta = home.get("home_commercial_intelligence_v1") or {}
         self.assertTrue(meta.get("ok"))
@@ -123,7 +124,10 @@ class TestHomeCommercialIntelligenceV1(unittest.TestCase):
             "observability": {},
         }
         apply_home_commercial_intelligence_v1(
-            home, store_slug="demo", findings_package=pkg
+            home,
+            store_slug="demo",
+            findings_package=pkg,
+            admit_review_fixtures=True,
         )
         opp = home["biggest_opportunity"].get("item") or {}
         self.assertTrue(opp.get("commercial_question_id"))
