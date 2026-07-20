@@ -1044,6 +1044,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/purchase-truth-trace",
         "/dev/storefront-cart-bridge-truth",
         "/dev/product-signal-collection",
+        "/dev/product-metrics-foundation",
         "/dev/data-growth-measurement",
         "/dev/dashboard-snapshot-archive",
         "/dev/business-findings-review",
@@ -11846,6 +11847,26 @@ def dev_product_signal_collection(
     slug = (store_slug or "demo").strip() or "demo"
     report = build_product_signal_prod_probe_v1(slug)
     # Always return JSON body for allowlisted closure probes (even if table empty).
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
+@app.get("/dev/product-metrics-foundation")
+def dev_product_metrics_foundation(
+    store_slug: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Product Metrics Foundation V1 probe.
+
+    Computes deterministic metrics from Product Signals, optionally materializes
+    ``product_metric_values``. Default allowlist Demo Merchant. No merchant UI.
+    """
+    from services.product_data.product_metrics_prod_probe_v1 import (  # noqa: PLC0415
+        build_product_metrics_prod_probe_v1,
+    )
+
+    slug = (store_slug or "demo").strip() or "demo"
+    report = build_product_metrics_prod_probe_v1(slug)
     status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
     return j(report, status)
 

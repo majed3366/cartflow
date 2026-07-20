@@ -906,6 +906,45 @@ class ProductSignalEvent(Base):
     dedup_hash = Column(String(64), nullable=False)
 
 
+class ProductMetricValue(Base):
+    """
+    Product Metrics Foundation V1 materialization — measurable count facts.
+
+    Deterministic aggregates from product_signal_events only. No trends,
+    scores, recommendations, or presentation fields.
+    """
+
+    __tablename__ = "product_metric_values"
+    __table_args__ = (
+        UniqueConstraint(
+            "store_slug",
+            "stable_identity_key",
+            "metric_key",
+            "window_code",
+            "window_start_key",
+            "window_end_key",
+            name="uq_product_metric_value_grain",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    stable_identity_key = Column(String(256), nullable=False, default="", index=True)
+    metric_key = Column(String(64), nullable=False, index=True)
+    metric_family = Column(String(64), nullable=False, index=True)
+    window_code = Column(String(16), nullable=False, default="all", index=True)
+    window_start = Column(DateTime, nullable=True)
+    window_end = Column(DateTime, nullable=True)
+    # Empty-string sentinels for unique constraint when window bounds are null.
+    window_start_key = Column(String(32), nullable=False, default="")
+    window_end_key = Column(String(32), nullable=False, default="")
+    value = Column(Integer, nullable=False, default=0)
+    source_signal_type = Column(String(64), nullable=False, default="")
+    computation_version = Column(String(32), nullable=False, default="pmf_v1_count")
+    content_hash = Column(String(64), nullable=False, default="")
+    computed_at = Column(DateTime, nullable=False, index=True)
+
+
 class DashboardSnapshot(Base):
     """
     Precomputed merchant dashboard payload — read-only on API hot path
