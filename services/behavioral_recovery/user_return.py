@@ -510,6 +510,14 @@ def record_behavioral_user_return_from_payload(
             )
             print(line2, flush=True)
             log.info("%s", line2)
+            try:
+                from services.product_data.product_signal_hook_v1 import (  # noqa: PLC0415
+                    product_signal_try_from_customer_return,
+                )
+
+                product_signal_try_from_customer_return(payload)
+            except Exception:  # noqa: BLE001
+                pass
     except (SQLAlchemyError, OSError, TypeError, ValueError) as e:
         db.session.rollback()
         log.warning("behavioral user return: %s", e, exc_info=True)

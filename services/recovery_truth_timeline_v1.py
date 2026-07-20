@@ -386,6 +386,21 @@ def record_recovery_truth_event(
                 row_id=row_id or None,
                 verify_count=verify_count,
             )
+        try:
+            from services.product_data.product_signal_hook_v1 import (  # noqa: PLC0415
+                product_signal_try_from_recovery_timeline,
+            )
+
+            product_signal_try_from_recovery_timeline(
+                store_slug=slug or "",
+                session_id=sid or "",
+                status=st,
+                cart_id=cid or "",
+                recovery_key=rk,
+                timeline_event_id=row_id or None,
+            )
+        except Exception:  # noqa: BLE001
+            pass
         return verify_count > 0
     except SQLAlchemyError as exc:
         db.session.rollback()

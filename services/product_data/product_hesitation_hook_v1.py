@@ -40,6 +40,16 @@ def product_data_try_hesitation_mapping(
             reason=str(reason),
             sub_reason=(str(sub_reason) if sub_reason else None),
         )
+        from services.product_data.product_signal_hook_v1 import (  # noqa: PLC0415
+            product_signal_try_from_hesitation,
+        )
+
+        product_signal_try_from_hesitation(
+            store_slug,
+            session_id,
+            cart_id=cart_id,
+            recovery_key=recovery_key,
+        )
     except Exception as exc:  # noqa: BLE001
         log.debug("hesitation mapping hook skipped: %s", exc)
 
