@@ -1048,6 +1048,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/product-trends-foundation",
         "/dev/product-evidence-assembly",
         "/dev/evidence-confidence",
+        "/dev/knowledge-foundation",
         "/dev/data-growth-measurement",
         "/dev/dashboard-snapshot-archive",
         "/dev/business-findings-review",
@@ -11938,6 +11939,30 @@ def dev_evidence_confidence(
     slug = (store_slug or "demo").strip() or "demo"
     window = (assembly_window or "d7").strip() or "d7"
     report = build_evidence_confidence_prod_probe_v1(
+        slug, assembly_window=window
+    )
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
+@app.get("/dev/knowledge-foundation")
+def dev_knowledge_foundation(
+    store_slug: Optional[str] = None,
+    assembly_window: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Knowledge Foundation V1.
+
+    Factual statements from Evidence Confidence only. Default allowlist Demo.
+    No merchant UI. No guidance/recommendations.
+    """
+    from services.product_data.knowledge_foundation_prod_probe_v1 import (  # noqa: PLC0415
+        build_knowledge_foundation_prod_probe_v1,
+    )
+
+    slug = (store_slug or "demo").strip() or "demo"
+    window = (assembly_window or "d7").strip() or "d7"
+    report = build_knowledge_foundation_prod_probe_v1(
         slug, assembly_window=window
     )
     status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200

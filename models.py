@@ -1097,6 +1097,40 @@ class EvidenceConfidenceEvaluation(Base):
     content_hash = Column(String(64), nullable=False, default="")
 
 
+class KnowledgeStatement(Base):
+    """
+    Knowledge Foundation V1 — factual observation from Evidence Confidence.
+
+    Not advice, recommendation, or decision. Always references confidence_id.
+    """
+
+    __tablename__ = "knowledge_statements"
+    __table_args__ = (
+        UniqueConstraint(
+            "knowledge_id",
+            name="uq_knowledge_statement_id",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    knowledge_id = Column(String(64), nullable=False, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    subject_type = Column(String(32), nullable=False, default="", index=True)
+    subject_id = Column(String(256), nullable=False, default="", index=True)
+    knowledge_type = Column(String(64), nullable=False, index=True)
+    statement = Column(Text, nullable=False, default="")
+    evidence_confidence_id = Column(String(64), nullable=False, index=True)
+    confidence_level = Column(String(32), nullable=False, default="")
+    assembly_window = Column(String(16), nullable=False, default="")
+    valid_from = Column(DateTime, nullable=False, index=True)
+    valid_until = Column(DateTime, nullable=False, index=True)
+    generated_at = Column(DateTime, nullable=False, index=True)
+    as_of = Column(DateTime, nullable=False, index=True)
+    as_of_key = Column(String(32), nullable=False, default="")
+    knowledge_version = Column(String(32), nullable=False, default="kf_v1")
+    fingerprint = Column(String(64), nullable=False, default="")
+
+
 class DashboardSnapshot(Base):
     """
     Precomputed merchant dashboard payload — read-only on API hot path
