@@ -127,13 +127,14 @@ def _build_item(
     has_trends_lineage = bool(trends_hash)
     if has_metrics_lineage and has_trends_lineage:
         source_layer = SOURCE_LAYER_BOTH
-        source_record_id = f"{metrics_hash}|{trends_hash}"
+        # Keep <=64 chars for column; full hashes remain in lineage.
+        source_record_id = _sha(f"{metrics_hash}|{trends_hash}")[:64]
     elif has_metrics_lineage:
         source_layer = SOURCE_LAYER_METRICS
-        source_record_id = metrics_hash
+        source_record_id = metrics_hash[:64]
     elif has_trends_lineage:
         source_layer = SOURCE_LAYER_TRENDS
-        source_record_id = trends_hash
+        source_record_id = trends_hash[:64]
         if metric_value is None and trend_row is not None:
             metric_value = int(trend_row.get("current_value") or 0)
     else:
