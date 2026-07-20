@@ -192,6 +192,24 @@ def evaluate_bundle_confidence_v1(
         }
     )[:32]
 
+    # Compact factual digest for Knowledge consumers (not interpretation).
+    evidence_summary = {
+        "assembly_window": str(bundle.get("assembly_window") or ""),
+        "source_count": int(bundle.get("source_count") or len(items)),
+        "items": [
+            {
+                "metric_key": str(i.get("metric_key") or ""),
+                "metric_value": (
+                    int(i["metric_value"]) if i.get("metric_value") is not None else None
+                ),
+                "trend_direction": i.get("trend_direction"),
+                "trend_window": str(i.get("trend_window") or bundle.get("assembly_window") or ""),
+            }
+            for i in sorted(items, key=lambda r: str(r.get("metric_key") or ""))
+            if i.get("metric_key")
+        ],
+    }
+
     payload = {
         "confidence_id": confidence_id,
         "evidence_bundle_id": str(bundle.get("evidence_bundle_id") or ""),
@@ -208,6 +226,7 @@ def evaluate_bundle_confidence_v1(
         "missing_sources": missing,
         "conflicting_signals": conflicting,
         "confidence_notes": notes,
+        "evidence_summary": evidence_summary,
     }
     payload["content_hash"] = _sha(payload)
     return payload
