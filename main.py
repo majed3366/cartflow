@@ -11828,6 +11828,28 @@ def dev_purchase_truth_trace(
     )
 
 
+@app.get("/dev/product-signal-collection")
+def dev_product_signal_collection(
+    store_slug: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Product Signal Collection V1 closure probe.
+
+    Read-only. Default allowlist is Demo Merchant (``store_slug=demo``).
+    No merchant UI. No scoring.
+    """
+    from services.product_data.product_signal_prod_probe_v1 import (  # noqa: PLC0415
+        build_product_signal_prod_probe_v1,
+    )
+
+    slug = (store_slug or "demo").strip() or "demo"
+    report = build_product_signal_prod_probe_v1(slug)
+    status = 200 if report.get("ok") or report.get("table_exists") else 404
+    if report.get("errors") and "store_not_allowlisted" in report["errors"]:
+        status = 403
+    return j(report, status)
+
+
 @app.get("/dev/storefront-cart-bridge-truth")
 def dev_storefront_cart_bridge_truth(
     store_slug: Optional[str] = None,

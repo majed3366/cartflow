@@ -14,8 +14,10 @@
 python scripts/_verify_product_signal_collection_v1.py --base https://smartreplyai.net --store demo
 ```
 
-5. Confirm DB: `SELECT COUNT(*) FROM product_signal_events WHERE store_slug='demo';` increases after cart_state_sync with `lines[]`.
-6. Regression smoke: Demo Home / Carts load without error (no new UI).
+5. Read-only closure probe: `GET https://smartreplyai.net/dev/product-signal-collection?store=demo`  
+   Confirms table, counts by `signal_type`, evidence refs, dedup integrity.
+6. Alembic: prefer stamp/upgrade to `u4v5w6x7y8z9` on Railway when CLI available; runtime also creates table via `ensure_product_signal_events_schema` (`create_all`) on first write/probe (same pattern as PDF mappings).
+7. Regression smoke: Demo Home / Carts load without error (no new merchant UI).
 
 ## Expected signal types (wired)
 
