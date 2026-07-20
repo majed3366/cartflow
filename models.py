@@ -945,6 +945,43 @@ class ProductMetricValue(Base):
     computed_at = Column(DateTime, nullable=False, index=True)
 
 
+class ProductTrendValue(Base):
+    """
+    Product Trends Foundation V1 materialization — temporal change facts only.
+
+    Compares Product Metrics across adjacent windows. No ranking, health,
+    recommendations, or presentation fields.
+    """
+
+    __tablename__ = "product_trend_values"
+    __table_args__ = (
+        UniqueConstraint(
+            "store_slug",
+            "stable_identity_key",
+            "metric_key",
+            "trend_window",
+            "as_of_key",
+            name="uq_product_trend_value_grain",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    stable_identity_key = Column(String(256), nullable=False, default="", index=True)
+    metric_key = Column(String(64), nullable=False, index=True)
+    metric_family = Column(String(64), nullable=False, default="", index=True)
+    trend_window = Column(String(16), nullable=False, index=True)
+    as_of = Column(DateTime, nullable=False, index=True)
+    as_of_key = Column(String(32), nullable=False, default="")
+    current_value = Column(Integer, nullable=False, default=0)
+    previous_value = Column(Integer, nullable=False, default=0)
+    delta_abs = Column(Integer, nullable=False, default=0)
+    trend_direction = Column(String(32), nullable=False, index=True)
+    computation_version = Column(String(32), nullable=False, default="ptf_v1_delta")
+    content_hash = Column(String(64), nullable=False, default="")
+    computed_at = Column(DateTime, nullable=False, index=True)
+
+
 class DashboardSnapshot(Base):
     """
     Precomputed merchant dashboard payload — read-only on API hot path
