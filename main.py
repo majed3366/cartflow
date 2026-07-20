@@ -1043,6 +1043,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/cartflow-simulation-report",
         "/dev/purchase-truth-trace",
         "/dev/storefront-cart-bridge-truth",
+        "/dev/product-signal-collection",
         "/dev/data-growth-measurement",
         "/dev/dashboard-snapshot-archive",
         "/dev/business-findings-review",
@@ -11844,9 +11845,8 @@ def dev_product_signal_collection(
 
     slug = (store_slug or "demo").strip() or "demo"
     report = build_product_signal_prod_probe_v1(slug)
-    status = 200 if report.get("ok") or report.get("table_exists") else 404
-    if report.get("errors") and "store_not_allowlisted" in report["errors"]:
-        status = 403
+    # Always return JSON body for allowlisted closure probes (even if table empty).
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
     return j(report, status)
 
 
