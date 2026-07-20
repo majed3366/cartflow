@@ -1045,6 +1045,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/storefront-cart-bridge-truth",
         "/dev/product-signal-collection",
         "/dev/product-metrics-foundation",
+        "/dev/product-trends-foundation",
         "/dev/data-growth-measurement",
         "/dev/dashboard-snapshot-archive",
         "/dev/business-findings-review",
@@ -11867,6 +11868,28 @@ def dev_product_metrics_foundation(
 
     slug = (store_slug or "demo").strip() or "demo"
     report = build_product_metrics_prod_probe_v1(slug)
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
+@app.get("/dev/product-trends-foundation")
+def dev_product_trends_foundation(
+    store_slug: Optional[str] = None,
+    trend_window: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Product Trends Foundation V1 probe.
+
+    Compares Product Metrics across adjacent windows. Default allowlist Demo.
+    No merchant UI. No ranking/guidance.
+    """
+    from services.product_data.product_trends_prod_probe_v1 import (  # noqa: PLC0415
+        build_product_trends_prod_probe_v1,
+    )
+
+    slug = (store_slug or "demo").strip() or "demo"
+    window = (trend_window or "d7").strip() or "d7"
+    report = build_product_trends_prod_probe_v1(slug, trend_window=window)
     status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
     return j(report, status)
 

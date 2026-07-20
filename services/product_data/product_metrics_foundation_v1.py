@@ -30,6 +30,7 @@ from services.product_data.product_metrics_types_v1 import (
     STORE_GRAIN_IDENTITY,
     SUPPORTED_WINDOWS,
     WINDOW_ALL,
+    WINDOW_D90,
     WINDOW_DAY,
     WINDOW_MONTH,
     WINDOW_WEEK,
@@ -59,8 +60,10 @@ def _window_bounds(
         start = end - timedelta(days=1)
     elif code == WINDOW_WEEK:
         start = end - timedelta(days=7)
-    else:  # WINDOW_MONTH
+    elif code == WINDOW_MONTH:
         start = end - timedelta(days=30)
+    else:  # WINDOW_D90
+        start = end - timedelta(days=90)
     return start, end
 
 
