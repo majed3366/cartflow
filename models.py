@@ -982,6 +982,74 @@ class ProductTrendValue(Base):
     computed_at = Column(DateTime, nullable=False, index=True)
 
 
+class ProductEvidenceBundle(Base):
+    """
+    Product Evidence Assembly V1 — governed evidence bundle header.
+
+    Assembled from Metrics + Trends only. No confidence, ranking, or guidance.
+    """
+
+    __tablename__ = "product_evidence_bundles"
+    __table_args__ = (
+        UniqueConstraint(
+            "store_slug",
+            "subject_type",
+            "subject_id",
+            "assembly_window",
+            "as_of_key",
+            "bundle_version",
+            name="uq_product_evidence_bundle_grain",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    evidence_bundle_id = Column(String(64), nullable=False, unique=True, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    subject_type = Column(String(32), nullable=False, index=True)
+    subject_id = Column(String(256), nullable=False, index=True)
+    bundle_version = Column(String(32), nullable=False, default="pea_v1")
+    assembled_at = Column(DateTime, nullable=False, index=True)
+    assembly_window = Column(String(16), nullable=False, index=True)
+    as_of = Column(DateTime, nullable=False, index=True)
+    as_of_key = Column(String(32), nullable=False, default="")
+    source_count = Column(Integer, nullable=False, default=0)
+    fingerprint = Column(String(64), nullable=False, default="")
+    computation_version = Column(String(32), nullable=False, default="pea_v1_assemble")
+
+
+class ProductEvidenceItem(Base):
+    """
+    Product Evidence Assembly V1 — single factual evidence item with lineage.
+    """
+
+    __tablename__ = "product_evidence_items"
+    __table_args__ = (
+        UniqueConstraint(
+            "evidence_bundle_id",
+            "evidence_item_id",
+            name="uq_product_evidence_item_id",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    evidence_bundle_id = Column(String(64), nullable=False, index=True)
+    evidence_item_id = Column(String(64), nullable=False, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    subject_type = Column(String(32), nullable=False, default="")
+    subject_id = Column(String(256), nullable=False, default="")
+    metric_key = Column(String(64), nullable=False, index=True)
+    metric_value = Column(Integer, nullable=True)
+    trend_direction = Column(String(32), nullable=True)
+    trend_window = Column(String(16), nullable=False, default="")
+    source_layer = Column(String(32), nullable=False, index=True)
+    source_record_id = Column(String(128), nullable=False, default="")
+    observed_from = Column(DateTime, nullable=True)
+    observed_to = Column(DateTime, nullable=True)
+    lineage_json = Column(Text, nullable=False, default="{}")
+    content_hash = Column(String(64), nullable=False, default="")
+    assembled_at = Column(DateTime, nullable=False, index=True)
+
+
 class DashboardSnapshot(Base):
     """
     Precomputed merchant dashboard payload — read-only on API hot path

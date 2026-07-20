@@ -1046,6 +1046,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/product-signal-collection",
         "/dev/product-metrics-foundation",
         "/dev/product-trends-foundation",
+        "/dev/product-evidence-assembly",
         "/dev/data-growth-measurement",
         "/dev/dashboard-snapshot-archive",
         "/dev/business-findings-review",
@@ -11890,6 +11891,30 @@ def dev_product_trends_foundation(
     slug = (store_slug or "demo").strip() or "demo"
     window = (trend_window or "d7").strip() or "d7"
     report = build_product_trends_prod_probe_v1(slug, trend_window=window)
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
+@app.get("/dev/product-evidence-assembly")
+def dev_product_evidence_assembly(
+    store_slug: Optional[str] = None,
+    assembly_window: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Product Evidence Assembly Foundation V1.
+
+    Assembles Metrics + Trends into evidence bundles. Default allowlist Demo.
+    No merchant UI. No confidence/guidance.
+    """
+    from services.product_data.product_evidence_assembly_prod_probe_v1 import (  # noqa: PLC0415
+        build_product_evidence_assembly_prod_probe_v1,
+    )
+
+    slug = (store_slug or "demo").strip() or "demo"
+    window = (assembly_window or "d7").strip() or "d7"
+    report = build_product_evidence_assembly_prod_probe_v1(
+        slug, assembly_window=window
+    )
     status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
     return j(report, status)
 
