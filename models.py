@@ -1050,6 +1050,53 @@ class ProductEvidenceItem(Base):
     assembled_at = Column(DateTime, nullable=False, index=True)
 
 
+class EvidenceConfidenceEvaluation(Base):
+    """
+    Evidence Confidence Foundation V1 — quality evaluation of an evidence bundle.
+
+    Evaluates assembled evidence only. No recommendations, health, or ranking.
+    """
+
+    __tablename__ = "evidence_confidence_evaluations"
+    __table_args__ = (
+        UniqueConstraint(
+            "confidence_id",
+            name="uq_evidence_confidence_id",
+        ),
+        UniqueConstraint(
+            "evidence_bundle_id",
+            "confidence_version",
+            "evaluator_version",
+            "as_of_key",
+            name="uq_evidence_confidence_grain",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    confidence_id = Column(String(64), nullable=False, index=True)
+    evidence_bundle_id = Column(String(64), nullable=False, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    subject_type = Column(String(32), nullable=False, default="")
+    subject_id = Column(String(256), nullable=False, default="")
+    confidence_level = Column(String(32), nullable=False, index=True)
+    confidence_score = Column(Integer, nullable=False, default=0)
+    confidence_version = Column(String(32), nullable=False, default="ecf_v1")
+    evaluator_version = Column(String(32), nullable=False, default="ecf_v1_eval")
+    evaluated_at = Column(DateTime, nullable=False, index=True)
+    as_of = Column(DateTime, nullable=False, index=True)
+    as_of_key = Column(String(32), nullable=False, default="")
+    completeness = Column(Integer, nullable=False, default=0)
+    freshness = Column(Integer, nullable=False, default=0)
+    consistency = Column(Integer, nullable=False, default=0)
+    source_diversity = Column(Integer, nullable=False, default=0)
+    sample_size = Column(Integer, nullable=False, default=0)
+    missing_sources_json = Column(Text, nullable=False, default="[]")
+    conflicting_signals = Column(Boolean, nullable=False, default=False)
+    confidence_notes_json = Column(Text, nullable=False, default="[]")
+    factors_json = Column(Text, nullable=False, default="{}")
+    content_hash = Column(String(64), nullable=False, default="")
+
+
 class DashboardSnapshot(Base):
     """
     Precomputed merchant dashboard payload — read-only on API hot path
