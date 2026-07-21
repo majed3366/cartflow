@@ -1265,6 +1265,69 @@ class GuidanceRoute(Base):
     superseded_at = Column(DateTime, nullable=True)
 
 
+class MerchantPresentation(Base):
+    """
+    Merchant Presentation Foundation V1 — representation contract for a route.
+
+    Not page layout. Not action execution. Registry + template bounded.
+    """
+
+    __tablename__ = "merchant_presentations"
+    __table_args__ = (
+        UniqueConstraint(
+            "presentation_id",
+            name="uq_merchant_presentation_id",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    presentation_id = Column(String(64), nullable=False, index=True)
+    route_id = Column(String(64), nullable=False, index=True)
+    guidance_id = Column(String(64), nullable=False, default="")
+    store_slug = Column(String(255), nullable=False, index=True)
+    subject_type = Column(String(32), nullable=False, default="")
+    subject_id = Column(String(256), nullable=False, default="")
+    surface_key = Column(String(64), nullable=False, index=True)
+    route_scope = Column(String(64), nullable=False, default="")
+    route_role = Column(String(64), nullable=False, default="")
+    guidance_key = Column(String(64), nullable=False, default="")
+    presentation_type = Column(String(64), nullable=False, index=True)
+    presentation_state = Column(String(32), nullable=False, index=True)
+    headline_key = Column(String(128), nullable=False, default="")
+    headline_text = Column(Text, nullable=False, default="")
+    primary_statement_key = Column(String(128), nullable=False, default="")
+    primary_statement_text = Column(Text, nullable=False, default="")
+    supporting_statement_key = Column(String(128), nullable=False, default="")
+    supporting_statement_text = Column(Text, nullable=False, default="")
+    known_facts_json = Column(Text, nullable=False, default="[]")
+    unknown_facts_json = Column(Text, nullable=False, default="[]")
+    evidence_state = Column(String(64), nullable=False, default="")
+    merchant_relevance_key = Column(String(128), nullable=False, default="")
+    merchant_relevance_text = Column(Text, nullable=False, default="")
+    action_affordance = Column(String(32), nullable=False, default="none")
+    action_label_key = Column(String(64), nullable=False, default="")
+    disclaimer_key = Column(String(64), nullable=False, default="")
+    status_label_key = Column(String(64), nullable=False, default="")
+    template_key = Column(String(64), nullable=False, default="")
+    template_version = Column(String(64), nullable=False, default="")
+    presentation_rule_version = Column(String(64), nullable=False, default="")
+    language_code = Column(String(16), nullable=False, default="en")
+    failure_reason = Column(String(128), nullable=False, default="")
+    valid_from = Column(DateTime, nullable=False)
+    valid_until = Column(DateTime, nullable=False, index=True)
+    is_current = Column(Boolean, nullable=False, default=True, index=True)
+    presentation_version = Column(String(32), nullable=False, default="mpf_v1")
+    generation_version = Column(String(32), nullable=False, default="mpf_v1_gen")
+    source_contract_version = Column(String(64), nullable=False, default="")
+    input_fingerprint = Column(String(64), nullable=False, default="")
+    presentation_fingerprint = Column(String(64), nullable=False, default="", index=True)
+    as_of = Column(DateTime, nullable=False)
+    as_of_key = Column(String(32), nullable=False, default="")
+    created_at = Column(DateTime, nullable=False)
+    refreshed_at = Column(DateTime, nullable=False)
+    superseded_at = Column(DateTime, nullable=True)
+
+
 class DashboardSnapshot(Base):
     """
     Precomputed merchant dashboard payload — read-only on API hot path
