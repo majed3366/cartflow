@@ -1129,6 +1129,22 @@ class KnowledgeStatement(Base):
     as_of_key = Column(String(32), nullable=False, default="")
     knowledge_version = Column(String(32), nullable=False, default="kf_v1")
     fingerprint = Column(String(64), nullable=False, default="")
+    # CIS → Knowledge intake (ciknow_v1) lineage — unused by ECF path (defaults).
+    source_type = Column(String(64), nullable=False, default="evidence_confidence")
+    source_contract_version = Column(String(64), nullable=False, default="")
+    source_synthesis_id = Column(String(64), nullable=False, default="", index=True)
+    source_synthesis_key = Column(String(64), nullable=False, default="")
+    source_rule_key = Column(String(64), nullable=False, default="", index=True)
+    source_rule_version = Column(String(32), nullable=False, default="")
+    source_fingerprint = Column(String(64), nullable=False, default="")
+    source_window_start = Column(DateTime, nullable=True)
+    source_window_end = Column(DateTime, nullable=True)
+    source_domains_json = Column(Text, nullable=False, default="[]")
+    known_facts_json = Column(Text, nullable=False, default="[]")
+    unknown_facts_json = Column(Text, nullable=False, default="[]")
+    prohibited_claims_json = Column(Text, nullable=False, default="[]")
+    is_current = Column(Boolean, nullable=False, default=True, index=True)
+    superseded_at = Column(DateTime, nullable=True)
 
 
 class GuidanceEligibilityEvaluation(Base):
