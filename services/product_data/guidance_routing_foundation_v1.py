@@ -176,6 +176,21 @@ def evaluate_guidance_surface_route_v1(
         }
     )[:32]
 
+    # Presentation-safe digest for Merchant Presentation (no UI fields).
+    known = list(guidance.get("known_facts") or [])
+    unknown = list(guidance.get("unknown_facts") or [])
+    prohibited = list(guidance.get("prohibited_claims") or [])
+    if g_key == KEY_NO_GUIDANCE or g_status == "abstained":
+        evidence_state = "insufficient_evidence"
+    elif g_key == KEY_DEFER or g_status == "deferred":
+        evidence_state = "continued_observation"
+    elif g_key in {"verify_evidence_gap"}:
+        evidence_state = "limited_evidence"
+    elif g_key in {"monitor_new_pattern", "continue_observing"}:
+        evidence_state = "continued_observation"
+    else:
+        evidence_state = "sufficient_evidence"
+
     record = {
         "route_id": route_id,
         "guidance_id": str(guidance.get("guidance_id") or ""),
@@ -206,6 +221,16 @@ def evaluate_guidance_surface_route_v1(
         "created_at": generated_at.isoformat(sep=" "),
         "refreshed_at": generated_at.isoformat(sep=" "),
         "superseded_at": None,
+        "presentation_context": {
+            "contract_version": "grf_v1_presentation_context",
+            "guidance_key": g_key,
+            "guidance_status": g_status,
+            "known_facts": known,
+            "unknown_facts": unknown,
+            "prohibited_claims": prohibited,
+            "evidence_state": evidence_state,
+            "subject_type": subject_type,
+        },
     }
     record["route_fingerprint"] = _sha(
         {k: v for k, v in record.items() if k != "route_fingerprint"}
