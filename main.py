@@ -1054,6 +1054,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/guidance-routing",
         "/dev/merchant-presentation",
         "/dev/commerce-intelligence-synthesis",
+        "/dev/commerce-intelligence-knowledge",
         "/dev/data-growth-measurement",
         "/dev/dashboard-snapshot-archive",
         "/dev/business-findings-review",
@@ -12094,6 +12095,32 @@ def dev_commerce_intelligence_synthesis(
     slug = (store or store_slug or "demo").strip() or "demo"
     window = (time_window_key or assembly_window or "d7").strip() or "d7"
     report = build_commerce_intelligence_synthesis_prod_probe_v1(
+        slug, time_window_key=window
+    )
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
+@app.get("/dev/commerce-intelligence-knowledge")
+def dev_commerce_intelligence_knowledge(
+    store: Optional[str] = None,
+    store_slug: Optional[str] = None,
+    time_window_key: Optional[str] = None,
+    assembly_window: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): CIS → Knowledge Integration V1.
+
+    Intake of commerce_intelligence_synthesis_v1 into knowledge_statements.
+    Default allowlist Demo. No Guidance, Presentation, or page UI.
+    """
+    from services.product_data.commerce_intelligence_knowledge_prod_probe_v1 import (  # noqa: PLC0415
+        build_commerce_intelligence_knowledge_prod_probe_v1,
+    )
+
+    slug = (store or store_slug or "demo").strip() or "demo"
+    window = (time_window_key or assembly_window or "d7").strip() or "d7"
+    report = build_commerce_intelligence_knowledge_prod_probe_v1(
         slug, time_window_key=window
     )
     status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
