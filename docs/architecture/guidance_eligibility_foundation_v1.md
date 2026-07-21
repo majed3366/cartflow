@@ -60,6 +60,8 @@ Commercial Guidance  (future — only if eligible)
 | `required_knowledge_count` | Minimum required (V1 = 2) |
 | `blocking_conditions` | Ordered list of block codes |
 | `knowledge_ids` | Trace refs to knowledge statements |
+| `knowledge_context` | Governed digests (type, statement, facets) for Commercial Guidance — not advice |
+| `contract_version` | `gef_v1_guidance_context` when context is present |
 | `evaluated_at` / `as_of` | Naive UTC |
 | `eligibility_version` | `gef_v1` |
 | `fingerprint` | Content hash |

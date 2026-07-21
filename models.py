@@ -1172,6 +1172,53 @@ class GuidanceEligibilityEvaluation(Base):
     fingerprint = Column(String(64), nullable=False, default="")
 
 
+class CommercialGuidanceRecord(Base):
+    """
+    Commercial Guidance Foundation V1 — permitted guidance from eligibility.
+
+    Not merchant UI copy. Not automatic action. Registry-bounded.
+    """
+
+    __tablename__ = "commercial_guidance_records"
+    __table_args__ = (
+        UniqueConstraint(
+            "guidance_id",
+            name="uq_commercial_guidance_id",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    guidance_id = Column(String(64), nullable=False, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    subject_type = Column(String(32), nullable=False, default="", index=True)
+    subject_id = Column(String(256), nullable=False, default="", index=True)
+    guidance_key = Column(String(64), nullable=False, index=True)
+    guidance_version = Column(String(32), nullable=False, default="cgf_v1")
+    guidance_scope = Column(String(64), nullable=False, default="commercial_v1")
+    eligibility_id = Column(String(64), nullable=False, default="")
+    eligibility_status = Column(String(64), nullable=False, default="")
+    knowledge_reference_ids_json = Column(Text, nullable=False, default="[]")
+    source_contract_version = Column(String(64), nullable=False, default="")
+    rule_version = Column(String(64), nullable=False, default="")
+    guidance_status = Column(String(32), nullable=False, index=True)
+    rationale_code = Column(String(128), nullable=False, default="")
+    rationale_summary = Column(Text, nullable=False, default="")
+    known_facts_json = Column(Text, nullable=False, default="[]")
+    unknown_facts_json = Column(Text, nullable=False, default="[]")
+    prohibited_claims_json = Column(Text, nullable=False, default="[]")
+    valid_from = Column(DateTime, nullable=False)
+    valid_until = Column(DateTime, nullable=False)
+    generated_at = Column(DateTime, nullable=False)
+    refreshed_at = Column(DateTime, nullable=False)
+    superseded_at = Column(DateTime, nullable=True)
+    is_current = Column(Boolean, nullable=False, default=True, index=True)
+    input_fingerprint = Column(String(64), nullable=False, default="")
+    guidance_fingerprint = Column(String(64), nullable=False, default="")
+    generation_version = Column(String(32), nullable=False, default="cgf_v1_gen")
+    as_of = Column(DateTime, nullable=False, index=True)
+    as_of_key = Column(String(32), nullable=False, default="")
+
+
 class DashboardSnapshot(Base):
     """
     Precomputed merchant dashboard payload — read-only on API hot path
