@@ -1190,8 +1190,9 @@ class GuidanceEligibilityEvaluation(Base):
 
 class CommercialGuidanceRecord(Base):
     """
-    Commercial Guidance Foundation V1 — permitted guidance from eligibility.
+    Commercial Guidance — permitted guidance records.
 
+    cgf_v1: from Guidance Eligibility. cguide_v1: from Knowledge intake.
     Not merchant UI copy. Not automatic action. Registry-bounded.
     """
 
@@ -1222,6 +1223,14 @@ class CommercialGuidanceRecord(Base):
     known_facts_json = Column(Text, nullable=False, default="[]")
     unknown_facts_json = Column(Text, nullable=False, default="[]")
     prohibited_claims_json = Column(Text, nullable=False, default="[]")
+    # cguide_v1 Knowledge intake lineage (unused by cgf eligibility path).
+    knowledge_id = Column(String(64), nullable=False, default="", index=True)
+    knowledge_type = Column(String(64), nullable=False, default="", index=True)
+    merchant_objective = Column(Text, nullable=False, default="")
+    eligible_actions_json = Column(Text, nullable=False, default="[]")
+    forbidden_actions_json = Column(Text, nullable=False, default="[]")
+    confidence_level = Column(String(32), nullable=False, default="")
+    source_knowledge_fingerprint = Column(String(64), nullable=False, default="")
     valid_from = Column(DateTime, nullable=False)
     valid_until = Column(DateTime, nullable=False)
     generated_at = Column(DateTime, nullable=False)

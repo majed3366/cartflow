@@ -1,149 +1,251 @@
-# CartFlow Commercial Guidance Foundation V1
+# CartFlow Commercial Guidance Integration Foundation V1
 
 **Status:** Governed platform layer (architecture + runtime)  
-**Date (UTC):** 2026-07-21  
-**Authority:** Subordinate to [`guidance_eligibility_foundation_v1.md`](guidance_eligibility_foundation_v1.md).  
+**Date (UTC):** 2026-07-22  
+**Registry / versions:** `cguide_v1` / `cguide_v1_gen`  
+**Feature flag:** `CARTFLOW_COMMERCIAL_GUIDANCE_V1`  
 **Audience:** Product, engineering, architecture  
-**Explicitly out of scope:** AI advice, root-cause claims, merchant UI, routing, presentation, automatic actions, WhatsApp/Widget changes, Home/Dashboard integration
 
-> **Law:** Commercial Guidance answers only *what guidance CartFlow is permitted to produce from an eligible knowledge state*.  
-> Eligible ≠ unrestricted. Guidance must never exceed supporting knowledge.  
-> Input contract: Guidance Eligibility only (`knowledge_context` included).
+> **Law:** Commercial Guidance answers only *what CartFlow is allowed to advise the merchant* from governed Knowledge.  
+> It does not decide placement, presentation, notifications, AI wording, or automatic actions.
 
 ---
 
-## 0. Purpose
-
-Convert a governed eligibility evaluation into one canonical **commercial guidance record** per subject scope — deterministic, abstention-capable, claim-bounded.
-
-| This layer does | This layer must never |
-|-----------------|------------------------|
-| Select a registered guidance key | Invent causes or certainty |
-| Preserve eligibility + knowledge lineage | Execute merchant actions |
-| Separate known / unknown / prohibited | Generate free-form advice |
-| Refresh/recompute with supersession | Rank products or score health |
-| Abstain with explicit rationale | Render UI or route surfaces |
-
----
-
-## 1. Placement
+## 0. Architectural position
 
 ```text
-Guidance Eligibility  ✅
+Canonical Domain Truth
         ↓
-Commercial Guidance  ← THIS LAYER
+Evidence
         ↓
-Guidance Routing → Presentation → Decision  (future)
+Commerce Intelligence Synthesis
+        ↓
+Knowledge
+        ↓
+Commercial Guidance   ← THIS LAYER (cguide_v1)
+        ↓
+Guidance Routing
+        ↓
+Merchant Presentation
 ```
+
+**Input:** current Knowledge records only (`knowledge_statements`).  
+**Output:** governed Commercial Guidance records in existing `commercial_guidance_records`.
 
 ---
 
-## 2. Ownership
+## 1. Existing architecture inventory
+
+| Component | Status | Reuse decision |
+|-----------|--------|----------------|
+| Knowledge Registry / `knowledge_statements` | Exists (ECF + ciknow) | **Read current ciknow Knowledge only** |
+| Commercial Guidance Foundation (`cgf_v1`) | PRODUCTION CLOSED — Eligibility → Guidance | **Preserved**; not deleted |
+| Guidance Eligibility (`gef_v1`) | Exists | **Not consumed** by cguide intake |
+| Guidance Routing / Merchant Presentation | Exists | **Untouched** in this task |
+| Merchant Recommendations / Decision Registry | Separate merchant-decision stack | **Not duplicated** |
+| Confidence | Owned by Knowledge / ECF | **Reused** via `confidence_level` handoff |
+
+### Implementation decision
+
+Dedicated Knowledge intake adapter `cguide_v1` — mirrors `ciknow_v1`:
+
+- Does **not** replace `generate_commercial_guidance_v1` (eligibility path).
+- Does **not** create a second guidance table.
+- Writes into `commercial_guidance_records` with `guidance_version=cguide_v1`, `guidance_scope=cguide_commercial_v1`.
+- Additive lineage columns via Alembic `g6a7b8c9d0e1`.
+
+---
+
+## 2. Integration ownership
 
 | Concern | Owner |
 |---------|-------|
-| Permitted guidance records + registry | Commercial Guidance |
-| Eligibility permission + knowledge_context | Guidance Eligibility |
-| Merchant wording / placement | Presentation (future) |
-| Execution | Merchant Decision / Action (future) |
+| Knowledge → Guidance mapping policies | `commercial_guidance_knowledge_registry_v1.py` |
+| Intake / materialize / accounting | `commercial_guidance_knowledge_intake_v1.py` |
+| Eligibility permission (ECF path) | Guidance Eligibility (unchanged) |
+| Surface placement | Guidance Routing (future consumer; not changed here) |
+| Merchant wording / layout | Presentation (forbidden in this task) |
 
 ---
 
 ## 3. Input contract
 
-Only `evaluate_guidance_eligibility_v1` / its evaluation records:
+```text
+knowledge_statements_current_v1
+```
 
-- `eligibility_id`, `eligibility_status`, `eligibility_reason`
-- `blocking_conditions`, `knowledge_ids`
-- `knowledge_context[]` — type, statement, facets (`metric_key`, `trend_direction`, `gap_key`)
-- `contract_version`, fingerprints, subject grain, `as_of`
+Allowed reads:
 
-No direct reads of Knowledge / Confidence / Assembly / Metrics / Trends / Signals / providers.
+- Current `KnowledgeStatement` rows for the store
+- Filter: `knowledge_version=ciknow_v1` and approved ciknow knowledge types
 
----
+Forbidden reads:
 
-## 4. Output contract
-
-| Field group | Fields |
-|-------------|--------|
-| Identity | `guidance_id`, `store_slug`, `subject_type`, `subject_id`, `guidance_key`, `guidance_version`, `guidance_scope` |
-| Lineage | `eligibility_id`, `eligibility_status`, `knowledge_reference_ids`, `source_contract_version`, `rule_version` |
-| Meaning | `guidance_status`, `rationale_code`, `rationale_summary`, `known_facts`, `unknown_facts`, `prohibited_claims` |
-| Lifecycle | `valid_from`, `valid_until`, `generated_at`, `refreshed_at`, `superseded_at`, `is_current` |
-| Determinism | `input_fingerprint`, `guidance_fingerprint`, `generation_version`, `as_of` |
-
-Versions: `cgf_v1` / `cgf_v1_gen` / registry `cgf_reg_v1`.
+- Widget / WhatsApp / movement / cart / product / purchase tables
+- Provider payloads
+- Storefront events
+- Commerce Intelligence Synthesis APIs directly
+- Guidance Eligibility evaluations
+- Page / dashboard APIs
 
 ---
 
-## 5. Registry
+## 4. Intake policy registry (`cguide_v1`)
 
-Code-owned registry in `commercial_guidance_registry_v1.py`. Each type declares:
+Each policy defines:
 
-- key, definition, permitted eligibility statuses
-- required knowledge types / facets
-- prohibited blocking conditions
-- max claim strength, default validity days, default unknowns
-- rule version, active flag
+- `knowledge_type`
+- eligible outcome when current (`eligible` / `observe_only` / `insufficient_evidence` / `conflicting`)
+- `guidance_key`
+- `merchant_objective`
+- minimum confidence / freshness
+- evidence requirements
+- contradiction + abstention policies
+- lifecycle / expiry
+- `eligible_actions` / `forbidden_actions`
+- routing eligibility (false in V1)
+- active + version
 
-V1 keys: `continue_observing`, `investigate_conversion_path`, `review_product_experience`, `review_cart_progression`, `verify_evidence_gap`, `monitor_new_pattern`, `defer_until_more_evidence`, `no_guidance`.
-
----
-
-## 6. Rule evaluation (deterministic priority)
-
-First matching active rule wins (eligible path). Non-`eligible` always yields `no_guidance` / `abstained` with rationale = eligibility status (or explicit block).
-
-Eligible priority:
-
-1. purchase gap + cart/checkout intent trends → `investigate_conversion_path`
-2. any `newly_appeared` trend → `monitor_new_pattern`
-3. cart abandonment / progression metrics → `review_cart_progression`
-4. product subject with cart activity → `review_product_experience`
-5. any evidence gap → `verify_evidence_gap`
-6. quality + trend present → `continue_observing`
-7. else → `defer_until_more_evidence`
-
-No AI. Same input → same key, rationale, refs, fingerprints.
+No mapping logic in page code or ad-hoc services.
 
 ---
 
-## 7. Claim boundaries
+## 5. Eligibility rules
 
-Every record must include:
+| Knowledge state | Guidance behavior |
+|-----------------|-------------------|
+| Current + mapped + not expired | Per policy (`eligible`, `observe_only`, gap, conflict) |
+| Expired (`valid_until < as_of`) | `expired` — no commercial conclusion retained as current |
+| Missing policy | `rejected` (`intake_policy_missing`) — isolated |
+| Unsupported type | `rejected` |
+| Claim boundary fail | `rejected` |
 
-- **known_facts** — statements from eligibility `knowledge_context`
-- **unknown_facts** — registry defaults (e.g. no proven cause)
-- **prohibited_claims** — causal / action claims not justified
-
----
-
-## 8. Statuses
-
-`active` | `deferred` | `abstained` | `expired` | `superseded`
-
-One `is_current=true` record per `(store_slug, subject_type, subject_id, guidance_scope)`.
+Truthful abstention is valid. Guidance never forces advice.
 
 ---
 
-## 9. Refresh / recompute
+## 6. Knowledge mappings (initial)
 
-- Refresh evaluates current eligibility; identical input → idempotent upsert; material change → supersede prior current.
-- Recompute is store-scoped, versioned, never deletes history.
-- Kill switch `CARTFLOW_COMMERCIAL_GUIDANCE_FOUNDATION_V1=0` skips writes.
+| Knowledge type | Guidance key | Merchant objective |
+|----------------|--------------|--------------------|
+| `hesitation_recovery_pattern` | `investigate_shipping_checkout_friction` | Investigate checkout friction related to shipping |
+| `product_interest_conversion_gap` | `review_product_interest_conversion_gap` | Review interest vs weak completion |
+| `communication_return_without_purchase` | `review_whatsapp_return_journey` | Review journey after WhatsApp engagement |
+| `traffic_conversion_gap` | `investigate_conversion_bottlenecks` | Investigate conversion bottlenecks |
+| `repeated_interest_unresolved` | `review_unresolved_hesitation` | Review unresolved hesitation |
+| `recovery_influence_classification` | `preserve_recovery_influence_boundary` | Review influence classes without collapse |
+| `commercial_evidence_gap` | `collect_additional_evidence` | Collect more evidence before strategy change |
+| `commercial_evidence_conflict` | `delay_until_evidence_clearer` | Delay decisions until evidence clarifies |
+
+Forbidden examples (registry-enforced): reduce shipping cost; lower the price; increase advertising; claim WhatsApp ineffective; collapse attribution into recovered revenue.
 
 ---
 
-## 10. Runtime
+## 7. Claim-boundary preservation
 
-- `commercial_guidance_*` modules under `services/product_data/`
-- Model `CommercialGuidanceRecord` / table `commercial_guidance_records`
-- Alembic `b1c2d3e4f5a6`
-- Probe `GET /dev/commercial-guidance?store=demo`
+Invariant:
+
+```text
+Commercial Guidance claims ⊆ Knowledge claims
+```
+
+Guidance may normalize structure and assign lifecycle.  
+Guidance must not delete unknowns, weaken prohibited claims, invent causes/solutions, or strengthen Knowledge.
 
 ---
 
-## 11. Forbidden / future
+## 8. Confidence handoff
 
-Forbidden in V1: AI, UI, routing, actions, ranking, provider logic.  
-Future: Guidance Routing and Merchant Presentation consume this contract only after review.
+Reuse Knowledge `confidence_level` (and related fields on the Knowledge record).  
+No independent confidence framework.
+
+---
+
+## 9. Source identity & deterministic identity
+
+Each guidance record preserves:
+
+- `knowledge_id`, `knowledge_type`
+- Knowledge fingerprint
+- source lineage (synthesis ids/keys when present on Knowledge)
+- known / unknown / prohibited
+- merchant objective, eligible / forbidden actions
+- confidence_level
+- lifecycle + version
+
+Deterministic `guidance_id` inputs: store, knowledge_id, knowledge_type, subject, guidance_key, scope, policy version.
+
+Unchanged Knowledge → unchanged guidance identity (idempotent rerun).
+
+---
+
+## 10. Lifecycle
+
+| Event | Behavior |
+|-------|----------|
+| New eligible Knowledge | Create current guidance |
+| Unchanged Knowledge | Preserve identity / fingerprint (`unchanged`) |
+| Material Knowledge change | Supersede old current; activate new |
+| Knowledge expires | Expire / do not keep strong conclusion current |
+| Downgrade to gap/conflict | Truthful transition; no silent retention of stronger advice |
+
+---
+
+## 11. Full accounting
+
+```text
+current Knowledge inputs
+=
+created + updated + unchanged
++ observe_only + evidence_gap + conflicting
++ abstained + rejected + expired + failed
+```
+
+`unaccounted` must be 0. Every reject/abstain exposes a reason code.
+
+---
+
+## 12. Failure isolation & performance
+
+- One Knowledge intake failure does not block others.
+- Missing policy for one type does not stop the run.
+- Store isolation enforced; Demo probe writes Demo only.
+- Reads current Knowledge only — no history scan / no raw commerce recompute.
+- No merchant-facing request path for reconstruction (probe/materialize only).
+
+---
+
+## 13. Deferred dependencies
+
+D-CISYN-01 / D-CISYN-02 remain blocked at Synthesis/Knowledge.  
+cguide does not bypass them; absent Knowledge ⇒ no established guidance.
+
+---
+
+## 14. Feature flag & probe
+
+- Flag: `CARTFLOW_COMMERCIAL_GUIDANCE_V1` (default on; `0` disables writes)
+- Probe: `GET /dev/commercial-guidance?store=demo`
+
+Approval requires: `unaccounted=0`, `failed=0`, `claim_boundary_ok=true`, `lineage_ok=true`, `duplicate_current=false`, `non_demo_writes=0`, `deterministic=true`.
+
+---
+
+## 15. Forbidden scope
+
+Do **not** implement in this layer:
+
+- Merchant Presentation / Home / Surface Composition
+- Decision Workspace / Carts / Communication / Settings UI
+- Guidance Routing changes
+- AI wording, notifications, automatic actions
+- Campaigns, discounts, WhatsApp/Widget behavior
+- Direct CIS or raw provider reads
+
+---
+
+## 16. Relationship to cgf_v1
+
+`cgf_v1` (Eligibility → Guidance) remains deployed and available to existing Routing consumers.  
+`cguide_v1` is the Knowledge-integration path required for Commerce Intelligence Knowledge.  
+Scopes/versions are isolated so the two paths do not silently supersede each other.
