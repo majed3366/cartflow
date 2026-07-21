@@ -1328,6 +1328,72 @@ class MerchantPresentation(Base):
     superseded_at = Column(DateTime, nullable=True)
 
 
+class CommerceIntelligenceSynthesis(Base):
+    """
+    Commerce Intelligence Synthesis Foundation V1 — qualified cross-domain pattern.
+
+    Not Guidance. Not Presentation. Not aggregation-only metrics.
+    """
+
+    __tablename__ = "commerce_intelligence_syntheses"
+    __table_args__ = (
+        UniqueConstraint(
+            "synthesis_id",
+            name="uq_commerce_intelligence_synthesis_id",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    synthesis_id = Column(String(64), nullable=False, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    synthesis_key = Column(String(64), nullable=False, index=True)
+    synthesis_rule_key = Column(String(64), nullable=False, index=True)
+    subject_type = Column(String(32), nullable=False, default="", index=True)
+    subject_id = Column(String(256), nullable=False, default="")
+    comparison_subject_type = Column(String(32), nullable=False, default="")
+    comparison_subject_id = Column(String(256), nullable=False, default="")
+    time_window_key = Column(String(16), nullable=False, default="")
+    window_start = Column(DateTime, nullable=False)
+    window_end = Column(DateTime, nullable=False)
+    synthesis_state = Column(String(32), nullable=False, index=True)
+    pattern_type = Column(String(64), nullable=False, default="", index=True)
+    pattern_direction = Column(String(64), nullable=False, default="")
+    commercial_domain = Column(String(64), nullable=False, default="")
+    source_domains_json = Column(Text, nullable=False, default="[]")
+    source_record_ids_json = Column(Text, nullable=False, default="[]")
+    source_contributions_json = Column(Text, nullable=False, default="{}")
+    required_source_domains_json = Column(Text, nullable=False, default="[]")
+    missing_source_domains_json = Column(Text, nullable=False, default="[]")
+    known_facts_json = Column(Text, nullable=False, default="[]")
+    unknown_facts_json = Column(Text, nullable=False, default="[]")
+    conflicting_facts_json = Column(Text, nullable=False, default="[]")
+    prohibited_claims_json = Column(Text, nullable=False, default="[]")
+    supporting_evidence_count = Column(Integer, nullable=False, default=0)
+    contradicting_evidence_count = Column(Integer, nullable=False, default=0)
+    sample_size = Column(Integer, nullable=False, default=0)
+    minimum_sample_size = Column(Integer, nullable=False, default=0)
+    evidence_coverage = Column(Float, nullable=False, default=0.0)
+    confidence_input_json = Column(Text, nullable=False, default="{}")
+    significance_input_json = Column(Text, nullable=False, default="{}")
+    commercial_relevance_input_json = Column(Text, nullable=False, default="{}")
+    synthesis_summary_key = Column(String(128), nullable=False, default="")
+    input_fingerprint = Column(String(64), nullable=False, default="")
+    synthesis_fingerprint = Column(String(64), nullable=False, default="", index=True)
+    rule_version = Column(String(32), nullable=False, default="")
+    contract_version = Column(String(64), nullable=False, default="")
+    synthesis_version = Column(String(32), nullable=False, default="cisyn_v1")
+    generation_version = Column(String(32), nullable=False, default="cisyn_v1_gen")
+    failure_reason = Column(String(128), nullable=False, default="")
+    valid_from = Column(DateTime, nullable=False)
+    valid_until = Column(DateTime, nullable=False, index=True)
+    is_current = Column(Boolean, nullable=False, default=True, index=True)
+    as_of = Column(DateTime, nullable=False)
+    as_of_key = Column(String(32), nullable=False, default="")
+    created_at = Column(DateTime, nullable=False)
+    refreshed_at = Column(DateTime, nullable=False)
+    superseded_at = Column(DateTime, nullable=True)
+
+
 class DashboardSnapshot(Base):
     """
     Precomputed merchant dashboard payload — read-only on API hot path
