@@ -265,10 +265,15 @@ def evaluate_subject_guidance_v1(
         }
     )[:32]
 
+    subject_type = str(eligibility.get("subject_type") or "")
+    cart_related = subject_type in {"cart", "product"} or key in {
+        KEY_REVIEW_CART,
+        KEY_INVESTIGATE_CONVERSION,
+    }
     record = {
         "guidance_id": guidance_id,
         "store_slug": str(eligibility.get("store_slug") or ""),
-        "subject_type": str(eligibility.get("subject_type") or ""),
+        "subject_type": subject_type,
         "subject_id": str(eligibility.get("subject_id") or ""),
         "guidance_key": key,
         "guidance_version": GUIDANCE_VERSION_V1,
@@ -296,6 +301,15 @@ def evaluate_subject_guidance_v1(
         "generation_version": GENERATION_VERSION_V1,
         "as_of": as_of.isoformat(sep=" "),
         "registry_errors": list(reg_errors),
+        # Governed digest for Guidance Routing (no presentation fields).
+        "routing_context": {
+            "guidance_key": key,
+            "guidance_status": g_status,
+            "subject_type": subject_type,
+            "guidance_scope": GUIDANCE_SCOPE_V1,
+            "cart_related": bool(cart_related),
+            "contract_version": "cgf_v1_routing_context",
+        },
     }
     record["guidance_fingerprint"] = _sha(
         {k: v for k, v in record.items() if k != "guidance_fingerprint"}
