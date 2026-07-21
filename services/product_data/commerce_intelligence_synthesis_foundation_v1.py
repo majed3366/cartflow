@@ -20,6 +20,16 @@ from models import CommerceIntelligenceSynthesis
 from schema_commerce_intelligence_synthesis_v1 import (
     ensure_commerce_intelligence_synthesis_schema,
 )
+from services.product_data.commerce_intelligence_synthesis_blocked_v1 import (
+    REASON_COMPARISON_COHORT_UNAVAILABLE,
+    REASON_REQUIRED_SOURCE_DATA_UNAVAILABLE,
+    REASON_TEMPORAL_ALIGNMENT_FAILED,
+    REASON_UNSUPPORTED_SOURCE_CONTRACT_VERSION,
+    REASON_UPSTREAM_TRUTH_INCOMPLETE,
+    blocked_reason_description_v1,
+    classify_blocked_candidate_v1,
+    map_legacy_block_reason_v1,
+)
 from services.product_data.commerce_intelligence_synthesis_flag_v1 import (
     commerce_intelligence_synthesis_v1_enabled,
 )
@@ -262,8 +272,21 @@ def _blocked(
     window_end: datetime,
     missing: list[str],
     reason: str,
+    phase: str = "before_evaluation",
+    available_source_domains: list[str] | None = None,
+    evidence_exists_unmapped: bool = False,
+    mapping_status: str = "not_applicable",
+    subject_identity_status: str = "resolved",
+    temporal_alignment_status: str = "ok",
 ) -> dict[str, Any]:
-    return _build_synthesis(
+    reason_code = map_legacy_block_reason_v1(legacy_reason=reason, missing=missing)
+    classification = classify_blocked_candidate_v1(
+        reason_code=reason_code,
+        synthesis_rule_key=str(rule.get("synthesis_rule_key") or ""),
+        missing_source_domains=missing,
+        evidence_exists_unmapped=evidence_exists_unmapped,
+    )
+    rec = _build_synthesis(
         store_slug=store_slug,
         rule=rule,
         subject_type=subject_type,
@@ -274,13 +297,19 @@ def _blocked(
         synthesis_state=STATE_BLOCKED,
         pattern_direction=DIRECTION_OBSERVING,
         commercial_domain="cross_channel",
-        source_domains=[],
+        source_domains=list(available_source_domains or []),
         source_record_ids=[],
-        source_contributions={},
+        source_contributions={
+            d: {"supporting_records": 0, "role": "available_but_insufficient_for_rule"}
+            for d in (available_source_domains or [])
+        },
         required_source_domains=list(rule.get("required_source_domains") or []),
         missing_source_domains=missing,
-        known_facts=[],
-        unknown_facts=["required_canonical_source_unavailable"],
+        known_facts=[
+            f"blocked_reason_code={reason_code}",
+            f"blocked_phase={phase}",
+        ],
+        unknown_facts=["commercial_pattern_not_established_while_blocked"],
         conflicting_facts=[],
         prohibited_claims=list(rule.get("prohibited_claims") or []),
         supporting_evidence_count=0,
@@ -288,12 +317,30 @@ def _blocked(
         sample_size=0,
         minimum_sample_size=int(rule.get("minimum_sample_size") or 0),
         evidence_coverage=0.0,
-        confidence_input={"source_agreement": 0.0, "blocked": True},
+        confidence_input={
+            "source_agreement": 0.0,
+            "blocked": True,
+            "blocked_reason_code": reason_code,
+        },
         significance_input={"blocked": True},
         commercial_relevance_input={"blocked": True},
         synthesis_summary_key=f"{rule['synthesis_rule_key']}.blocked",
-        failure_reason=reason,
+        failure_reason=reason_code,
     )
+    rec["blocked_reason_code"] = reason_code
+    rec["blocked_reason_description"] = blocked_reason_description_v1(reason_code)
+    rec["blocked_classification"] = classification["blocked_classification"]
+    rec["blocked_owner_layer"] = classification["owner_layer"]
+    rec["blocked_is_expected"] = bool(classification["is_expected"])
+    rec["blocked_is_temporary"] = bool(classification["is_temporary"])
+    rec["blocked_is_deferred"] = bool(classification["is_deferred"])
+    rec["blocked_is_defect"] = bool(classification["is_defect"])
+    rec["blocked_phase"] = phase
+    rec["mapping_status"] = mapping_status
+    rec["subject_identity_status"] = subject_identity_status
+    rec["temporal_alignment_status"] = temporal_alignment_status
+    rec["available_source_domains"] = list(available_source_domains or [])
+    return rec
 
 
 def _failed(
@@ -597,7 +644,10 @@ def _eval_whatsapp_return(
                 window_start=window_start,
                 window_end=window_end,
                 missing=missing,
-                reason="missing_required_source",
+                reason=REASON_REQUIRED_SOURCE_DATA_UNAVAILABLE,
+                phase="before_evaluation",
+                available_source_domains=sorted(available),
+                mapping_status="missing_required_domain",
             )
         ]
     signals = list(
@@ -717,7 +767,10 @@ def _eval_shipping(
                 window_start=window_start,
                 window_end=window_end,
                 missing=missing,
-                reason="missing_required_source",
+                reason=REASON_REQUIRED_SOURCE_DATA_UNAVAILABLE,
+                phase="before_evaluation",
+                available_source_domains=sorted(available),
+                mapping_status="no_in_window_hesitation_mappings",
             )
         ]
     rows = list(
@@ -957,11 +1010,15 @@ def _eval_discount(
                 window_start=window_start,
                 window_end=window_end,
                 missing=missing,
-                reason="missing_required_source",
+                reason=REASON_REQUIRED_SOURCE_DATA_UNAVAILABLE,
+                phase="before_evaluation",
+                available_source_domains=sorted(available),
+                mapping_status="missing_required_domain",
             )
         ]
+    # Required domains present, but message-strategy classification contract is deferred.
     return [
-        _build_synthesis(
+        _blocked(
             store_slug=store_slug,
             rule=rule,
             subject_type=SUBJECT_RECOVERY_STRATEGY,
@@ -969,31 +1026,15 @@ def _eval_discount(
             time_window_key=time_window_key,
             window_start=window_start,
             window_end=window_end,
-            synthesis_state=STATE_INSUFFICIENT,
-            pattern_direction=DIRECTION_INSUFFICIENT,
-            commercial_domain="recovery_strategy",
-            source_domains=sorted(available & {"commerce_signals", "product_hesitation"}),
-            source_record_ids=[],
-            source_contributions={},
-            required_source_domains=list(rule.get("required_source_domains") or []),
-            missing_source_domains=[
-                "message_strategy_classification"
-            ],
-            known_facts=["discount_message_strategy_classification_not_available"],
-            unknown_facts=[
-                "discount_oriented_recovery_outcome_for_hesitation_condition"
-            ],
-            conflicting_facts=[],
-            prohibited_claims=list(rule.get("prohibited_claims") or []),
-            supporting_evidence_count=0,
-            contradicting_evidence_count=0,
-            sample_size=0,
-            minimum_sample_size=int(rule.get("minimum_sample_size") or 0),
-            evidence_coverage=0.0,
-            confidence_input={"evidence_coverage": 0.0},
-            significance_input={"sample_size": 0},
-            commercial_relevance_input={"pattern": PATTERN_DISCOUNT_MESSAGE_WEAKNESS},
-            synthesis_summary_key="discount_message_weakness.insufficient",
+            missing=["message_strategy_classification"],
+            reason=REASON_UPSTREAM_TRUTH_INCOMPLETE,
+            phase="during_evaluation",
+            available_source_domains=sorted(
+                available & {"commerce_signals", "product_hesitation"}
+            ),
+            mapping_status="message_strategy_contract_absent",
+            subject_identity_status="resolved",
+            temporal_alignment_status="ok",
         )
     ]
 
@@ -1019,12 +1060,15 @@ def _eval_vip(
                 window_start=window_start,
                 window_end=window_end,
                 missing=missing,
-                reason="missing_required_source",
+                reason=REASON_REQUIRED_SOURCE_DATA_UNAVAILABLE,
+                phase="before_evaluation",
+                available_source_domains=sorted(available),
+                mapping_status="missing_required_domain",
             )
         ]
-    # Comparison governance: without comparable merchant-vs-automated cohorts, abstain.
+    # Comparison governance: without comparable merchant-vs-automated cohorts, block (deferred).
     return [
-        _build_synthesis(
+        _blocked(
             store_slug=store_slug,
             rule=rule,
             subject_type=SUBJECT_VIP_COHORT,
@@ -1032,36 +1076,13 @@ def _eval_vip(
             time_window_key=time_window_key,
             window_start=window_start,
             window_end=window_end,
-            synthesis_state=STATE_INSUFFICIENT,
-            pattern_direction=DIRECTION_COMPARISON,
-            commercial_domain="vip_recovery",
-            source_domains=["commerce_signals"],
-            source_record_ids=[],
-            source_contributions={
-                "commerce_signals": {
-                    "supporting_records": 0,
-                    "role": "vip_comparison_scan",
-                }
-            },
-            required_source_domains=["commerce_signals"],
-            missing_source_domains=["comparable_vip_followup_cohorts"],
-            known_facts=["vip_comparison_cohorts_not_materialized"],
-            unknown_facts=[
-                "merchant_followup_vs_automated_outcome_for_vip_carts"
-            ],
-            conflicting_facts=[],
-            prohibited_claims=list(rule.get("prohibited_claims") or []),
-            supporting_evidence_count=0,
-            contradicting_evidence_count=0,
-            sample_size=0,
-            minimum_sample_size=int(rule.get("minimum_sample_size") or 0),
-            evidence_coverage=0.0,
-            confidence_input={"evidence_coverage": 0.0, "comparison_ready": False},
-            significance_input={"sample_size": 0},
-            commercial_relevance_input={"pattern": PATTERN_VIP_FOLLOWUP_OUTCOME},
-            synthesis_summary_key="vip_followup_outcome.insufficient",
-            comparison_subject_type=SUBJECT_VIP_COHORT,
-            comparison_subject_id="automated_vs_merchant",
+            missing=["comparable_vip_followup_cohorts"],
+            reason=REASON_COMPARISON_COHORT_UNAVAILABLE,
+            phase="during_evaluation",
+            available_source_domains=sorted(available & {"commerce_signals"}),
+            mapping_status="comparison_cohorts_not_materialized",
+            subject_identity_status="resolved",
+            temporal_alignment_status="ok",
         )
     ]
 
@@ -1222,7 +1243,10 @@ def _eval_recovery_influence(
                 window_start=window_start,
                 window_end=window_end,
                 missing=missing,
-                reason="missing_required_source",
+                reason=REASON_REQUIRED_SOURCE_DATA_UNAVAILABLE,
+                phase="before_evaluation",
+                available_source_domains=sorted(available),
+                mapping_status="missing_required_domain",
             )
         ]
     signals = list(
@@ -1380,17 +1404,30 @@ def generate_commerce_intelligence_syntheses_v1(
         if window not in (rule.get("allowed_windows") or ()):
             # Still account: blocked for temporal incompatibility.
             expected += 1
+            supported = list(rule.get("supported_subject_types") or [SUBJECT_STORE])
+            subj_type = str(supported[0] if supported else SUBJECT_STORE)
+            subj_id = {
+                SUBJECT_HESITATION: "shipping",
+                SUBJECT_RECOVERY_STRATEGY: "discount",
+                SUBJECT_VIP_COHORT: "vip",
+                SUBJECT_PRODUCT: "",
+            }.get(subj_type, slug)
             syntheses.append(
                 _blocked(
                     store_slug=slug,
                     rule=rule,
-                    subject_type=SUBJECT_STORE,
-                    subject_id=slug,
+                    subject_type=subj_type,
+                    subject_id=subj_id or slug,
                     time_window_key=window,
                     window_start=window_start,
                     window_end=window_end,
                     missing=["temporal_window_compatible_inputs"],
-                    reason="window_not_allowed_for_rule",
+                    reason=REASON_TEMPORAL_ALIGNMENT_FAILED,
+                    phase="before_evaluation",
+                    available_source_domains=sorted(available),
+                    mapping_status="not_applicable",
+                    subject_identity_status="resolved",
+                    temporal_alignment_status="window_not_allowed_for_rule",
                 )
             )
             continue
@@ -1433,7 +1470,12 @@ def generate_commerce_intelligence_syntheses_v1(
                         window_start=window_start,
                         window_end=window_end,
                         missing=missing,
-                        reason="missing_required_source",
+                        reason=REASON_REQUIRED_SOURCE_DATA_UNAVAILABLE,
+                        phase="before_evaluation",
+                        available_source_domains=sorted(available),
+                        mapping_status="missing_required_domain",
+                        subject_identity_status="resolved",
+                        temporal_alignment_status="ok",
                     )
                 )
                 continue

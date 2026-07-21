@@ -29,6 +29,17 @@ from services.product_data.commerce_intelligence_synthesis_rule_registry_v1 impo
 from services.product_data.commerce_intelligence_synthesis_source_registry_v1 import (
     source_registry_summary_v1,
 )
+from services.product_data.commerce_intelligence_synthesis_blocked_v1 import (
+    BLOCKED_REASON_CODES,
+    CLASS_DEFERRED,
+    CLASS_EXPECTED,
+    CLASS_MAPPING_DEFECT,
+    CLASS_RULE_DEFECT,
+    CLASS_RUNTIME_MISCLASSIFIED,
+)
+from services.product_data.commerce_intelligence_synthesis_source_registry_v1 import (
+    SOURCE_CONTRACTS_V1,
+)
 from services.product_data.commerce_intelligence_synthesis_types_v1 import (
     OUTPUT_CONTRACT_VERSION_V1,
     RULE_REGISTRY_VERSION_V1,
@@ -115,6 +126,38 @@ def build_commerce_intelligence_synthesis_prod_probe_v1(
         "accounting_ok": False,
         "rule_registry": rule_summary,
         "source_registry": source_summary,
+        "blocked_total": 0,
+        "blocked_expected": 0,
+        "blocked_deferred": 0,
+        "blocked_defect": 0,
+        "blocked_runtime_misclassified": 0,
+        "blocked_candidates": [],
+        "deferred_dependency_count": 0,
+        "defect_block_count": 0,
+        "source_adapters": [
+            {
+                "source_domain": c["source_domain"],
+                "contract_key": c["contract_key"],
+                "contract_version": c["contract_version"],
+            }
+            for c in SOURCE_CONTRACTS_V1
+        ],
+        "boundary_verification": {
+            "consumes_canonical_sources_only": True,
+            "provider_specific_bypass": False,
+            "purchase_attribution_roi_separated": True,
+            "no_guidance_generation": True,
+            "no_presentation_generation": True,
+            "main_py_wiring_only": True,
+        },
+        "test_coverage_summary": {
+            "suite": "tests/test_commerce_intelligence_synthesis_v1.py"
+            "+ tests/test_commerce_intelligence_synthesis_closure_v1.py",
+            "matrix_doc": (
+                "docs/product/COMMERCE_INTELLIGENCE_SYNTHESIS_FOUNDATION_V1_"
+                "PROD_CLOSURE_EVIDENCE.md#test-coverage-matrix"
+            ),
+        },
     }
     if not slug:
         out["errors"].append("store_slug_required")
@@ -266,9 +309,91 @@ def build_commerce_intelligence_synthesis_prod_probe_v1(
             "prohibited_claims": (s.get("prohibited_claims") or [])[:4],
             "source_domains": s.get("source_domains") or [],
             "source_contributions": s.get("source_contributions") or {},
+            "failure_reason": s.get("failure_reason") or "",
+            "blocked_reason_code": s.get("blocked_reason_code") or "",
+            "missing_source_domains": s.get("missing_source_domains") or [],
         }
         for s in syntheses[:12]
     ]
+
+    blocked_rows = [s for s in syntheses if s.get("synthesis_state") == STATE_BLOCKED]
+    blocked_expected = 0
+    blocked_deferred = 0
+    blocked_defect = 0
+    blocked_runtime = 0
+    blocked_details: list[dict[str, Any]] = []
+    for s in blocked_rows:
+        code = str(s.get("blocked_reason_code") or s.get("failure_reason") or "")
+        klass = str(s.get("blocked_classification") or "")
+        if code and code not in BLOCKED_REASON_CODES:
+            klass = CLASS_RUNTIME_MISCLASSIFIED
+        if klass == CLASS_RUNTIME_MISCLASSIFIED:
+            blocked_runtime += 1
+        elif klass in {CLASS_MAPPING_DEFECT, CLASS_RULE_DEFECT}:
+            blocked_defect += 1
+        elif klass == CLASS_DEFERRED:
+            blocked_deferred += 1
+        else:
+            blocked_expected += 1
+        blocked_details.append(
+            {
+                "synthesis_id": s.get("synthesis_id"),
+                "synthesis_key": s.get("synthesis_key"),
+                "synthesis_rule_key": s.get("synthesis_rule_key"),
+                "subject_type": s.get("subject_type"),
+                "subject_id": s.get("subject_id"),
+                "time_window_key": s.get("time_window_key"),
+                "required_source_domains": s.get("required_source_domains") or [],
+                "available_source_domains": s.get("available_source_domains")
+                or s.get("source_domains")
+                or [],
+                "missing_source_domains": s.get("missing_source_domains") or [],
+                "source_contract_versions": {
+                    c["source_domain"]: c["contract_version"]
+                    for c in SOURCE_CONTRACTS_V1
+                },
+                "blocked_reason_code": code,
+                "blocked_reason_description": s.get("blocked_reason_description") or "",
+                "blocked_classification": klass,
+                "blocked_owner_layer": s.get("blocked_owner_layer") or "",
+                "blocked_phase": s.get("blocked_phase") or "",
+                "mapping_status": s.get("mapping_status") or "",
+                "subject_identity_status": s.get("subject_identity_status") or "",
+                "temporal_alignment_status": s.get("temporal_alignment_status") or "",
+                "is_expected": bool(s.get("blocked_is_expected")),
+                "is_temporary": bool(s.get("blocked_is_temporary")),
+                "is_deferred": bool(s.get("blocked_is_deferred")),
+                "is_defect": bool(s.get("blocked_is_defect")),
+                "source_contributions": s.get("source_contributions") or {},
+                "known_facts": s.get("known_facts") or [],
+                "unknown_facts": s.get("unknown_facts") or [],
+                "prohibited_claims": s.get("prohibited_claims") or [],
+            }
+        )
+    out["blocked_total"] = len(blocked_rows)
+    out["blocked_expected"] = blocked_expected
+    out["blocked_deferred"] = blocked_deferred
+    out["blocked_defect"] = blocked_defect
+    out["blocked_runtime_misclassified"] = blocked_runtime
+    out["blocked_candidates"] = blocked_details
+    out["deferred_dependency_count"] = blocked_deferred
+    out["defect_block_count"] = blocked_defect
+
+    # Purchase / attribution separation sample from recovery_influence_boundary
+    influence = [
+        s
+        for s in syntheses
+        if s.get("synthesis_rule_key") == "recovery_influence_boundary"
+    ]
+    out["boundary_verification"]["purchase_attribution_roi_separated"] = bool(
+        influence
+        and any(
+            "classifications_preserved_not_collapsed" in (x.get("known_facts") or [])
+            or "collapsed_influence_claim" in (x.get("prohibited_claims") or [])
+            for x in influence
+        )
+    )
+
     out["accounting_ok"] = (
         out["unaccounted_count"] == 0
         and out["candidate_count"]
@@ -325,6 +450,8 @@ def build_commerce_intelligence_synthesis_prod_probe_v1(
         and out["active_rule_count"] >= 8
         and out["candidate_count"] > 0
         and out["unaccounted_count"] == 0
+        and out["blocked_defect"] == 0
+        and out["blocked_runtime_misclassified"] == 0
         and "store_not_allowlisted" not in out["errors"]
         and not any(str(e).startswith("materialize:") for e in out["errors"])
     )
