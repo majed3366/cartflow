@@ -152,18 +152,14 @@ def build_commerce_intelligence_knowledge_prod_probe_v1(
         by_state[str(a.get("synthesis_state") or "")] += 1
         if a.get("outcome") == "deferred":
             deferred_status[str(a.get("synthesis_rule_key") or "")] += 1
-        if a.get("knowledge_type"):
-            by_type[str(a.get("knowledge_type"))] += 1
     for r in generated.get("records") or []:
         by_type[str(r.get("knowledge_type") or "")] += 1
         if not r.get("source_synthesis_id") or not r.get("source_fingerprint"):
             out["lineage_ok"] = False
         if r.get("source_type") != SOURCE_TYPE_CISYN:
             out["lineage_ok"] = False
-        # Knowledge must not strengthen — spot-check prohibited presence
-        if not (r.get("prohibited_claims") or []):
-            # influence/gap types must carry prohibited from synthesis when present
-            pass
+        if not (r.get("prohibited_claims") or []) and not (r.get("unknown_facts") or []):
+            out["claim_boundary_ok"] = False
         conf = r.get("confidence_input")
         if conf is not None and not isinstance(conf, dict):
             out["confidence_handoff_ok"] = False

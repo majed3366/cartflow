@@ -1,7 +1,8 @@
 # Commerce Intelligence → Knowledge Integration V1 — Production Closure Evidence
 
-**Status:** Pending production probe after merge  
+**Status:** PRODUCTION CLOSED  
 **Date (UTC):** 2026-07-22  
+**Runtime commit:** PR #41 → `main`  
 **Environment:** https://smartreplyai.net  
 **Store:** `demo` only  
 
@@ -20,16 +21,55 @@
 
 ---
 
-## Deployment artifacts
+## Deployment
 
 | Item | Value |
 |------|--------|
-| Flag | `CARTFLOW_COMMERCE_INTELLIGENCE_KNOWLEDGE_INTEGRATION_V1` (default on) |
+| PR | https://github.com/majed3366/cartflow/pull/41 |
+| Flag | `CARTFLOW_COMMERCE_INTELLIGENCE_KNOWLEDGE_INTEGRATION_V1` (enabled) |
 | Intake registry | `ciknow_v1` |
 | Input contract | `commerce_intelligence_synthesis_v1` |
 | Alembic | `f5a6b7c8d9e0` (+ runtime additive column ensure) |
 | Probe | `GET /dev/commerce-intelligence-knowledge?store=demo` |
-| Arch doc | `docs/architecture/commerce_intelligence_knowledge_integration_v1.md` |
+
+---
+
+## Production probe
+
+| Field | Result |
+|-------|--------|
+| `ok` | `true` |
+| `deterministic` | `true` |
+| `eligible_synthesis_count` | `5` |
+| `ineligible_synthesis_count` | `9` |
+| `knowledge_created` | `5` |
+| `knowledge_updated` | `0` |
+| `unchanged` | `0` |
+| `abstained` | `5` |
+| `rejected` | `4` |
+| `deferred` | `0` (d7: discount/VIP arrive as `blocked` → rejected; no commercial Knowledge) |
+| `failed` | `0` |
+| `unaccounted` | `0` |
+| `claim_boundary_ok` | `true` |
+| `lineage_ok` | `true` |
+| `duplicate_current` | `false` |
+| `non_demo_writes` | `0` |
+
+Verify script: `ok=true`.
+
+### Knowledge created (Demo)
+
+- `product_interest_conversion_gap` (3 products)
+- `traffic_conversion_gap` (1 store)
+- `recovery_influence_classification` (1 store)
+
+### Claim / attribution boundaries
+
+Known/unknown/prohibited preserved on samples; no causal wording. Recovery influence knowledge prohibits collapsed recovered-revenue claims.
+
+### Deferred dependencies
+
+D-CISYN-01 / D-CISYN-02 cannot become established Knowledge until synthesis qualifies. On Demo `d7` they are blocked at synthesis → intake reject.
 
 ---
 
@@ -39,34 +79,18 @@
 
 ---
 
-## Deferred dependencies
-
-D-CISYN-01 / D-CISYN-02 remain non-qualifying for established Knowledge (`outcome=deferred`).
-
----
-
 ## Forbidden scope
 
 No Guidance, Routing, Presentation, Surface Composition, Home UI, AI, or automatic actions.
 
 ---
 
-## Production probe (fill on deploy)
+## Final recommendation
 
-| Field | Result |
-|-------|--------|
-| `ok` | _(pending)_ |
-| `deterministic` | |
-| `unaccounted` | |
-| `failed` | |
-| `claim_boundary_ok` | |
-| `lineage_ok` | |
-| `duplicate_current` | |
-| eligible / ineligible | |
-| created / abstained / rejected / deferred | |
+**PRODUCTION CLOSED**
 
 ---
 
-## Final recommendation
+## STOP
 
-_(Set after live probe)_
+Do not begin Commercial Guidance integration, Guidance Routing, Merchant Presentation, Surface Composition, Home rollout, or AI until this integration is reviewed and approved.
