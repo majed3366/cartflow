@@ -12007,18 +12007,18 @@ def dev_commercial_guidance(
     assembly_window: Optional[str] = None,
 ) -> Any:
     """
-    Diagnostic (allowed in production): Commercial Guidance Foundation V1.
+    Diagnostic (allowed in production): Commercial Guidance Integration V1.
 
-    Permitted guidance from Guidance Eligibility only. Default allowlist Demo.
-    No merchant UI. No automatic actions. No AI.
+    Knowledge → governed Commercial Guidance (cguide_v1). Default allowlist Demo.
+    Does not change Guidance Routing or Presentation. No merchant UI / AI / actions.
     """
-    from services.product_data.commercial_guidance_prod_probe_v1 import (  # noqa: PLC0415
-        build_commercial_guidance_prod_probe_v1,
+    from services.product_data.commercial_guidance_knowledge_prod_probe_v1 import (  # noqa: PLC0415
+        build_commercial_guidance_knowledge_prod_probe_v1,
     )
 
     slug = (store or store_slug or "demo").strip() or "demo"
     window = (assembly_window or "d7").strip() or "d7"
-    report = build_commercial_guidance_prod_probe_v1(
+    report = build_commercial_guidance_knowledge_prod_probe_v1(
         slug, assembly_window=window
     )
     status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
