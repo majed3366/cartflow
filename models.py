@@ -1131,6 +1131,47 @@ class KnowledgeStatement(Base):
     fingerprint = Column(String(64), nullable=False, default="")
 
 
+class GuidanceEligibilityEvaluation(Base):
+    """
+    Guidance Eligibility Foundation V1 — permission to generate guidance.
+
+    Governance only. Does not contain recommendations or guidance content.
+    """
+
+    __tablename__ = "guidance_eligibility_evaluations"
+    __table_args__ = (
+        UniqueConstraint(
+            "eligibility_id",
+            name="uq_guidance_eligibility_id",
+        ),
+        UniqueConstraint(
+            "store_slug",
+            "subject_type",
+            "subject_id",
+            "eligibility_version",
+            "as_of_key",
+            name="uq_guidance_eligibility_grain",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    eligibility_id = Column(String(64), nullable=False, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    subject_type = Column(String(32), nullable=False, default="", index=True)
+    subject_id = Column(String(256), nullable=False, default="", index=True)
+    eligibility_status = Column(String(64), nullable=False, index=True)
+    eligibility_reason = Column(Text, nullable=False, default="")
+    knowledge_count = Column(Integer, nullable=False, default=0)
+    required_knowledge_count = Column(Integer, nullable=False, default=2)
+    blocking_conditions_json = Column(Text, nullable=False, default="[]")
+    knowledge_ids_json = Column(Text, nullable=False, default="[]")
+    evaluated_at = Column(DateTime, nullable=False, index=True)
+    as_of = Column(DateTime, nullable=False, index=True)
+    as_of_key = Column(String(32), nullable=False, default="")
+    eligibility_version = Column(String(32), nullable=False, default="gef_v1")
+    fingerprint = Column(String(64), nullable=False, default="")
+
+
 class DashboardSnapshot(Base):
     """
     Precomputed merchant dashboard payload — read-only on API hot path
