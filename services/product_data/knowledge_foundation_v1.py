@@ -84,6 +84,9 @@ def _build_record(
     as_of: datetime,
     generated_at: datetime,
     seed_extra: str = "",
+    metric_key: str = "",
+    trend_direction: str = "",
+    gap_key: str = "",
 ) -> dict[str, Any]:
     days = WINDOW_LENGTH_DAYS.get(assembly_window, 7)
     valid_until = as_of + timedelta(days=days)
@@ -129,6 +132,10 @@ def _build_record(
         "as_of": as_of.isoformat(sep=" "),
         "knowledge_version": KNOWLEDGE_VERSION_V1,
         "fingerprint": fingerprint,
+        # Structured facets for Guidance Eligibility → Commercial Guidance contract.
+        "metric_key": str(metric_key or ""),
+        "trend_direction": str(trend_direction or ""),
+        "gap_key": str(gap_key or ""),
     }
 
 
@@ -206,6 +213,7 @@ def statements_from_confidence_evaluation_v1(
                 as_of=as_of,
                 generated_at=generated_at,
                 seed_extra=f"gap:{key}",
+                gap_key=key,
             )
         )
 
@@ -230,6 +238,8 @@ def statements_from_confidence_evaluation_v1(
                     as_of=as_of,
                     generated_at=generated_at,
                     seed_extra=f"trend:{metric_key}:{direction}",
+                    metric_key=metric_key,
+                    trend_direction=direction,
                 )
             )
 

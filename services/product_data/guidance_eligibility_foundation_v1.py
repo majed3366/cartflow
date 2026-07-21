@@ -82,6 +82,38 @@ def _parse_iso(value: Any) -> Optional[datetime]:
         return None
 
 
+def _knowledge_context_from_statements(
+    statements: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Governed knowledge digest for downstream Commercial Guidance (contract only)."""
+    ctx: list[dict[str, Any]] = []
+    ordered = sorted(
+        statements,
+        key=lambda s: (
+            str(s.get("knowledge_type") or ""),
+            str(s.get("knowledge_id") or ""),
+        ),
+    )
+    for s in ordered:
+        kid = str(s.get("knowledge_id") or "")
+        if not kid:
+            continue
+        ctx.append(
+            {
+                "knowledge_id": kid,
+                "knowledge_type": str(s.get("knowledge_type") or ""),
+                "statement": str(s.get("statement") or ""),
+                "confidence_level": str(s.get("confidence_level") or ""),
+                "valid_until": str(s.get("valid_until") or ""),
+                "assembly_window": str(s.get("assembly_window") or ""),
+                "metric_key": str(s.get("metric_key") or ""),
+                "trend_direction": str(s.get("trend_direction") or ""),
+                "gap_key": str(s.get("gap_key") or ""),
+            }
+        )
+    return ctx
+
+
 def evaluate_subject_eligibility_v1(
     *,
     store_slug: str,
@@ -97,6 +129,7 @@ def evaluate_subject_eligibility_v1(
         str(s.get("knowledge_id") or "") for s in statements if s.get("knowledge_id")
     )
     knowledge_count = len(statements)
+    knowledge_context = _knowledge_context_from_statements(statements)
     blocking: list[str] = []
     status = STATUS_ELIGIBLE
     reason = "required_knowledge_present_and_current"
@@ -180,9 +213,11 @@ def evaluate_subject_eligibility_v1(
         "required_knowledge_count": required,
         "blocking_conditions": blocking,
         "knowledge_ids": knowledge_ids,
+        "knowledge_context": knowledge_context,
         "evaluated_at": evaluated_at.isoformat(sep=" "),
         "as_of": as_of.isoformat(sep=" "),
         "eligibility_version": ELIGIBILITY_VERSION_V1,
+        "contract_version": "gef_v1_guidance_context",
     }
     payload["fingerprint"] = _sha(payload)
     return payload
