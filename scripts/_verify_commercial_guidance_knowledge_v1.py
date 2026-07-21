@@ -28,16 +28,20 @@ def main() -> int:
         print(json.dumps({"ok": False, "error": str(exc)}, indent=2))
         return 2
 
+    def _i(key: str) -> int:
+        val = body.get(key)
+        return int(val) if val is not None else -1
+
     gates = {
         "http_ok": status == 200,
         "ok": body.get("ok") is True,
         "deterministic": body.get("deterministic") is True,
-        "unaccounted_0": int(body.get("unaccounted") or -1) == 0,
-        "failed_0": int(body.get("failed") or -1) == 0,
+        "unaccounted_0": _i("unaccounted") == 0,
+        "failed_0": _i("failed") == 0,
         "claim_boundary_ok": body.get("claim_boundary_ok") is True,
         "lineage_ok": body.get("lineage_ok") is True,
         "duplicate_current_false": body.get("duplicate_current") is False,
-        "non_demo_writes_0": int(body.get("non_demo_writes") or -1) == 0,
+        "non_demo_writes_0": _i("non_demo_writes") == 0,
         "knowledge_only": body.get("consumes_knowledge_only") is True,
     }
     summary = {
