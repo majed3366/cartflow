@@ -1219,6 +1219,52 @@ class CommercialGuidanceRecord(Base):
     as_of_key = Column(String(32), nullable=False, default="")
 
 
+class GuidanceRoute(Base):
+    """
+    Guidance Routing Foundation V1 — surface eligibility for commercial guidance.
+
+    Not presentation, wording, or UI. One current row per guidance×surface.
+    """
+
+    __tablename__ = "guidance_routes"
+    __table_args__ = (
+        UniqueConstraint(
+            "route_id",
+            name="uq_guidance_route_id",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    route_id = Column(String(64), nullable=False, index=True)
+    guidance_id = Column(String(64), nullable=False, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    subject_type = Column(String(32), nullable=False, default="")
+    subject_id = Column(String(256), nullable=False, default="")
+    surface_key = Column(String(64), nullable=False, index=True)
+    guidance_key = Column(String(64), nullable=False, default="")
+    route_scope = Column(String(64), nullable=False, default="")
+    route_role = Column(String(64), nullable=False, default="")
+    route_status = Column(String(32), nullable=False, index=True)
+    routing_rationale_code = Column(String(128), nullable=False, default="")
+    routing_context_digest = Column(String(64), nullable=False, default="")
+    valid_from = Column(DateTime, nullable=False)
+    valid_until = Column(DateTime, nullable=False, index=True)
+    is_current = Column(Boolean, nullable=False, default=True, index=True)
+    routing_version = Column(String(32), nullable=False, default="grf_v1")
+    routing_rule_version = Column(String(64), nullable=False, default="")
+    surface_registry_version = Column(String(32), nullable=False, default="gsurf_v1")
+    routing_registry_version = Column(String(32), nullable=False, default="grule_v1")
+    source_contract_version = Column(String(64), nullable=False, default="")
+    input_fingerprint = Column(String(64), nullable=False, default="")
+    route_fingerprint = Column(String(64), nullable=False, default="", index=True)
+    generation_version = Column(String(32), nullable=False, default="grf_v1_eval")
+    as_of = Column(DateTime, nullable=False)
+    as_of_key = Column(String(32), nullable=False, default="")
+    created_at = Column(DateTime, nullable=False)
+    refreshed_at = Column(DateTime, nullable=False)
+    superseded_at = Column(DateTime, nullable=True)
+
+
 class DashboardSnapshot(Base):
     """
     Precomputed merchant dashboard payload — read-only on API hot path

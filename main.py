@@ -1051,6 +1051,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/knowledge-foundation",
         "/dev/guidance-eligibility",
         "/dev/commercial-guidance",
+        "/dev/guidance-routing",
         "/dev/data-growth-measurement",
         "/dev/dashboard-snapshot-archive",
         "/dev/business-findings-review",
@@ -12015,6 +12016,31 @@ def dev_commercial_guidance(
     slug = (store or store_slug or "demo").strip() or "demo"
     window = (assembly_window or "d7").strip() or "d7"
     report = build_commercial_guidance_prod_probe_v1(
+        slug, assembly_window=window
+    )
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
+@app.get("/dev/guidance-routing")
+def dev_guidance_routing(
+    store: Optional[str] = None,
+    store_slug: Optional[str] = None,
+    assembly_window: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Guidance Routing Foundation V1.
+
+    Surface eligibility from Commercial Guidance only. Default allowlist Demo.
+    No merchant UI, presentation, or page-local routing.
+    """
+    from services.product_data.guidance_routing_prod_probe_v1 import (  # noqa: PLC0415
+        build_guidance_routing_prod_probe_v1,
+    )
+
+    slug = (store or store_slug or "demo").strip() or "demo"
+    window = (assembly_window or "d7").strip() or "d7"
+    report = build_guidance_routing_prod_probe_v1(
         slug, assembly_window=window
     )
     status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
