@@ -2257,22 +2257,28 @@
     setText("ma-topbar-date", d.merchant_ar_date_header || "");
     ingestRefreshToken(d, "summary");
     applyTopbarReadiness(d);
-    applySetupReadinessPanelWithFallback(d);
-    applyMerchantSetupExperience(d.merchant_setup_experience);
-    if (
-      d.merchant_setup_experience &&
-      d.merchant_setup_experience.activation_journey_v2
-    ) {
-      applyActivationJourneySideEffects(
+    var meifPkg = d.merchant_experience_integration_v1 || null;
+    var meifHome = (meifPkg && meifPkg.pages && meifPkg.pages.home) || null;
+    var suppressSetupTheatre = !!(meifHome && meifHome.suppress_setup_theatre);
+    /* MEH V1: when durable ops exist, do not paint setup theatre over lived history. */
+    if (!suppressSetupTheatre) {
+      applySetupReadinessPanelWithFallback(d);
+      applyMerchantSetupExperience(d.merchant_setup_experience);
+      if (
+        d.merchant_setup_experience &&
         d.merchant_setup_experience.activation_journey_v2
-      );
+      ) {
+        applyActivationJourneySideEffects(
+          d.merchant_setup_experience.activation_journey_v2
+        );
+      }
+      applyHomeLayoutAfterSetup(d.merchant_activation, d.merchant_setup_experience);
     }
-    applyHomeLayoutAfterSetup(d.merchant_activation, d.merchant_setup_experience);
     logSetupRenderDebug("summary_dom", probeSetupExperienceRoot());
 
     var pulseRendered = false;
     var homeV1Rendered = false;
-    /* MEIF V1: prefer governed integration package over legacy Home composer. */
+    /* MEIF/MEH: prefer governed integration package over legacy Home composer. */
     if (window.maApplyMerchantExperienceIntegrationV1) {
       try {
         homeV1Rendered = !!window.maApplyMerchantExperienceIntegrationV1(d);

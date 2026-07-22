@@ -1,6 +1,6 @@
 /**
- * MEIF V1 — merchant page consumer for governed integration packages.
- * No business logic. Renders Surface Composition / ops truth packages only.
+ * MEIF + MEH V1 — merchant page consumer for governed integration packages.
+ * No business logic. Renders packages with trust-class labeling.
  */
 (function () {
   "use strict";
@@ -16,6 +16,18 @@
 
   function meif(summary) {
     return (summary && summary.merchant_experience_integration_v1) || null;
+  }
+
+  function trustBadge(it) {
+    var label = it.trust_class_ar || it.trust_class || "";
+    if (!label) return "";
+    return (
+      '<span class="meif-trust meif-trust--' +
+      esc(it.trust_class || "observation") +
+      '">' +
+      esc(label) +
+      "</span>"
+    );
   }
 
   function renderItemList(items, emptyAr) {
@@ -40,7 +52,10 @@
             .filter(Boolean)
             .join(" · ");
           return (
-            '<li class="meif-item">' +
+            '<li class="meif-item" data-trust="' +
+            esc(it.trust_class || "") +
+            '">' +
+            trustBadge(it) +
             '<div class="meif-item__title">' +
             esc(title) +
             "</div>" +
@@ -55,6 +70,22 @@
     );
   }
 
+  function suppressSetupTheatre(home) {
+    if (!home || !home.suppress_setup_theatre) return;
+    var selectors = [
+      "#ma-setup-readiness-panel",
+      "#ma-activation-journey",
+      ".ma-setup-experience",
+      "[data-ma-setup-theatre]",
+    ];
+    selectors.forEach(function (sel) {
+      document.querySelectorAll(sel).forEach(function (el) {
+        el.hidden = true;
+        el.setAttribute("data-meh-suppressed", "1");
+      });
+    });
+  }
+
   function applyHome(summary) {
     var pkg = meif(summary);
     if (!pkg || !pkg.ok || !pkg.pages || !pkg.pages.home) return false;
@@ -63,18 +94,31 @@
     if (!root) return false;
     var ops = home.operational_truth || {};
     var sections = home.sections || {};
+    var cue = home.chronology_cue || {};
     var html = "";
     html +=
-      '<section class="meif-home" data-meif="1">' +
+      '<section class="meif-home" data-meif="1" data-meh="1">' +
       '<header class="meif-home__header">' +
       "<h2>ما الذي يجب أن تعرفه الآن؟</h2>" +
-      '<p class="meif-home__ops">سلات مسجّلة: ' +
+      '<p class="meif-home__ops"><span class="meif-trust meif-trust--fact">حقيقة</span> سلات مسجّلة: ' +
       esc(String(ops.abandoned_carts != null ? ops.abandoned_carts : "—")) +
       " · مشتريات موثّقة: " +
       esc(String(ops.purchase_truth != null ? ops.purchase_truth : "—")) +
       " · أسباب تردد: " +
       esc(String(ops.hesitation_reasons != null ? ops.hesitation_reasons : "—")) +
-      "</p></header>";
+      "</p>";
+    if (cue.as_of) {
+      html +=
+        '<p class="meif-item__meta">' +
+        esc(cue.label_ar || "نافذة المراجعة") +
+        ": " +
+        esc(String(cue.assembly_window || "")) +
+        " · as_of " +
+        esc(String(cue.as_of)) +
+        (cue.note_ar ? " — " + esc(cue.note_ar) : "") +
+        "</p>";
+    }
+    html += "</header>";
     html +=
       '<section class="meif-block"><h3>ملخص تنفيذي</h3>' +
       renderItemList(sections.executive_summary, "لا ملخص تنفيذي محكوم بعد.") +
@@ -100,13 +144,23 @@
       '<section class="meif-block"><h3>إرشاد تجاري</h3>' +
       renderItemList(
         sections.commercial_guidance_highlights,
-        "لا إرشاد موجّه عبر التركيب بعد."
+        "لا توصية تشغيلية موجّهة الآن."
       ) +
       "</section>";
+    if (
+      sections.monitoring_observations &&
+      sections.monitoring_observations.length
+    ) {
+      html +=
+        '<section class="meif-block"><h3>ملاحظات مراقبة (ليست توصيات)</h3>' +
+        renderItemList(sections.monitoring_observations, "") +
+        "</section>";
+    }
     html += "</section>";
     root.className = "ma-home-experience meif-home-root";
     root.innerHTML = html;
     root.removeAttribute("aria-busy");
+    suppressSetupTheatre(home);
     return true;
   }
 
@@ -118,7 +172,9 @@
     var banner = document.getElementById("meif-carts-truth-banner");
     if (banner) {
       banner.hidden = false;
-      banner.textContent = carts.status_message_ar || "";
+      banner.innerHTML =
+        '<span class="meif-trust meif-trust--fact">حقيقة</span> ' +
+        esc(carts.status_message_ar || "");
     }
     if (carts.forbid_please_wait && loading) {
       loading.hidden = true;
@@ -133,9 +189,9 @@
     var comm = pkg.pages.communication;
     var ops = comm.operational_truth || {};
     root.innerHTML =
-      '<section class="meif-comms" data-meif="1">' +
+      '<section class="meif-comms" data-meif="1" data-meh="1">' +
       "<h2>التواصل — متابعة التشغيل</h2>" +
-      "<p>" +
+      "<p><span class=\"meif-trust meif-trust--fact\">حقيقة</span> " +
       esc(comm.status_message_ar || "") +
       "</p>" +
       '<p class="meif-item__meta">إرسال: ' +
@@ -159,7 +215,7 @@
     var dw = pkg.pages.decision_workspace;
     var sections = dw.sections || {};
     root.innerHTML =
-      '<section class="meif-decision" data-meif="1">' +
+      '<section class="meif-decision" data-meif="1" data-meh="1">' +
       "<h2>لماذا يحدث هذا، وما الذي يجب مراجعته؟</h2>" +
       '<section class="meif-block"><h3>عناصر للمراجعة</h3>' +
       renderItemList(sections.review_items, "لا عناصر مراجعة محكومة بعد.") +
