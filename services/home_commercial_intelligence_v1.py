@@ -295,24 +295,22 @@ def apply_home_commercial_intelligence_v1(
     if isinstance(findings_package, Mapping) and findings_package.get("findings") is not None:
         package = findings_package
     else:
+        # BFL V1: Home/HCI must never generate findings. Consume persisted only.
+        # load_db / demo_fixture are ignored for generation (kept for call-site compat).
+        _ = (load_db, demo_fixture, dash_store)
         try:
-            from services.business_findings_engine_v1 import (  # noqa: PLC0415
-                run_business_findings_engine_v1,
+            from services.business_findings_lifecycle_v1.consume_home_v1 import (  # noqa: PLC0415
+                load_current_findings_package_v1,
             )
 
-            # PI-F1: never default demo_fixture when load_db is false
-            package = run_business_findings_engine_v1(
-                store_slug=slug,
-                load_db=bool(load_db),
-                dash_store=dash_store,
-                demo_fixture=bool(demo_fixture) and bool(admit_review_fixtures),
-            )
+            package = load_current_findings_package_v1(slug, mark_displayed=True)
         except Exception as exc:  # noqa: BLE001
-            log.warning("commercial intelligence findings failed: %s", exc)
+            log.warning("commercial intelligence findings consume failed: %s", exc)
             home["home_commercial_intelligence_v1"] = {
                 "ok": False,
                 "error": type(exc).__name__,
                 "engine": ENGINE_VERSION,
+                "source": "lifecycle_consume",
             }
             return home
 

@@ -255,21 +255,175 @@
     });
   }
 
+  function renderFindingCard(it, surface) {
+    var fid = String((it && it.finding_id) || "");
+    var ftype = String((it && it.finding_type) || "");
+    if (!fid || !ftype) {
+      pushRenderDiag({
+        finding_id: fid || null,
+        finding_type: ftype || null,
+        surface_requested: surface,
+        renderer_invoked: true,
+        render_accepted: false,
+        render_skipped: true,
+        skip_reason: "missing_finding_id_or_type",
+      });
+      return "";
+    }
+    var title = String(it.title || it.merchant_statement_ar || "");
+    var explanation = String(it.explanation || "");
+    var evidence = String(it.evidence_summary || "");
+    var confidence = String(it.confidence || "");
+    var action = String(it.recommended_action || "");
+    var confAr = confidenceLabel({ confidence: confidence }) || confidence;
+    pushRenderDiag({
+      finding_id: fid,
+      finding_type: ftype,
+      surface_requested: surface,
+      renderer_invoked: true,
+      render_accepted: true,
+      render_skipped: false,
+      skip_reason: null,
+    });
+    return (
+      '<article class="meif-card meif-card--finding" data-mebf="1" data-finding-id="' +
+      esc(fid) +
+      '" data-finding-type="' +
+      esc(ftype) +
+      '">' +
+      '<div class="meif-card__head">' +
+      '<span class="meif-trust meif-trust--observation">استنتاج تجاري</span>' +
+      (confAr
+        ? '<span class="meif-conf">' + esc(confAr) + "</span>"
+        : "") +
+      "</div>" +
+      '<h4 class="meif-card__title" data-mebf-title="1">' +
+      esc(title) +
+      "</h4>" +
+      (explanation
+        ? '<p class="meif-card__row" data-mebf-explanation="1">' +
+          esc(explanation) +
+          "</p>"
+        : "") +
+      (evidence
+        ? '<p class="meif-card__row meif-card__evidence" data-mebf-evidence="1"><strong>الأدلة:</strong> ' +
+          esc(evidence) +
+          "</p>"
+        : "") +
+      (action
+        ? '<p class="meif-card__action" data-mebf-action="1"><strong>الخطوة المقترحة:</strong> ' +
+          esc(action) +
+          "</p>"
+        : "") +
+      '<p class="meif-card__meta"><code data-mebf-id="1">' +
+      esc(fid) +
+      "</code> · <code>" +
+      esc(ftype) +
+      "</code></p>" +
+      "</article>"
+    );
+  }
+
+  function renderFindingsBlock(items, surface, emptyMsg) {
+    var list = Array.isArray(items) ? items : [];
+    var html =
+      '<div class="meif-cards meif-cards--findings" data-mebf-surface="' +
+      esc(surface) +
+      '">';
+    var painted = 0;
+    for (var i = 0; i < list.length; i++) {
+      var card = renderFindingCard(list[i], surface);
+      if (card) {
+        html += card;
+        painted += 1;
+      }
+    }
+    if (!painted) {
+      html +=
+        '<p class="meif-empty">' +
+        esc(emptyMsg || "لا استنتاجات تجارية مُلزمة بعد.") +
+        "</p>";
+    }
+    html += "</div>";
+    return { html: html, painted: painted };
+  }
+
+  var _mebfRenderDiagnostics = [];
+
+  function pushRenderDiag(row) {
+    _mebfRenderDiagnostics.push(row || {});
+  }
+
+  function publishRenderDiagnostics(summary, surface) {
+    var pkg = meif(summary) || {};
+    var binding = pkg.business_findings_binding_v1 || {};
+    var merged = [];
+    var base = Array.isArray(binding.diagnostics) ? binding.diagnostics : [];
+    for (var i = 0; i < base.length; i++) {
+      merged.push(Object.assign({}, base[i]));
+    }
+    for (var j = 0; j < _mebfRenderDiagnostics.length; j++) {
+      var d = _mebfRenderDiagnostics[j];
+      if (!d) continue;
+      var hit = null;
+      for (var k = 0; k < merged.length; k++) {
+        if (merged[k].finding_id && merged[k].finding_id === d.finding_id) {
+          hit = merged[k];
+          break;
+        }
+      }
+      if (hit) {
+        hit.renderer_invoked = !!d.renderer_invoked;
+        hit.render_accepted = !!d.render_accepted;
+        hit.render_skipped = !!d.render_skipped;
+        hit.skip_reason = d.skip_reason || hit.skip_reason;
+        hit.surface_rendered = surface;
+      } else {
+        merged.push(
+          Object.assign({ surface_rendered: surface }, d)
+        );
+      }
+    }
+    window.__mebfRenderDiagnostics = {
+      binding_version: binding.binding_version || "mebf_v1",
+      surface: surface,
+      findings_bound: binding.findings_bound,
+      home_bound: binding.home_bound,
+      diagnostics: merged,
+      paint_events: _mebfRenderDiagnostics.slice(),
+    };
+    try {
+      document.documentElement.setAttribute(
+        "data-mebf-painted",
+        String(
+          _mebfRenderDiagnostics.filter(function (x) {
+            return x && x.render_accepted;
+          }).length
+        )
+      );
+    } catch (e) {}
+  }
+
   function applyHome(summary) {
     var pkg = meif(summary);
     if (!pkg || !pkg.ok || !pkg.pages || !pkg.pages.home) return false;
     var home = pkg.pages.home;
     var root = document.getElementById("ma-home-experience-root");
     if (!root) return false;
+    _mebfRenderDiagnostics = [];
     var ops = home.operational_truth || {};
     var sections = home.sections || {};
     var cue = home.chronology_cue || {};
     var verdict = healthVerdict(ops, home);
     var watching = ops.has_durable_carts || Number(ops.abandoned_carts || 0) > 0;
+    var findings =
+      sections.business_findings ||
+      sections.commercial_guidance_highlights ||
+      [];
 
     var html = "";
     html +=
-      '<section class="meif-surface meif-home" data-meif="1" data-msr="1">' +
+      '<section class="meif-surface meif-home" data-meif="1" data-msr="1" data-mebf="1">' +
       '<header class="meif-brief">' +
       '<p class="meif-eyebrow">إحاطة تنفيذية</p>' +
       "<h2>" +
@@ -287,6 +441,18 @@
         : "CartFlow جاهز للمراقبة — بانتظار تسجيل نشاط.") +
       "</div>" +
       "</header>";
+
+    // MEBF V1 — Business Findings first (canonical commercial insights).
+    var findingsBlock = renderFindingsBlock(
+      findings,
+      "home",
+      "لا استنتاجات تجارية مُلزمة من سجل المتجر بعد."
+    );
+    html +=
+      '<section class="meif-block meif-block--findings" aria-label="استنتاجات تجارية" data-mebf-home="1">' +
+      "<h3>ما الذي نعرفه عن عملك الآن؟</h3>" +
+      findingsBlock.html +
+      "</section>";
 
     html +=
       '<section class="meif-block meif-block--facts" aria-label="صحة المتجر">' +
@@ -318,11 +484,13 @@
     html +=
       '<section class="meif-block" aria-label="الملخص التنفيذي">' +
       "<h3>ماذا يجب أن تعرف قبل أي صفحة تفصيلية؟</h3>" +
-      renderCardList(
-        sections.executive_summary,
-        "لا ملخص تنفيذي محكوم بعد.",
-        "brief"
-      ) +
+      (findingsBlock.painted
+        ? '<p class="meif-lede">الملخص أعلاه مبني على استنتاجات تجارية مُلزمة (Business Findings).</p>'
+        : renderCardList(
+            sections.executive_summary,
+            "لا ملخص تنفيذي محكوم بعد.",
+            "brief"
+          )) +
       "</section>";
 
     html +=
@@ -348,24 +516,8 @@
     html +=
       '<section class="meif-block" aria-label="إرشاد">' +
       "<h3>ما الذي يستحق قراراً؟</h3>" +
-      renderCardList(
-        sections.commercial_guidance_highlights,
-        "لا توصية تشغيلية موجّهة الآن.",
-        "action"
-      ) +
       '<p class="meif-next"><a href="#workspace">افتح مساحة القرار للتفسير الكامل ←</a></p>' +
       "</section>";
-
-    if (
-      sections.monitoring_observations &&
-      sections.monitoring_observations.length
-    ) {
-      html +=
-        '<section class="meif-block meif-block--muted" aria-label="مراقبة">' +
-        "<h3>ملاحظات مراقبة (ليست توصيات)</h3>" +
-        renderCardList(sections.monitoring_observations, "", "brief") +
-        "</section>";
-    }
 
     if (cue.as_of) {
       html +=
@@ -387,6 +539,7 @@
     var loading = document.getElementById("ma-home-experience-loading");
     if (loading) loading.hidden = true;
     suppressSetupTheatre(home);
+    publishRenderDiagnostics(summary, "home");
     return true;
   }
 
@@ -431,16 +584,22 @@
 
     if (focus) {
       focus.hidden = false;
+      var cFindings =
+        (carts.sections && carts.sections.business_findings) ||
+        items.filter(function (it) {
+          return it && (it.finding_id || it.bfl_binding);
+        });
+      var cBlock = renderFindingsBlock(
+        cFindings,
+        "carts",
+        ops.has_durable_carts
+          ? "السلات مسجّلة تشغيلياً — لا استنتاج تجاري مُلزم مرتبط بالسلال بعد."
+          : "لا استنتاجات سلال مُلزمة بعد."
+      );
       focus.innerHTML =
-        '<section class="meif-surface meif-carts-focus" data-msr="1">' +
+        '<section class="meif-surface meif-carts-focus" data-msr="1" data-mebf="1">' +
         "<h3>لماذا تهمّ هذه السلال؟</h3>" +
-        renderCardList(
-          items,
-          ops.has_durable_carts
-            ? "السلات مسجّلة في الحقيقة التشغيلية — راجع الجدول أدناه للتفاصيل."
-            : "لا إشارات سلال محكومة بعد.",
-          "action"
-        ) +
+        cBlock.html +
         "</section>";
     }
   }
@@ -481,12 +640,18 @@
       '<p class="meif-watch">' +
       esc(needs) +
       "</p>" +
-      '<section class="meif-block"><h3>إشارات التواصل المحكومة</h3>' +
-      renderCardList(
-        (comm.sections && comm.sections.composition_items) || [],
-        "لا عناصر تواصل محكومة بعد — هذه ليست صفحة إعدادات واتساب.",
-        "action"
-      ) +
+      '<section class="meif-block" data-mebf="1"><h3>استنتاجات التواصل</h3>' +
+      renderFindingsBlock(
+        (comm.sections && comm.sections.business_findings) ||
+          (
+            (comm.sections && comm.sections.composition_items) ||
+            []
+          ).filter(function (it) {
+            return it && (it.finding_id || it.bfl_binding);
+          }),
+        "communication",
+        "لا استنتاجات تواصل مُلزمة بعد — هذه ليست صفحة إعدادات واتساب."
+      ).html +
       "</section>" +
       '<p class="meif-next">' +
       '<a href="#messages">سجل الرسائل</a> · ' +
@@ -503,24 +668,23 @@
     }
     var dw = pkg.pages.decision_workspace;
     var sections = dw.sections || {};
+    var dFindings =
+      sections.business_findings ||
+      (sections.review_items || []).filter(function (it) {
+        return it && (it.finding_id || it.bfl_binding);
+      });
+    var dBlock = renderFindingsBlock(
+      dFindings,
+      "decision_workspace",
+      "لا استنتاجات تجارية تحتاج قراراً بعد."
+    );
     root.innerHTML =
-      '<section class="meif-surface meif-decision" data-meif="1" data-msr="1">' +
+      '<section class="meif-surface meif-decision" data-meif="1" data-msr="1" data-mebf="1">' +
       '<p class="meif-eyebrow">مساحة القرار</p>' +
       "<h2>لماذا يحدث هذا، وما القرار المطلوب؟</h2>" +
-      '<p class="meif-lede">كل عنصر أدناه يوضّح السبب والدليل ومستوى الثقة والخطوة المقترحة — دون اختراع توصيات جديدة.</p>' +
-      '<section class="meif-block"><h3>عناصر تحتاج قراراً</h3>' +
-      renderCardList(
-        sections.review_items,
-        "لا عناصر مراجعة محكومة بعد.",
-        "decision"
-      ) +
-      "</section>" +
-      '<section class="meif-block meif-block--muted"><h3>سياق المعرفة (للتفسير لا للتنفيذ الأعمى)</h3>' +
-      renderCardList(
-        sections.knowledge_context,
-        "لا سياق معرفة مترجم بعد.",
-        "brief"
-      ) +
+      '<p class="meif-lede">كل استنتاج أدناه مربوط بـ Business Finding — دون اختراع توصيات.</p>' +
+      '<section class="meif-block meif-block--findings"><h3>استنتاجات تحتاج قراراً</h3>' +
+      dBlock.html +
       "</section>" +
       '<p class="meif-next"><a href="#carts">انتقل للسلال ذات الأولوية ←</a></p>' +
       "</section>";
