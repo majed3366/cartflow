@@ -1056,6 +1056,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/surface-composition",
         "/dev/operational-truth",
         "/dev/merchant-experience",
+        "/dev/time-authority",
         "/dev/commerce-intelligence-synthesis",
         "/dev/commerce-intelligence-knowledge",
         "/dev/data-growth-measurement",
@@ -12143,6 +12144,29 @@ def dev_merchant_experience(
     slug = (store or store_slug or "demo").strip() or "demo"
     window = (assembly_window or "d7").strip() or "d7"
     report = build_merchant_experience_prod_probe_v1(slug, assembly_window=window)
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
+@app.get("/dev/time-authority")
+def dev_time_authority(
+    store: Optional[str] = None,
+    store_slug: Optional[str] = None,
+    assembly_window: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Time Authority Binding Foundation V1.
+
+    Binding audit, canonical clocks, replay consistency, SCF/OT/MEIF as_of bind.
+    No analytics, timeline redesign, or Knowledge/Guidance logic changes.
+    """
+    from services.product_data.time_authority_binding_prod_probe_v1 import (  # noqa: PLC0415
+        build_time_authority_prod_probe_v1,
+    )
+
+    slug = (store or store_slug or "demo").strip() or "demo"
+    window = (assembly_window or "d7").strip() or "d7"
+    report = build_time_authority_prod_probe_v1(slug, assembly_window=window)
     status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
     return j(report, status)
 

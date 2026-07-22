@@ -61,6 +61,7 @@ from services.product_data.commercial_guidance_knowledge_types_v1 import (
     REGISTRY_VERSION_V1,
     SOURCE_CONTRACT_VERSION_V1,
 )
+from services.product_data.time_authority_binding_resolve_v1 import resolve_bound_as_of_v1
 
 log = logging.getLogger("cartflow")
 
@@ -415,7 +416,7 @@ def generate_commercial_guidance_from_knowledge_v1(
         out["errors"].extend([f"registry:{e}" for e in reg_errors])
         return out
 
-    anchor = _floor_second(as_of or _utc_naive_now())
+    anchor = resolve_bound_as_of_v1(as_of)
     out["as_of"] = anchor.isoformat(sep=" ")
 
     try:
@@ -718,7 +719,7 @@ def verify_cguide_determinism_v1(
     *,
     as_of: Optional[datetime] = None,
 ) -> dict[str, Any]:
-    anchor = _floor_second(as_of or _utc_naive_now())
+    anchor = resolve_bound_as_of_v1(as_of)
     a = generate_commercial_guidance_from_knowledge_v1(store_slug, as_of=anchor)
     b = generate_commercial_guidance_from_knowledge_v1(store_slug, as_of=anchor)
     return {

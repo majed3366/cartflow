@@ -29,6 +29,7 @@ from services.product_data.evidence_confidence_types_v1 import (
 from services.product_data.product_evidence_assembly_v1 import (
     assemble_product_evidence_v1,
 )
+from services.product_data.time_authority_binding_resolve_v1 import resolve_bound_as_of_v1
 
 log = logging.getLogger("cartflow")
 
@@ -258,7 +259,7 @@ def evaluate_evidence_confidence_v1(
         out["errors"].append("store_slug_required")
         return out
 
-    anchor = _floor_second(as_of or _utc_naive_now())
+    anchor = resolve_bound_as_of_v1(as_of)
     out["as_of"] = anchor.isoformat(sep=" ")
     assembled = assemble_product_evidence_v1(
         slug, assembly_window=window, as_of=anchor
@@ -409,7 +410,7 @@ def verify_evidence_confidence_determinism_v1(
     assembly_window: str = "d7",
     as_of: Optional[datetime] = None,
 ) -> dict[str, Any]:
-    anchor = _floor_second(as_of or _utc_naive_now())
+    anchor = resolve_bound_as_of_v1(as_of)
     a = evaluate_evidence_confidence_v1(
         store_slug, assembly_window=assembly_window, as_of=anchor
     )
