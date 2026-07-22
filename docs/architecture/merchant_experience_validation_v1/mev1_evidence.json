@@ -1,0 +1,3422 @@
+{
+  "lab": "merchant_experience_validation_v1",
+  "profile": "Small Reality historical",
+  "generated_at": "2026-07-22T15:32:26.980216+00:00",
+  "db_path": "C:\\Users\\Toshiba\\AppData\\Local\\Temp\\cartflow_mev1_20260722.db",
+  "auth": {
+    "email": "mev1-b5d0e0f80e@example.com",
+    "signup_status": 303,
+    "cookie_name": "cartflow_merchant_session",
+    "lab_session_bind": {
+      "ok": true,
+      "merchant_user_id": 1,
+      "store_slug": "demo",
+      "canonical_store_id": "2",
+      "simulation_store_id": 2,
+      "primary_store_id": 1,
+      "prior_demo_owner_id": null,
+      "source": "lab_session_bind_v1",
+      "membership_mode": "demo_owned_alongside_primary"
+    }
+  },
+  "simulation": {
+    "simulation_run_id": "srs_32921fb36ed24fccadf4b453d29cb5aa",
+    "plan_summary": {
+      "simulation_run_id": "srs_32921fb36ed24fccadf4b453d29cb5aa",
+      "seed": 20260722,
+      "scale_profile": "merchant_experience_validation_v1",
+      "duration_days": 3,
+      "event_count": 244,
+      "supported_count": 107,
+      "unsupported_count": 111,
+      "customer_count": 27,
+      "session_count": 27,
+      "product_count": 8,
+      "expected_event_counts": {
+        "session_started": 27,
+        "page_viewed": 27,
+        "product_viewed": 27,
+        "cart_state_sync": 27,
+        "hesitation_reason_selected": 18,
+        "whatsapp_scheduled": 13,
+        "whatsapp_sent_mock": 13,
+        "scroll_depth_reached": 13,
+        "dwell_time_recorded": 9,
+        "cart_abandoned": 22,
+        "phone_submitted": 11,
+        "returned_to_site": 13,
+        "purchase_created": 10,
+        "widget_opened": 4,
+        "widget_ignored": 4,
+        "passive_return": 6
+      },
+      "scenario_versions": [
+        {
+          "scenario_id": "S01_normal_store_baseline",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S01_normal_store_baseline@v1.r1",
+          "planner_key": "baseline",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S03_shipping_cost_hesitation",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S03_shipping_cost_hesitation@v1.r1",
+          "planner_key": "shipping_hesitation",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S04_product_high_atc_low_purchase",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S04_product_high_atc_low_purchase@v1.r1",
+          "planner_key": "product_low_conv",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S05_wa_return_without_purchase",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S05_wa_return_without_purchase@v1.r1",
+          "planner_key": "wa_return_no_purchase",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S06_wa_success",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S06_wa_success@v1.r1",
+          "planner_key": "wa_success",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S09_widget_opened_ignored",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S09_widget_opened_ignored@v1.r1",
+          "planner_key": "widget_ignore",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S10_widget_reason_capture",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S10_widget_reason_capture@v1.r1",
+          "planner_key": "reason_mix",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S11_ignore_all_recovery",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S11_ignore_all_recovery@v1.r1",
+          "planner_key": "ignore_all",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S12_multi_return_customer",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S12_multi_return_customer@v1.r1",
+          "planner_key": "multi_return",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S13_organic_purchase",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S13_organic_purchase@v1.r1",
+          "planner_key": "organic_purchase",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S14_ambiguous_influence",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S14_ambiguous_influence@v1.r1",
+          "planner_key": "ambiguous_influence",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S15_vip_customer",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S15_vip_customer@v1.r1",
+          "planner_key": "vip",
+          "phase3_eligible": true
+        },
+        {
+          "scenario_id": "S16_insufficient_data",
+          "scenario_version": "v1",
+          "scenario_revision": 1,
+          "versioned_id": "S16_insufficient_data@v1.r1",
+          "planner_key": "insufficient",
+          "phase3_eligible": true
+        }
+      ],
+      "warnings": []
+    },
+    "reality_score": {
+      "overall": 72.2,
+      "dimensions": {
+        "customer_diversity": 80.0,
+        "traffic_realism": 80.0,
+        "purchase_realism": 64.0,
+        "product_realism": 72.0,
+        "recovery_realism": 90.0,
+        "knowledge_realism": 76.0,
+        "timeline_realism": 50.0,
+        "session_realism": 55.0,
+        "behaviour_realism": 85.0,
+        "execution_fidelity": 70.0
+      },
+      "internal_only": true,
+      "merchant_facing": false,
+      "sample": {
+        "events": 60,
+        "customers": 6,
+        "sessions": 6,
+        "products": 4
+      }
+    },
+    "execute": {
+      "status": "completed",
+      "batches_done": 13,
+      "accounting": {
+        "planned": 0,
+        "persisted": 27,
+        "processed": 114,
+        "failed": 19,
+        "unsupported": 111,
+        "duplicate": 0,
+        "replayed": 0,
+        "suppressed": 13,
+        "rejected": 0
+      }
+    },
+    "wall_ms": 112229.3231000076
+  },
+  "merchant_surfaces": {
+    "api": {
+      "summary": {
+        "status": 200,
+        "body": {
+          "ok": "True",
+          "merchant_ar_date_header": "الأربعاء، 22 7 2026",
+          "wa_badge_ar": "تجريبي",
+          "wa_state_key": "sandbox",
+          "merchant_kpi_abandoned_fmt": "0",
+          "merchant_kpi_recovered_fmt": "0",
+          "merchant_kpi_wa_sent_fmt": "0",
+          "merchant_kpi_revenue_fmt": "0",
+          "merchant_kpi_recovered_pct_vs_abandoned": "0.0",
+          "merchant_kpi_wa_sub_ar": "سجلات إرسال اليوم",
+          "merchant_reason_rows_week": [],
+          "merchant_reason_insight_ar": "لا توجد بيانات كافية عن أسباب التردد لهذه الفترة بعد.",
+          "merchant_reason_rows_month": [],
+          "merchant_reason_recommendations_ar": [
+            "لا توجد بيانات كافية عن أسباب التردد لهذه الفترة بعد."
+          ],
+          "merchant_month_abandoned_fmt": "0",
+          "merchant_month_recovered_fmt": "0",
+          "merchant_month_recovery_pct_fmt": "0.0",
+          "merchant_month_revenue_fmt": "0",
+          "merchant_nav_badge_abandoned": "0",
+          "merchant_store_cart_counts": {
+            "active_total": "0",
+            "waiting_total": "0",
+            "sent_total": "0",
+            "engaged_total": "0",
+            "completed_total": "0",
+            "archived_total": "0",
+            "no_phone_total": "0"
+          },
+          "merchant_counter_health": {
+            "counter_source": "canonical",
+            "counter_generated_at": "2026-07-22T15:28:12.782938+00:00",
+            "counter_snapshot_stale": "False",
+            "counter_query_scope": "store_total",
+            "counter_parity_version": "v1",
+            "partial": "False",
+            "candidate_rows": "0",
+            "groups_scanned": "0",
+            "row_cap": "2500",
+            "max_pick": "2500"
+          },
+          "merchant_nav_badge_followup": "0",
+          "merchant_nav_badge_vip": "0",
+          "merchant_setup_experience": {
+            "show_card": "True",
+            "card_title_ar": "متجرك قريب من التشغيل الكامل",
+            "setup_state_label_ar": "قريب من التشغيل",
+            "readiness_percent": "20",
+            "remaining_setup_count": "4",
+            "outcome_summary_ar": "تظهر سلة في قائمة السلال بعد التجربة.",
+            "next_step_ar": "الخطوة الحالية: تجربة الودجيت (إثبات التجربة) — تسجّل أول سلة من متجر الاختبار",
+            "action_href": "/demo/store",
+            "steps": [
+              {
+                "step_id": "sandbox_account",
+                "order": "1",
+                "phase": "sandbox",
+                "title_ar": "الحساب",
+                "outcome_ar": "حسابك جاهز للوصول إلى لوحة التحكم",
+                "proof_ar": "تم إنشاء المتجر وتسجيل الدخول.",
+                "action_href": "/dashboard",
+                "action_label_ar": "الرئيسية",
+                "is_complete": "True",
+                "is_current": "False",
+                "locked": "False",
+                "repeatable_demo": "False",
+                "completed_badge_ar": "",
+                "retry_action_label_ar": "",
+                "start_action_label_ar": ""
+              },
+              {
+                "step_id": "sandbox_test_widget",
+                "order": "2",
+                "phase": "sandbox",
+                "title_ar": "تجربة الودجيت (إثبات التجربة)",
+                "outcome_ar": "تسجّل أول سلة من متجر الاختبار",
+                "proof_ar": "تظهر سلة في قائمة السلال بعد التجربة.",
+                "action_href": "/demo/store",
+                "action_label_ar": "فتح متجر الاختبار",
+                "is_complete": "False",
+                "is_current": "True",
+                "locked": "False",
+                "repeatable_demo": "True",
+                "completed_badge_ar": "تمت التجربة ✅",
+                "retry_action_label_ar": "إعادة التجربة",
+                "start_action_label_ar": "ابدأ التجربة"
+              },
+              {
+                "step_id": "sandbox_first_recovery",
+                "order": "3",
+                "phase": "sandbox",
+                "title_ar": "اختبار أول استرجاع",
+                "outcome_ar": "جدولة وإرسال أول رسالة تجريبية",
+                "proof_ar": "حالة «تم إرسال رسالة» أو جدولة في السلة.",
+                "action_href": "/demo/store",
+                "action_label_ar": "متابعة التجربة",
+                "is_complete": "False",
+                "is_current": "False",
+                "locked": "False",
+                "repeatable_demo": "True",
+                "completed_badge_ar": "تمت التجربة ✅",
+                "retry_action_label_ar": "إعادة التجربة",
+                "start_action_label_ar": "ابدأ التجربة"
+              },
+              {
+                "step_id": "sandbox_view_carts",
+                "order": "4",
+                "phase": "sandbox",
+                "title_ar": "عرض السلال والشرح",
+                "outcome_ar": "افهم الفرق بين «إرسال رسالة» و«تم استردادها»",
+                "proof_ar": "الرسالة التجريبية لا تعني شراءاً فورياً — الاسترداد يظهر عند شراء حقيقي.",
+                "action_href": "/dashboard#carts",
+                "action_label_ar": "عرض السلال",
+                "is_complete": "False",
+                "is_current": "False",
+                "locked": "False",
+                "repeatable_demo": "True",
+                "completed_badge_ar": "تمت التجربة ✅",
+                "retry_action_label_ar": "إعادة التجربة",
+                "start_action_label_ar": "ابدأ التجربة"
+              },
+              {
+                "step_id": "sandbox_verified",
+                "order": "5",
+                "phase": "sandbox",
+                "title_ar": "تجربة التشغيل مُثبتة",
+                "outcome_ar": "إثبات التجربة مكتمل — جاهز لإعداد الإنتاج",
+                "proof_ar": "أول رسالة استرجاع تجريبية سُجّلت بنجاح.",
+                "action_href": "/dashboard#carts",
+                "action_label_ar": "مراجعة الإثبات",
+                "is_complete": "False",
+                "is_current": "False",
+                "locked": "False",
+                "repeatable_demo": "True",
+                "completed_badge_ar": "تمت التجربة ✅",
+                "retry_action_label_ar": "إعادة التجربة",
+                "start_action_label_ar": "ابدأ التجربة"
+              },
+              {
+                "step_id": "prod_oauth",
+                "order": "6",
+                "phase": "production",
+                "title_ar": "ربط المتجر",
+                "outcome_ar": "مزامنة الطلبات مع منصة متجرك",
+                "proof_ar": "يظهر «متجر مربوط» في إعدادات الحساب.",
+                "action_href": "/dashboard#settings",
+                "action_label_ar": "ربط المتجر",
+                "is_complete": "False",
+                "is_current": "False",
+                "locked": "True",
+                "repeatable_demo": "False",
+                "completed_badge_ar": "",
+                "retry_action_label_ar": "",
+                "start_action_label_ar": ""
+              },
+              {
+                "step_id": "prod_whatsapp",
+                "order": "7",
+                "phase": "production",
+                "title_ar": "إعداد واتساب",
+                "outcome_ar": "رقم المتجر وتفعيل الاسترجاع عبر واتساب",
+                "proof_ar": "رقم واتساب محفوظ والاسترجاع مفعّل في الإعدادات.",
+                "action_href": "/dashboard#whatsapp",
+                "action_label_ar": "إعداد واتساب",
+                "is_complete": "False",
+                "is_current": "False",
+                "locked": "True",
+                "repeatable_demo": "False",
+                "completed_badge_ar": "",
+                "retry_action_label_ar": "",
+                "start_action_label_ar": ""
+              },
+              {
+                "step_id": "prod_templates",
+                "order": "8",
+                "phase": "production",
+                "title_ar": "قوالب الرسائل",
+                "outcome_ar": "نصوص أسباب التردد جاهزة للإرسال",
+                "proof_ar": "قوالب غير فارغة — لا يُتخطى الإرسال لسبب قالب.",
+                "action_href": "/dashboard#whatsapp",
+                "action_label_ar": "تحرير القوالب",
+                "is_complete": "False",
+                "is_current": "False",
+                "locked": "True",
+                "repeatable_demo": "False",
+                "completed_badge_ar": "",
+                "retry_action_label_ar": "",
+                "start_action_label_ar": ""
+              },
+              {
+                "step_id": "prod_live_widget",
+                "order": "9",
+                "phase": "production",
+                "title_ar": "الودجيت على متجرك الحقيقي",
+                "outcome_ar": "لصق الشيفرة في قالب زد أو موقعك",
+                "proof_ar": "الودجيت مُثبت على واجهة المتجر الفعلية.",
+                "action_href": "/dashboard#widget",
+                "action_label_ar": "إعداد الودجيت",
+                "is_complete": "False",
+                "is_current": "False",
+                "locked": "True",
+                "repeatable_demo": "False",
+                "completed_badge_ar": "",
+                "retry_action_label_ar": "",
+                "start_action_label_ar": ""
+              }
+            ],
+            "merchant_understands_in_30s": "True",
+            "unified_p0": "True",
+            "setup_mode": "True",
+            "sandbox_verified": "False",
+            "production_unlocked": "False",
+            "card_lead_ar": "اتبع الخطوة التالية بالترتيب — إعداد الإنتاج يُفتح بعد إثبات التجربة.",
+            "current_step_ar": "تجربة الودجيت (إثبات التجربة)",
+            "current_outcome_ar": "تسجّل أول سلة من متجر الاختبار",
+            "proof_ar": "تظهر سلة في قائمة السلال بعد التجربة.",
+            "action_label_ar": "ابدأ التجربة",
+            "delay_hint_ar": "",
+            "test_store_url": "/demo/store",
+            "completed_steps": "1",
+            "total_steps": "5",
+            "onboarding_complete": "False",
+            "first_recovery_ready": "False",
+            "celebration_message_ar": "",
+            "merchant_store_display_name": "متجر تجربة التاجر",
+            "MERCHANT_SETUP_RENDER_BUILD": "ui-setup-v8j-lifecycle-e2e-v1",
+            "activation_journey_v2": {
+              "version": "2",
+              "journey_title_ar": "تفعيل المتجر",
+              "progress_percent": "17",
+              "completed_steps": "1",
+              "total_steps": "6",
+              "progress_label_ar": "1 / 6 خطوات مكتملة",
+              "onboarding_complete": "False",
+              "show_journey": "True",
+              "current_step_id": "widget_test",
+              "steps": [
+                {
+                  "step_id": "account",
+                  "order": "1",
+                  "title_ar": "تم إنشاء الحساب",
+                  "why_ar": "حسابك يفتح لوحة التحكم ومسار تفعيل المتجر.",
+                  "action_href": "/dashboard#home",
+                  "action_label_ar": "الرئيسية",
+                  "status": "done",
+                  "is_complete": "True"
+                },
+                {
+                  "step_id": "widget_test",
+                  "order": "2",
+                  "title_ar": "تجربة الودجيت",
+                  "why_ar": "CartFlow يحتاج أول سلة ليفهم سبب تردد العميل.",
+                  "action_href": "/demo/store",
+                  "action_label_ar": "فتح متجر الاختبار",
+                  "status": "current",
+                  "is_complete": "False"
+                },
+                {
+                  "step_id": "connect_store",
+                  "order": "3",
+                  "title_ar": "ربط المتجر",
+                  "why_ar": "CartFlow يحتاج الوصول لنشاط السلال في متجرك.",
+                  "action_href": "/dashboard#settings",
+                  "action_label_ar": "ربط المتجر",
+                  "status": "locked",
+                  "is_complete": "False"
+                },
+                {
+                  "step_id": "configure_whatsapp",
+                  "order": "4",
+                  "title_ar": "إعداد واتساب",
+                  "why_ar": "لإرسال رسائل المتابعة للعملاء عند ترك السلة.",
+                  "action_href": "/dashboard#whatsapp",
+                  "action_label_ar": "إعداد واتساب",
+                  "status": "locked",
+                  "is_complete": "False"
+                },
+                {
+                  "step_id": "review_messages",
+                  "order": "5",
+                  "title_ar": "مراجعة رسائل الاسترجاع",
+                  "why_ar": "تخصيص ما يصل للعميل حسب سبب التردد.",
+                  "action_href": "/dashboard#trigger-templates",
+                  "action_label_ar": "مراجعة الرسائل",
+                  "status": "locked",
+                  "is_complete": "False"
+                },
+                {
+                  "step_id": "ready_for_launch",
+                  "order": "6",
+                  "title_ar": "جاهز للتشغيل",
+                  "why_ar": "CartFlow يراقب السلال المهجورة ويشرح كل خطوة لك.",
+                  "action_href": "/dashboard#widget",
+                  "action_label_ar": "إعداد الودجيت على المتجر",
+                  "status": "locked",
+                  "is_complete": "False"
+                }
+              ],
+              "readiness_card": "None",
+              "nav_locks": {
+                "settings": {
+                  "page": "settings",
+                  "unlocked": "False",
+                  "reason_ar": "أكمل تجربة الودجيت أولاً لفهم كيف يعمل CartFlow.",
+                  "required_step_title_ar": "ربط المتجر",
+                  "cta_href": "/demo/store",
+                  "cta_label_ar": "متابعة الإعداد"
+                },
+                "whatsapp": {
+                  "page": "whatsapp",
+                  "unlocked": "False",
+                  "reason_ar": "اربط متجرك أولاً — CartFlow يحتاج نشاط السلال.",
+                  "required_step_title_ar": "إعداد واتساب",
+                  "cta_href": "/dashboard#settings",
+                  "cta_label_ar": "متابعة الإعداد"
+                },
+                "trigger-templates": {
+                  "page": "trigger-templates",
+                  "unlocked": "False",
+                  "reason_ar": "أكمل إعداد واتساب قبل تخصيص الرسائل.",
+                  "required_step_title_ar": "مراجعة رسائل الاسترجاع",
+                  "cta_href": "/dashboard#whatsapp",
+                  "cta_label_ar": "متابعة الإعداد"
+                },
+                "widget": {
+                  "page": "widget",
+                  "unlocked": "False",
+                  "reason_ar": "اربط متجرك قبل تثبيت الودجيت على واجهة المتجر.",
+                  "required_step_title_ar": "ربط المتجر",
+                  "cta_href": "/demo/store",
+                  "cta_label_ar": "متابعة الإعداد"
+                }
+              },
+              "empty_states": {
+                "carts": {
+                  "page": "carts",
+                  "title_ar": "لا توجد سلال مهجورة بعد",
+                  "body_ar": "بعد تجربة الودجيت أو ربط متجرك واستقبال زوار، ستظهر هنا فرص الاسترجاع مع سبب التردد والخطوة التالية.",
+                  "cta_href": "/demo/store",
+                  "cta_label_ar": "تجربة الودجيت"
+                },
+                "messages": {
+                  "page": "messages",
+                  "title_ar": "لا توجد رسائل مرسلة بعد",
+                  "body_ar": "عند تفعيل واتساب وبدء متابعة السلال، سيسجل CartFlow كل رسالة مع حالتها هنا.",
+                  "cta_href": "/dashboard#whatsapp",
+                  "cta_label_ar": "إعداد واتساب"
+                },
+                "reasons": {
+                  "page": "reasons",
+                  "title_ar": "لا توجد بيانات أسباب التردد بعد",
+                  "body_ar": "عندما يتردد العملاء عبر الودجيت، سترى توزيع الأسباب وتوصيات واضحة في هذه الصفحة.",
+                  "cta_href": "/demo/store",
+                  "cta_label_ar": "تجربة الودجيت"
+                }
+              }
+            },
+            "onboarding_journey_v2": "True"
+          },
+          "merchant_setup_render_debug": {
+            "MERCHANT_SETUP_RENDER_BUILD": "ui-setup-v8j-lifecycle-e2e-v1",
+            "unified_p0": "True",
+            "setup_mode": "True",
+            "show_card": "True",
+            "onboarding_complete": "False",
+            "first_recovery_ready": "False",
+            "hide_setup_card": "False",
+            "home_stage": "activation",
+            "step_count": "9",
+            "has_phase_steps": "True"
+          },
+          "merchant_activation": {
+            "milestones": [
+              {
+                "milestone_id": "first_cart",
+                "title_ar": "أول سلة مُسجَّلة",
+                "done": "False",
+                "hint_ar": "تظهر في قائمة السلال بعد تجربة المتجر."
+              },
+              {
+                "milestone_id": "first_reason",
+                "title_ar": "سبب التردد",
+                "done": "False",
+                "hint_ar": "اختر سبباً من نافذة الودجت أثناء التجربة."
+              },
+              {
+                "milestone_id": "first_scheduled",
+                "title_ar": "جدولة الاسترجاع",
+                "done": "False",
+                "hint_ar": "يعني أن النظام استلم السلة وخطط للمتابعة."
+              },
+              {
+                "milestone_id": "first_message",
+                "title_ar": "أول رسالة استرجاع",
+                "done": "False",
+                "hint_ar": "في وضع التجربة قد تكون رسالة تجريبية (Sandbox)."
+              }
+            ],
+            "summary_states": [
+              {
+                "state_id": "no_carts",
+                "label_ar": "بانتظار أول سلة",
+                "reached": "True",
+                "current": "True"
+              },
+              {
+                "state_id": "first_cart",
+                "label_ar": "أول سلة",
+                "reached": "False",
+                "current": "False"
+              },
+              {
+                "state_id": "recovery_active",
+                "label_ar": "الاسترجاع نشط",
+                "reached": "False",
+                "current": "False"
+              },
+              {
+                "state_id": "first_message",
+                "label_ar": "أول رسالة",
+                "reached": "False",
+                "current": "False"
+              },
+              {
+                "state_id": "recovery_success",
+                "label_ar": "نجاح استرداد",
+                "reached": "False",
+                "current": "False"
+              }
+            ],
+            "current_state_id": "no_carts",
+            "current_state_label_ar": "بانتظار أول سلة",
+            "next_step_ar": "افتح متجر الاختبار، أضف منتجاً، وأدخل رقم جوال عند طلب الودجت.",
+            "test_store_url": "/demo/store",
+            "test_widget_path": "/dashboard/test-widget",
+            "delay_hint_ar": "",
+            "activation_working": "False",
+            "store_slug": "متجر-تجربة-التاجر-1ef61e",
+            "home_stage": "activation",
+            "activation_display": "prominent",
+            "hide_setup_card": "False",
+            "operational_alerts_ar": [
+              "وضع Sandbox مفعّل — للإنتاج: فعّل وضع الإنتاج واكمل مزود واتساب حسب الدليل.",
+              "لم يتم رصد أي سلة حتى الآن — جرّب زيارة المتجر وإكمال خطوة ترك السلة للتحقق."
+            ],
+            "activation_summary_lines_ar": [],
+            "last_activity_ar": "بانتظار أول سلة",
+            "setup_collapsed_default": "False",
+            "production_signal_reasons": [],
+            "activation_visibility_debug": {
+              "verdict_primary": "B",
+              "verdict_note": "New merchant path: activation_display should be prominent unless layout resolver returned something else.",
+              "ui_blocker_server": "stage_activation_or_incomplete",
+              "css_hidden_attr_blocks_show_rule": "True",
+              "home_stage": "activation",
+              "activation_display": "prominent",
+              "hide_setup_card": "False",
+              "store_slug": "متجر-تجربة-التاجر-1ef61e",
+              "state_a_new_or_incomplete": "True",
+              "onboarding_complete": "False",
+              "any_activation_milestone": "False",
+              "merchant_active": "False",
+              "has_production_signal": "False",
+              "production_signal_reasons": [],
+              "milestones": {
+                "first_cart_detected": "False",
+                "first_reason_captured": "False",
+                "first_recovery_scheduled": "False",
+                "first_whatsapp_sent": "False",
+                "first_recovered_cart": "False"
+              },
+              "month_window": {
+                "abandoned_total": "0",
+                "recovered_total": "0",
+                "recovered_revenue": "0.0"
+              },
+              "activation_working": "False",
+              "client_expectation": {
+                "when_page_home_active": "prominent",
+                "when_page_home_not_active_at_apply": "root stays hidden if activation_display=hidden"
+              },
+              "likely_missing_ui_causes": [
+                "js_apply_while_not_on_home_then_navigate_home",
+                "server_activation_display_hidden_and_early_return",
+                "missing_or_invalid_merchant_activation_in_summary",
+                "css_ma_activation_root_hidden_attr"
+              ]
+            }
+          },
+          "merchant_activation_visibility_debug": {
+            "verdict_primary": "B",
+            "verdict_note": "New merchant path: activation_display should be prominent unless layout resolver returned something else.",
+            "ui_blocker_server": "stage_activation_or_incomplete",
+            "css_hidden_attr_blocks_show_rule": "True",
+            "home_stage": "activation",
+            "activation_display": "prominent",
+            "hide_setup_card": "False",
+            "store_slug": "متجر-تجربة-التاجر-1ef61e",
+            "state_a_new_or_incomplete": "True",
+            "onboarding_complete": "False",
+            "any_activation_milestone": "False",
+            "merchant_active": "False",
+            "has_production_signal": "False",
+            "production_signal_reasons": [],
+            "milestones": {
+              "first_cart_detected": "False",
+              "first_reason_captured": "False",
+              "first_recovery_scheduled": "False",
+              "first_whatsapp_sent": "False",
+              "first_recovered_cart": "False"
+            },
+            "month_window": {
+              "abandoned_total": "0",
+              "recovered_total": "0",
+              "recovered_revenue": "0.0"
+            },
+            "activation_working": "False",
+            "client_expectation": {
+              "when_page_home_active": "prominent",
+              "when_page_home_not_active_at_apply": "root stays hidden if activation_display=hidden"
+            },
+            "likely_missing_ui_causes": [
+              "js_apply_while_not_on_home_then_navigate_home",
+              "server_activation_display_hidden_and_early_return",
+              "missing_or_invalid_merchant_activation_in_summary",
+              "css_ma_activation_root_hidden_attr"
+            ]
+          },
+          "whatsapp_readiness_card": {
+            "state_key": "sandbox",
+            "badge_ar": "تجريبي",
+            "title_ar": "الوضع التجريبي مفعل",
+            "description_ar": "الوضع التجريبي مفعّل — الإنتاج غير مكتمل بعد.",
+            "impact_ar": "أكمل المتبقي لبدء إرسال رسائل الاسترجاع للعملاء.",
+            "next_action_ar": "أكمل خطوة التفعيل الحالية",
+            "action_href": "/dashboard#settings",
+            "readiness_overall_ar": "غير جاهز"
+          },
+          "store_connection": {
+            "connected": "False",
+            "status_label_ar": "غير مربوط",
+            "status_description_ar": "ابدأ بربط متجرك لتفعيل استرجاع السلال.",
+            "store_name": "متجر تجربة التاجر",
+            "platform_ar": "—",
+            "connected_at_ar": "—",
+            "zid_connect_available": "False",
+            "zid_connect_url": "/api/merchant/store-connection/zid/connect",
+            "salla_connect_available": "False",
+            "shopify_note_ar": "Shopify قريباً",
+            "pending_setup_message_ar": "ميزة الربط قيد الإعداد",
+            "widget_installation_status": "None",
+            "widget_status_label_ar": "—",
+            "widget_status_description_ar": "",
+            "widget_installed_at_ar": "—",
+            "widget_last_seen_at_ar": "—",
+            "widget_install_error": "None",
+            "store_connected_ok": "False",
+            "widget_installed_ok": "False"
+          },
+          "merchant_dashboard_refresh_token": "متجر-تجربة-التاجر-1ef61e:0:0:0:0:c0",
+          "merchant_dashboard_refresh_last_log_id": "0",
+          "merchant_dashboard_refresh_last_sent_log_id": "0",
+          "merchant_dashboard_refresh_sent_total": "0",
+          "merchant_dashboard_refresh_archive_rev": "0",
+          "merchant_dashboard_refresh_cart_rev": "0",
+          "merchant_home_experience_v1": {
+            "version": "v1",
+            "experience_tier": "starter",
+            "tier_capabilities": {
+              "starter": {
+                "max_attention_display": "1",
+                "max_understanding_display": "3",
+                "trend_awareness": "False",
+                "executive_summary": "False"
+              },
+              "growth": {
+                "max_attention_display": "1",
+                "max_understanding_display": "5",
+                "trend_awareness": "True",
+                "executive_summary": "False"
+              },
+              "pro": {
+                "max_attention_display": "1",
+                "max_understanding_display": "5",
+                "trend_awareness": "True",
+                "executive_summary": "True"
+              }
+            },
+            "brief_date": "2026-07-22",
+            "greeting": {
+              "greeting_ar": "مساء الخير",
+              "merchant_name_ar": "متجر تجربة التاجر",
+              "date_ar": "الأربعاء، 22 7 2026"
+            },
+            "while_away": {
+              "title_ar": "سجل العمل",
+              "lead_ar": "ما الذي حدث — ولماذا يهم؟",
+              "items": [],
+              "empty_message_ar": "لا أحداث بارزة مسجّلة بعد.",
+              "store_slug": "متجر-تجربة-التاجر-1ef61e",
+              "identity_authority_v1": {
+                "authority_owner": "platform_identity_authority",
+                "authority_consumer": "timeline",
+                "timeline_authority_source": "platform_identity_authority",
+                "resolution_path": "session",
+                "identity_diagnostics": {
+                  "authority_source": "platform_identity_authority",
+                  "resolve_count": "1",
+                  "context": {
+                    "bound": "True",
+                    "authority_source": "platform_identity_authority",
+                    "merchant_id": "1",
+                    "canonical_store_id": "1",
+                    "store_slug": "متجر-تجربة-التاجر-1ef61e",
+                    "resolution_path": "session",
+                    "identity_confidence": "resolved",
+                    "correlation_id": "4a776a692ab345fd",
+                    "simulation_run_id": "None",
+                    "replay_id": "None",
+                    "provider_binding_count": "0"
+                  },
+                  "violations": {
+                    "authority_source": "platform_identity_authority",
+                    "dual_resolve_violation": "0",
+                    "immutability_violation": "0",
+                    "ownership_violation": "0",
+                    "resolve_fail": "0",
+                    "resolve_ok": "2"
+                  },
+                  "counters": {
+                    "resolve_ok": "2",
+                    "resolve_fail": "0",
+                    "dual_resolve_violation": "0",
+                    "immutability_violation": "0",
+                    "ownership_violation": "0",
+                    "bind_ok": "2",
+                    "clear_ok": "1"
+                  },
+                  "resolution_provenance": {
+                    "authority_source": "platform_identity_authority",
+                    "resolution_path": "session",
+                    "identity_confidence": "resolved",
+                    "correlation_id": "4a776a692ab345fd",
+                    "identity_provenance": {
+                      "authority_source": "platform_identity_authority",
+                      "resolution_path": "session",
+                      "identity_confidence": "resolved",
+                      "correlation_id": "4a776a692ab345fd",
+                      "alias_used": "False",
+                      "notes": {
+                        "primary_store_id": "1",
+                        "session_active_store_id": "1"
+                      }
+                    }
+                  }
+                },
+                "violation_detection": {
+                  "dual_resolve": "enforced",
+                  "immutability": "enforced",
+                  "store_slug_mismatch": "fail_closed"
+                }
+              },
+              "knowledge_routing_v1": {
+                "routing_version": "v1",
+                "surface": "timeline",
+                "observability": {
+                  "input_items": "0",
+                  "eligible_items": "0",
+                  "achievement_groups": "0",
+                  "attention_groups": "0"
+                }
+              },
+              "section_question_ar": "ما الذي حدث — ولماذا يهم؟",
+              "knowledge_role": "business_timeline",
+              "home_admission_v1": {
+                "admitted": "False",
+                "reason": "empty_or_duplicate_timeline",
+                "cognitive_role": "event",
+                "composition_version": "home_semantic_composition_v1"
+              },
+              "suppressed": "True"
+            },
+            "attention_today": {
+              "title_ar": "أولوية اليوم",
+              "lead_ar": "ما أهم شيء أفعله اليوم؟",
+              "items": [],
+              "max_display": "1",
+              "platform_max": "5",
+              "count": "0",
+              "empty_message_ar": "لا أولوية تجارية واحدة مطلوبة منك الآن.",
+              "decision_surface": "True",
+              "section_question_ar": "ما أهم شيء أفعله اليوم؟",
+              "knowledge_role": "priority",
+              "home_admission_v1": {
+                "admitted": "False",
+                "reason": "empty_priority",
+                "cognitive_role": "action",
+                "composition_version": "home_semantic_composition_v1"
+              },
+              "suppressed": "True"
+            },
+            "store_understanding": {
+              "title_ar": "فهم العمل",
+              "lead_ar": "ما أكثر سبب يسبب تردد العملاء؟",
+              "items": [
+                {
+                  "observation_ar": "عدد أسباب التردد المسجّلة (0) أقل من الحد الآمن لاستنتاج موثوق.",
+                  "title_ar": "عدد أسباب التردد المسجّلة (0) أقل من الحد الآمن لاستنتاج موثوق.",
+                  "evidence_label_ar": "hesitation_total=0",
+                  "business_meaning_ar": "إصدار توصية تجارية الآن قد يوجّه قراراتك بناءً على عينة غير كافية.",
+                  "impact_ar": "إصدار توصية تجارية الآن قد يوجّه قراراتك بناءً على عينة غير كافية.",
+                  "commercial_impact_ar": "إصدار توصية تجارية الآن قد يوجّه قراراتك بناءً على عينة غير كافية.",
+                  "recommended_direction_ar": "استمر في جمع أسباب التردد عبر التفاعل مع العملاء.",
+                  "confidence": "insufficient",
+                  "confidence_reason_ar": "أدلة غير كافية بعد — وهذا بحد ذاته معرفة تجارية.",
+                  "fact_key": "fact:finding:dominant_hesitation_reason_v1",
+                  "insight_key": "dominant_hesitation_reason_v1",
+                  "finding_id": "finding:dominant_hesitation_reason_v1:insufficient",
+                  "knowledge_id": "finding:dominant_hesitation_reason_v1:insufficient",
+                  "truth_id": "finding:dominant_hesitation_reason_v1:insufficient",
+                  "merchant_problem": "hesitation_dominant",
+                  "semantic_topic": "hesitation_dominant",
+                  "commercial_question_id": "CQ-H01",
+                  "commercial_question_ar": "ما أكثر سبب يسبب تردد العملاء؟",
+                  "commercial_dimension": "hesitation",
+                  "commercial_answer_ar": "عدد أسباب التردد المسجّلة (0) أقل من الحد الآمن لاستنتاج موثوق.",
+                  "evidence_ar": "hesitation_total=0",
+                  "merchant_meaning_ar": "إصدار توصية تجارية الآن قد يوجّه قراراتك بناءً على عينة غير كافية.",
+                  "recommended_action_ar": "استمر في جمع أسباب التردد عبر التفاعل مع العملاء.",
+                  "insufficient_evidence_ok": "True",
+                  "source_knowledge_id": "bfe:finding:dominant_hesitation_reason_v1:insufficient",
+                  "commercial_intelligence_v1": "True",
+                  "semantic_identity_v1": {
+                    "truth_id": "finding:dominant_hesitation_reason_v1:insufficient",
+                    "knowledge_id": "finding:dominant_hesitation_reason_v1:insufficient",
+                    "decision_id": "None",
+                    "semantic_topic": "hesitation_dominant",
+                    "merchant_problem": "hesitation_dominant",
+                    "cognitive_role": "explain",
+                    "evidence_scope": "hesitation_total=0",
+                    "freshness": "",
+                    "confidence": "insufficient",
+                    "surface_eligibility": "True",
+                    "surface": "business_understanding",
+                    "composition_version": "home_semantic_composition_v1"
+                  },
+                  "cognitive_role": "explain"
+                }
+              ],
+              "max_display": "3",
+              "empty_message_ar": "لا فهم تجاري مؤكد بعد — نبني صورة أوضح مع كل يوم تشغيل.",
+              "section_question_ar": "ما أكثر سبب يسبب تردد العملاء؟",
+              "knowledge_role": "explain",
+              "purpose_ar": "سؤال تجاري → إجابة → دليل → ثقة → معنى للتاجر",
+              "commercial_intelligence_v1": "True",
+              "home_admission_v1": {
+                "admitted": "True",
+                "reason": "owns_explain",
+                "cognitive_role": "explain",
+                "composition_version": "home_semantic_composition_v1"
+              },
+              "suppressed": "False"
+            },
+            "biggest_revenue_risk": {
+              "title_ar": "أكبر خطر على الإيراد",
+              "lead_ar": "أين أخسر أكثر الآن؟",
+              "section_question_ar": "أين أخسر أكثر الآن؟",
+              "knowledge_role": "revenue_risk",
+              "item": "None",
+              "items": [],
+              "empty_message_ar": "لا خطر إيراد مؤكد بأدلة كافية الآن.",
+              "home_admission_v1": {
+                "admitted": "False",
+                "reason": "empty_risk",
+                "cognitive_role": "risk",
+                "composition_version": "home_semantic_composition_v1"
+              },
+              "suppressed": "True"
+            },
+            "quick_nav": {
+              "title_ar": "انتقال سريع",
+              "items": [
+                {
+                  "id": "knowledge",
+                  "label_ar": "طبقة المعرفة",
+                  "nav_type": "anchor",
+                  "href": "#ma-home-understanding"
+                },
+                {
+                  "id": "active_carts",
+                  "label_ar": "السلال النشطة",
+                  "nav_type": "cart_tab",
+                  "cart_tab": "all",
+                  "badge_count": "0"
+                },
+                {
+                  "id": "completed",
+                  "label_ar": "الاستردادات المكتملة",
+                  "nav_type": "cart_tab",
+                  "cart_tab": "completed"
+                },
+                {
+                  "id": "settings",
+                  "label_ar": "الإعدادات",
+                  "nav_type": "settings",
+                  "settings_page": "settings"
+                },
+                {
+                  "id": "waiting",
+                  "label_ar": "بانتظار الإرسال",
+                  "nav_type": "cart_tab",
+                  "cart_tab": "waiting",
+                  "badge_count": "0",
+                  "visible": "False"
+                }
+              ]
+            },
+            "empty_calm": "True",
+            "knowledge_routing_v1": {
+              "routing_version": "v1",
+              "surface": "merchant_home",
+              "observability": {
+                "input_items": "0",
+                "eligible_items": "0",
+                "achievement_groups": "0",
+                "attention_groups": "0"
+              }
+            },
+            "sources": {
+              "daily_brief_version": "v2",
+              "daily_brief_composer": "v2",
+              "achievement_count": "0",
+              "attention_source_count": "0",
+              "understanding_routed_groups": "0",
+              "knowledge_cart_count": "0"
+            },
+            "observability": {
+              "while_away_items": "0",
+              "attention_items": "0",
+              "understanding_items": "0",
+              "dedupe_keys": "0",
+              "pib1_home_truth_alignment": "True",
+              "pib2_attention_decision_surface": "True",
+              "pib3_recovery_journey_explainability": "True",
+              "home_knowledge_redistribution_v1": "True",
+              "home_daily_business_brief_v1": "True",
+              "commercial_interpretation_attached": "True",
+              "commercial_interpretation_primary": "False",
+              "has_revenue_risk": "False",
+              "has_opportunity": "False",
+              "home_commercial_intelligence_v1": "True",
+              "commercial_questions_answered": "3",
+              "commercial_dimensions_answered": [
+                "hesitation",
+                "missing_evidence",
+                "recovery"
+              ],
+              "commercial_diversity_ok": "True",
+              "home_semantic_composition_v1": "True",
+              "home_semantic_suppressed_count": "0",
+              "home_semantic_admitted_sections": [
+                "business_health",
+                "biggest_opportunity",
+                "business_understanding",
+                "learning_progress"
+              ]
+            },
+            "commercial_interpretation_v1": {
+              "ok": "True",
+              "interpretation_version": "v1",
+              "store_slug": "متجر-تجربة-التاجر-1ef61e",
+              "generated_at": "2026-07-22T15:28:19+00:00",
+              "primary": "None",
+              "interpretations": [],
+              "used_last_valid": "False",
+              "observability": {
+                "interpretations_evaluated": "1",
+                "interpretations_generated": "0",
+                "interpretations_suppressed": "1",
+                "suppression_reasons": [
+                  "count_zero"
+                ],
+                "evidence_count": "0",
+                "confidence": "None",
+                "generation_duration_ms": "0.02",
+                "destination_routing": [
+                  "merchant_home",
+                  "knowledge_layer"
+                ],
+                "query_cost": "0",
+                "failure_reason": "None",
+                "resolve": {
+                  "query_cost": "0",
+                  "resolve_path": "caller"
+                },
+                "evaluations": [
+                  {
+                    "interpretation_id": "missing_contact_blocks_recovery_v1",
+                    "evaluated": "True",
+                    "generated": "False",
+                    "suppressed": "True",
+                    "suppression_reason": "count_zero",
+                    "evidence_count": "0",
+                    "confidence": "None",
+                    "is_primary_commercial_blocker": "False"
+                  }
+                ],
+                "ai_used": "False",
+                "probabilistic": "False"
+              }
+            },
+            "store_slug": "متجر-تجربة-التاجر-1ef61e",
+            "business_health": {
+              "title_ar": "صحة العمل",
+              "lead_ar": "هل عملي بصحة جيدة اليوم؟",
+              "section_question_ar": "هل عملي بصحة جيدة اليوم؟",
+              "executive_band": "E1",
+              "executive_question_id": "EQ-01",
+              "knowledge_role": "business_health",
+              "status_ar": "بصحة جيدة",
+              "summary_ar": "لا عائق تجاري بارز اليوم — عملك في وضع هادئ ومفهوم.",
+              "confidence": "insufficient",
+              "confidence_ar": "ما زلنا نتعلم — الأدلة غير كافية بعد",
+              "attention_required": "False",
+              "direction_ar": "مستقرة دون ضغط بارز.",
+              "direction_key": "stable",
+              "evidence_summary_ar": "",
+              "disclosure": {
+                "label_ar": "كيف وصلنا لهذه الصورة؟",
+                "trend_ar": "مستقرة دون ضغط بارز.",
+                "evidence_ar": "لدينا فهم تجاري من عدة زوايا يدعم صورة صحة العمل اليوم."
+              },
+              "empty_message_ar": "نجمع صورة أوضح لصحة عملك.",
+              "commercial_questions_answered": "3",
+              "commercial_dimensions": [
+                "hesitation",
+                "missing_evidence",
+                "recovery"
+              ],
+              "semantic_identity_v1": {
+                "truth_id": "truth:business_health",
+                "knowledge_id": "None",
+                "decision_id": "None",
+                "semantic_topic": "generic",
+                "merchant_problem": "generic",
+                "cognitive_role": "condition",
+                "evidence_scope": "",
+                "freshness": "",
+                "confidence": "insufficient",
+                "surface_eligibility": "True",
+                "surface": "business_health",
+                "composition_version": "home_semantic_composition_v1"
+              },
+              "home_admission_v1": {
+                "admitted": "True",
+                "reason": "orientation_condition",
+                "cognitive_role": "condition",
+                "composition_version": "home_semantic_composition_v1"
+              },
+              "suppressed": "False"
+            },
+            "biggest_opportunity": {
+              "title_ar": "أكبر فرصة اليوم",
+              "lead_ar": "أي مسار استرجاع يغيّر النتائج فعلاً؟",
+              "section_question_ar": "أي مسار استرجاع يغيّر النتائج فعلاً؟",
+              "knowledge_role": "opportunity",
+              "item": {
+                "headline_ar": "عدد حالات العودة المسجّلة (0) لا يكفي بعد لاستنتاج موثوق.",
+                "why_ar": "لا يمكن الجزم بفعالية الاسترجاع في إغلاق الشراء بعد.",
+                "evidence_ar": "returns=0",
+                "commercial_value_ar": "لا يمكن الجزم بفعالية الاسترجاع في إغلاق الشراء بعد.",
+                "confidence": "insufficient",
+                "fact_key": "fact:finding:return_without_purchase_v1",
+                "insight_key": "return_without_purchase_v1",
+                "merchant_problem": "recovery_return_without_purchase",
+                "semantic_topic": "recovery_return_without_purchase",
+                "commercial_question_id": "CQ-R01",
+                "commercial_question_ar": "أي مسار استرجاع يغيّر النتائج فعلاً؟",
+                "commercial_dimension": "recovery",
+                "commercial_answer_ar": "عدد حالات العودة المسجّلة (0) لا يكفي بعد لاستنتاج موثوق.",
+                "merchant_meaning_ar": "لا يمكن الجزم بفعالية الاسترجاع في إغلاق الشراء بعد.",
+                "cta_label_ar": "استكشف التفاصيل",
+                "drilldown_href": "#knowledge",
+                "commercial_intelligence_v1": "True",
+                "semantic_identity_v1": {
+                  "truth_id": "fact:finding:return_without_purchase_v1",
+                  "knowledge_id": "return_without_purchase_v1",
+                  "decision_id": "None",
+                  "semantic_topic": "recovery_return_without_purchase",
+                  "merchant_problem": "recovery_return_without_purchase",
+                  "cognitive_role": "opportunity",
+                  "evidence_scope": "returns=0",
+                  "freshness": "",
+                  "confidence": "insufficient",
+                  "surface_eligibility": "True",
+                  "surface": "biggest_opportunity",
+                  "composition_version": "home_semantic_composition_v1"
+                },
+                "cognitive_role": "opportunity"
+              },
+              "items": [
+                {
+                  "headline_ar": "عدد حالات العودة المسجّلة (0) لا يكفي بعد لاستنتاج موثوق.",
+                  "why_ar": "لا يمكن الجزم بفعالية الاسترجاع في إغلاق الشراء بعد.",
+                  "evidence_ar": "returns=0",
+                  "commercial_value_ar": "لا يمكن الجزم بفعالية الاسترجاع في إغلاق الشراء بعد.",
+                  "confidence": "insufficient",
+                  "fact_key": "fact:finding:return_without_purchase_v1",
+                  "insight_key": "return_without_purchase_v1",
+                  "merchant_problem": "recovery_return_without_purchase",
+                  "semantic_topic": "recovery_return_without_purchase",
+                  "commercial_question_id": "CQ-R01",
+                  "commercial_question_ar": "أي مسار استرجاع يغيّر النتائج فعلاً؟",
+                  "commercial_dimension": "recovery",
+                  "commercial_answer_ar": "عدد حالات العودة المسجّلة (0) لا يكفي بعد لاستنتاج موثوق.",
+                  "merchant_meaning_ar": "لا يمكن الجزم بفعالية الاسترجاع في إغلاق الشراء بعد.",
+                  "cta_label_ar": "استكشف التفاصيل",
+                  "drilldown_href": "#knowledge",
+                  "commercial_intelligence_v1": "True",
+                  "semantic_identity_v1": {
+                    "truth_id": "fact:finding:return_without_purchase_v1",
+                    "knowledge_id": "return_without_purchase_v1",
+                    "decision_id": "None",
+                    "semantic_topic": "recovery_return_without_purchase",
+                    "merchant_problem": "recovery_return_without_purchase",
+                    "cognitive_role": "opportunity",
+                    "evidence_scope": "returns=0",
+                    "freshness": "",
+                    "confidence": "insufficient",
+                    "surface_eligibility": "True",
+                    "surface": "biggest_opportunity",
+                    "composition_version": "home_semantic_composition_v1"
+                  },
+                  "cognitive_role": "opportunity"
+                }
+              ],
+              "empty_message_ar": "لا فرصة تجارية مؤكدة بأدلة كافية اليوم.",
+              "commercial_intelligence_v1": "True",
+              "home_admission_v1": {
+                "admitted": "True",
+                "reason": "distinct_executable_opportunity",
+                "cognitive_role": "opportunity",
+                "composition_version": "home_semantic_composition_v1"
+              },
+              "suppressed": "False"
+            },
+            "learning_progress": {
+              "title_ar": "تقدّم الفهم",
+              "lead_ar": "ماذا ما زلنا لا نعرف — وأين نحتاج أدلة؟",
+              "section_question_ar": "ماذا ما زلنا لا نعرف — وأين نحتاج أدلة؟",
+              "knowledge_role": "learning_progress",
+              "items": [
+                {
+                  "kind": "more_evidence_required",
+                  "progress_ar": "ما زلنا لا نملك أدلة كافية هنا",
+                  "detail_ar": "ماذا ما زلنا لا نعرف — وأين نحتاج أدلة؟ — البيانات الحالية لا تدعم استنتاجاً تجارياً آمناً بما يكفي لتوجيه قرار.",
+                  "confidence": "insufficient",
+                  "fact_key": "fact:finding:insufficient_or_conflicting_evidence_v1",
+                  "merchant_problem": "missing_evidence",
+                  "semantic_topic": "missing_evidence",
+                  "commercial_question_id": "CQ-D01",
+                  "commercial_question_ar": "ماذا ما زلنا لا نعرف — وأين نحتاج أدلة؟",
+                  "commercial_dimension": "missing_evidence",
+                  "commercial_answer_ar": "البيانات الحالية لا تدعم استنتاجاً تجارياً آمناً بما يكفي لتوجيه قرار.",
+                  "evidence_ar": "hesitation=0 wa_sent=0 products=0",
+                  "merchant_meaning_ar": "الامتناع عن التوصية أفضل من نصيحة ضعيفة الدليل.",
+                  "insufficient_evidence_ok": "True",
+                  "commercial_intelligence_v1": "True",
+                  "semantic_identity_v1": {
+                    "truth_id": "fact:finding:insufficient_or_conflicting_evidence_v1",
+                    "knowledge_id": "None",
+                    "decision_id": "None",
+                    "semantic_topic": "missing_evidence",
+                    "merchant_problem": "missing_evidence",
+                    "cognitive_role": "learning_progress",
+                    "evidence_scope": "hesitation=0 wa_sent=0 products=0",
+                    "freshness": "",
+                    "confidence": "insufficient",
+                    "surface_eligibility": "True",
+                    "surface": "learning_progress",
+                    "composition_version": "home_semantic_composition_v1"
+                  },
+                  "cognitive_role": "learning_progress"
+                }
+              ],
+              "empty_message_ar": "ما زال فهم العمل في طور البناء.",
+              "commercial_intelligence_v1": "True",
+              "home_admission_v1": {
+                "admitted": "True",
+                "reason": "new_learning_signal",
+                "cognitive_role": "learning_progress",
+                "composition_version": "home_semantic_composition_v1"
+              },
+              "suppressed": "False"
+            },
+            "business_understanding": {
+              "title_ar": "فهم العمل",
+              "lead_ar": "ما أكثر سبب يسبب تردد العملاء؟",
+              "items": [
+                {
+                  "observation_ar": "عدد أسباب التردد المسجّلة (0) أقل من الحد الآمن لاستنتاج موثوق.",
+                  "title_ar": "عدد أسباب التردد المسجّلة (0) أقل من الحد الآمن لاستنتاج موثوق.",
+                  "evidence_label_ar": "hesitation_total=0",
+                  "business_meaning_ar": "إصدار توصية تجارية الآن قد يوجّه قراراتك بناءً على عينة غير كافية.",
+                  "impact_ar": "إصدار توصية تجارية الآن قد يوجّه قراراتك بناءً على عينة غير كافية.",
+                  "commercial_impact_ar": "إصدار توصية تجارية الآن قد يوجّه قراراتك بناءً على عينة غير كافية.",
+                  "recommended_direction_ar": "استمر في جمع أسباب التردد عبر التفاعل مع العملاء.",
+                  "confidence": "insufficient",
+                  "confidence_reason_ar": "أدلة غير كافية بعد — وهذا بحد ذاته معرفة تجارية.",
+                  "fact_key": "fact:finding:dominant_hesitation_reason_v1",
+                  "insight_key": "dominant_hesitation_reason_v1",
+                  "finding_id": "finding:dominant_hesitation_reason_v1:insufficient",
+                  "knowledge_id": "finding:dominant_hesitation_reason_v1:insufficient",
+                  "truth_id": "finding:dominant_hesitation_reason_v1:insufficient",
+                  "merchant_problem": "hesitation_dominant",
+                  "semantic_topic": "hesitation_dominant",
+                  "commercial_question_id": "CQ-H01",
+                  "commercial_question_ar": "ما أكثر سبب يسبب تردد العملاء؟",
+                  "commercial_dimension": "hesitation",
+                  "commercial_answer_ar": "عدد أسباب التردد المسجّلة (0) أقل من الحد الآمن لاستنتاج موثوق.",
+                  "evidence_ar": "hesitation_total=0",
+                  "merchant_meaning_ar": "إصدار توصية تجارية الآن قد يوجّه قراراتك بناءً على عينة غير كافية.",
+                  "recommended_action_ar": "استمر في جمع أسباب التردد عبر التفاعل مع العملاء.",
+                  "insufficient_evidence_ok": "True",
+                  "source_knowledge_id": "bfe:finding:dominant_hesitation_reason_v1:insufficient",
+                  "commercial_intelligence_v1": "True",
+                  "semantic_identity_v1": {
+                    "truth_id": "finding:dominant_hesitation_reason_v1:insufficient",
+                    "knowledge_id": "finding:dominant_hesitation_reason_v1:insufficient",
+                    "decision_id": "None",
+                    "semantic_topic": "hesitation_dominant",
+                    "merchant_problem": "hesitation_dominant",
+                    "cognitive_role": "explain",
+                    "evidence_scope": "hesitation_total=0",
+                    "freshness": "",
+                    "confidence": "insufficient",
+                    "surface_eligibility": "True",
+                    "surface": "business_understanding",
+                    "composition_version": "home_semantic_composition_v1"
+                  },
+                  "cognitive_role": "explain"
+                }
+              ],
+              "max_display": "3",
+              "empty_message_ar": "لا فهم تجاري مؤكد بعد — نبني صورة أوضح مع كل يوم تشغيل.",
+              "section_question_ar": "ما أكثر سبب يسبب تردد العملاء؟",
+              "knowledge_role": "explain",
+              "purpose_ar": "سؤال تجاري → إجابة → دليل → ثقة → معنى للتاجر",
+              "commercial_intelligence_v1": "True",
+              "home_admission_v1": {
+                "admitted": "True",
+                "reason": "owns_explain",
+                "cognitive_role": "explain",
+                "composition_version": "home_semantic_composition_v1"
+              },
+              "suppressed": "False"
+            },
+            "todays_priority": {
+              "title_ar": "أولوية اليوم",
+              "lead_ar": "ما أهم شيء أفعله اليوم؟",
+              "items": [],
+              "max_display": "1",
+              "platform_max": "5",
+              "count": "0",
+              "empty_message_ar": "لا أولوية تجارية واحدة مطلوبة منك الآن.",
+              "decision_surface": "True",
+              "section_question_ar": "ما أهم شيء أفعله اليوم؟",
+              "knowledge_role": "priority",
+              "home_admission_v1": {
+                "admitted": "False",
+                "reason": "empty_priority",
+                "cognitive_role": "action",
+                "composition_version": "home_semantic_composition_v1"
+              },
+              "suppressed": "True"
+            },
+            "business_timeline": {
+              "title_ar": "سجل العمل",
+              "lead_ar": "ما الذي حدث — ولماذا يهم؟",
+              "items": [],
+              "empty_message_ar": "لا أحداث بارزة مسجّلة بعد.",
+              "store_slug": "متجر-تجربة-التاجر-1ef61e",
+              "identity_authority_v1": {
+                "authority_owner": "platform_identity_authority",
+                "authority_consumer": "timeline",
+                "timeline_authority_source": "platform_identity_authority",
+                "resolution_path": "session",
+                "identity_diagnostics": {
+                  "authority_source": "platform_identity_authority",
+                  "resolve_count": "1",
+                  "context": {
+                    "bound": "True",
+                    "authority_source": "platform_identity_authority",
+                    "merchant_id": "1",
+                    "canonical_store_id": "1",
+                    "store_slug": "متجر-تجربة-التاجر-1ef61e",
+                    "resolution_path": "session",
+                    "identity_confidence": "resolved",
+                    "correlation_id": "4a776a692ab345fd",
+                    "simulation_run_id": "None",
+                    "replay_id": "None",
+                    "provider_binding_count": "0"
+                  },
+                  "violations": {
+                    "authority_source": "platform_identity_authority",
+                    "dual_resolve_violation": "0",
+                    "immutability_violation": "0",
+                    "ownership_violation": "0",
+                    "resolve_fail": "0",
+                    "resolve_ok": "2"
+                  },
+                  "counters": {
+                    "resolve_ok": "2",
+                    "resolve_fail": "0",
+                    "dual_resolve_violation": "0",
+                    "immutability_violation": "0",
+                    "ownership_violation": "0",
+                    "bind_ok": "2",
+                    "clear_ok": "1"
+                  },
+                  "resolution_provenance": {
+                    "authority_source": "platform_identity_authority",
+                    "resolution_path": "session",
+                    "identity_confidence": "resolved",
+                    "correlation_id": "4a776a692ab345fd",
+                    "identity_provenance": {
+                      "authority_source": "platform_identity_authority",
+                      "resolution_path": "session",
+                      "identity_confidence": "resolved",
+                      "correlation_id": "4a776a692ab345fd",
+                      "alias_used": "False",
+                      "notes": {
+                        "primary_store_id": "1",
+                        "session_active_store_id": "1"
+                      }
+                    }
+                  }
+                },
+                "violation_detection": {
+                  "dual_resolve": "enforced",
+                  "immutability": "enforced",
+                  "store_slug_mismatch": "fail_closed"
+                }
+              },
+              "knowledge_routing_v1": {
+                "routing_version": "v1",
+                "surface": "timeline",
+                "observability": {
+                  "input_items": "0",
+                  "eligible_items": "0",
+                  "achievement_groups": "0",
+                  "attention_groups": "0"
+                }
+              },
+              "section_question_ar": "ما الذي حدث — ولماذا يهم؟",
+              "knowledge_role": "business_timeline",
+              "home_admission_v1": {
+                "admitted": "False",
+                "reason": "empty_or_duplicate_timeline",
+                "cognitive_role": "event",
+                "composition_version": "home_semantic_composition_v1"
+              },
+              "suppressed": "True"
+            },
+            "daily_business_brief_v1": "True",
+            "constitution_ref": "MERCHANT_DAILY_BUSINESS_BRIEF_CONSTITUTION_V3",
+            "home_commercial_intelligence_v1": {
+              "ok": "True",
+              "engine": "home_commercial_intelligence_v1",
+              "registry_version": "commercial_question_registry_v1",
+              "findings_engine": "business_findings_engine_v1",
+              "evidence_loaded_from": "db_v1:85.65ms",
+              "product_identity_authenticity_v1": {
+                "engine": "product_identity_authenticity_v1",
+                "admit_review_fixtures": "False",
+                "evidence_loaded_from": "db_v1:85.65ms",
+                "fixture_blocked": "False",
+                "placeholders_removed": "0",
+                "findings_in": "4",
+                "findings_out": "4"
+              },
+              "admitted": [
+                {
+                  "section": "business_understanding",
+                  "question_id": "CQ-H01",
+                  "dimension": "hesitation"
+                },
+                {
+                  "section": "biggest_opportunity",
+                  "question_id": "CQ-R01",
+                  "dimension": "recovery"
+                },
+                {
+                  "section": "learning_progress",
+                  "question_id": "CQ-D01",
+                  "dimension": "missing_evidence"
+                }
+              ],
+              "rejected": [],
+              "dimensions_answered": [
+                "hesitation",
+                "missing_evidence",
+                "recovery"
+              ],
+              "questions_answered": [
+                "CQ-D01",
+                "CQ-H01",
+                "CQ-R01"
+              ],
+              "questions_answered_count": "3",
+              "diversity_ok": "True",
+              "success_metric": "number of different commercial questions answered with evidence",
+              "findings_produced": "4",
+              "ai_used": "False",
+              "merchant_fixture_admitted": "False"
+            },
+            "home_semantic_composition_v1": {
+              "version": "home_semantic_composition_v1",
+              "claimed_roles": {
+                "hesitation_dominant": [
+                  "explain"
+                ],
+                "recovery_return_without_purchase": [
+                  "opportunity"
+                ],
+                "missing_evidence": [
+                  "learning_progress"
+                ]
+              },
+              "suppressed": [],
+              "admitted_sections": [
+                "business_health",
+                "biggest_opportunity",
+                "business_understanding",
+                "learning_progress"
+              ],
+              "path_policy_applied": "A",
+              "progressive_disclosure": [
+                "condition",
+                "action",
+                "explain"
+              ]
+            },
+            "ok": "True",
+            "generated_at": "2026-07-22T15:28:10+00:00",
+            "daily_brief_v1": {
+              "version": "v2",
+              "composer_version": "v2",
+              "brief_date": "2026-07-22",
+              "achievements": [],
+              "attention_items": [],
+              "items": [],
+              "achievement_count": "0",
+              "attention_count": "0",
+              "item_count": "0",
+              "max_items": "5",
+              "empty": "True",
+              "empty_state_ar": {
+                "title_ar": "يوم هادئ في متجرك",
+                "message_ar": "لا توجد قرارات تتطلب انتباهك اليوم — CartFlow يتابع الحالات الروتينية تلقائياً"
+              },
+              "knowledge_routing_v1": {
+                "routing_version": "v1",
+                "surface": "daily_brief",
+                "observability": {
+                  "input_items": "0",
+                  "eligible_items": "0",
+                  "achievement_groups": "0",
+                  "attention_groups": "0"
+                }
+              },
+              "observability": {
+                "decisions_collected": "0",
+                "decisions_composed": "0",
+                "achievement_topics": "0",
+                "attention_topics": "0",
+                "bundles_scanned": "0",
+                "routing_eligible_items": "0",
+                "time_window": {
+                  "merchant_visible": "False",
+                  "window_days": "7",
+                  "start": "2026-07-15T15:28:10.338345",
+                  "end": "2026-07-22T15:28:10.338345",
+                  "prev_start": "2026-07-08T15:28:10.338345",
+                  "context_mode": "current_production",
+                  "authoritative_now": "2026-07-22T15:28:10.338345+00:00",
+                  "simulation_run_id": "None",
+                  "replay_id": "None",
+                  "cross_surface": {
+                    "knowledge": "resolve_knowledge_windows",
+                    "dashboard": "resolve_dashboard_rolling_windows",
+                    "brief": "resolve_brief_windows"
+                  }
+                }
+              },
+              "ok": "True",
+              "generated_at": "2026-07-22T15:28:10+00:00",
+              "store_slug": "متجر-تجربة-التاجر-1ef61e"
+            },
+            "identity_authority_v1": {
+              "authority_owner": "platform_identity_authority",
+              "authority_consumer": "dashboard_home",
+              "dashboard_home_authority_source": "platform_identity_authority",
+              "resolution_path": "session",
+              "identity_diagnostics": {
+                "authority_source": "platform_identity_authority",
+                "resolve_count": "1",
+                "context": {
+                  "bound": "True",
+                  "authority_source": "platform_identity_authority",
+                  "merchant_id": "1",
+                  "canonical_store_id": "1",
+                  "store_slug": "متجر-تجربة-التاجر-1ef61e",
+                  "resolution_path": "session",
+                  "identity_confidence": "resolved",
+                  "correlation_id": "4a776a692ab345fd",
+                  "simulation_run_id": "None",
+                  "replay_id": "None",
+                  "provider_binding_count": "0"
+                },
+                "violations": {
+                  "authority_source": "platform_identity_authority",
+                  "dual_resolve_violation": "0",
+                  "immutability_violation": "0",
+                  "ownership_violation": "0",
+                  "resolve_fail": "0",
+                  "resolve_ok": "2"
+                },
+                "counters": {
+                  "resolve_ok": "2",
+                  "resolve_fail": "0",
+                  "dual_resolve_violation": "0",
+                  "immutability_violation": "0",
+                  "ownership_violation": "0",
+                  "bind_ok": "2",
+                  "clear_ok": "1"
+                },
+                "resolution_provenance": {
+                  "authority_source": "platform_identity_authority",
+                  "resolution_path": "session",
+                  "identity_confidence": "resolved",
+                  "correlation_id": "4a776a692ab345fd",
+                  "identity_provenance": {
+                    "authority_source": "platform_identity_authority",
+                    "resolution_path": "session",
+                    "identity_confidence": "resolved",
+                    "correlation_id": "4a776a692ab345fd",
+                    "alias_used": "False",
+                    "notes": {
+                      "primary_store_id": "1",
+                      "session_active_store_id": "1"
+                    }
+                  }
+                }
+              }
+            },
+            "adaptive_cognition_v1": {
+              "ok": "True",
+              "engine": "home_cognitive_router_v1",
+              "consumer": "merchant_home",
+              "selected_path": "A",
+              "path_label": "Healthy",
+              "section_order": [
+                "business_health",
+                "business_understanding",
+                "learning_progress",
+                "biggest_opportunity"
+              ],
+              "admitted_sections": [
+                "business_health",
+                "biggest_opportunity",
+                "business_understanding",
+                "learning_progress"
+              ],
+              "suppressed_sections": [],
+              "active_nodes": [
+                "Arrival",
+                "Orientation",
+                "Direction",
+                "Closure"
+              ],
+              "skipped_nodes": [
+                "Understanding",
+                "Focus",
+                "Confidence"
+              ],
+              "deferred_nodes": [],
+              "rationale_codes": [
+                "R-HEALTHY",
+                "R-SKIP-HOLLOW-BU"
+              ],
+              "route_destination": "None",
+              "interim_closure": "A",
+              "ownership": {
+                "router_owns": [
+                  "sequencing",
+                  "timing",
+                  "routing",
+                  "optional_node_skipping",
+                  "session_path_lock"
+                ],
+                "router_never_owns": [
+                  "business_truth",
+                  "knowledge_creation",
+                  "knowledge_modification",
+                  "truth_filtering",
+                  "business_interpretation",
+                  "decision_ownership"
+                ],
+                "truth_owners": [
+                  "Knowledge Platform",
+                  "Business Reasoning (when accepted)",
+                  "Merchant Alert Platform",
+                  "Operational Health"
+                ]
+              },
+              "session_id": "oLHSuSNeNG3pOOtLWO4PEA",
+              "locked": "True",
+              "locked_at_unix": "1784734099.128631",
+              "last_eval_trigger": "session_start",
+              "reeval_count": "0",
+              "reevaluated": "False",
+              "path_unchanged": "False",
+              "stability_rule": "Path remains locked until a governed re-evaluation trigger. No periodic background rerouting. No live cognitive reshuffling.",
+              "fixture_override": "None",
+              "truth_source": "merchant_home_experience_v1",
+              "eligibility_rule": "section_order includes only semantically admitted sections for this path"
+            }
+          },
+          "merchant_daily_brief_v1": {
+            "version": "v2",
+            "composer_version": "v2",
+            "brief_date": "2026-07-22",
+            "achievements": [],
+            "attention_items": [],
+            "items": [],
+            "achievement_count": "0",
+            "attention_count": "0",
+            "item_count": "0",
+            "max_items": "5",
+            "empty": "True",
+            "empty_state_ar": {
+              "title_ar": "يوم هادئ في متجرك",
+              "message_ar": "لا توجد قرارات تتطلب انتباهك اليوم — CartFlow يتابع الحالات الروتينية تلقائياً"
+            },
+            "knowledge_routing_v1": {
+              "routing_version": "v1",
+              "surface": "daily_brief",
+              "observability": {
+                "input_items": "0",
+                "eligible_items": "0",
+                "achievement_groups": "0",
+                "attention_groups": "0"
+              }
+            },
+            "observability": {
+              "decisions_collected": "0",
+              "decisions_composed": "0",
+              "achievement_topics": "0",
+              "attention_topics": "0",
+              "bundles_scanned": "0",
+              "routing_eligible_items": "0",
+              "time_window": {
+                "merchant_visible": "False",
+                "window_days": "7",
+                "start": "2026-07-15T15:28:10.338345",
+                "end": "2026-07-22T15:28:10.338345",
+                "prev_start": "2026-07-08T15:28:10.338345",
+                "context_mode": "current_production",
+                "authoritative_now": "2026-07-22T15:28:10.338345+00:00",
+                "simulation_run_id": "None",
+                "replay_id": "None",
+                "cross_surface": {
+                  "knowledge": "resolve_knowledge_windows",
+                  "dashboard": "resolve_dashboard_rolling_windows",
+                  "brief": "resolve_brief_windows"
+                }
+              }
+            },
+            "ok": "True",
+            "generated_at": "2026-07-22T15:28:10+00:00",
+            "store_slug": "متجر-تجربة-التاجر-1ef61e"
+          },
+          "summary_contract_schema_version": "merchant_home_m1_v1",
+          "_merchant_home_transport": {
+            "summary_source": "live",
+            "cache_hit": "False",
+            "merchant_home_experience_attached": "True",
+            "home_attach_mode": "present",
+            "composition_version": "v1",
+            "summary_contract_schema_version": "merchant_home_m1_v1",
+            "snapshot_version": "0",
+            "snapshot_degraded": "False",
+            "snapshot_stale": "False"
+          }
+        }
+      },
+      "normal_carts": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "merchant_table_rows": [],
+          "merchant_carts_page_rows": [],
+          "merchant_archived_carts_page_rows": [],
+          "merchant_visible_page_counts": {
+            "all": 0,
+            "waiting": 0,
+            "sent": 0,
+            "attention": 0,
+            "recovered": 0,
+            "nophone": 0,
+            "archived": 0
+          },
+          "merchant_store_cart_counts": {
+            "active_total": 0,
+            "waiting_total": 0,
+            "sent_total": 0,
+            "engaged_total": 0,
+            "completed_total": 0,
+            "archived_total": 0,
+            "no_phone_total": 0
+          },
+          "merchant_cart_filter_counts": {
+            "all": 0,
+            "waiting": 0,
+            "sent": 0,
+            "attention": 0,
+            "recovered": 0,
+            "nophone": 0
+          },
+          "merchant_nav_badge_abandoned": 0,
+          "merchant_archived_cart_count": 0,
+          "merchant_counter_health": {
+            "counter_source": "canonical",
+            "counter_generated_at": "2026-07-22T15:28:20.655457+00:00",
+            "counter_snapshot_stale": false,
+            "counter_query_scope": "store_total",
+            "counter_parity_version": "v1",
+            "partial": false,
+            "candidate_rows": 0,
+            "groups_scanned": 0,
+            "row_cap": 2500,
+            "max_pick": 2500
+          },
+          "merchant_counter_generated_at": "2026-07-22T15:28:20.655457+00:00",
+          "merchant_counter_source": "canonical",
+          "merchant_dashboard_refresh_token": "متجر-تجربة-التاجر-1ef61e:0:0:0:0:c0",
+          "merchant_dashboard_refresh_last_log_id": 0,
+          "merchant_dashboard_refresh_last_sent_log_id": 0,
+          "merchant_dashboard_refresh_sent_total": 0,
+          "merchant_dashboard_refresh_archive_rev": 0,
+          "merchant_dashboard_refresh_cart_rev": 0,
+          "_perf": {
+            "query_count": 1,
+            "duration_ms": 699.91,
+            "candidate_rows": 0,
+            "visible_rows": 0,
+            "rows_built": 0,
+            "rows_returned": 0,
+            "partial": false,
+            "degraded": false,
+            "timeout_stage": null,
+            "projection_ms": 0.0,
+            "load_ms": 146.85
+          },
+          "merchant_intelligence_store_v1": {
+            "version": "v1",
+            "authority": "merchant_intelligence_v1",
+            "generated_at": "2026-07-22T15:28:20+00:00",
+            "groups": [],
+            "recommendations": [],
+            "memory": [],
+            "priorities": [],
+            "cart_assignments": [],
+            "observability": {
+              "carts_processed": 0,
+              "groups_active": 0,
+              "patterns_active": 0,
+              "recommendations_count": 0,
+              "memory_beats_count": 0,
+              "priorities_count": 0,
+              "authority": "merchant_intelligence_v1",
+              "reviewable": true
+            }
+          },
+          "merchant_value_stories_v1": {
+            "version": "v1",
+            "authority": "merchant_value_composition_v1",
+            "stories": [],
+            "observability": {
+              "stories_composed": 0,
+              "groups_considered": 0,
+              "authority": "merchant_value_composition_v1",
+              "reviewable": true
+            }
+          },
+          "dashboard_wall_budget_s": 12.0,
+          "dashboard_partial": false,
+          "dashboard_timeout": false,
+          "dashboard_timeout_stage": null
+        }
+      },
+      "vip_carts": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "merchant_vip_banner": null,
+          "merchant_vip_rows": [],
+          "merchant_vip_page_rows": [],
+          "merchant_nav_badge_vip": 0,
+          "merchant_automation_mode": "manual",
+          "merchant_vip_threshold_configured": false,
+          "merchant_vip_alert_state_ar": "لم يُضبط حد VIP للمتجر — فعّل الحد من الإعدادات"
+        }
+      },
+      "followups": {
+        "status": 200,
+        "body": {
+          "ok": true,
+          "merchant_followup_rows": [],
+          "merchant_nav_badge_followup": 0
+        }
+      }
+    },
+    "composed": {
+      "home": {
+        "version": "v1",
+        "experience_tier": "starter",
+        "tier_capabilities": {
+          "starter": {
+            "max_attention_display": 1,
+            "max_understanding_display": 3,
+            "trend_awareness": false,
+            "executive_summary": false
+          },
+          "growth": {
+            "max_attention_display": 1,
+            "max_understanding_display": 5,
+            "trend_awareness": true,
+            "executive_summary": false
+          },
+          "pro": {
+            "max_attention_display": 1,
+            "max_understanding_display": 5,
+            "trend_awareness": true,
+            "executive_summary": true
+          }
+        },
+        "brief_date": "2026-07-22",
+        "greeting": {
+          "greeting_ar": "مساء الخير",
+          "merchant_name_ar": "متجر تجربة التاجر",
+          "date_ar": "2026-07-22"
+        },
+        "while_away": {
+          "title_ar": "سجل العمل",
+          "lead_ar": "ما الذي حدث — ولماذا يهم؟",
+          "items": [],
+          "empty_message_ar": "لا أحداث بارزة مسجّلة بعد.",
+          "store_slug": "demo",
+          "identity_authority_v1": {
+            "authority_owner": "platform_identity_authority",
+            "authority_consumer": "timeline",
+            "timeline_authority_source": "platform_identity_authority",
+            "resolution_path": "primary",
+            "identity_diagnostics": {
+              "authority_source": "platform_identity_authority",
+              "resolve_count": 1,
+              "context": {
+                "bound": true,
+                "authority_source": "platform_identity_authority",
+                "merchant_id": "caller_supplied",
+                "canonical_store_id": "canonical:demo",
+                "store_slug": "demo",
+                "resolution_path": "primary",
+                "identity_confidence": "resolved",
+                "correlation_id": "82fc20659fc445d7",
+                "simulation_run_id": null,
+                "replay_id": null,
+                "provider_binding_count": 0
+              },
+              "violations": {
+                "authority_source": "platform_identity_authority",
+                "dual_resolve_violation": 0,
+                "immutability_violation": 0,
+                "ownership_violation": 0,
+                "resolve_fail": 0,
+                "resolve_ok": 1
+              },
+              "counters": {
+                "resolve_ok": 1,
+                "resolve_fail": 0,
+                "dual_resolve_violation": 0,
+                "immutability_violation": 0,
+                "ownership_violation": 0,
+                "bind_ok": 1,
+                "clear_ok": 0
+              },
+              "resolution_provenance": {
+                "authority_source": "platform_identity_authority",
+                "resolution_path": "primary",
+                "identity_confidence": "resolved",
+                "correlation_id": "82fc20659fc445d7",
+                "identity_provenance": {
+                  "authority_source": "platform_identity_authority",
+                  "resolution_path": "primary",
+                  "identity_confidence": "resolved",
+                  "correlation_id": "82fc20659fc445d7",
+                  "alias_used": false,
+                  "notes": {
+                    "primary_store_id": "canonical:demo",
+                    "session_active_store_id": null
+                  }
+                }
+              }
+            },
+            "violation_detection": {
+              "dual_resolve": "enforced",
+              "immutability": "enforced",
+              "store_slug_mismatch": "fail_closed"
+            }
+          },
+          "knowledge_routing_v1": {
+            "routing_version": "v1",
+            "surface": "timeline",
+            "observability": {
+              "input_items": 0,
+              "eligible_items": 0,
+              "achievement_groups": 0,
+              "attention_groups": 0
+            }
+          },
+          "section_question_ar": "ما الذي حدث — ولماذا يهم؟",
+          "knowledge_role": "business_timeline",
+          "home_admission_v1": {
+            "admitted": false,
+            "reason": "empty_or_duplicate_timeline",
+            "cognitive_role": "event",
+            "composition_version": "home_semantic_composition_v1"
+          },
+          "suppressed": true
+        },
+        "attention_today": {
+          "title_ar": "أولوية اليوم",
+          "lead_ar": "ما أهم شيء أفعله اليوم؟",
+          "items": [],
+          "max_display": 1,
+          "platform_max": 5,
+          "count": 0,
+          "empty_message_ar": "لا أولوية تجارية واحدة مطلوبة منك الآن.",
+          "decision_surface": true,
+          "section_question_ar": "ما أهم شيء أفعله اليوم؟",
+          "knowledge_role": "priority",
+          "home_admission_v1": {
+            "admitted": false,
+            "reason": "empty_priority",
+            "cognitive_role": "action",
+            "composition_version": "home_semantic_composition_v1"
+          },
+          "suppressed": true
+        },
+        "store_understanding": {
+          "title_ar": "فهم العمل",
+          "lead_ar": "ما أكثر سبب يسبب تردد العملاء؟",
+          "items": [
+            {
+              "observation_ar": "عدد أسباب التردد المسجّلة (0) أقل من الحد الآمن لاستنتاج موثوق.",
+              "title_ar": "عدد أسباب التردد المسجّلة (0) أقل من الحد الآمن لاستنتاج موثوق.",
+              "evidence_label_ar": "hesitation_total=0",
+              "business_meaning_ar": "إصدار توصية تجارية الآن قد يوجّه قراراتك بناءً على عينة غير كافية.",
+              "impact_ar": "إصدار توصية تجارية الآن قد يوجّه قراراتك بناءً على عينة غير كافية.",
+              "commercial_impact_ar": "إصدار توصية تجارية الآن قد يوجّه قراراتك بناءً على عينة غير كافية.",
+              "recommended_direction_ar": "استمر في جمع أسباب التردد عبر التفاعل مع العملاء.",
+              "confidence": "insufficient",
+              "confidence_reason_ar": "أدلة غير كافية بعد — وهذا بحد ذاته معرفة تجارية.",
+              "fact_key": "fact:finding:dominant_hesitation_reason_v1",
+              "insight_key": "dominant_hesitation_reason_v1",
+              "finding_id": "finding:dominant_hesitation_reason_v1:insufficient",
+              "knowledge_id": "finding:dominant_hesitation_reason_v1:insufficient",
+              "truth_id": "finding:dominant_hesitation_reason_v1:insufficient",
+              "merchant_problem": "hesitation_dominant",
+              "semantic_topic": "hesitation_dominant",
+              "commercial_question_id": "CQ-H01",
+              "commercial_question_ar": "ما أكثر سبب يسبب تردد العملاء؟",
+              "commercial_dimension": "hesitation",
+              "commercial_answer_ar": "عدد أسباب التردد المسجّلة (0) أقل من الحد الآمن لاستنتاج موثوق.",
+              "evidence_ar": "hesitation_total=0",
+              "merchant_meaning_ar": "إصدار توصية تجارية الآن قد يوجّه قراراتك بناءً على عينة غير كافية.",
+              "recommended_action_ar": "استمر في جمع أسباب التردد عبر التفاعل مع العملاء.",
+              "insufficient_evidence_ok": true,
+              "source_knowledge_id": "bfe:finding:dominant_hesitation_reason_v1:insufficient",
+              "commercial_intelligence_v1": true,
+              "semantic_identity_v1": {
+                "truth_id": "finding:dominant_hesitation_reason_v1:insufficient",
+                "knowledge_id": "finding:dominant_hesitation_reason_v1:insufficient",
+                "decision_id": null,
+                "semantic_topic": "hesitation_dominant",
+                "merchant_problem": "hesitation_dominant",
+                "cognitive_role": "explain",
+                "evidence_scope": "hesitation_total=0",
+                "freshness": "",
+                "confidence": "insufficient",
+                "surface_eligibility": true,
+                "surface": "business_understanding",
+                "composition_version": "home_semantic_composition_v1"
+              },
+              "cognitive_role": "explain"
+            }
+          ],
+          "max_display": 3,
+          "empty_message_ar": "لا فهم تجاري مؤكد بعد — نبني صورة أوضح مع كل يوم تشغيل.",
+          "section_question_ar": "ما أكثر سبب يسبب تردد العملاء؟",
+          "knowledge_role": "explain",
+          "purpose_ar": "سؤال تجاري → إجابة → دليل → ثقة → معنى للتاجر",
+          "commercial_intelligence_v1": true,
+          "home_admission_v1": {
+            "admitted": true,
+            "reason": "owns_explain",
+            "cognitive_role": "explain",
+            "composition_version": "home_semantic_composition_v1"
+          },
+          "suppressed": false
+        },
+        "biggest_revenue_risk": {
+          "title_ar": "أكبر خطر على الإيراد",
+          "lead_ar": "أين أخسر أكثر الآن؟",
+          "section_question_ar": "أين أخسر أكثر الآن؟",
+          "knowledge_role": "revenue_risk",
+          "item": null,
+          "items": [],
+          "empty_message_ar": "لا خطر إيراد مؤكد بأدلة كافية الآن.",
+          "home_admission_v1": {
+            "admitted": false,
+            "reason": "empty_risk",
+            "cognitive_role": "risk",
+            "composition_version": "home_semantic_composition_v1"
+          },
+          "suppressed": true
+        },
+        "quick_nav": {
+          "title_ar": "انتقال سريع",
+          "items": [
+            {
+              "id": "knowledge",
+              "label_ar": "طبقة المعرفة",
+              "nav_type": "anchor",
+              "href": "#ma-home-understanding"
+            },
+            {
+              "id": "active_carts",
+              "label_ar": "السلال النشطة",
+              "nav_type": "cart_tab",
+              "cart_tab": "all",
+              "badge_count": 0
+            },
+            {
+              "id": "completed",
+              "label_ar": "الاستردادات المكتملة",
+              "nav_type": "cart_tab",
+              "cart_tab": "completed"
+            },
+            {
+              "id": "settings",
+              "label_ar": "الإعدادات",
+              "nav_type": "settings",
+              "settings_page": "settings"
+            },
+            {
+              "id": "waiting",
+              "label_ar": "بانتظار الإرسال",
+              "nav_type": "cart_tab",
+              "cart_tab": "waiting",
+              "badge_count": 0,
+              "visible": false
+            }
+          ]
+        },
+        "empty_calm": true,
+        "knowledge_routing_v1": {
+          "routing_version": "v1",
+          "surface": "merchant_home",
+          "observability": {
+            "input_items": 0,
+            "eligible_items": 0,
+            "achievement_groups": 0,
+            "attention_groups": 0
+          }
+        },
+        "sources": {
+          "daily_brief_version": "v2",
+          "daily_brief_composer": "v2",
+          "achievement_count": 0,
+          "attention_source_count": 0,
+          "understanding_routed_groups": 0,
+          "knowledge_cart_count": 0
+        },
+        "observability": {
+          "while_away_items": 0,
+          "attention_items": 0,
+          "understanding_items": 0,
+          "dedupe_keys": 0,
+          "pib1_home_truth_alignment": true,
+          "pib2_attention_decision_surface": true,
+          "pib3_recovery_journey_explainability": true,
+          "home_knowledge_redistribution_v1": true,
+          "home_daily_business_brief_v1": true,
+          "commercial_interpretation_attached": true,
+          "commercial_interpretation_primary": false,
+          "has_revenue_risk": false,
+          "has_opportunity": false,
+          "home_commercial_intelligence_v1": true,
+          "commercial_questions_answered": 3,
+          "commercial_dimensions_answered": [
+            "hesitation",
+            "missing_evidence",
+            "recovery"
+          ],
+          "commercial_diversity_ok": true,
+          "home_semantic_composition_v1": true,
+          "home_semantic_suppressed_count": 0,
+          "home_semantic_admitted_sections": [
+            "business_health",
+            "biggest_opportunity",
+            "business_understanding",
+            "learning_progress"
+          ]
+        },
+        "commercial_interpretation_v1": {
+          "ok": true,
+          "interpretation_version": "v1",
+          "store_slug": "demo",
+          "generated_at": "2026-07-22T15:28:09+00:00",
+          "primary": null,
+          "interpretations": [],
+          "used_last_valid": false,
+          "observability": {
+            "interpretations_evaluated": 1,
+            "interpretations_generated": 0,
+            "interpretations_suppressed": 1,
+            "suppression_reasons": [
+              "count_zero"
+            ],
+            "evidence_count": 0,
+            "confidence": null,
+            "generation_duration_ms": 0.02,
+            "destination_routing": [
+              "merchant_home",
+              "knowledge_layer"
+            ],
+            "query_cost": 1,
+            "failure_reason": null,
+            "resolve": {
+              "evidence_source": "merchant_store_cart_counts.no_phone_total",
+              "query_cost": 1,
+              "resolve_path": "canonical_counter_totals",
+              "duration_ms": 3831.3
+            },
+            "evaluations": [
+              {
+                "interpretation_id": "missing_contact_blocks_recovery_v1",
+                "evaluated": true,
+                "generated": false,
+                "suppressed": true,
+                "suppression_reason": "count_zero",
+                "evidence_count": 0,
+                "confidence": null,
+                "is_primary_commercial_blocker": false
+              }
+            ],
+            "ai_used": false,
+            "probabilistic": false
+          }
+        },
+        "store_slug": "demo",
+        "business_health": {
+          "title_ar": "صحة العمل",
+          "lead_ar": "هل عملي بصحة جيدة اليوم؟",
+          "section_question_ar": "هل عملي بصحة جيدة اليوم؟",
+          "executive_band": "E1",
+          "executive_question_id": "EQ-01",
+          "knowledge_role": "business_health",
+          "status_ar": "بصحة جيدة",
+          "summary_ar": "لا عائق تجاري بارز اليوم — عملك في وضع هادئ ومفهوم.",
+          "confidence": "insufficient",
+          "confidence_ar": "ما زلنا نتعلم — الأدلة غير كافية بعد",
+          "attention_required": false,
+          "direction_ar": "مستقرة دون ضغط بارز.",
+          "direction_key": "stable",
+          "evidence_summary_ar": "",
+          "disclosure": {
+            "label_ar": "كيف وصلنا لهذه الصورة؟",
+            "trend_ar": "مستقرة دون ضغط بارز.",
+            "evidence_ar": "لدينا فهم تجاري من عدة زوايا يدعم صورة صحة العمل اليوم."
+          },
+          "empty_message_ar": "نجمع صورة أوضح لصحة عملك.",
+          "commercial_questions_answered": 3,
+          "commercial_dimensions": [
+            "hesitation",
+            "missing_evidence",
+            "recovery"
+          ],
+          "semantic_identity_v1": {
+            "truth_id": "truth:business_health",
+            "knowledge_id": null,
+            "decision_id": null,
+            "semantic_topic": "generic",
+            "merchant_problem": "generic",
+            "cognitive_role": "condition",
+            "evidence_scope": "",
+            "freshness": "",
+            "confidence": "insufficient",
+            "surface_eligibility": true,
+            "surface": "business_health",
+            "composition_version": "home_semantic_composition_v1"
+          },
+          "home_admission_v1": {
+            "admitted": true,
+            "reason": "orientation_condition",
+            "cognitive_role": "condition",
+            "composition_version": "home_semantic_composition_v1"
+          },
+          "suppressed": false
+        },
+        "biggest_opportunity": {
+          "title_ar": "أكبر فرصة اليوم",
+          "lead_ar": "أي مسار استرجاع يغيّر النتائج فعلاً؟",
+          "section_question_ar": "أي مسار استرجاع يغيّر النتائج فعلاً؟",
+          "knowledge_role": "opportunity",
+          "item": {
+            "headline_ar": "عدد حالات العودة المسجّلة (0) لا يكفي بعد لاستنتاج موثوق.",
+            "why_ar": "لا يمكن الجزم بفعالية الاسترجاع في إغلاق الشراء بعد.",
+            "evidence_ar": "returns=0",
+            "commercial_value_ar": "لا يمكن الجزم بفعالية الاسترجاع في إغلاق الشراء بعد.",
+            "confidence": "insufficient",
+            "fact_key": "fact:finding:return_without_purchase_v1",
+            "insight_key": "return_without_purchase_v1",
+            "merchant_problem": "recovery_return_without_purchase",
+            "semantic_topic": "recovery_return_without_purchase",
+            "commercial_question_id": "CQ-R01",
+            "commercial_question_ar": "أي مسار استرجاع يغيّر النتائج فعلاً؟",
+            "commercial_dimension": "recovery",
+            "commercial_answer_ar": "عدد حالات العودة المسجّلة (0) لا يكفي بعد لاستنتاج موثوق.",
+            "merchant_meaning_ar": "لا يمكن الجزم بفعالية الاسترجاع في إغلاق الشراء بعد.",
+            "cta_label_ar": "استكشف التفاصيل",
+            "drilldown_href": "#knowledge",
+            "commercial_intelligence_v1": true,
+            "semantic_identity_v1": {
+              "truth_id": "fact:finding:return_without_purchase_v1",
+              "knowledge_id": "return_without_purchase_v1",
+              "decision_id": null,
+              "semantic_topic": "recovery_return_without_purchase",
+              "merchant_problem": "recovery_return_without_purchase",
+              "cognitive_role": "opportunity",
+              "evidence_scope": "returns=0",
+              "freshness": "",
+              "confidence": "insufficient",
+              "surface_eligibility": true,
+              "surface": "biggest_opportunity",
+              "composition_version": "home_semantic_composition_v1"
+            },
+            "cognitive_role": "opportunity"
+          },
+          "items": [
+            {
+              "headline_ar": "عدد حالات العودة المسجّلة (0) لا يكفي بعد لاستنتاج موثوق.",
+              "why_ar": "لا يمكن الجزم بفعالية الاسترجاع في إغلاق الشراء بعد.",
+              "evidence_ar": "returns=0",
+              "commercial_value_ar": "لا يمكن الجزم بفعالية الاسترجاع في إغلاق الشراء بعد.",
+              "confidence": "insufficient",
+              "fact_key": "fact:finding:return_without_purchase_v1",
+              "insight_key": "return_without_purchase_v1",
+              "merchant_problem": "recovery_return_without_purchase",
+              "semantic_topic": "recovery_return_without_purchase",
+              "commercial_question_id": "CQ-R01",
+              "commercial_question_ar": "أي مسار استرجاع يغيّر النتائج فعلاً؟",
+              "commercial_dimension": "recovery",
+              "commercial_answer_ar": "عدد حالات العودة المسجّلة (0) لا يكفي بعد لاستنتاج موثوق.",
+              "merchant_meaning_ar": "لا يمكن الجزم بفعالية الاسترجاع في إغلاق الشراء بعد.",
+              "cta_label_ar": "استكشف التفاصيل",
+              "drilldown_href": "#knowledge",
+              "commercial_intelligence_v1": true,
+              "semantic_identity_v1": {
+                "truth_id": "fact:finding:return_without_purchase_v1",
+                "knowledge_id": "return_without_purchase_v1",
+                "decision_id": null,
+                "semantic_topic": "recovery_return_without_purchase",
+                "merchant_problem": "recovery_return_without_purchase",
+                "cognitive_role": "opportunity",
+                "evidence_scope": "returns=0",
+                "freshness": "",
+                "confidence": "insufficient",
+                "surface_eligibility": true,
+                "surface": "biggest_opportunity",
+                "composition_version": "home_semantic_composition_v1"
+              },
+              "cognitive_role": "opportunity"
+            }
+          ],
+          "empty_message_ar": "لا فرصة تجارية مؤكدة بأدلة كافية اليوم.",
+          "commercial_intelligence_v1": true,
+          "home_admission_v1": {
+            "admitted": true,
+            "reason": "distinct_executable_opportunity",
+            "cognitive_role": "opportunity",
+            "composition_version": "home_semantic_composition_v1"
+          },
+          "suppressed": false
+        },
+        "learning_progress": {
+          "title_ar": "تقدّم الفهم",
+          "lead_ar": "ماذا ما زلنا لا نعرف — وأين نحتاج أدلة؟",
+          "section_question_ar": "ماذا ما زلنا لا نعرف — وأين نحتاج أدلة؟",
+          "knowledge_role": "learning_progress",
+          "items": [
+            {
+              "kind": "more_evidence_required",
+              "progress_ar": "ما زلنا لا نملك أدلة كافية هنا",
+              "detail_ar": "ماذا ما زلنا لا نعرف — وأين نحتاج أدلة؟ — البيانات الحالية لا تدعم استنتاجاً تجارياً آمناً بما يكفي لتوجيه قرار.",
+              "confidence": "insufficient",
+              "fact_key": "fact:finding:insufficient_or_conflicting_evidence_v1",
+              "merchant_problem": "missing_evidence",
+              "semantic_topic": "missing_evidence",
+              "commercial_question_id": "CQ-D01",
+              "commercial_question_ar": "ماذا ما زلنا لا نعرف — وأين نحتاج أدلة؟",
+              "commercial_dimension": "missing_evidence",
+              "commercial_answer_ar": "البيانات الحالية لا تدعم استنتاجاً تجارياً آمناً بما يكفي لتوجيه قرار.",
+              "evidence_ar": "hesitation=0 wa_sent=0 products=0",
+              "merchant_meaning_ar": "الامتناع عن التوصية أفضل من نصيحة ضعيفة الدليل.",
+              "insufficient_evidence_ok": true,
+              "commercial_intelligence_v1": true,
+              "semantic_identity_v1": {
+                "truth_id": "fact:finding:insufficient_or_conflicting_evidence_v1",
+                "knowledge_id": null,
+                "decision_id": null,
+                "semantic_topic": "missing_evidence",
+                "merchant_problem": "missing_evidence",
+                "cognitive_role": "learning_progress",
+                "evidence_scope": "hesitation=0 wa_sent=0 products=0",
+                "freshness": "",
+                "confidence": "insufficient",
+                "surface_eligibility": true,
+                "surface": "learning_progress",
+                "composition_version": "home_semantic_composition_v1"
+              },
+              "cognitive_role": "learning_progress"
+            }
+          ],
+          "empty_message_ar": "ما زال فهم العمل في طور البناء.",
+          "commercial_intelligence_v1": true,
+          "home_admission_v1": {
+            "admitted": true,
+            "reason": "new_learning_signal",
+            "cognitive_role": "learning_progress",
+            "composition_version": "home_semantic_composition_v1"
+          },
+          "suppressed": false
+        },
+        "business_understanding": {
+          "title_ar": "فهم العمل",
+          "lead_ar": "ما أكثر سبب يسبب تردد العملاء؟",
+          "items": [
+            {
+              "observation_ar": "عدد أسباب التردد المسجّلة (0) أقل من الحد الآمن لاستنتاج موثوق.",
+              "title_ar": "عدد أسباب التردد المسجّلة (0) أقل من الحد الآمن لاستنتاج موثوق.",
+              "evidence_label_ar": "hesitation_total=0",
+              "business_meaning_ar": "إصدار توصية تجارية الآن قد يوجّه قراراتك بناءً على عينة غير كافية.",
+              "impact_ar": "إصدار توصية تجارية الآن قد يوجّه قراراتك بناءً على عينة غير كافية.",
+              "commercial_impact_ar": "إصدار توصية تجارية الآن قد يوجّه قراراتك بناءً على عينة غير كافية.",
+              "recommended_direction_ar": "استمر في جمع أسباب التردد عبر التفاعل مع العملاء.",
+              "confidence": "insufficient",
+              "confidence_reason_ar": "أدلة غير كافية بعد — وهذا بحد ذاته معرفة تجارية.",
+              "fact_key": "fact:finding:dominant_hesitation_reason_v1",
+              "insight_key": "dominant_hesitation_reason_v1",
+              "finding_id": "finding:dominant_hesitation_reason_v1:insufficient",
+              "knowledge_id": "finding:dominant_hesitation_reason_v1:insufficient",
+              "truth_id": "finding:dominant_hesitation_reason_v1:insufficient",
+              "merchant_problem": "hesitation_dominant",
+              "semantic_topic": "hesitation_dominant",
+              "commercial_question_id": "CQ-H01",
+              "commercial_question_ar": "ما أكثر سبب يسبب تردد العملاء؟",
+              "commercial_dimension": "hesitation",
+              "commercial_answer_ar": "عدد أسباب التردد المسجّلة (0) أقل من الحد الآمن لاستنتاج موثوق.",
+              "evidence_ar": "hesitation_total=0",
+              "merchant_meaning_ar": "إصدار توصية تجارية الآن قد يوجّه قراراتك بناءً على عينة غير كافية.",
+              "recommended_action_ar": "استمر في جمع أسباب التردد عبر التفاعل مع العملاء.",
+              "insufficient_evidence_ok": true,
+              "source_knowledge_id": "bfe:finding:dominant_hesitation_reason_v1:insufficient",
+              "commercial_intelligence_v1": true,
+              "semantic_identity_v1": {
+                "truth_id": "finding:dominant_hesitation_reason_v1:insufficient",
+                "knowledge_id": "finding:dominant_hesitation_reason_v1:insufficient",
+                "decision_id": null,
+                "semantic_topic": "hesitation_dominant",
+                "merchant_problem": "hesitation_dominant",
+                "cognitive_role": "explain",
+                "evidence_scope": "hesitation_total=0",
+                "freshness": "",
+                "confidence": "insufficient",
+                "surface_eligibility": true,
+                "surface": "business_understanding",
+                "composition_version": "home_semantic_composition_v1"
+              },
+              "cognitive_role": "explain"
+            }
+          ],
+          "max_display": 3,
+          "empty_message_ar": "لا فهم تجاري مؤكد بعد — نبني صورة أوضح مع كل يوم تشغيل.",
+          "section_question_ar": "ما أكثر سبب يسبب تردد العملاء؟",
+          "knowledge_role": "explain",
+          "purpose_ar": "سؤال تجاري → إجابة → دليل → ثقة → معنى للتاجر",
+          "commercial_intelligence_v1": true,
+          "home_admission_v1": {
+            "admitted": true,
+            "reason": "owns_explain",
+            "cognitive_role": "explain",
+            "composition_version": "home_semantic_composition_v1"
+          },
+          "suppressed": false
+        },
+        "todays_priority": {
+          "title_ar": "أولوية اليوم",
+          "lead_ar": "ما أهم شيء أفعله اليوم؟",
+          "items": [],
+          "max_display": 1,
+          "platform_max": 5,
+          "count": 0,
+          "empty_message_ar": "لا أولوية تجارية واحدة مطلوبة منك الآن.",
+          "decision_surface": true,
+          "section_question_ar": "ما أهم شيء أفعله اليوم؟",
+          "knowledge_role": "priority",
+          "home_admission_v1": {
+            "admitted": false,
+            "reason": "empty_priority",
+            "cognitive_role": "action",
+            "composition_version": "home_semantic_composition_v1"
+          },
+          "suppressed": true
+        },
+        "business_timeline": {
+          "title_ar": "سجل العمل",
+          "lead_ar": "ما الذي حدث — ولماذا يهم؟",
+          "items": [],
+          "empty_message_ar": "لا أحداث بارزة مسجّلة بعد.",
+          "store_slug": "demo",
+          "identity_authority_v1": {
+            "authority_owner": "platform_identity_authority",
+            "authority_consumer": "timeline",
+            "timeline_authority_source": "platform_identity_authority",
+            "resolution_path": "primary",
+            "identity_diagnostics": {
+              "authority_source": "platform_identity_authority",
+              "resolve_count": 1,
+              "context": {
+                "bound": true,
+                "authority_source": "platform_identity_authority",
+                "merchant_id": "caller_supplied",
+                "canonical_store_id": "canonical:demo",
+                "store_slug": "demo",
+                "resolution_path": "primary",
+                "identity_confidence": "resolved",
+                "correlation_id": "82fc20659fc445d7",
+                "simulation_run_id": null,
+                "replay_id": null,
+                "provider_binding_count": 0
+              },
+              "violations": {
+                "authority_source": "platform_identity_authority",
+                "dual_resolve_violation": 0,
+                "immutability_violation": 0,
+                "ownership_violation": 0,
+                "resolve_fail": 0,
+                "resolve_ok": 1
+              },
+              "counters": {
+                "resolve_ok": 1,
+                "resolve_fail": 0,
+                "dual_resolve_violation": 0,
+                "immutability_violation": 0,
+                "ownership_violation": 0,
+                "bind_ok": 1,
+                "clear_ok": 0
+              },
+              "resolution_provenance": {
+                "authority_source": "platform_identity_authority",
+                "resolution_path": "primary",
+                "identity_confidence": "resolved",
+                "correlation_id": "82fc20659fc445d7",
+                "identity_provenance": {
+                  "authority_source": "platform_identity_authority",
+                  "resolution_path": "primary",
+                  "identity_confidence": "resolved",
+                  "correlation_id": "82fc20659fc445d7",
+                  "alias_used": false,
+                  "notes": {
+                    "primary_store_id": "canonical:demo",
+                    "session_active_store_id": null
+                  }
+                }
+              }
+            },
+            "violation_detection": {
+              "dual_resolve": "enforced",
+              "immutability": "enforced",
+              "store_slug_mismatch": "fail_closed"
+            }
+          },
+          "knowledge_routing_v1": {
+            "routing_version": "v1",
+            "surface": "timeline",
+            "observability": {
+              "input_items": 0,
+              "eligible_items": 0,
+              "achievement_groups": 0,
+              "attention_groups": 0
+            }
+          },
+          "section_question_ar": "ما الذي حدث — ولماذا يهم؟",
+          "knowledge_role": "business_timeline",
+          "home_admission_v1": {
+            "admitted": false,
+            "reason": "empty_or_duplicate_timeline",
+            "cognitive_role": "event",
+            "composition_version": "home_semantic_composition_v1"
+          },
+          "suppressed": true
+        },
+        "daily_business_brief_v1": true,
+        "constitution_ref": "MERCHANT_DAILY_BUSINESS_BRIEF_CONSTITUTION_V3",
+        "home_commercial_intelligence_v1": {
+          "ok": true,
+          "engine": "home_commercial_intelligence_v1",
+          "registry_version": "commercial_question_registry_v1",
+          "findings_engine": "business_findings_engine_v1",
+          "evidence_loaded_from": "db_v1:3693.99ms",
+          "product_identity_authenticity_v1": {
+            "engine": "product_identity_authenticity_v1",
+            "admit_review_fixtures": false,
+            "evidence_loaded_from": "db_v1:3693.99ms",
+            "fixture_blocked": false,
+            "placeholders_removed": 0,
+            "findings_in": 4,
+            "findings_out": 4
+          },
+          "admitted": [
+            {
+              "section": "business_understanding",
+              "question_id": "CQ-H01",
+              "dimension": "hesitation"
+            },
+            {
+              "section": "biggest_opportunity",
+              "question_id": "CQ-R01",
+              "dimension": "recovery"
+            },
+            {
+              "section": "learning_progress",
+              "question_id": "CQ-D01",
+              "dimension": "missing_evidence"
+            }
+          ],
+          "rejected": [],
+          "dimensions_answered": [
+            "hesitation",
+            "missing_evidence",
+            "recovery"
+          ],
+          "questions_answered": [
+            "CQ-D01",
+            "CQ-H01",
+            "CQ-R01"
+          ],
+          "questions_answered_count": 3,
+          "diversity_ok": true,
+          "success_metric": "number of different commercial questions answered with evidence",
+          "findings_produced": 4,
+          "ai_used": false,
+          "merchant_fixture_admitted": false
+        },
+        "home_semantic_composition_v1": {
+          "version": "home_semantic_composition_v1",
+          "claimed_roles": {
+            "hesitation_dominant": [
+              "explain"
+            ],
+            "recovery_return_without_purchase": [
+              "opportunity"
+            ],
+            "missing_evidence": [
+              "learning_progress"
+            ]
+          },
+          "suppressed": [],
+          "admitted_sections": [
+            "business_health",
+            "biggest_opportunity",
+            "business_understanding",
+            "learning_progress"
+          ],
+          "path_policy_applied": null,
+          "progressive_disclosure": [
+            "condition",
+            "action",
+            "explain"
+          ]
+        },
+        "ok": true,
+        "generated_at": "2026-07-22T15:28:09+00:00",
+        "daily_brief_v1": {
+          "version": "v2",
+          "composer_version": "v2",
+          "brief_date": "2026-07-22",
+          "achievements": [],
+          "attention_items": [],
+          "items": [],
+          "achievement_count": 0,
+          "attention_count": 0,
+          "item_count": 0,
+          "max_items": 5,
+          "empty": true,
+          "empty_state_ar": {
+            "title_ar": "يوم هادئ في متجرك",
+            "message_ar": "لا توجد قرارات تتطلب انتباهك اليوم — CartFlow يتابع الحالات الروتينية تلقائياً"
+          },
+          "knowledge_routing_v1": {
+            "routing_version": "v1",
+            "surface": "daily_brief",
+            "observability": {
+              "input_items": 0,
+              "eligible_items": 0,
+              "achievement_groups": 0,
+              "attention_groups": 0
+            }
+          },
+          "observability": {
+            "decisions_collected": 0,
+            "decisions_composed": 0,
+            "achievement_topics": 0,
+            "attention_topics": 0,
+            "bundles_scanned": 26,
+            "routing_eligible_items": 0,
+            "time_window": {
+              "merchant_visible": false,
+              "window_days": 7,
+              "start": "2026-07-15T15:28:01.656813",
+              "end": "2026-07-22T15:28:01.656813",
+              "prev_start": "2026-07-08T15:28:01.656813",
+              "context_mode": "current_production",
+              "authoritative_now": "2026-07-22T15:28:01.656813+00:00",
+              "simulation_run_id": null,
+              "replay_id": null,
+              "cross_surface": {
+                "knowledge": "resolve_knowledge_windows",
+                "dashboard": "resolve_dashboard_rolling_windows",
+                "brief": "resolve_brief_windows"
+              }
+            }
+          },
+          "ok": true,
+          "generated_at": "2026-07-22T15:28:01+00:00",
+          "store_slug": "demo"
+        },
+        "identity_authority_v1": {
+          "authority_owner": "platform_identity_authority",
+          "authority_consumer": "dashboard_home",
+          "dashboard_home_authority_source": "platform_identity_authority",
+          "resolution_path": "primary",
+          "identity_diagnostics": {
+            "authority_source": "platform_identity_authority",
+            "resolve_count": 1,
+            "context": {
+              "bound": true,
+              "authority_source": "platform_identity_authority",
+              "merchant_id": "caller_supplied",
+              "canonical_store_id": "canonical:demo",
+              "store_slug": "demo",
+              "resolution_path": "primary",
+              "identity_confidence": "resolved",
+              "correlation_id": "82fc20659fc445d7",
+              "simulation_run_id": null,
+              "replay_id": null,
+              "provider_binding_count": 0
+            },
+            "violations": {
+              "authority_source": "platform_identity_authority",
+              "dual_resolve_violation": 0,
+              "immutability_violation": 0,
+              "ownership_violation": 0,
+              "resolve_fail": 0,
+              "resolve_ok": 1
+            },
+            "counters": {
+              "resolve_ok": 1,
+              "resolve_fail": 0,
+              "dual_resolve_violation": 0,
+              "immutability_violation": 0,
+              "ownership_violation": 0,
+              "bind_ok": 1,
+              "clear_ok": 0
+            },
+            "resolution_provenance": {
+              "authority_source": "platform_identity_authority",
+              "resolution_path": "primary",
+              "identity_confidence": "resolved",
+              "correlation_id": "82fc20659fc445d7",
+              "identity_provenance": {
+                "authority_source": "platform_identity_authority",
+                "resolution_path": "primary",
+                "identity_confidence": "resolved",
+                "correlation_id": "82fc20659fc445d7",
+                "alias_used": false,
+                "notes": {
+                  "primary_store_id": "canonical:demo",
+                  "session_active_store_id": null
+                }
+              }
+            }
+          }
+        }
+      },
+      "knowledge_layer": {
+        "ok": true,
+        "store_slug": "demo",
+        "window_days": 7,
+        "generated_at": "2026-07-22T15:28:10.150733+00:00",
+        "insights": [
+          {
+            "insight_key": "traffic_visitor_unavailable",
+            "category": "traffic",
+            "severity": "notice",
+            "title_ar": "بيانات الزوار غير متوفرة",
+            "message_ar": "CartFlow لا يرى عدد زوار المتجر حالياً — لا يمكن قياس حجم الزيارات من هذه البيانات.",
+            "evidence": {
+              "visitor_data_available": false,
+              "cart_count": 0,
+              "note": "visitor_data_unavailable"
+            },
+            "confidence": "insufficient",
+            "data_window": {
+              "days": 7,
+              "start": "2026-07-15T15:28:09.872766",
+              "end": "2026-07-22T15:28:09.872766"
+            },
+            "sample_size": 0,
+            "source_tables": [
+              "abandoned_carts"
+            ],
+            "recommended_action_ar": "قد تحتاج إلى مراجعة إعدادات التتبع إذا استمر نقص البيانات."
+          },
+          {
+            "insight_key": "conversion_funnel_gaps",
+            "category": "conversion",
+            "severity": "notice",
+            "title_ar": "فجوات في مسار التحويل",
+            "message_ar": "مسار التحويل الكامل غير مرئي بالكامل: بيانات الزوار غير متوفرة؛ بيانات مرحلة الدفع غير متوفرة.",
+            "evidence": {
+              "cart_count": 0,
+              "checkout_signal_count": 0,
+              "purchase_count": 0,
+              "gaps": [
+                "visitor_data_unavailable",
+                "checkout_data_unavailable"
+              ]
+            },
+            "confidence": "insufficient",
+            "data_window": {
+              "days": 7,
+              "start": "2026-07-15T15:28:09.872766",
+              "end": "2026-07-22T15:28:09.872766"
+            },
+            "sample_size": 0,
+            "source_tables": [
+              "abandoned_carts",
+              "purchase_truth_records"
+            ],
+            "recommended_action_ar": "راقب هذا المؤشر خلال الأيام القادمة."
+          },
+          {
+            "insight_key": "conversion_no_carts",
+            "category": "conversion",
+            "severity": "notice",
+            "title_ar": "لا توجد سلال في النافذة",
+            "message_ar": "لم تُسجَّل سلات مهجورة في نافذة البيانات الحالية.",
+            "evidence": {
+              "cart_count": 0,
+              "checkout_signal_count": 0,
+              "purchase_count": 0,
+              "gaps": [
+                "visitor_data_unavailable",
+                "checkout_data_unavailable"
+              ]
+            },
+            "confidence": "insufficient",
+            "data_window": {
+              "days": 7,
+              "start": "2026-07-15T15:28:09.872766",
+              "end": "2026-07-22T15:28:09.872766"
+            },
+            "sample_size": 0,
+            "source_tables": [
+              "abandoned_carts"
+            ],
+            "recommended_action_ar": "تأكد أن بيانات المتجر تصل بشكل صحيح."
+          },
+          {
+            "insight_key": "hesitation_insufficient_sample",
+            "category": "hesitation",
+            "severity": "notice",
+            "title_ar": "بيانات التردد محدودة",
+            "message_ar": "عدد أسباب التردد المسجّلة (0) أقل من الحد الأدنى (3) لاستنتاج موثوق.",
+            "evidence": {
+              "hesitation_total": 0,
+              "distribution": {}
+            },
+            "confidence": "insufficient",
+            "data_window": {
+              "days": 7,
+              "start": "2026-07-15T15:28:09.872766",
+              "end": "2026-07-22T15:28:09.872766"
+            },
+            "sample_size": 0,
+            "source_tables": [
+              "cart_recovery_reasons"
+            ],
+            "recommended_action_ar": "تأكد أن بيانات المتجر تصل بشكل صحيح."
+          },
+          {
+            "insight_key": "recovery_insufficient_sample",
+            "category": "recovery",
+            "severity": "notice",
+            "title_ar": "نشاط الاسترجاع محدود",
+            "message_ar": "عدد أحداث الاسترجاع (0) أقل من الحد الأدنى (2) لتقييم الفعالية.",
+            "evidence": {
+              "messages_sent": 0,
+              "replies": 0,
+              "returns": 0,
+              "purchase_count": 0,
+              "attributed_recovery_purchase_count": 0,
+              "purchase_attribution_unknown_count": 0,
+              "ignored": 0,
+              "stopped": 0,
+              "failed": 0
+            },
+            "confidence": "insufficient",
+            "data_window": {
+              "days": 7,
+              "start": "2026-07-15T15:28:09.872766",
+              "end": "2026-07-22T15:28:09.872766"
+            },
+            "sample_size": 0,
+            "source_tables": [
+              "cart_recovery_logs",
+              "recovery_truth_timeline_events"
+            ],
+            "recommended_action_ar": "تأكد أن بيانات المتجر تصل بشكل صحيح."
+          },
+          {
+            "insight_key": "store_health_overview",
+            "category": "store_health",
+            "severity": "warning",
+            "title_ar": "صحة بيانات المتجر",
+            "message_ar": "لا توجد سلات كافية في النافذة. مسار الاسترجاع نشط. البيانات محدودة لرؤية موثوقة.",
+            "evidence": {
+              "signals": [
+                "not_enough_cart_data",
+                "recovery_is_running",
+                "data_too_limited_for_reliable_insight"
+              ],
+              "metrics": {
+                "store_slug": "demo",
+                "window_days": 7,
+                "window_start": "2026-07-15T15:28:09.872766",
+                "window_end": "2026-07-22T15:28:09.872766",
+                "store_resolved": true,
+                "visitor_data_available": false,
+                "cart_count": 0,
+                "prev_cart_count": 0,
+                "carts_with_phone": 0,
+                "vip_cart_count": 0,
+                "prev_vip_cart_count": 0,
+                "checkout_data_available": false,
+                "checkout_signal_count": 0,
+                "purchase_count": 0,
+                "attributed_recovery_purchase_count": 0,
+                "purchase_attribution_unknown_count": 0,
+                "purchase_attribution_evaluated_count": 0,
+                "hesitation_total": 0,
+                "hesitation_distribution": {},
+                "recovery_messages_sent": 0,
+                "recovery_replies": 0,
+                "recovery_returns": 0,
+                "recovery_ignored": 0,
+                "recovery_stopped": 0,
+                "recovery_failed": 0,
+                "recovery_scheduled_active": 6,
+                "purchase_truth_rows": 0,
+                "lifecycle_closure_rows": 0,
+                "vip_evidence": {
+                  "isolated": true,
+                  "session_count": 0,
+                  "cart_count": 0,
+                  "prev_cart_count": 0,
+                  "hesitation_total": 0,
+                  "hesitation_distribution": {},
+                  "recovery_messages_sent": 0,
+                  "recovery_replies": 0,
+                  "recovery_returns": 0,
+                  "merchant_alert_logs": 0
+                },
+                "source_tables": [
+                  "abandoned_carts",
+                  "cart_recovery_logs",
+                  "cart_recovery_reasons",
+                  "lifecycle_closure_records",
+                  "purchase_truth_records",
+                  "recovery_schedules",
+                  "recovery_truth_timeline_events"
+                ]
+              }
+            },
+            "confidence": "insufficient",
+            "data_window": {
+              "days": 7,
+              "start": "2026-07-15T15:28:09.872766",
+              "end": "2026-07-22T15:28:09.872766"
+            },
+            "sample_size": 0,
+            "source_tables": [
+              "abandoned_carts",
+              "cart_recovery_logs",
+              "cart_recovery_reasons",
+              "lifecycle_closure_records",
+              "purchase_truth_records",
+              "recovery_schedules",
+              "recovery_truth_timeline_events"
+            ],
+            "recommended_action_ar": "تأكد أن بيانات المتجر تصل بشكل صحيح."
+          }
+        ],
+        "metrics_snapshot": {
+          "store_slug": "demo",
+          "window_days": 7,
+          "window_start": "2026-07-15T15:28:09.872766",
+          "window_end": "2026-07-22T15:28:09.872766",
+          "store_resolved": true,
+          "visitor_data_available": false,
+          "cart_count": 0,
+          "prev_cart_count": 0,
+          "carts_with_phone": 0,
+          "vip_cart_count": 0,
+          "prev_vip_cart_count": 0,
+          "checkout_data_available": false,
+          "checkout_signal_count": 0,
+          "purchase_count": 0,
+          "attributed_recovery_purchase_count": 0,
+          "purchase_attribution_unknown_count": 0,
+          "purchase_attribution_evaluated_count": 0,
+          "hesitation_total": 0,
+          "hesitation_distribution": {},
+          "recovery_messages_sent": 0,
+          "recovery_replies": 0,
+          "recovery_returns": 0,
+          "recovery_ignored": 0,
+          "recovery_stopped": 0,
+          "recovery_failed": 0,
+          "recovery_scheduled_active": 6,
+          "purchase_truth_rows": 0,
+          "lifecycle_closure_rows": 0,
+          "vip_evidence": {
+            "isolated": true,
+            "session_count": 0,
+            "cart_count": 0,
+            "prev_cart_count": 0,
+            "hesitation_total": 0,
+            "hesitation_distribution": {},
+            "recovery_messages_sent": 0,
+            "recovery_replies": 0,
+            "recovery_returns": 0,
+            "merchant_alert_logs": 0
+          },
+          "source_tables": [
+            "abandoned_carts",
+            "cart_recovery_logs",
+            "cart_recovery_reasons",
+            "lifecycle_closure_records",
+            "purchase_truth_records",
+            "recovery_schedules",
+            "recovery_truth_timeline_events"
+          ]
+        }
+      }
+    },
+    "counts": {
+      "abandoned_carts": 27,
+      "purchase_truth": 20,
+      "schedules": 13,
+      "reasons": 18,
+      "mock_wa": 13
+    }
+  },
+  "stack_wall_clock": {
+    "ok_flags": {
+      "knowledge": true,
+      "commercial_guidance": true,
+      "guidance_routing": true,
+      "merchant_presentation": true,
+      "surface_composition": true
+    },
+    "errors": [],
+    "knowledge_count": 56,
+    "composition_count": 83
+  },
+  "stack_sim_aligned": {
+    "as_of": "2026-05-04 12:00:00",
+    "errors": [],
+    "knowledge_statement_count": 30,
+    "knowledge_sample": [
+      {
+        "knowledge_id": "15ae35d3bfa24ea8cbd62bd01b63c55f",
+        "knowledge_type": "evidence_gap",
+        "statement": "Evidence does not include cart_abandoned_count.",
+        "confidence_level": "very_high"
+      },
+      {
+        "knowledge_id": "424815002b22968f4256b2c3460d403e",
+        "knowledge_type": "evidence_gap",
+        "statement": "Evidence does not include cart_added_count.",
+        "confidence_level": "very_high"
+      },
+      {
+        "knowledge_id": "8b183db2aa5dc00ac1e39adb18e5e3bf",
+        "knowledge_type": "evidence_quality",
+        "statement": "Evidence quality is very_high.",
+        "confidence_level": "very_high"
+      },
+      {
+        "knowledge_id": "15727f880871b376586d79c3d5c755f4",
+        "knowledge_type": "metric_trend_observation",
+        "statement": "Evidence-linked events have newly appeared during the last 7 days.",
+        "confidence_level": "very_high"
+      },
+      {
+        "knowledge_id": "af2b963fded4518f215f67c5fad60185",
+        "knowledge_type": "metric_trend_observation",
+        "statement": "Purchases have newly appeared during the last 7 days.",
+        "confidence_level": "very_high"
+      },
+      {
+        "knowledge_id": "d2fb1213fbb06f645bdff42ad24724b9",
+        "knowledge_type": "evidence_gap",
+        "statement": "Evidence does not include cart_abandoned_count.",
+        "confidence_level": "very_high"
+      },
+      {
+        "knowledge_id": "563f897fd1df843d71786b11b965d94a",
+        "knowledge_type": "evidence_gap",
+        "statement": "Evidence does not include cart_added_count.",
+        "confidence_level": "very_high"
+      },
+      {
+        "knowledge_id": "8057122bd7a24de581326cf9e136f237",
+        "knowledge_type": "evidence_quality",
+        "statement": "Evidence quality is very_high.",
+        "confidence_level": "very_high"
+      },
+      {
+        "knowledge_id": "2d5253463ca966b3e428dd415a3d1201",
+        "knowledge_type": "metric_trend_observation",
+        "statement": "Evidence-linked events have newly appeared during the last 7 days.",
+        "confidence_level": "very_high"
+      },
+      {
+        "knowledge_id": "ba0033385437677e6c0fcb29167ebaeb",
+        "knowledge_type": "metric_trend_observation",
+        "statement": "Purchases have newly appeared during the last 7 days.",
+        "confidence_level": "very_high"
+      },
+      {
+        "knowledge_id": "f7fdca04627ddfdad7fb1c73f8ee6bbd",
+        "knowledge_type": "evidence_gap",
+        "statement": "Evidence does not include cart_abandoned_count.",
+        "confidence_level": "very_high"
+      },
+      {
+        "knowledge_id": "d64a5de478427da21d22451c8f6da4c0",
+        "knowledge_type": "evidence_gap",
+        "statement": "Evidence does not include cart_added_count.",
+        "confidence_level": "very_high"
+      }
+    ],
+    "guidance_count": 6,
+    "guidance_sample": [
+      {
+        "guidance_id": "30f82a4ccb5f3b2c6fa1807f28c565d6",
+        "guidance_key": "monitor_new_pattern",
+        "guidance_status": "active",
+        "subject_type": "product"
+      },
+      {
+        "guidance_id": "31763d9887fcb6c5f9e0973e519dc437",
+        "guidance_key": "monitor_new_pattern",
+        "guidance_status": "active",
+        "subject_type": "product"
+      },
+      {
+        "guidance_id": "410c6979cfba83af1c4af744c6658352",
+        "guidance_key": "monitor_new_pattern",
+        "guidance_status": "active",
+        "subject_type": "product"
+      },
+      {
+        "guidance_id": "fc4c0842a2536272e1bc981f326eaf26",
+        "guidance_key": "monitor_new_pattern",
+        "guidance_status": "active",
+        "subject_type": "product"
+      },
+      {
+        "guidance_id": "717cfa2ecf62376f39d68b1263b39625",
+        "guidance_key": "monitor_new_pattern",
+        "guidance_status": "active",
+        "subject_type": "product"
+      },
+      {
+        "guidance_id": "816aef82475f967a8619f1c872a8961d",
+        "guidance_key": "monitor_new_pattern",
+        "guidance_status": "active",
+        "subject_type": "store"
+      }
+    ],
+    "surface_composition": {
+      "ok": true,
+      "composition_count": 51,
+      "accounting": {
+        "composed": 13,
+        "collapsed": 27,
+        "suppressed": 0,
+        "expired": 0,
+        "deferred": 0,
+        "rejected": 11,
+        "failed": 0
+      },
+      "visible_count": 13,
+      "by_surface_counts": {
+        "carts": 6,
+        "communication": 1,
+        "decision_workspace": 7,
+        "home": 36,
+        "settings": 1
+      },
+      "visible_sample": [
+        {
+          "surface_id": "carts",
+          "information_class": "empty_state",
+          "presentation_intent": "information",
+          "priority": 1,
+          "freshness_state": "fresh",
+          "visibility": "visible",
+          "duplicate_group": "empty:carts:nothing_requiring_action",
+          "owns_full_explanation": true,
+          "accounting_outcome": "composed"
+        },
+        {
+          "surface_id": "communication",
+          "information_class": "empty_state",
+          "presentation_intent": "information",
+          "priority": 1,
+          "freshness_state": "fresh",
+          "visibility": "visible",
+          "duplicate_group": "empty:communication:no_operational_issues",
+          "owns_full_explanation": true,
+          "accounting_outcome": "composed"
+        },
+        {
+          "surface_id": "decision_workspace",
+          "information_class": "empty_state",
+          "presentation_intent": "information",
+          "priority": 1,
+          "freshness_state": "fresh",
+          "visibility": "visible",
+          "duplicate_group": "empty:decision_workspace:nothing_requiring_action",
+          "owns_full_explanation": true,
+          "accounting_outcome": "composed"
+        },
+        {
+          "surface_id": "home",
+          "information_class": "knowledge",
+          "presentation_intent": "insight_card",
+          "priority": 63,
+          "freshness_state": "fresh",
+          "visibility": "visible",
+          "duplicate_group": "knowledge:2d5253463ca966b3e428dd415a3d1201",
+          "owns_full_explanation": true,
+          "accounting_outcome": "composed"
+        },
+        {
+          "surface_id": "home",
+          "information_class": "knowledge",
+          "presentation_intent": "insight_card",
+          "priority": 63,
+          "freshness_state": "fresh",
+          "visibility": "visible",
+          "duplicate_group": "knowledge:7507d75f38e77b78d52345f68319b110",
+          "owns_full_explanation": true,
+          "accounting_outcome": "composed"
+        },
+        {
+          "surface_id": "home",
+          "information_class": "knowledge",
+          "presentation_intent": "insight_card",
+          "priority": 63,
+          "freshness_state": "fresh",
+          "visibility": "visible",
+          "duplicate_group": "knowledge:0db2902ef9e4233752d15436bddaa188",
+          "owns_full_explanation": true,
+          "accounting_outcome": "composed"
+        },
+        {
+          "surface_id": "home",
+          "information_class": "observation",
+          "presentation_intent": "insight_card",
+          "priority": 52,
+          "freshness_state": "fresh",
+          "visibility": "visible",
+          "duplicate_group": "guidance:717cfa2ecf62376f39d68b1263b39625:observation",
+          "owns_full_explanation": true,
+          "accounting_outcome": "composed"
+        },
+        {
+          "surface_id": "home",
+          "information_class": "observation",
+          "presentation_intent": "insight_card",
+          "priority": 52,
+          "freshness_state": "fresh",
+          "visibility": "visible",
+          "duplicate_group": "guidance:fc4c0842a2536272e1bc981f326eaf26:observation",
+          "owns_full_explanation": true,
+          "accounting_outcome": "composed"
+        },
+        {
+          "surface_id": "home",
+          "information_class": "observation",
+          "presentation_intent": "insight_card",
+          "priority": 52,
+          "freshness_state": "fresh",
+          "visibility": "visible",
+          "duplicate_group": "guidance:30f82a4ccb5f3b2c6fa1807f28c565d6:observation",
+          "owns_full_explanation": true,
+          "accounting_outcome": "composed"
+        },
+        {
+          "surface_id": "home",
+          "information_class": "observation",
+          "presentation_intent": "insight_card",
+          "priority": 52,
+          "freshness_state": "fresh",
+          "visibility": "visible",
+          "duplicate_group": "guidance:816aef82475f967a8619f1c872a8961d:observation",
+          "owns_full_explanation": true,
+          "accounting_outcome": "composed"
+        },
+        {
+          "surface_id": "home",
+          "information_class": "observation",
+          "presentation_intent": "insight_card",
+          "priority": 52,
+          "freshness_state": "fresh",
+          "visibility": "visible",
+          "duplicate_group": "guidance:410c6979cfba83af1c4af744c6658352:observation",
+          "owns_full_explanation": true,
+          "accounting_outcome": "composed"
+        },
+        {
+          "surface_id": "home",
+          "information_class": "observation",
+          "presentation_intent": "insight_card",
+          "priority": 52,
+          "freshness_state": "fresh",
+          "visibility": "visible",
+          "duplicate_group": "guidance:31763d9887fcb6c5f9e0973e519dc437:observation",
+          "owns_full_explanation": true,
+          "accounting_outcome": "composed"
+        },
+        {
+          "surface_id": "settings",
+          "information_class": "empty_state",
+          "presentation_intent": "information",
+          "priority": 1,
+          "freshness_state": "fresh",
+          "visibility": "visible",
+          "duplicate_group": "empty:settings:nothing_requiring_action",
+          "owns_full_explanation": true,
+          "accounting_outcome": "composed"
+        }
+      ]
+    }
+  },
+  "production_probe_ok": {
+    "surface_composition": true,
+    "merchant_presentation": true,
+    "guidance_routing": true,
+    "commercial_guidance": true,
+    "knowledge_foundation": true
+  },
+  "screenshots": [
+    "desktop_home.png",
+    "desktop_decision.png",
+    "desktop_carts.png",
+    "desktop_communication.png",
+    "desktop_settings.png",
+    "mobile_home.png",
+    "mobile_decision.png",
+    "mobile_carts.png",
+    "mobile_communication.png",
+    "mobile_settings.png"
+  ],
+  "screenshot_error": ""
+}

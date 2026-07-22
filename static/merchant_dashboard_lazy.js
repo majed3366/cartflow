@@ -2272,7 +2272,15 @@
 
     var pulseRendered = false;
     var homeV1Rendered = false;
-    if (window.maApplyDashboardHomeV1) {
+    /* MEIF V1: prefer governed integration package over legacy Home composer. */
+    if (window.maApplyMerchantExperienceIntegrationV1) {
+      try {
+        homeV1Rendered = !!window.maApplyMerchantExperienceIntegrationV1(d);
+      } catch (meifErr) {
+        homeV1Rendered = false;
+      }
+    }
+    if (!homeV1Rendered && window.maApplyDashboardHomeV1) {
       try {
         homeV1Rendered = !!window.maApplyDashboardHomeV1(d);
       } catch (homeV1Err) {
