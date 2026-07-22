@@ -2,7 +2,7 @@
 
 **Date (UTC):** 2026-07-22  
 **Status:** **CLOSED** — production verified on https://smartreplyai.net  
-**Production deploy tip (GitHub `main`):** `397dd91f26a2038d64e464b4e11d9846a3eb4593` (PR #45)
+**Production deploy tip (GitHub `main`):** `e48283b636c1b451ee6332eab358263a08ed239c` (PR #46 closure; runtime from PR #45)
 
 ---
 
@@ -35,8 +35,9 @@
 | PR | Title | Merge commit |
 |----|-------|--------------|
 | [#45](https://github.com/majed3366/cartflow/pull/45) | Surface Composition Foundation V1 | `397dd91f26a2038d64e464b4e11d9846a3eb4593` |
+| [#46](https://github.com/majed3366/cartflow/pull/46) | Closure evidence + class-scoped duplicate groups | `e48283b636c1b451ee6332eab358263a08ed239c` |
 
-**Source commit:** `75606c8` on `feature/surface-composition-foundation-v1`  
+**Source commits:** `75606c8` / `0d02701` on `feature/surface-composition-foundation-v1`  
 **Migration:** Alembic `h7i8j9k0l1m2` → table `surface_compositions`  
 **Feature flag:** `CARTFLOW_SURFACE_COMPOSITION_V1` (enabled)
 
@@ -60,7 +61,7 @@ python scripts/_verify_surface_composition_v1.py --base https://smartreplyai.net
 | `duplicate_current` | **0** |
 | `composition_count` / `accounted_count` | **33 / 33** |
 | `upserted` / `materialized_row_count` | **33** |
-| `canonical_fingerprint` | `f62cf2e4887f2f684e69c20544f3b01f7ca7aa6f005a527fb09882ba71c6ed44` |
+| `canonical_fingerprint` | `7515c9b3ebff9df067f6323c9ffd6b0220b6757c775a4086c66848fa9228c4ca` |
 | `non_demo_writes` | false |
 | `consumes_governed_inputs_only` | true |
 | `no_raw_data_reads` | true |
