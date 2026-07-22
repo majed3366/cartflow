@@ -1587,18 +1587,15 @@ def build_merchant_home_experience_api_payload(
                 # Home badge equals Knowledge cart_count for the session.
                 nav["active_carts"] = knowledge_cart_count
 
+            # BFL V1: Home consumes persisted findings only — never runs the engine.
             findings_package = None
             try:
-                from services.business_findings_engine_v1 import (  # noqa: PLC0415
-                    run_business_findings_engine_v1,
+                from services.business_findings_lifecycle_v1.consume_home_v1 import (  # noqa: PLC0415
+                    load_current_findings_package_v1,
                 )
 
-                findings_package = run_business_findings_engine_v1(
-                    store_slug=slug,
-                    load_db=True,
-                    dash_store=dash_store,
-                    demo_fixture=False,
-                    window_days=max(14, int(window_days or 7)),
+                findings_package = load_current_findings_package_v1(
+                    slug, mark_displayed=True
                 )
             except Exception:  # noqa: BLE001
                 findings_package = None
@@ -1615,7 +1612,7 @@ def build_merchant_home_experience_api_payload(
                 store_slug=slug,
                 mqic=identity,
                 findings_package=findings_package,
-                commercial_intel_load_db=True,
+                commercial_intel_load_db=False,
                 commercial_intel_demo=False,
                 admit_review_fixtures=False,
                 dash_store=dash_store,

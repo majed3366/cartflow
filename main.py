@@ -1057,6 +1057,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/operational-truth",
         "/dev/merchant-experience",
         "/dev/time-authority",
+        "/dev/business-findings-lifecycle",
         "/dev/commerce-intelligence-synthesis",
         "/dev/commerce-intelligence-knowledge",
         "/dev/data-growth-measurement",
@@ -12171,6 +12172,37 @@ def dev_time_authority(
     return j(report, status)
 
 
+@app.get("/dev/business-findings-lifecycle")
+def dev_business_findings_lifecycle(
+    store: Optional[str] = None,
+    store_slug: Optional[str] = None,
+    materialize: Optional[str] = None,
+    demo_fixture: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Business Findings Lifecycle V1.
+
+    Materialize + per-finding diagnostics (generated/persisted/routed/
+    surface_eligible/displayed/stopped_at). Surfaces consume only — no UI.
+    Default allowlist Demo.
+    """
+    from services.business_findings_lifecycle_v1.prod_probe_v1 import (  # noqa: PLC0415
+        build_business_findings_lifecycle_prod_probe_v1,
+    )
+
+    slug = (store or store_slug or "demo").strip() or "demo"
+    do_mat = (materialize or "1").strip().lower() not in {"0", "false", "no", "off"}
+    use_fixture = (demo_fixture or "0").strip().lower() in {"1", "true", "yes", "on"}
+    report = build_business_findings_lifecycle_prod_probe_v1(
+        slug,
+        materialize=do_mat,
+        demo_fixture=use_fixture,
+        admit_review_fixtures=use_fixture,
+    )
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
 @app.get("/dev/commerce-intelligence-synthesis")
 def dev_commerce_intelligence_synthesis(
     store: Optional[str] = None,
@@ -20099,7 +20131,13 @@ def _api_json_dashboard_summary(
                     attach_merchant_experience_to_summary_v1,
                 )
 
-                attach_merchant_experience_to_summary_v1(out, slug)
+                # MEBF V1: MEIF + BFL bind must use the same MQIC-resolved slug as
+                # Home composition (lab/demo attach), not signup primary alone.
+                _home = out.get("merchant_home_experience_v1") or {}
+                _meif_slug = (
+                    str(_home.get("store_slug") or "").strip() or slug
+                )
+                attach_merchant_experience_to_summary_v1(out, _meif_slug)
             except Exception as meif_exc:  # noqa: BLE001
                 log.warning("summary merchant_experience_integration_v1: %s", meif_exc)
     except Exception as exc:  # noqa: BLE001

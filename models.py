@@ -1408,6 +1408,55 @@ class SurfaceComposition(Base):
     superseded_at = Column(DateTime, nullable=True)
 
 
+class BusinessFinding(Base):
+    """
+    Business Findings Lifecycle V1 — durable commercial finding object.
+
+    Not a Home calculation. Surfaces consume; they must not generate.
+    """
+
+    __tablename__ = "business_findings"
+    __table_args__ = (
+        UniqueConstraint(
+            "finding_id",
+            name="uq_business_finding_id",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    finding_id = Column(String(128), nullable=False, index=True)
+    finding_type = Column(String(96), nullable=False, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    merchant_id = Column(String(64), nullable=False, default="", index=True)
+    product_id = Column(String(256), nullable=True, index=True)
+    category_id = Column(String(128), nullable=True, index=True)
+    evidence_json = Column(Text, nullable=False, default="{}")
+    confidence = Column(String(32), nullable=False, default="")
+    confidence_score = Column(String(32), nullable=False, default="")
+    severity = Column(String(32), nullable=False, default="")
+    generated_at = Column(DateTime, nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=True, index=True)
+    lifecycle_state = Column(String(48), nullable=False, default="detected", index=True)
+    visibility_state = Column(String(32), nullable=False, default="hidden", index=True)
+    reasoning_json = Column(Text, nullable=False, default="{}")
+    recommended_action = Column(Text, nullable=False, default="")
+    title = Column(Text, nullable=False, default="")
+    merchant_summary = Column(Text, nullable=False, default="")
+    payload_json = Column(Text, nullable=False, default="{}")
+    routing_json = Column(Text, nullable=False, default="{}")
+    lifecycle_events_json = Column(Text, nullable=False, default="[]")
+    diagnostics_json = Column(Text, nullable=False, default="{}")
+    fingerprint = Column(String(64), nullable=False, default="", index=True)
+    engine_version = Column(String(64), nullable=False, default="")
+    lifecycle_version = Column(String(32), nullable=False, default="bfl_v1")
+    is_current = Column(Boolean, nullable=False, default=True, index=True)
+    as_of = Column(DateTime, nullable=False)
+    as_of_key = Column(String(32), nullable=False, default="")
+    created_at = Column(DateTime, nullable=False)
+    refreshed_at = Column(DateTime, nullable=False)
+    superseded_at = Column(DateTime, nullable=True)
+
+
 class CommerceIntelligenceSynthesis(Base):
     """
     Commerce Intelligence Synthesis Foundation V1 — qualified cross-domain pattern.

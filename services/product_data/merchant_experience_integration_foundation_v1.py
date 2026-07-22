@@ -609,7 +609,71 @@ def generate_merchant_experience_integration_v1(
             }
         )
         home_page["chronology_cue"] = cue
+
+    # MEBF V1 — bind canonical Business Findings into MEIF pages (consume only).
+    try:
+        from services.merchant_experience_business_findings_binding_v1 import (  # noqa: PLC0415
+            apply_business_findings_binding_to_meif_v1,
+        )
+
+        out = apply_business_findings_binding_to_meif_v1(out, slug)
+    except Exception as mebf_exc:  # noqa: BLE001
+        out.setdefault("errors", []).append(f"mebf:{type(mebf_exc).__name__}")
+        log.warning("merchant_experience_bfl_binding_v1 failed: %s", mebf_exc)
+
     return out
+
+
+def _lab_demo_bfl_fallback_slug(store_slug: str) -> str:
+    """
+    When signup primary has no BFL rows but the merchant owns Lab ``demo``
+    (session bind) and demo has current findings, bind MEIF to demo.
+
+    Pure consumer routing — does not generate findings.
+    """
+    slug = (store_slug or "").strip()
+    if not slug or slug == "demo":
+        return slug
+    try:
+        from extensions import db
+        from models import BusinessFinding, Store
+
+        demo = db.session.query(Store).filter_by(zid_store_id="demo").first()
+        primary = db.session.query(Store).filter_by(zid_store_id=slug).first()
+        if demo is None or primary is None:
+            return slug
+        demo_owner = getattr(demo, "merchant_user_id", None)
+        primary_owner = getattr(primary, "merchant_user_id", None)
+        if not demo_owner or not primary_owner:
+            return slug
+        # Lab bind sets demo.merchant_user_id to the same merchant as signup primary.
+        if int(demo_owner) != int(primary_owner):
+            return slug
+        primary_findings = (
+            db.session.query(BusinessFinding.id)
+            .filter(
+                BusinessFinding.store_slug == slug,
+                BusinessFinding.is_current.is_(True),
+            )
+            .limit(1)
+            .first()
+        )
+        if primary_findings is not None:
+            return slug
+        demo_findings = (
+            db.session.query(BusinessFinding.id)
+            .filter(
+                BusinessFinding.store_slug == "demo",
+                BusinessFinding.is_current.is_(True),
+            )
+            .limit(1)
+            .first()
+        )
+        if demo_findings is not None and demo_owner:
+            return "demo"
+    except Exception:  # noqa: BLE001
+        return slug
+    return slug
 
 
 def attach_merchant_experience_to_summary_v1(
@@ -625,9 +689,13 @@ def attach_merchant_experience_to_summary_v1(
             "ok": False,
         }
         return summary
+    resolved = _lab_demo_bfl_fallback_slug(store_slug)
     report = generate_merchant_experience_integration_v1(
-        store_slug, as_of=as_of
+        resolved, as_of=as_of
     )
+    if resolved != (store_slug or "").strip():
+        report["bfl_store_slug_resolved"] = resolved
+        report["bfl_store_slug_requested"] = store_slug
     summary["merchant_experience_integration_v1"] = report
     # Override false zero KPI theatre when ops truth has durable carts.
     home = (report.get("pages") or {}).get(PAGE_HOME) or {}
