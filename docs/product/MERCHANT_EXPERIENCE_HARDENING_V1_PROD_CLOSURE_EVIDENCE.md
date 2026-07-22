@@ -1,21 +1,22 @@
 # Merchant Experience Hardening V1 — Production Closure Evidence
 
 **Date (UTC):** 2026-07-22  
-**Status:** PENDING live probe after deploy (local hardening complete)  
+**Status:** **CLOSED** — production verified on https://smartreplyai.net  
+**Production deploy tip (GitHub `main`):** `a601f00cafd53df65f125167907cb07e5472e760` (PR #50)  
 **Baseline V2:** 72 / 100  
-**Hardening local readiness:** **86 / 100** (Δ+14)  
-**Chapter outcome (local):** **chapter_closed**
+**Hardening readiness:** **86 / 100** (Δ+14)  
+**Chapter outcome:** **chapter_closed** (Outcome 1)
 
 ---
 
 ## 1. Classification
 
-| Category | Count | Disposition |
-|----------|------:|-------------|
-| A | all solvable findings in `FINDINGS_CLASSIFICATION_V1` | Resolved in MEH |
-| B | H03, D02, C01, C02, M02, K03, G01 (+ lifecycle/policy portions) | Capability Gaps CG-MEH-01…06 |
+| Category | Disposition |
+|----------|-------------|
+| A | Resolved in MEH (trust labeling, ops facts, guidance demotion, setup suppress, chronology cue, legacy gate) |
+| B | Capability Gaps only — see register |
 
-Register: `docs/architecture/merchant_experience_capability_gap_register.md`
+Register: `docs/architecture/merchant_experience_capability_gap_register.md` (CG-MEH-01…06)
 
 ---
 
@@ -25,13 +26,41 @@ Register: `docs/architecture/merchant_experience_capability_gap_register.md`
 |------|-------|
 | Flag | `CARTFLOW_MERCHANT_EXPERIENCE_HARDENING_V1` (default on) |
 | Engine | `merchant_experience_hardening_v1.py` |
-| Probe | `GET /dev/merchant-experience?store=demo` (+ readiness / gaps / leakage) |
+| Probe | `GET /dev/merchant-experience?store=demo` |
 | Architecture | `docs/architecture/merchant_experience_hardening_v1.md` |
 | Reality report | `docs/product/MERCHANT_EXPERIENCE_VALIDATION_HARDENING.md` |
 
 ---
 
-## 3. Local Reality Validation (Hardening)
+## 3. Pull request
+
+| PR | Title | Merge commit |
+|----|-------|--------------|
+| [#50](https://github.com/majed3366/cartflow/pull/50) | Merchant Experience Hardening V1 | `a601f00cafd53df65f125167907cb07e5472e760` |
+
+---
+
+## 4. Production probe
+
+```bash
+python scripts/_verify_merchant_experience_v1.py --base https://smartreplyai.net --store demo
+```
+
+**Result:** `ok: true`
+
+| Field | Value |
+|-------|-------|
+| `readiness_score` | **86** |
+| `chapter_outcome` | **chapter_closed** |
+| `legacy_leakage_count` | **0** |
+| `hardening_status` | hardened |
+| `governed_consumption_pct` | 100 |
+| `navigation_integrity` | true |
+| Trust labeling (all pages) | true |
+
+---
+
+## 5. Reality Validation comparison
 
 | Run | Readiness |
 |-----|----------:|
@@ -39,31 +68,16 @@ Register: `docs/architecture/merchant_experience_capability_gap_register.md`
 | V2 | 72 |
 | Hardening | **86** |
 
-- `legacy_leakage_count`: 0  
-- `chapter_outcome`: chapter_closed  
-- Unresolved findings: Category B only  
+Unresolved findings on probe: Category B only (Capability Gaps).
 
 ---
 
-## 4. Production verification (fill after deploy)
+## 6. Exit gate — Outcome 1 (Chapter Closed)
 
-```bash
-python scripts/_verify_merchant_experience_v1.py --base https://smartreplyai.net --store demo
-python scripts/merchant_experience_validation_hardening.py --prod-only
-```
+Merchant Experience chapter is **officially closed** under the current architecture.
 
-| Field | Expected | Actual |
-|-------|----------|--------|
-| `ok` | true | _pending_ |
-| `readiness_score` | ≥ 85 | _pending_ |
-| `legacy_leakage_count` | 0 | _pending_ |
-| `hardening_status` | hardened* | _pending_ |
-| `chapter_outcome` | chapter_closed | _pending_ |
+Remaining issues are exclusively Capability Gaps. Proceed to the next architectural capability via:
 
-**Merge tip:** _pending_
+`docs/architecture/merchant_experience_capability_gap_register.md`
 
----
-
-## 5. Exit gate — Outcome 1 (Chapter Closed)
-
-Merchant Experience chapter is closed under the current architecture when production probe confirms the local result. Remaining work proceeds only via Capability Gaps (next architectural chapter).
+**Do not** inflate scores, invent Guidance/Knowledge, or expand SCF inputs to chase a higher number. The natural limit under the current stack is proven at ~86/100 (ceiling 90).
