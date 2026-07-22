@@ -360,7 +360,11 @@ def generate_operational_truth_v1(
         out["errors"].append("otif_disabled")
         return out
 
-    anchor = _floor_second(as_of or _utc_naive_now())
+    from services.product_data.time_authority_binding_resolve_v1 import (  # noqa: PLC0415
+        resolve_bound_as_of_v1,
+    )
+
+    anchor = resolve_bound_as_of_v1(as_of)
     out["as_of"] = anchor.isoformat(sep=" ")
     ops = read_operational_state_snapshot_v1(slug)
     out["operational_state"] = ops

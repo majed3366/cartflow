@@ -26,6 +26,7 @@ Category B issues are documented here as Capability Gaps.
 
 | Field | Value |
 |-------|-------|
+| Status | **CLOSED by TABF V1** — `resolve_bound_as_of_v1`; probe `/dev/time-authority` |
 | Findings | MEV1-H03, MEV1-K03 |
 | Required future capability | Time Authority consumer binding for all merchant Knowledge/Home reads |
 | Architectural reason | Knowledge/Home evaluate wall-clock windows while Reality history may sit elsewhere; MEIF can show as_of/window cues only |

@@ -29,6 +29,7 @@ from services.product_data.product_purchase_mapping_v1 import (
     purchase_mapping_count,
     purchases_for_product,
 )
+from services.product_data.time_authority_binding_resolve_v1 import resolve_bound_as_of_v1
 
 log = logging.getLogger("cartflow")
 
@@ -71,7 +72,7 @@ def load_synthesis_sources_v1(
     window = (time_window_key or "d7").strip().lower()
     if window not in WINDOW_LENGTH_DAYS:
         window = "d7"
-    anchor = _floor_second(as_of or _utc_naive_now())
+    anchor = resolve_bound_as_of_v1(as_of)
     days = WINDOW_LENGTH_DAYS[window]
     window_start = anchor - timedelta(days=days)
     knowledge_window = KNOWLEDGE_WINDOW_MAP.get(window, "d7")

@@ -34,6 +34,7 @@ from services.product_data.product_trends_types_v1 import (
     TREND_WINDOW_SPECS,
     classify_trend_direction,
 )
+from services.product_data.time_authority_binding_resolve_v1 import resolve_bound_as_of_v1
 
 log = logging.getLogger("cartflow")
 
@@ -150,7 +151,7 @@ def compute_product_trends_v1(
         return out
 
     spec = TREND_WINDOW_SPECS[window]
-    anchor = _floor_second(as_of or _utc_naive_now())
+    anchor = resolve_bound_as_of_v1(as_of)
     prev_anchor = anchor - timedelta(days=spec.length_days)
     out["as_of"] = anchor.isoformat(sep=" ")
 
@@ -379,7 +380,7 @@ def verify_trends_determinism_v1(
     trend_window: str = TREND_WINDOW_D7,
     as_of: Optional[datetime] = None,
 ) -> dict[str, Any]:
-    anchor = _floor_second(as_of or _utc_naive_now())
+    anchor = resolve_bound_as_of_v1(as_of)
     a = compute_product_trends_v1(
         store_slug, trend_window=trend_window, as_of=anchor
     )

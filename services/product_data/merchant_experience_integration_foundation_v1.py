@@ -441,7 +441,11 @@ def generate_merchant_experience_integration_v1(
         out["errors"].append("meif_disabled")
         return out
 
-    anchor = _floor_second(as_of or _utc_naive_now())
+    from services.product_data.time_authority_binding_resolve_v1 import (  # noqa: PLC0415
+        resolve_bound_as_of_v1,
+    )
+
+    anchor = resolve_bound_as_of_v1(as_of)
     out["as_of"] = anchor.isoformat(sep=" ")
 
     scf = generate_surface_compositions_v1(slug, assembly_window=window, as_of=anchor)
@@ -589,6 +593,22 @@ def generate_merchant_experience_integration_v1(
     except Exception as meh_exc:  # noqa: BLE001
         out.setdefault("errors", []).append(f"hardening:{type(meh_exc).__name__}")
         log.warning("merchant_experience_hardening_v1 failed: %s", meh_exc)
+
+    # TABF chronology — merge after MEH so page-owned freshness stays false.
+    home_page = (out.get("pages") or {}).get(PAGE_HOME)
+    if isinstance(home_page, dict):
+        cue = dict(home_page.get("chronology_cue") or {})
+        cue.update(
+            {
+                "as_of": out.get("as_of"),
+                "clock": "display_time",
+                "source": "resolve_bound_as_of_v1",
+                "what_happened": "composed_from_scf",
+                "when_observed": out.get("as_of"),
+                "page_owned_freshness": False,
+            }
+        )
+        home_page["chronology_cue"] = cue
     return out
 
 

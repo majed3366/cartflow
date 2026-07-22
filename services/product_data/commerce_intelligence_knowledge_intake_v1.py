@@ -61,6 +61,7 @@ from services.product_data.commerce_intelligence_synthesis_types_v1 import (
     STATE_OBSERVING,
     OUTPUT_CONTRACT_VERSION_V1,
 )
+from services.product_data.time_authority_binding_resolve_v1 import resolve_bound_as_of_v1
 
 log = logging.getLogger("cartflow")
 
@@ -323,7 +324,7 @@ def generate_knowledge_from_synthesis_v1(
         out["errors"].append("intake_registry_invalid")
         return out
 
-    anchor = _floor_second(as_of or _utc_naive_now())
+    anchor = resolve_bound_as_of_v1(as_of)
     out["as_of"] = anchor.isoformat(sep=" ")
     syn_report = generate_commerce_intelligence_syntheses_v1(
         slug,
@@ -578,7 +579,7 @@ def verify_ciknow_determinism_v1(
     time_window_key: str = "d7",
     as_of: Optional[datetime] = None,
 ) -> dict[str, Any]:
-    anchor = _floor_second(as_of or _utc_naive_now())
+    anchor = resolve_bound_as_of_v1(as_of)
     a = generate_knowledge_from_synthesis_v1(
         store_slug, time_window_key=time_window_key, as_of=anchor
     )

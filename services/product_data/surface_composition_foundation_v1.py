@@ -929,7 +929,11 @@ def generate_surface_compositions_v1(
         out["errors"].append("invalid_registry")
         return out
 
-    anchor = _floor_second(as_of or _utc_naive_now())
+    from services.product_data.time_authority_binding_resolve_v1 import (  # noqa: PLC0415
+        resolve_bound_as_of_v1,
+    )
+
+    anchor = resolve_bound_as_of_v1(as_of)
     out["as_of"] = anchor.isoformat(sep=" ")
 
     presentations_report = generate_merchant_presentations_v1(
@@ -1334,7 +1338,11 @@ def verify_surface_composition_determinism_v1(
     assembly_window: str = "d7",
     as_of: Optional[datetime] = None,
 ) -> dict[str, Any]:
-    anchor = _floor_second(as_of or _utc_naive_now())
+    from services.product_data.time_authority_binding_resolve_v1 import (  # noqa: PLC0415
+        resolve_bound_as_of_v1,
+    )
+
+    anchor = resolve_bound_as_of_v1(as_of)
     a = generate_surface_compositions_v1(
         store_slug, assembly_window=assembly_window, as_of=anchor
     )

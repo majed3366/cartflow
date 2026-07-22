@@ -20,6 +20,9 @@ from schema_knowledge_foundation_v1 import ensure_knowledge_foundation_schema
 from services.product_data.evidence_confidence_foundation_v1 import (
     evaluate_evidence_confidence_v1,
 )
+from services.product_data.time_authority_binding_resolve_v1 import (
+    resolve_bound_as_of_v1,
+)
 from services.product_data.knowledge_foundation_flag_v1 import (
     knowledge_foundation_v1_enabled,
 )
@@ -272,7 +275,7 @@ def generate_knowledge_v1(
         out["errors"].append("store_slug_required")
         return out
 
-    anchor = _floor_second(as_of or _utc_naive_now())
+    anchor = resolve_bound_as_of_v1(as_of)
     out["as_of"] = anchor.isoformat(sep=" ")
     confidence = evaluate_evidence_confidence_v1(
         slug, assembly_window=window, as_of=anchor
@@ -349,9 +352,9 @@ def materialize_knowledge_v1(
         }
 
     ensure_knowledge_foundation_schema(db)
-    anchor = _parse_iso(report.get("as_of")) or _floor_second(as_of or _utc_naive_now())
+    anchor = _parse_iso(report.get("as_of")) or resolve_bound_as_of_v1(as_of)
     as_key = _as_of_key(anchor)
-    now = _utc_naive_now()
+    now = resolve_bound_as_of_v1(None)
     upserted = 0
     try:
         for stmt in report.get("statements") or []:
@@ -419,7 +422,7 @@ def verify_knowledge_determinism_v1(
     assembly_window: str = "d7",
     as_of: Optional[datetime] = None,
 ) -> dict[str, Any]:
-    anchor = _floor_second(as_of or _utc_naive_now())
+    anchor = resolve_bound_as_of_v1(as_of)
     a = generate_knowledge_v1(store_slug, assembly_window=assembly_window, as_of=anchor)
     b = generate_knowledge_v1(store_slug, assembly_window=assembly_window, as_of=anchor)
     match = bool(

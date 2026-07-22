@@ -48,6 +48,7 @@ from services.product_data.guidance_surface_registry_v1 import (
     list_active_surfaces_v1,
     surface_registry_valid_v1,
 )
+from services.product_data.time_authority_binding_resolve_v1 import resolve_bound_as_of_v1
 
 log = logging.getLogger("cartflow")
 
@@ -275,7 +276,7 @@ def generate_guidance_routes_v1(
         out["errors"].append("invalid_registry")
         return out
 
-    anchor = _floor_second(as_of or _utc_naive_now())
+    anchor = resolve_bound_as_of_v1(as_of)
     out["as_of"] = anchor.isoformat(sep=" ")
     guidance = generate_commercial_guidance_v1(
         slug, assembly_window=window, as_of=anchor
@@ -507,7 +508,7 @@ def verify_guidance_routing_determinism_v1(
     assembly_window: str = "d7",
     as_of: Optional[datetime] = None,
 ) -> dict[str, Any]:
-    anchor = _floor_second(as_of or _utc_naive_now())
+    anchor = resolve_bound_as_of_v1(as_of)
     a = generate_guidance_routes_v1(
         store_slug, assembly_window=assembly_window, as_of=anchor
     )

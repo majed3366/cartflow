@@ -52,6 +52,7 @@ from services.product_data.merchant_presentation_types_v1 import (
     STATE_SUPERSEDED,
     TEMPLATE_REGISTRY_VERSION_V1,
 )
+from services.product_data.time_authority_binding_resolve_v1 import resolve_bound_as_of_v1
 
 log = logging.getLogger("cartflow")
 
@@ -373,7 +374,7 @@ def generate_merchant_presentations_v1(
         out["errors"].append("invalid_registry")
         return out
 
-    anchor = _floor_second(as_of or _utc_naive_now())
+    anchor = resolve_bound_as_of_v1(as_of)
     out["as_of"] = anchor.isoformat(sep=" ")
     routes_report = generate_guidance_routes_v1(
         slug, assembly_window=window, as_of=anchor
@@ -621,7 +622,7 @@ def verify_merchant_presentation_determinism_v1(
     assembly_window: str = "d7",
     as_of: Optional[datetime] = None,
 ) -> dict[str, Any]:
-    anchor = _floor_second(as_of or _utc_naive_now())
+    anchor = resolve_bound_as_of_v1(as_of)
     a = generate_merchant_presentations_v1(
         store_slug, assembly_window=assembly_window, as_of=anchor
     )
