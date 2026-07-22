@@ -2,8 +2,8 @@
 """
 Surface Composition Foundation V1 — compose merchant surfaces from governed outputs.
 
-Consumes Merchant Presentation (+ Knowledge) only. Does not decide routing.
-No UI, pixels, CSS, AI, or page implementation.
+Consumes Merchant Presentation + Knowledge + Operational Truth packages.
+Does not decide routing. No UI, pixels, CSS, AI, or page implementation.
 """
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import hashlib
 import json
 import logging
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -66,11 +66,18 @@ from services.product_data.surface_composition_types_v1 import (
     INTENT_REFERENCE,
     INTENT_SUMMARY_CARD,
     INTENT_WARNING,
+    CLASS_CRITICAL_ATTENTION,
+    CLASS_OPERATIONAL_HEALTH,
+    CLASS_RECOVERY_HEALTH,
+    INTENT_OPERATIONAL_STATE,
+    INTENT_PRIORITY_CARD,
     KNOWLEDGE_SOURCE_CONTRACT_VERSION_V1,
+    OPERATIONAL_TRUTH_SOURCE_CONTRACT_VERSION_V1,
     SOURCE_CONTRACT_VERSION_V1,
     SOURCE_EMPTY_STATE,
     SOURCE_KNOWLEDGE,
     SOURCE_MERCHANT_PRESENTATION,
+    SOURCE_OPERATIONAL_TRUTH,
     SURFACE_HOME,
     SURFACE_REGISTRY_VERSION_V1,
     VIS_COLLAPSED,
@@ -428,6 +435,141 @@ def evaluate_presentation_composition_v1(
     return record
 
 
+def evaluate_operational_truth_composition_v1(
+    *,
+    package: dict[str, Any],
+    surface_id: str,
+    as_of: datetime,
+    generated_at: datetime,
+) -> dict[str, Any]:
+    """Compose one Operational Truth package onto an allowed surface."""
+    store = str(package.get("store_slug") or "")
+    tid = str(package.get("truth_id") or "")
+    pkg_id = str(package.get("package_id") or tid)
+    info_class = str(
+        package.get("information_class") or CLASS_OPERATIONAL_HEALTH
+    )
+    severity = str(package.get("severity") or "informational")
+    freshness = FRESH_FRESH
+    route_role = (
+        "critical"
+        if severity == "critical"
+        else ("review" if severity == "warning" else "awareness")
+    )
+    priority = priority_score_v1(
+        information_class=info_class,
+        route_role=route_role,
+        presentation_state=STATE_READY,
+        freshness=freshness,
+        evidence_state="sufficient_evidence",
+        presentation_type="operational_truth",
+    )
+    # Severity boost for OT.
+    if severity == "critical":
+        priority += 12
+    elif severity == "warning":
+        priority += 6
+
+    visibility = VIS_VISIBLE
+    visibility_reason = "operational_truth_exposed"
+    accounting = ACCT_COMPOSED
+    suppression: list[str] = []
+    if package.get("visibility") != "expose":
+        visibility = VIS_SUPPRESSED
+        visibility_reason = f"ot_{package.get('visibility_reason') or 'suppressed'}"
+        accounting = ACCT_SUPPRESSED
+        suppression.append("ot_visibility")
+
+    owner = DUPLICATE_OWNER_BY_CLASS_V1.get(info_class, surface_id)
+    owns_full = surface_id == owner
+    if info_class == CLASS_CRITICAL_ATTENTION:
+        intent = INTENT_PRIORITY_CARD if owns_full else INTENT_REFERENCE
+    elif info_class in {CLASS_OPERATIONAL_HEALTH, CLASS_RECOVERY_HEALTH}:
+        intent = INTENT_OPERATIONAL_STATE if owns_full else INTENT_REFERENCE
+    else:
+        intent = INTENT_WARNING if severity != "informational" else INTENT_INFORMATION
+
+    explain = dict(package.get("explainability") or {})
+    input_fingerprint = _sha(
+        {
+            "package_id": pkg_id,
+            "truth_id": tid,
+            "surface": surface_id,
+            "count": package.get("count"),
+            "severity": severity,
+            "as_of": _as_of_key(as_of),
+        }
+    )
+    composition_id = _sha(
+        {
+            "v": COMPOSITION_VERSION_V1,
+            "gen": GENERATION_VERSION_V1,
+            "ot": tid,
+            "surface": surface_id,
+            "as_of": _as_of_key(as_of),
+            "input": input_fingerprint,
+        }
+    )[:32]
+    # Keep OT fresh for the generation window (7d) for display freshness.
+    valid_until = as_of + timedelta(days=7)
+    freshness = freshness_state_v1(valid_until=valid_until, as_of=as_of)
+    return {
+        "composition_id": composition_id,
+        "surface_id": surface_id,
+        "store_slug": store,
+        "source_type": SOURCE_OPERATIONAL_TRUTH,
+        "source_id": pkg_id,
+        "source_lineage": {
+            "truth_id": tid,
+            "package_id": pkg_id,
+            "metric_key": package.get("metric_key"),
+            "count": package.get("count"),
+            "severity": severity,
+            "stability": package.get("stability"),
+            "evidence": package.get("evidence"),
+            "explainability": explain,
+        },
+        "information_class": info_class,
+        "presentation_intent": intent,
+        "merchant_value": explain.get("what_happened_ar")
+        or f"operational_truth:{tid}",
+        "urgency": min(100, priority),
+        "freshness_state": freshness,
+        "confidence": package.get("confidence") or "high",
+        "expiry": valid_until.isoformat(sep=" "),
+        "visibility": visibility,
+        "visibility_reason": visibility_reason,
+        "destination_surfaces": [surface_id],
+        "duplicate_group": f"operational_truth:{tid}:{info_class}",
+        "owns_full_explanation": owns_full,
+        "suppression_rules": suppression,
+        "priority": priority,
+        "accounting_outcome": accounting,
+        "lifecycle": "create",
+        "valid_from": as_of.isoformat(sep=" "),
+        "valid_until": valid_until.isoformat(sep=" "),
+        "is_current": True,
+        "composition_version": COMPOSITION_VERSION_V1,
+        "generation_version": GENERATION_VERSION_V1,
+        "surface_registry_version": SURFACE_REGISTRY_VERSION_V1,
+        "source_contract_version": OPERATIONAL_TRUTH_SOURCE_CONTRACT_VERSION_V1,
+        "input_fingerprint": input_fingerprint,
+        "as_of": as_of.isoformat(sep=" "),
+        "created_at": generated_at.isoformat(sep=" "),
+        "refreshed_at": generated_at.isoformat(sep=" "),
+        "superseded_at": None,
+        "failure_reason": "",
+        "route_role": route_role,
+        "presentation_state": STATE_READY,
+        "presentation_type": "operational_truth",
+        "evidence_state": "sufficient_evidence",
+        "fingerprint": "",
+        "requires_merchant_attention": bool(
+            package.get("requires_merchant_attention")
+        ),
+    }
+
+
 def evaluate_knowledge_composition_v1(
     *,
     statement: dict[str, Any],
@@ -740,7 +882,7 @@ def generate_surface_compositions_v1(
     assembly_window: str = "d7",
     as_of: Optional[datetime] = None,
 ) -> dict[str, Any]:
-    """Generate surface compositions from Merchant Presentation + Knowledge only."""
+    """Generate surface compositions from Presentation + Knowledge + Operational Truth."""
     slug = (store_slug or "").strip()[:255]
     window = (assembly_window or "d7").strip().lower()
     reg_ok, reg_errors = surface_registry_valid_v1()
@@ -761,6 +903,7 @@ def generate_surface_compositions_v1(
         "inputs": {
             "merchant_presentation": True,
             "knowledge": True,
+            "operational_truth": True,
             "guidance_routing_via_presentation": True,
             "no_raw_events": True,
             "no_cis": True,
@@ -814,7 +957,35 @@ def generate_surface_compositions_v1(
             [f"knowledge:{e}" for e in (knowledge_report.get("errors") or [])]
         )
 
-    expected = len(presentations) + len(statements)
+    # Operational Truth packages (governed; failure isolated).
+    ot_packages: list[dict[str, Any]] = []
+    try:
+        from services.product_data.operational_truth_flag_v1 import (  # noqa: PLC0415
+            operational_truth_v1_enabled,
+        )
+        from services.product_data.operational_truth_foundation_v1 import (  # noqa: PLC0415
+            generate_operational_truth_v1,
+        )
+
+        if operational_truth_v1_enabled():
+            ot_report = generate_operational_truth_v1(
+                slug, assembly_window=window, as_of=anchor
+            )
+            ot_packages = [
+                p
+                for p in list(ot_report.get("packages") or [])
+                if p.get("visibility") == "expose"
+            ]
+            if not ot_report.get("ok") and ot_report.get("errors"):
+                out["errors"].extend(
+                    [f"operational_truth:{e}" for e in (ot_report.get("errors") or [])]
+                )
+            out["operational_truth_exposed"] = int(ot_report.get("exposed_count") or 0)
+    except Exception as ot_exc:  # noqa: BLE001
+        out["errors"].append(f"operational_truth:{type(ot_exc).__name__}")
+        log.warning("scf operational truth intake failed: %s", ot_exc)
+
+    expected = len(presentations) + len(statements) + len(ot_packages)
     out["expected_input_count"] = expected
 
     compositions: list[dict[str, Any]] = []
@@ -876,10 +1047,48 @@ def generate_surface_compositions_v1(
                 )
             )
 
+    # Operational Truth → destination surfaces (packages only; no raw tables in SCF).
+    for pkg in sorted(
+        ot_packages,
+        key=lambda p: (str(p.get("truth_id") or ""), str(p.get("package_id") or "")),
+    ):
+        for surface_id in sorted(pkg.get("destination_surfaces") or []):
+            try:
+                item = evaluate_operational_truth_composition_v1(
+                    package=pkg,
+                    surface_id=str(surface_id),
+                    as_of=anchor,
+                    generated_at=anchor,
+                )
+                item["fingerprint"] = _sha(
+                    {k: v for k, v in item.items() if k != "fingerprint"}
+                )
+                compositions.append(item)
+            except Exception as exc:  # noqa: BLE001
+                compositions.append(
+                    _failed_composition(
+                        store_slug=slug,
+                        surface_id=str(surface_id),
+                        source_type=SOURCE_OPERATIONAL_TRUTH,
+                        source_id=str(pkg.get("package_id") or ""),
+                        as_of=anchor,
+                        generated_at=anchor,
+                        reason=f"exception:{type(exc).__name__}",
+                    )
+                )
+                out["errors"].append(
+                    f"compose_fail:ot:{pkg.get('truth_id')}:{type(exc).__name__}"
+                )
+
     compositions = _apply_duplicate_governance(compositions)
     compositions = _apply_cognitive_load(compositions)
 
     # Empty-state governance per surface with no visible non-empty items.
+    ot_surfaces_with_truth = {
+        str(s)
+        for p in ot_packages
+        for s in (p.get("destination_surfaces") or [])
+    }
     for surface_id in list_surfaces_v1():
         visible = [
             c
@@ -890,11 +1099,14 @@ def generate_surface_compositions_v1(
         ]
         if visible:
             continue
+        # OT prevents false "no operational issues" when durable ops exist.
+        if surface_id in ot_surfaces_with_truth:
+            continue
         # Choose truthful empty key from presentation/knowledge reality.
         surface_pres = [
             p for p in presentations if p.get("surface_key") == surface_id
         ]
-        if not presentations and not statements:
+        if not presentations and not statements and not ot_packages:
             empty_key = "evidence_still_growing"
         elif any(
             p.get("presentation_state") == STATE_INSUFFICIENT for p in surface_pres

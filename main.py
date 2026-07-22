@@ -1054,6 +1054,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/guidance-routing",
         "/dev/merchant-presentation",
         "/dev/surface-composition",
+        "/dev/operational-truth",
         "/dev/merchant-experience",
         "/dev/commerce-intelligence-synthesis",
         "/dev/commerce-intelligence-knowledge",
@@ -12086,7 +12087,7 @@ def dev_surface_composition(
     """
     Diagnostic (allowed in production): Surface Composition Foundation V1.
 
-    Composes merchant surfaces from governed Presentation + Knowledge only.
+    Composes merchant surfaces from Presentation + Knowledge + Operational Truth.
     Default allowlist Demo. No page UI, redesign, or action execution.
     """
     from services.product_data.surface_composition_prod_probe_v1 import (  # noqa: PLC0415
@@ -12096,6 +12097,29 @@ def dev_surface_composition(
     slug = (store or store_slug or "demo").strip() or "demo"
     window = (assembly_window or "d7").strip() or "d7"
     report = build_surface_composition_prod_probe_v1(slug, assembly_window=window)
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
+@app.get("/dev/operational-truth")
+def dev_operational_truth(
+    store: Optional[str] = None,
+    store_slug: Optional[str] = None,
+    assembly_window: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Operational Truth Integration Foundation V1.
+
+    Governed operational packages for Surface Composition. No recommendations,
+    Guidance, Knowledge generation, or page UI.
+    """
+    from services.product_data.operational_truth_prod_probe_v1 import (  # noqa: PLC0415
+        build_operational_truth_prod_probe_v1,
+    )
+
+    slug = (store or store_slug or "demo").strip() or "demo"
+    window = (assembly_window or "d7").strip() or "d7"
+    report = build_operational_truth_prod_probe_v1(slug, assembly_window=window)
     status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
     return j(report, status)
 
