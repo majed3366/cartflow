@@ -5,7 +5,262 @@
   "v1_readiness": 28,
   "production_probes": {
     "merchant_experience": {
-      "http_error": 404
+      "ok": true,
+      "store_slug": "demo",
+      "foundation_enabled": true,
+      "flag_env": "CARTFLOW_MERCHANT_EXPERIENCE_INTEGRATION_V1",
+      "meif_version": "meif_v1",
+      "assembly_window": "d7",
+      "page_readiness": {
+        "home": {
+          "ready": true,
+          "governed_consumption": true,
+          "placeholder_eliminated": true
+        },
+        "decision_workspace": {
+          "ready": true,
+          "governed_consumption": true,
+          "placeholder_eliminated": true
+        },
+        "carts": {
+          "ready": true,
+          "governed_consumption": true,
+          "placeholder_eliminated": true
+        },
+        "communication": {
+          "ready": true,
+          "governed_consumption": true,
+          "placeholder_eliminated": true
+        },
+        "settings": {
+          "ready": true,
+          "governed_consumption": true,
+          "placeholder_eliminated": true
+        }
+      },
+      "governed_consumption_pct": 100,
+      "legacy_consumption_pct": 0,
+      "placeholder_count": 0,
+      "duplicate_logic_count": 5,
+      "routing_integrity": true,
+      "navigation_integrity": true,
+      "trust_warnings": [
+        "suppressed_false_empty:communication"
+      ],
+      "integration_failures": [],
+      "mev1_high_resolution": {
+        "MEV1-H01": true,
+        "MEV1-H02": true,
+        "MEV1-D01": true,
+        "MEV1-C01": true,
+        "MEV1-M01": true,
+        "MEV1-K01": true,
+        "MEV1-G02": true,
+        "MEV1-S01": true,
+        "MEV1-S02": true,
+        "MEV1-T01": true,
+        "MEV1-L01": true
+      },
+      "canonical_fingerprint": "8d8e4c156ef25d67e1a73c97d96552fed1505ae7ef0e745c109404e8b6b90e1d",
+      "errors": [],
+      "registries_valid": true,
+      "non_demo_writes": false,
+      "as_of": "2026-07-22 16:20:07",
+      "navigation": {
+        "home": "#home",
+        "decision_workspace": "#workspace",
+        "carts": "#carts",
+        "communication": "#communication",
+        "settings": "#settings",
+        "integrity": {
+          "comms_not_settings": true,
+          "settings_not_whatsapp_default": true,
+          "workspace_nav_required": true
+        }
+      },
+      "operational_state": {
+        "store_slug": "demo",
+        "abandoned_carts": 46,
+        "purchase_truth": 6,
+        "hesitation_reasons": 80,
+        "recovery_schedules": 78,
+        "mock_whatsapp_sent": 49,
+        "has_durable_carts": true,
+        "has_communication_activity": true,
+        "source": "merchant_operational_state_v1"
+      },
+      "sample_home": {
+        "executive_summary": [
+          {
+            "composition_id": "44abfa88690cad054ef232efac222929",
+            "information_class": "executive_summary",
+            "presentation_intent": "hero",
+            "priority": 71,
+            "freshness_state": "fresh",
+            "visibility": "visible",
+            "duplicate_group": "guidance:d8a29ff17b7da33582b034041d21580b:executive_summary",
+            "owns_full_explanation": true,
+            "merchant_value": "tpl_exec_investigate_v1:relevance",
+            "source_type": "merchant_presentation",
+            "source_id": "0949a9659d9bbca7987c7f6cb987e87f",
+            "source_lineage": {
+              "presentation_id": "0949a9659d9bbca7987c7f6cb987e87f",
+              "route_id": "9773188abebdcd8092d31a89d1462e9c",
+              "guidance_id": "d8a29ff17b7da33582b034041d21580b",
+              "guidance_key": "investigate_conversion_path",
+              "subject_type": "product",
+              "subject_id": "c|demo_psc_probe"
+            },
+            "accounting_outcome": "composed",
+            "surface_owner": "surface_composition_foundation_v1"
+          },
+          {
+            "composition_id": "bb728041be30badc2b6cadd7a28f4671",
+            "information_class": "executive_summary",
+            "presentation_intent": "summary_card",
+            "priority": 71,
+            "freshness_state": "fresh",
+            "visibility": "visible",
+            "duplicate_group": "guidance:f199e67636c93ef9ad94f10e6b77e91c:executive_summary",
+            "owns_full_explanation": true,
+            "merchant_value": "tpl_exec_investigate_v1:relevance",
+            "source_type": "merchant_presentation",
+            "source_id": "fff405d6324d1c4d331ee8bb9bd55f03",
+            "source_lineage": {
+              "presentation_id": "fff405d6324d1c4d331ee8bb9bd55f03",
+              "route_id": "cd088ab76440a246cec1e9eeecded65e",
+              "guidance_id": "f199e67636c93ef9ad94f10e6b77e91c",
+              "guidance_key": "investigate_conversion_path",
+              "subject_type": "product",
+              "subject_id": "c|demo_psc_closure"
+            },
+            "accounting_outcome": "composed",
+            "surface_owner": "surface_composition_foundation_v1"
+          },
+          {
+            "composition_id": "bd5009dc97cbf3c1335e0ea8c22f86fb",
+            "information_class": "executive_summary",
+            "presentation_intent": "summary_card",
+            "priority": 71,
+            "freshness_state": "fresh",
+            "visibility": "visible",
+            "duplicate_group": "guidance:47f136af254b979deb26cdca1d5db7bc:executive_summary",
+            "owns_full_explanation": true,
+            "merchant_value": "tpl_exec_investigate_v1:relevance",
+            "source_type": "merchant_presentation",
+            "source_id": "7e6e58ef32e7f5459ced633b7cede328",
+            "source_lineage": {
+              "presentation_id": "7e6e58ef32e7f5459ced633b7cede328",
+              "route_id": "7ff22a4fb8bf5b182e7c61dc0c9d9838",
+              "guidance_id": "47f136af254b979deb26cdca1d5db7bc",
+              "guidance_key": "investigate_conversion_path",
+              "subject_type": "product",
+              "subject_id": "c|demo_pmf_probe"
+            },
+            "accounting_outcome": "composed",
+            "surface_owner": "surface_composition_foundation_v1"
+          },
+          {
+            "composition_id": "ec750ff24a7b50ae9e99c3463108fddb",
+            "information_class": "executive_summary",
+            "presentation_intent": "summary_card",
+            "priority": 71,
+            "freshness_state": "fresh",
+            "visibility": "visible",
+            "duplicate_group": "guidance:3792f65034829140a0afd15107741feb:executive_summary",
+            "owns_full_explanation": true,
+            "merchant_value": "tpl_exec_investigate_v1:relevance",
+            "source_type": "merchant_presentation",
+            "source_id": "432518c39111a12230c9ea8f62e2b563",
+            "source_lineage": {
+              "presentation_id": "432518c39111a12230c9ea8f62e2b563",
+              "route_id": "44eeff889b61002789421cafff587c03",
+              "guidance_id": "3792f65034829140a0afd15107741feb",
+              "guidance_key": "investigate_conversion_path",
+              "subject_type": "store",
+              "subject_id": "demo"
+            },
+            "accounting_outcome": "composed",
+            "surface_owner": "surface_composition_foundation_v1"
+          }
+        ],
+        "critical_attention": [],
+        "operational_health": [],
+        "knowledge_highlights": [
+          {
+            "composition_id": "003842ddcf721664db968e4756cdc139",
+            "information_class": "knowledge",
+            "presentation_intent": "insight_card",
+            "priority": 63,
+            "freshness_state": "fresh",
+            "visibility": "visible",
+            "duplicate_group": "knowledge:85f5083b51f12debdd5c3d082566f8d6",
+            "owns_full_explanation": true,
+            "merchant_value": "knowledge_highlight",
+            "source_type": "knowledge",
+            "source_id": "85f5083b51f12debdd5c3d082566f8d6",
+            "source_lineage": {
+              "knowledge_id": "85f5083b51f12debdd5c3d082566f8d6",
+              "knowledge_type": "evidence_gap",
+              "evidence_confidence_id": "6f48703e951f22a93e57c6f4188c065d",
+              "subject_type": "product",
+              "subject_id": "c|demo_psc_probe"
+            },
+            "accounting_outcome": "composed",
+            "surface_owner": "surface_composition_foundation_v1"
+          },
+          {
+            "composition_id": "077220f874a150caa0b0fa740cf14566",
+            "information_class": "knowledge",
+            "presentation_intent": "insight_card",
+            "priority": 63,
+            "freshness_state": "fresh",
+            "visibility": "visible",
+            "duplicate_group": "knowledge:beb55467d5e96326c67c59f14d9d37e0",
+            "owns_full_explanation": true,
+            "merchant_value": "knowledge_highlight",
+            "source_type": "knowledge",
+            "source_id": "beb55467d5e96326c67c59f14d9d37e0",
+            "source_lineage": {
+              "knowledge_id": "beb55467d5e96326c67c59f14d9d37e0",
+              "knowledge_type": "evidence_gap",
+              "evidence_confidence_id": "6f48703e951f22a93e57c6f4188c065d",
+              "subject_type": "product",
+              "subject_id": "c|demo_psc_probe"
+            },
+            "accounting_outcome": "composed",
+            "surface_owner": "surface_composition_foundation_v1"
+          },
+          {
+            "composition_id": "136771e2acdefb94e2134b6862ce6ea3",
+            "information_class": "knowledge",
+            "presentation_intent": "insight_card",
+            "priority": 63,
+            "freshness_state": "fresh",
+            "visibility": "visible",
+            "duplicate_group": "knowledge:b058c2971c2ebec9ffeee60f36e6df88",
+            "owns_full_explanation": true,
+            "merchant_value": "knowledge_highlight",
+            "source_type": "knowledge",
+            "source_id": "b058c2971c2ebec9ffeee60f36e6df88",
+            "source_lineage": {
+              "knowledge_id": "b058c2971c2ebec9ffeee60f36e6df88",
+              "knowledge_type": "evidence_quality",
+              "evidence_confidence_id": "9ae58b5ddb8e91d369aa185f5c0fb482",
+              "subject_type": "product",
+              "subject_id": "c|demo_pmf_probe"
+            },
+            "accounting_outcome": "composed",
+            "surface_owner": "surface_composition_foundation_v1"
+          }
+        ],
+        "commercial_guidance_highlights": []
+      },
+      "sample_carts": {
+        "forbid_please_wait": true,
+        "durable_cart_count": 46,
+        "status_message_ar": "\u064a\u0648\u062c\u062f 46 \u0633\u0644\u0629 \u0645\u0633\u062c\u0651\u0644\u0629 \u0641\u064a \u062d\u0642\u064a\u0642\u0629 \u0627\u0644\u0645\u062a\u062c\u0631."
+      }
     },
     "surface_composition": {
       "ok": true,
@@ -16,9 +271,9 @@
       "alembic_version": null,
       "migration_target": "h7i8j9k0l1m2",
       "assembly_window": "d7",
-      "as_of": "2026-07-22 16:07:10",
+      "as_of": "2026-07-22 16:20:09",
       "deterministic": true,
-      "canonical_fingerprint": "97105b7c9ae2ad34a6d0fea898017c91fa40411d3d2198420d16ebbb14abc64d",
+      "canonical_fingerprint": "1a8f6bcdc36e12a89ee385213f73334a02df687164b4f879a31fb2be0b01da3d",
       "surface_registry_version": "sreg_v1",
       "surfaces": [
         "carts",
@@ -44,37 +299,37 @@
       "duplicate_groups": {
         "empty:communication:no_operational_issues": 1,
         "empty:settings:nothing_requiring_action": 1,
-        "guidance:2a6444d212b9d2b0b270f5455f24b44a:critical_attention": 1,
-        "guidance:2a6444d212b9d2b0b270f5455f24b44a:executive_summary": 1,
-        "guidance:2a6444d212b9d2b0b270f5455f24b44a:operational_health": 1,
-        "guidance:6ebe91ccb9123574339ece403e92816d:critical_attention": 1,
-        "guidance:6ebe91ccb9123574339ece403e92816d:executive_summary": 1,
-        "guidance:6ebe91ccb9123574339ece403e92816d:operational_health": 1,
-        "guidance:9fe951d7d78f70eed17e6c745cc38047:critical_attention": 1,
-        "guidance:9fe951d7d78f70eed17e6c745cc38047:executive_summary": 1,
-        "guidance:e5b4ceb88bd240d38045daa0764a2bac:critical_attention": 1,
-        "guidance:e5b4ceb88bd240d38045daa0764a2bac:executive_summary": 1,
-        "guidance:e5b4ceb88bd240d38045daa0764a2bac:operational_health": 1,
-        "knowledge:0a47acfdad193cebd7a32439606601ab": 1,
-        "knowledge:25a9c66af166aaa24d940b36b9339863": 1,
-        "knowledge:2fd004b3633e4326ee34c4f0300dc2eb": 1,
-        "knowledge:30b916e7a43655f83a26c3c4dce2dc13": 1,
-        "knowledge:5551b4983d6eff7fc9393316f5d58b88": 1,
-        "knowledge:593368180db9a9f579201359a7c6c952": 1,
-        "knowledge:5f06e4c66e02043ce72f59f2cedbacb0": 1,
-        "knowledge:7ddfacbabdbe3e7fd2b12bec4964181f": 1,
-        "knowledge:9faa5d384e5ab3d15425a6f570e54c4c": 1,
-        "knowledge:bbed349387302989995401fdf2db0c73": 1,
-        "knowledge:bf51eed719b5fca85e45242f73cdcf71": 1,
-        "knowledge:cb60b3b87e586ab32bb81cdf1429a44a": 1,
-        "knowledge:dcb6005e2b1a09224e76539ebb0fa788": 1,
-        "knowledge:ded5e567c648fbd98e028bb2f568db32": 1,
-        "knowledge:e8e80ca6b8a8fcdfb2f873700b45711f": 1,
-        "knowledge:ea8ffd141eeac4fbd47d71bf5019b758": 1,
-        "knowledge:eed5a83ce75d1bd4f3f7a8c5693b9141": 1,
-        "knowledge:f61515c15e398073cf2ecbdab746b058": 1,
-        "knowledge:f9e27c99856b1f6cb3e3156a4a2476a6": 1,
-        "knowledge:fb322693efa13461db8ed34a926501ca": 1
+        "guidance:24f851556145cadaaddf1cc03aaee240:critical_attention": 1,
+        "guidance:24f851556145cadaaddf1cc03aaee240:executive_summary": 1,
+        "guidance:24f851556145cadaaddf1cc03aaee240:operational_health": 1,
+        "guidance:52ffad29b15fd0cd4ac57dcde8159916:critical_attention": 1,
+        "guidance:52ffad29b15fd0cd4ac57dcde8159916:executive_summary": 1,
+        "guidance:798a12adee0d1e2ee31bb45c2f38e9aa:critical_attention": 1,
+        "guidance:798a12adee0d1e2ee31bb45c2f38e9aa:executive_summary": 1,
+        "guidance:798a12adee0d1e2ee31bb45c2f38e9aa:operational_health": 1,
+        "guidance:deaac2de0634237c48a6befd6bb400b4:critical_attention": 1,
+        "guidance:deaac2de0634237c48a6befd6bb400b4:executive_summary": 1,
+        "guidance:deaac2de0634237c48a6befd6bb400b4:operational_health": 1,
+        "knowledge:0979a18f6010773b46bf2683cdeda627": 1,
+        "knowledge:189bd49ce31dc6b8d74c4cd91bd47c9f": 1,
+        "knowledge:1ca921da385a1d2dce1cff7d95a8c7f3": 1,
+        "knowledge:38079a6b17c98bf2e5a25eaade93fc8e": 1,
+        "knowledge:4a3f1a02ea29125ef5f1ec253ad0df06": 1,
+        "knowledge:6e092c52d9f864bcd8214c7a1cae11d0": 1,
+        "knowledge:77e09717807a1b3aa92632e14417b154": 1,
+        "knowledge:80a8174d396b0d3c813b6116dca4d15a": 1,
+        "knowledge:8b5a3901e66ab50c74ad25a762082974": 1,
+        "knowledge:91ac7edac0e9e69a8693ceddede02b98": 1,
+        "knowledge:9ca6497a83a7b528be22404d64b9530d": 1,
+        "knowledge:baa18fa9fa7a5552d941fb2ef92ba47d": 1,
+        "knowledge:c2ac56663f53344ff8cb3a579d0fb909": 1,
+        "knowledge:cfbc3d7682ab29f23c11058a631e4f1f": 1,
+        "knowledge:d446ed5c43e86aab79464e398c628dca": 1,
+        "knowledge:e36d2be7ebc6971bc7fde1f18d185654": 1,
+        "knowledge:ebfebbd6e4394b689a846551ee2449e8": 1,
+        "knowledge:f0efad106c46c85c16f5637f753ae1f4": 1,
+        "knowledge:f1c585e0c2fddeda9016608b0746d524": 1,
+        "knowledge:f72dd5275c5e6a3956aed835f5949797": 1
       },
       "freshness": {
         "fresh": 33
@@ -85,154 +340,154 @@
       },
       "priorities": [
         {
-          "composition_id": "3282349c0bd8afa90f372350b095e371",
+          "composition_id": "94b7e1c8e4c234a728ecb7a42f8502f5",
           "surface_id": "home",
           "priority": 71,
           "visibility": "visible"
         },
         {
-          "composition_id": "c92c1e01aab22a7b771ce9108ab5c515",
+          "composition_id": "d91df0c651d1dcc0f003c5a0604bd2c1",
           "surface_id": "home",
           "priority": 71,
           "visibility": "visible"
         },
         {
-          "composition_id": "ee7b6e0230a0854d3bc0671c9d1a5a63",
+          "composition_id": "e9243ebcc0fe39093e7511033aa2f4b8",
           "surface_id": "home",
           "priority": 71,
           "visibility": "visible"
         },
         {
-          "composition_id": "fdfa199f8af9efc85f78c6b58b82ad18",
+          "composition_id": "f9b362963dbd85f3c21f712f781cb490",
           "surface_id": "home",
           "priority": 71,
           "visibility": "visible"
         },
         {
-          "composition_id": "10973d2fa7f69542890086c00b0a476d",
+          "composition_id": "9b2f5acb267d596c68f768c82474c551",
           "surface_id": "carts",
           "priority": 70,
           "visibility": "visible"
         },
         {
-          "composition_id": "6061b113ea1db3222cfba5f3b235d25b",
+          "composition_id": "d943302013f55163bdb3c680242974e3",
           "surface_id": "carts",
           "priority": 70,
           "visibility": "visible"
         },
         {
-          "composition_id": "d706fc14d80cbd2653b2c0b4aa1024f3",
+          "composition_id": "e1b80459bdd4095868c6c6e0a8106323",
           "surface_id": "carts",
           "priority": 70,
           "visibility": "visible"
         },
         {
-          "composition_id": "05d526e7edcbebf649e47d223bebfbf9",
+          "composition_id": "00be1a2e13445547023612b6751ae2ed",
+          "surface_id": "home",
+          "priority": 63,
+          "visibility": "visible"
+        },
+        {
+          "composition_id": "54a241ba4938d3ecfd139c7cad1745b6",
+          "surface_id": "home",
+          "priority": 63,
+          "visibility": "visible"
+        },
+        {
+          "composition_id": "5bade8587228db897fd3a929b64a433e",
+          "surface_id": "home",
+          "priority": 63,
+          "visibility": "visible"
+        },
+        {
+          "composition_id": "5f809a3caecdb0a778879e29c932b3a1",
+          "surface_id": "home",
+          "priority": 63,
+          "visibility": "collapsed"
+        },
+        {
+          "composition_id": "609012280702776ba64ef7ec2255a434",
+          "surface_id": "home",
+          "priority": 63,
+          "visibility": "collapsed"
+        },
+        {
+          "composition_id": "6bedb0537341db8fd56ae1283d045084",
+          "surface_id": "home",
+          "priority": 63,
+          "visibility": "collapsed"
+        },
+        {
+          "composition_id": "718c5ab43817ce1430b83f36a0875256",
+          "surface_id": "home",
+          "priority": 63,
+          "visibility": "collapsed"
+        },
+        {
+          "composition_id": "720acc01b018bc96c1ddcfb30bcd232d",
+          "surface_id": "home",
+          "priority": 63,
+          "visibility": "collapsed"
+        },
+        {
+          "composition_id": "7bcd5c05e5cc100f1d6f000310a17984",
+          "surface_id": "home",
+          "priority": 63,
+          "visibility": "collapsed"
+        },
+        {
+          "composition_id": "7fa20db40b16758092c9eab4a4b2c316",
+          "surface_id": "home",
+          "priority": 63,
+          "visibility": "collapsed"
+        },
+        {
+          "composition_id": "80688f160add93f0477940037f5b4015",
+          "surface_id": "home",
+          "priority": 63,
+          "visibility": "collapsed"
+        },
+        {
+          "composition_id": "9f040e43629890fd1fd61364a7ee3be7",
+          "surface_id": "home",
+          "priority": 63,
+          "visibility": "collapsed"
+        },
+        {
+          "composition_id": "a3714f4f893a6c8cd3e1824b216af0d8",
+          "surface_id": "home",
+          "priority": 63,
+          "visibility": "collapsed"
+        },
+        {
+          "composition_id": "a80589b8dc372320965c9448711f4614",
+          "surface_id": "home",
+          "priority": 63,
+          "visibility": "collapsed"
+        },
+        {
+          "composition_id": "aa0a2318f8ffb3e949bc9b70e03edb83",
+          "surface_id": "home",
+          "priority": 63,
+          "visibility": "collapsed"
+        },
+        {
+          "composition_id": "ad5faddd2945bce50bcc64b6b46dead0",
+          "surface_id": "home",
+          "priority": 63,
+          "visibility": "collapsed"
+        },
+        {
+          "composition_id": "beddbe038a45067171fcdb86c31a8d7d",
+          "surface_id": "home",
+          "priority": 63,
+          "visibility": "collapsed"
+        },
+        {
+          "composition_id": "c968b8894c0855f7e5c5f8d3a46da78a",
           "surface_id": "decision_workspace",
           "priority": 63,
           "visibility": "visible"
-        },
-        {
-          "composition_id": "0e398cc25b99ffb370716748326473b7",
-          "surface_id": "home",
-          "priority": 63,
-          "visibility": "visible"
-        },
-        {
-          "composition_id": "112d4e1a444ab613a40ebf57aa6e8fe2",
-          "surface_id": "home",
-          "priority": 63,
-          "visibility": "visible"
-        },
-        {
-          "composition_id": "327b5e573bd6053877a5c68a656c3ad4",
-          "surface_id": "decision_workspace",
-          "priority": 63,
-          "visibility": "visible"
-        },
-        {
-          "composition_id": "509b47f40979c17789ae72c3151ae140",
-          "surface_id": "home",
-          "priority": 63,
-          "visibility": "visible"
-        },
-        {
-          "composition_id": "59c0b0b7cec6c45f65946361c6d86031",
-          "surface_id": "decision_workspace",
-          "priority": 63,
-          "visibility": "visible"
-        },
-        {
-          "composition_id": "5bbbe38d0db23065f6fbc9c1c05dd92c",
-          "surface_id": "home",
-          "priority": 63,
-          "visibility": "collapsed"
-        },
-        {
-          "composition_id": "63330d7d3ad86a6d1531326684fa194e",
-          "surface_id": "home",
-          "priority": 63,
-          "visibility": "collapsed"
-        },
-        {
-          "composition_id": "6bda965151fe1d080c423c43241f78d5",
-          "surface_id": "home",
-          "priority": 63,
-          "visibility": "collapsed"
-        },
-        {
-          "composition_id": "7b93b83e3621586f40e9a9d513ed68fb",
-          "surface_id": "home",
-          "priority": 63,
-          "visibility": "collapsed"
-        },
-        {
-          "composition_id": "8145a2a6973084afc822226bcfa57ace",
-          "surface_id": "home",
-          "priority": 63,
-          "visibility": "collapsed"
-        },
-        {
-          "composition_id": "90f83b69bb896c070bd4cba4449776eb",
-          "surface_id": "home",
-          "priority": 63,
-          "visibility": "collapsed"
-        },
-        {
-          "composition_id": "937ba2aa1a17de698780de6cebf85952",
-          "surface_id": "home",
-          "priority": 63,
-          "visibility": "collapsed"
-        },
-        {
-          "composition_id": "948a8ce542cf1bd0706328e098289cbb",
-          "surface_id": "home",
-          "priority": 63,
-          "visibility": "collapsed"
-        },
-        {
-          "composition_id": "a7f37571430a798144c3f5ad42bd7a52",
-          "surface_id": "home",
-          "priority": 63,
-          "visibility": "collapsed"
-        },
-        {
-          "composition_id": "b0332cc147ed0838e75038ec83a535d6",
-          "surface_id": "home",
-          "priority": 63,
-          "visibility": "collapsed"
-        },
-        {
-          "composition_id": "b095f4308514e4d4fe87a735e3a6b7be",
-          "surface_id": "home",
-          "priority": 63,
-          "visibility": "collapsed"
-        },
-        {
-          "composition_id": "b88a4f5378a06676c4ee77705bba1e72",
-          "surface_id": "home",
-          "priority": 63,
-          "visibility": "collapsed"
         }
       ],
       "accounting": {
@@ -248,52 +503,52 @@
       "accounted_count": 33,
       "expected_input_count": 33,
       "duplicate_current": 0,
-      "materialized_row_count": 231,
+      "materialized_row_count": 264,
       "upserted": 33,
       "superseded": 2,
       "failures": [],
       "sample_compositions": [
         {
-          "composition_id": "3282349c0bd8afa90f372350b095e371",
+          "composition_id": "94b7e1c8e4c234a728ecb7a42f8502f5",
           "surface_id": "home",
           "information_class": "executive_summary",
           "presentation_intent": "hero",
           "priority": 71,
           "freshness_state": "fresh",
           "visibility": "visible",
-          "duplicate_group": "guidance:9fe951d7d78f70eed17e6c745cc38047:executive_summary",
+          "duplicate_group": "guidance:24f851556145cadaaddf1cc03aaee240:executive_summary",
           "owns_full_explanation": true,
           "accounting_outcome": "composed",
           "source_type": "merchant_presentation",
-          "source_id": "8e1bf937087aa1591aac20d591780645"
+          "source_id": "8fb5da8137a805a3b51be93796d150dd"
         },
         {
-          "composition_id": "05d526e7edcbebf649e47d223bebfbf9",
+          "composition_id": "c968b8894c0855f7e5c5f8d3a46da78a",
           "surface_id": "decision_workspace",
           "information_class": "critical_attention",
           "presentation_intent": "priority_card",
           "priority": 63,
           "freshness_state": "fresh",
           "visibility": "visible",
-          "duplicate_group": "guidance:6ebe91ccb9123574339ece403e92816d:critical_attention",
+          "duplicate_group": "guidance:798a12adee0d1e2ee31bb45c2f38e9aa:critical_attention",
           "owns_full_explanation": true,
           "accounting_outcome": "composed",
           "source_type": "merchant_presentation",
-          "source_id": "de99f6e803cf2d45ccedbdcf0fddf03d"
+          "source_id": "c8f549b73f89ffc28b46bdc2a6e0f5e4"
         },
         {
-          "composition_id": "10973d2fa7f69542890086c00b0a476d",
+          "composition_id": "9b2f5acb267d596c68f768c82474c551",
           "surface_id": "carts",
           "information_class": "operational_health",
           "presentation_intent": "operational_state",
           "priority": 70,
           "freshness_state": "fresh",
           "visibility": "visible",
-          "duplicate_group": "guidance:2a6444d212b9d2b0b270f5455f24b44a:operational_health",
+          "duplicate_group": "guidance:deaac2de0634237c48a6befd6bb400b4:operational_health",
           "owns_full_explanation": true,
           "accounting_outcome": "composed",
           "source_type": "merchant_presentation",
-          "source_id": "8cb676546504ca0491dd3d12ef63a828"
+          "source_id": "cb8877f6b8ae3f9321e2708ff8ed2f53"
         }
       ],
       "errors": [],
@@ -314,42 +569,42 @@
       "alembic_version": null,
       "migration_target": "z9a0b1c2d3e4",
       "assembly_window": "d7",
-      "as_of": "2026-07-22 16:07:12",
+      "as_of": "2026-07-22 16:20:12",
       "deterministic": true,
-      "canonical_fingerprint": "be711b9b7ced667d88d854234b1b529f49914d8372c2931045b5935de1c4df83",
+      "canonical_fingerprint": "b221fb1e7b9ca8cbee54c954d1e40ef8d873b4bf0705a9096fcd7f941a806e54",
       "statement_count": 20,
-      "materialized_row_count": 125,
+      "materialized_row_count": 145,
       "upserted": 20,
       "sample_statements": [
         {
           "knowledge_type": "evidence_gap",
           "statement": "Evidence does not include purchase_count.",
           "confidence_level": "very_high",
-          "evidence_confidence_id": "41dc35b3fc3d63db3c955d5234a46ea8"
+          "evidence_confidence_id": "33adeca32895f5b07b17044a723fd4ec"
         },
         {
           "knowledge_type": "evidence_quality",
           "statement": "Evidence quality is very_high.",
           "confidence_level": "very_high",
-          "evidence_confidence_id": "41dc35b3fc3d63db3c955d5234a46ea8"
+          "evidence_confidence_id": "33adeca32895f5b07b17044a723fd4ec"
         },
         {
           "knowledge_type": "metric_trend_observation",
           "statement": "Cart abandonments have newly appeared during the last 7 days.",
           "confidence_level": "very_high",
-          "evidence_confidence_id": "41dc35b3fc3d63db3c955d5234a46ea8"
+          "evidence_confidence_id": "33adeca32895f5b07b17044a723fd4ec"
         },
         {
           "knowledge_type": "metric_trend_observation",
           "statement": "Cart additions have newly appeared during the last 7 days.",
           "confidence_level": "very_high",
-          "evidence_confidence_id": "41dc35b3fc3d63db3c955d5234a46ea8"
+          "evidence_confidence_id": "33adeca32895f5b07b17044a723fd4ec"
         },
         {
           "knowledge_type": "metric_trend_observation",
           "statement": "Evidence-linked events have newly appeared during the last 7 days.",
           "confidence_level": "very_high",
-          "evidence_confidence_id": "41dc35b3fc3d63db3c955d5234a46ea8"
+          "evidence_confidence_id": "33adeca32895f5b07b17044a723fd4ec"
         }
       ],
       "errors": [],
@@ -357,249 +612,6 @@
       "alembic_stamped_exact": false,
       "inputs_evidence_confidence_only": true,
       "all_statements_reference_confidence": true
-    }
-  },
-  "simulation": {
-    "simulation_run_id": "srs_bcb8ec45eec549f898e42f09607e7b69",
-    "plan_summary": {
-      "simulation_run_id": "srs_bcb8ec45eec549f898e42f09607e7b69",
-      "seed": 20260722,
-      "scale_profile": "merchant_experience_validation_v2",
-      "duration_days": 3,
-      "event_count": 244,
-      "supported_count": 107,
-      "unsupported_count": 111,
-      "customer_count": 27,
-      "session_count": 27,
-      "product_count": 8,
-      "expected_event_counts": {
-        "session_started": 27,
-        "page_viewed": 27,
-        "product_viewed": 27,
-        "cart_state_sync": 27,
-        "hesitation_reason_selected": 18,
-        "whatsapp_scheduled": 13,
-        "whatsapp_sent_mock": 13,
-        "scroll_depth_reached": 13,
-        "dwell_time_recorded": 9,
-        "cart_abandoned": 22,
-        "phone_submitted": 11,
-        "returned_to_site": 13,
-        "purchase_created": 10,
-        "widget_opened": 4,
-        "widget_ignored": 4,
-        "passive_return": 6
-      },
-      "scenario_versions": [
-        {
-          "scenario_id": "S01_normal_store_baseline",
-          "scenario_version": "v1",
-          "scenario_revision": 1,
-          "versioned_id": "S01_normal_store_baseline@v1.r1",
-          "planner_key": "baseline",
-          "phase3_eligible": true
-        },
-        {
-          "scenario_id": "S03_shipping_cost_hesitation",
-          "scenario_version": "v1",
-          "scenario_revision": 1,
-          "versioned_id": "S03_shipping_cost_hesitation@v1.r1",
-          "planner_key": "shipping_hesitation",
-          "phase3_eligible": true
-        },
-        {
-          "scenario_id": "S04_product_high_atc_low_purchase",
-          "scenario_version": "v1",
-          "scenario_revision": 1,
-          "versioned_id": "S04_product_high_atc_low_purchase@v1.r1",
-          "planner_key": "product_low_conv",
-          "phase3_eligible": true
-        },
-        {
-          "scenario_id": "S05_wa_return_without_purchase",
-          "scenario_version": "v1",
-          "scenario_revision": 1,
-          "versioned_id": "S05_wa_return_without_purchase@v1.r1",
-          "planner_key": "wa_return_no_purchase",
-          "phase3_eligible": true
-        },
-        {
-          "scenario_id": "S06_wa_success",
-          "scenario_version": "v1",
-          "scenario_revision": 1,
-          "versioned_id": "S06_wa_success@v1.r1",
-          "planner_key": "wa_success",
-          "phase3_eligible": true
-        },
-        {
-          "scenario_id": "S09_widget_opened_ignored",
-          "scenario_version": "v1",
-          "scenario_revision": 1,
-          "versioned_id": "S09_widget_opened_ignored@v1.r1",
-          "planner_key": "widget_ignore",
-          "phase3_eligible": true
-        },
-        {
-          "scenario_id": "S10_widget_reason_capture",
-          "scenario_version": "v1",
-          "scenario_revision": 1,
-          "versioned_id": "S10_widget_reason_capture@v1.r1",
-          "planner_key": "reason_mix",
-          "phase3_eligible": true
-        },
-        {
-          "scenario_id": "S11_ignore_all_recovery",
-          "scenario_version": "v1",
-          "scenario_revision": 1,
-          "versioned_id": "S11_ignore_all_recovery@v1.r1",
-          "planner_key": "ignore_all",
-          "phase3_eligible": true
-        },
-        {
-          "scenario_id": "S12_multi_return_customer",
-          "scenario_version": "v1",
-          "scenario_revision": 1,
-          "versioned_id": "S12_multi_return_customer@v1.r1",
-          "planner_key": "multi_return",
-          "phase3_eligible": true
-        },
-        {
-          "scenario_id": "S13_organic_purchase",
-          "scenario_version": "v1",
-          "scenario_revision": 1,
-          "versioned_id": "S13_organic_purchase@v1.r1",
-          "planner_key": "organic_purchase",
-          "phase3_eligible": true
-        },
-        {
-          "scenario_id": "S14_ambiguous_influence",
-          "scenario_version": "v1",
-          "scenario_revision": 1,
-          "versioned_id": "S14_ambiguous_influence@v1.r1",
-          "planner_key": "ambiguous_influence",
-          "phase3_eligible": true
-        },
-        {
-          "scenario_id": "S15_vip_customer",
-          "scenario_version": "v1",
-          "scenario_revision": 1,
-          "versioned_id": "S15_vip_customer@v1.r1",
-          "planner_key": "vip",
-          "phase3_eligible": true
-        },
-        {
-          "scenario_id": "S16_insufficient_data",
-          "scenario_version": "v1",
-          "scenario_revision": 1,
-          "versioned_id": "S16_insufficient_data@v1.r1",
-          "planner_key": "insufficient",
-          "phase3_eligible": true
-        }
-      ],
-      "warnings": []
-    },
-    "reality_score": {
-      "overall": 72.2,
-      "dimensions": {
-        "customer_diversity": 80.0,
-        "traffic_realism": 80.0,
-        "purchase_realism": 64.0,
-        "product_realism": 72.0,
-        "recovery_realism": 90.0,
-        "knowledge_realism": 76.0,
-        "timeline_realism": 50.0,
-        "session_realism": 55.0,
-        "behaviour_realism": 85.0,
-        "execution_fidelity": 70.0
-      },
-      "internal_only": true,
-      "merchant_facing": false,
-      "sample": {
-        "events": 60,
-        "customers": 6,
-        "sessions": 6,
-        "products": 4
-      }
-    },
-    "execute": {
-      "status": "completed",
-      "batches_done": 13,
-      "accounting": {
-        "planned": 0,
-        "persisted": 27,
-        "processed": 114,
-        "failed": 19,
-        "unsupported": 111,
-        "duplicate": 0,
-        "replayed": 0,
-        "suppressed": 13,
-        "rejected": 0
-      }
-    },
-    "wall_ms": 80688.50960000418
-  },
-  "meif": {
-    "ok": true,
-    "mev1_high_resolution": {
-      "MEV1-H01": true,
-      "MEV1-H02": true,
-      "MEV1-D01": true,
-      "MEV1-C01": true,
-      "MEV1-M01": true,
-      "MEV1-K01": true,
-      "MEV1-G02": true,
-      "MEV1-S01": true,
-      "MEV1-S02": true,
-      "MEV1-T01": true,
-      "MEV1-L01": true
-    },
-    "audit": {
-      "governed_element_count": 5,
-      "legacy_element_count": 0,
-      "placeholder_count": 0,
-      "ungoverned_removed": 0,
-      "trust_warnings": [
-        "suppressed_false_empty:decision_workspace",
-        "suppressed_false_empty:carts",
-        "suppressed_false_empty:communication"
-      ],
-      "integration_failures": [],
-      "governed_consumption_pct": 100,
-      "legacy_consumption_pct": 0,
-      "duplicate_logic_count": 5,
-      "routing_integrity": true,
-      "navigation_integrity": true
-    },
-    "operational_state": {
-      "store_slug": "demo",
-      "abandoned_carts": 27,
-      "purchase_truth": 20,
-      "hesitation_reasons": 18,
-      "recovery_schedules": 13,
-      "mock_whatsapp_sent": 13,
-      "has_durable_carts": true,
-      "has_communication_activity": true,
-      "source": "merchant_operational_state_v1"
-    },
-    "navigation": {
-      "home": "#home",
-      "decision_workspace": "#workspace",
-      "carts": "#carts",
-      "communication": "#communication",
-      "settings": "#settings",
-      "integrity": {
-        "comms_not_settings": true,
-        "settings_not_whatsapp_default": true,
-        "workspace_nav_required": true
-      }
-    },
-    "canonical_fingerprint": "717c796cea12098fbf03bee7f7f969255dea92db4e880c1d42dcd9f801c22275",
-    "page_ready": {
-      "home": true,
-      "decision_workspace": true,
-      "carts": true,
-      "communication": true,
-      "settings": true
     }
   },
   "score": {
@@ -630,5 +642,5 @@
       "navigation_integrity": true
     }
   },
-  "mode": "local_sim"
+  "mode": "prod_only"
 }
