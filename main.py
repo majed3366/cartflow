@@ -1053,6 +1053,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/commercial-guidance",
         "/dev/guidance-routing",
         "/dev/merchant-presentation",
+        "/dev/surface-composition",
         "/dev/commerce-intelligence-synthesis",
         "/dev/commerce-intelligence-knowledge",
         "/dev/data-growth-measurement",
@@ -12071,6 +12072,29 @@ def dev_merchant_presentation(
     report = build_merchant_presentation_prod_probe_v1(
         slug, assembly_window=window
     )
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
+@app.get("/dev/surface-composition")
+def dev_surface_composition(
+    store: Optional[str] = None,
+    store_slug: Optional[str] = None,
+    assembly_window: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Surface Composition Foundation V1.
+
+    Composes merchant surfaces from governed Presentation + Knowledge only.
+    Default allowlist Demo. No page UI, redesign, or action execution.
+    """
+    from services.product_data.surface_composition_prod_probe_v1 import (  # noqa: PLC0415
+        build_surface_composition_prod_probe_v1,
+    )
+
+    slug = (store or store_slug or "demo").strip() or "demo"
+    window = (assembly_window or "d7").strip() or "d7"
+    report = build_surface_composition_prod_probe_v1(slug, assembly_window=window)
     status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
     return j(report, status)
 

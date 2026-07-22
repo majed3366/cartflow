@@ -1353,6 +1353,61 @@ class MerchantPresentation(Base):
     superseded_at = Column(DateTime, nullable=True)
 
 
+class SurfaceComposition(Base):
+    """
+    Surface Composition Foundation V1 — what each merchant surface should receive.
+
+    Not UI, layout, pixels, or page implementation. Projection only.
+    """
+
+    __tablename__ = "surface_compositions"
+    __table_args__ = (
+        UniqueConstraint(
+            "composition_id",
+            name="uq_surface_composition_id",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    composition_id = Column(String(64), nullable=False, index=True)
+    surface_id = Column(String(64), nullable=False, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    source_type = Column(String(64), nullable=False, default="")
+    source_id = Column(String(64), nullable=False, default="", index=True)
+    source_lineage_json = Column(Text, nullable=False, default="{}")
+    information_class = Column(String(64), nullable=False, index=True)
+    presentation_intent = Column(String(64), nullable=False, default="")
+    merchant_value = Column(String(128), nullable=False, default="")
+    urgency = Column(Integer, nullable=False, default=0)
+    freshness_state = Column(String(32), nullable=False, default="", index=True)
+    confidence = Column(String(64), nullable=False, default="")
+    expiry = Column(DateTime, nullable=False)
+    visibility = Column(String(32), nullable=False, default="", index=True)
+    visibility_reason = Column(String(128), nullable=False, default="")
+    destination_surfaces_json = Column(Text, nullable=False, default="[]")
+    duplicate_group = Column(String(128), nullable=False, default="", index=True)
+    owns_full_explanation = Column(Boolean, nullable=False, default=False)
+    suppression_rules_json = Column(Text, nullable=False, default="[]")
+    priority = Column(Integer, nullable=False, default=0, index=True)
+    accounting_outcome = Column(String(32), nullable=False, default="", index=True)
+    lifecycle = Column(String(32), nullable=False, default="create")
+    valid_from = Column(DateTime, nullable=False)
+    valid_until = Column(DateTime, nullable=False, index=True)
+    is_current = Column(Boolean, nullable=False, default=True, index=True)
+    composition_version = Column(String(32), nullable=False, default="scf_v1")
+    generation_version = Column(String(32), nullable=False, default="scf_v1_gen")
+    surface_registry_version = Column(String(32), nullable=False, default="sreg_v1")
+    source_contract_version = Column(String(64), nullable=False, default="")
+    input_fingerprint = Column(String(64), nullable=False, default="")
+    fingerprint = Column(String(64), nullable=False, default="", index=True)
+    failure_reason = Column(String(128), nullable=False, default="")
+    as_of = Column(DateTime, nullable=False)
+    as_of_key = Column(String(32), nullable=False, default="")
+    created_at = Column(DateTime, nullable=False)
+    refreshed_at = Column(DateTime, nullable=False)
+    superseded_at = Column(DateTime, nullable=True)
+
+
 class CommerceIntelligenceSynthesis(Base):
     """
     Commerce Intelligence Synthesis Foundation V1 — qualified cross-domain pattern.
