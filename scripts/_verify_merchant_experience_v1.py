@@ -60,10 +60,16 @@ def main() -> int:
             and body.get("canonical_fingerprint")
             and (all(bool(v) for v in highs.values()) if highs else False)
             and not (body.get("integration_failures") or [])
+            and int(body.get("legacy_leakage_count") or 0) == 0
+            and int(body.get("readiness_score") or 0) >= 85
+            and str(body.get("hardening_status") or "").startswith("hardened")
         ),
         "http_status": status,
         "store": args.store,
         "assembly_window": args.window,
+        "readiness_score": body.get("readiness_score"),
+        "chapter_outcome": body.get("chapter_outcome"),
+        "legacy_leakage_count": body.get("legacy_leakage_count"),
         "probe": body,
     }
     print(json.dumps(report, indent=2, default=str))

@@ -579,6 +579,16 @@ def generate_merchant_experience_integration_v1(
         and out["navigation"]["integrity"]["comms_not_settings"]
         and not out["audit"]["integration_failures"]
     )
+    # MEH V1 — harden presentation quality inside existing stack (no new layers).
+    try:
+        from services.product_data.merchant_experience_hardening_v1 import (  # noqa: PLC0415
+            apply_hardening_to_meif_report_v1,
+        )
+
+        out = apply_hardening_to_meif_report_v1(out)
+    except Exception as meh_exc:  # noqa: BLE001
+        out.setdefault("errors", []).append(f"hardening:{type(meh_exc).__name__}")
+        log.warning("merchant_experience_hardening_v1 failed: %s", meh_exc)
     return out
 
 

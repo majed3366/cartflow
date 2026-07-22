@@ -23,6 +23,19 @@
 <link rel="stylesheet" href="/static/merchant_currency_certification_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
 <link rel="stylesheet" href="/static/merchant_pulse_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
 <link rel="stylesheet" href="/static/merchant_dashboard_home_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
+<style>
+  .meif-trust{display:inline-block;font-size:11px;font-weight:600;margin-inline-end:6px;opacity:.85}
+  .meif-trust--fact{color:#0b6b3a}
+  .meif-trust--observation{color:#355c7d}
+  .meif-trust--interpretation{color:#6b4f1d}
+  .meif-trust--recommendation{color:#7a2e0e}
+  .meif-trust--uncertainty{color:#5c5c5c}
+  .meif-item{margin:0 0 10px;padding:0}
+  .meif-item__title{font-size:14px;line-height:1.45}
+  .meif-item__meta{font-size:12px;opacity:.7;margin-top:2px}
+  .meif-block{margin:16px 0}
+  .meif-home__ops{font-size:13px;margin:8px 0 0}
+</style>
 </head>
 <body data-cf-merchant-app="1" class="cf-pds-closure"{% if merchant_pulse_ui_v1 %} data-merchant-pulse-ui-v1="1"{% endif %}>
 
