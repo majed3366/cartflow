@@ -1,0 +1,15 @@
+{
+  "lab": "merchant_experience_validation_v3",
+  "generated_at": "2026-07-22T17:34:29.453763+00:00",
+  "operational_truth_probe_ok": true,
+  "scf_probe_ok": true,
+  "meif_probe_ok": true,
+  "ot_exposed": 6,
+  "scf_inputs_include_ot": true,
+  "home_has_ot": true,
+  "decision_has_ot": true,
+  "visible_ot": 12,
+  "pages_do_not_own_ops_reasoning": true,
+  "notes": "Pages consume SCF/MEIF packages; OT is composed upstream.",
+  "ok": true
+}
