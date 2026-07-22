@@ -291,7 +291,9 @@ def evaluate_presentation_composition_v1(
     guidance_id = str(presentation.get("guidance_id") or "")
     route_id = str(presentation.get("route_id") or "")
     presentation_id = str(presentation.get("presentation_id") or "")
-    duplicate_group = f"guidance:{guidance_id or presentation_id}"
+    # Class-scoped group: same guidance may legitimately appear as different
+    # information classes (e.g. Home executive summary vs Decision critical).
+    duplicate_group = f"guidance:{guidance_id or presentation_id}:{info_class}"
     owner = DUPLICATE_OWNER_BY_CLASS_V1.get(info_class, surface_id)
     owns_full = surface_id == owner
 
