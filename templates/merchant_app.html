@@ -24,16 +24,52 @@
 <link rel="stylesheet" href="/static/merchant_pulse_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
 <link rel="stylesheet" href="/static/merchant_dashboard_home_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
 <style>
-  .meif-trust{display:inline-block;font-size:11px;font-weight:600;margin-inline-end:6px;opacity:.85}
+  /* MSR V1 — hierarchy only; consumes MEIF packages */
+  .meif-trust{display:inline-block;font-size:11px;font-weight:700;margin-inline-end:8px;letter-spacing:.02em}
   .meif-trust--fact{color:#0b6b3a}
   .meif-trust--observation{color:#355c7d}
   .meif-trust--interpretation{color:#6b4f1d}
   .meif-trust--recommendation{color:#7a2e0e}
   .meif-trust--uncertainty{color:#5c5c5c}
+  .meif-surface{max-width:920px;margin:0 auto 28px;padding:4px 2px 20px}
+  .meif-eyebrow{font-size:12px;font-weight:700;opacity:.55;margin:0 0 6px;text-transform:none}
+  .meif-brief h2,.meif-surface>h2{font-size:1.45rem;line-height:1.35;margin:0 0 8px;font-weight:700}
+  .meif-lede{font-size:14px;line-height:1.55;opacity:.82;margin:0 0 14px;max-width:46rem}
+  .meif-watch{font-size:13px;line-height:1.5;padding:10px 12px;border-inline-start:3px solid #0b6b3a;background:rgba(11,107,58,.06);margin:12px 0 0}
+  .meif-watch--attention{border-color:#7a2e0e;background:rgba(122,46,14,.06)}
+  .meif-watch--stable{border-color:#355c7d;background:rgba(53,92,125,.06)}
+  .meif-watch--quiet,.meif-watch--watch{border-color:#5c5c5c;background:rgba(0,0,0,.03)}
+  .meif-block{margin:22px 0}
+  .meif-block>h3{font-size:1.02rem;margin:0 0 10px;font-weight:700}
+  .meif-block--priority>h3{color:#7a2e0e}
+  .meif-block--muted{opacity:.92}
+  .meif-block--muted>h3{font-weight:600;opacity:.85}
+  .meif-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;list-style:none;padding:0;margin:0}
+  .meif-facts li{padding:12px 14px;background:rgba(0,0,0,.03);border-radius:8px}
+  .meif-facts strong{display:block;font-size:1.35rem;line-height:1.2;margin-bottom:4px}
+  .meif-facts span{font-size:12px;opacity:.7}
+  .meif-split{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media (max-width:720px){.meif-facts,.meif-split{grid-template-columns:1fr}}
+  .meif-cards{display:flex;flex-direction:column;gap:10px}
+  .meif-card{padding:12px 14px;border-radius:10px;background:#fff;border:1px solid rgba(0,0,0,.08);box-shadow:0 1px 0 rgba(0,0,0,.02)}
+  .meif-card__head{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:6px}
+  .meif-card__title{font-size:14px;line-height:1.5;font-weight:600;margin:0}
+  .meif-card__row,.meif-card__action{font-size:13px;line-height:1.5;margin:8px 0 0;opacity:.9}
+  .meif-card__action{padding-top:8px;border-top:1px dashed rgba(0,0,0,.08)}
+  .meif-k{display:inline-block;font-size:11px;font-weight:700;opacity:.55;margin-inline-end:6px}
+  .meif-chip{display:inline-block;font-size:11px;padding:2px 7px;border-radius:999px;background:rgba(0,0,0,.05);opacity:.85}
+  .meif-chip--mute{opacity:.65}
+  .meif-empty{font-size:13px;opacity:.65;margin:0}
+  .meif-chrono{font-size:12px;opacity:.7;margin-top:20px;padding-top:12px;border-top:1px solid rgba(0,0,0,.06);line-height:1.5}
+  .meif-next{font-size:13px;margin:12px 0 0}
+  .meif-next a{font-weight:600}
+  .meif-banner{display:block;padding:12px 14px;margin:0 0 12px;border-radius:10px;background:rgba(11,107,58,.07);border:1px solid rgba(11,107,58,.15);font-size:14px;line-height:1.5}
+  .meif-banner__q{display:block;margin-top:6px;font-size:12px;opacity:.7}
+  .meif-carts-focus{margin:0 0 16px}
+  .meif-decision-root{margin:0 0 18px}
   .meif-item{margin:0 0 10px;padding:0}
   .meif-item__title{font-size:14px;line-height:1.45}
   .meif-item__meta{font-size:12px;opacity:.7;margin-top:2px}
-  .meif-block{margin:16px 0}
   .meif-home__ops{font-size:13px;margin:8px 0 0}
 </style>
 </head>
@@ -263,6 +299,7 @@
     </div>
 
     <div id="meif-carts-truth-banner" class="meif-carts-truth-banner v2-whisper" hidden aria-live="polite"></div>
+    <div id="meif-carts-focus-root" class="meif-carts-focus-root" hidden aria-live="polite"></div>
     <div id="ma-carts-unified-loading" class="ma-carts-unified-loading v2-whisper" hidden aria-live="polite" aria-busy="true">
       <p class="v2-whisper-text">يرجى الانتظار قليلاً.</p>
     </div>
@@ -1046,7 +1083,7 @@
 <script defer src="/static/merchant_product_language_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_vip_automation_ui.js"></script>
 <script defer src="/static/merchant_home_experience.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
-<script defer src="/static/merchant_experience_integration_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
+<script defer src="/static/merchant_experience_integration_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-msr1"></script>
 <script defer src="/static/merchant_dashboard_home_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_pulse_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_intelligence_carts_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
