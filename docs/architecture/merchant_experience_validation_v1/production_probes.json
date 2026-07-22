@@ -1,0 +1,859 @@
+{
+  "surface_composition": {
+    "ok": true,
+    "store_slug": "demo",
+    "foundation_enabled": true,
+    "flag_env": "CARTFLOW_SURFACE_COMPOSITION_V1",
+    "table_exists": true,
+    "alembic_version": null,
+    "migration_target": "h7i8j9k0l1m2",
+    "assembly_window": "d7",
+    "as_of": "2026-07-22 15:24:26",
+    "deterministic": true,
+    "canonical_fingerprint": "f0e694736f2b24942c8dccb4760dd6ac9c5820dd54e9633c43230424297580c6",
+    "surface_registry_version": "sreg_v1",
+    "surfaces": [
+      "carts",
+      "communication",
+      "decision_workspace",
+      "home",
+      "settings"
+    ],
+    "composition_counts": {
+      "carts": 3,
+      "communication": 1,
+      "decision_workspace": 4,
+      "home": 24,
+      "settings": 1
+    },
+    "information_classes": {
+      "operational_health": 3,
+      "empty_state": 2,
+      "critical_attention": 4,
+      "executive_summary": 4,
+      "knowledge": 20
+    },
+    "duplicate_groups": {
+      "empty:communication:no_operational_issues": 1,
+      "empty:settings:nothing_requiring_action": 1,
+      "guidance:14a31c87370a8fa60db9efe7020bd521:critical_attention": 1,
+      "guidance:14a31c87370a8fa60db9efe7020bd521:executive_summary": 1,
+      "guidance:14a31c87370a8fa60db9efe7020bd521:operational_health": 1,
+      "guidance:317de1a8b424908c14540dcfc7a77b54:critical_attention": 1,
+      "guidance:317de1a8b424908c14540dcfc7a77b54:executive_summary": 1,
+      "guidance:317de1a8b424908c14540dcfc7a77b54:operational_health": 1,
+      "guidance:3ac1339425f0de6df0b50a5b92592b1f:critical_attention": 1,
+      "guidance:3ac1339425f0de6df0b50a5b92592b1f:executive_summary": 1,
+      "guidance:d99270a3aefa11585ff35670c30ae304:critical_attention": 1,
+      "guidance:d99270a3aefa11585ff35670c30ae304:executive_summary": 1,
+      "guidance:d99270a3aefa11585ff35670c30ae304:operational_health": 1,
+      "knowledge:11eb409967d8782fa988ec7791aa549b": 1,
+      "knowledge:1f3d3125f9425d1ea70f54e8963dab8b": 1,
+      "knowledge:20b38c52365ee4df60b8f3d79abb214a": 1,
+      "knowledge:27c797082305483bbfe2fd799f758a1b": 1,
+      "knowledge:341a4cc974789ef92196e0fd9a2c60a4": 1,
+      "knowledge:3432e9666ff0cfe1bbf6f6a71c8e0916": 1,
+      "knowledge:3f155344157cd26617e90a374b30a8d7": 1,
+      "knowledge:473a4dc0e5031931c5c23d95043878f8": 1,
+      "knowledge:47e9b0450102846a9d362eeefb9717a5": 1,
+      "knowledge:536054c85be81f809421a0d12a6d34e4": 1,
+      "knowledge:635e60c01acad6419ca8664f4f1903b1": 1,
+      "knowledge:72f8fecee9f82fc7b932aa438da0f5b7": 1,
+      "knowledge:81bec69055a4f75ff0f17d65917b86f0": 1,
+      "knowledge:8e182c6a5dd3740d9ca88a30107dc7de": 1,
+      "knowledge:9174091b39af548599f4282cbf274c52": 1,
+      "knowledge:985ff0b7f4372fc46633a4f52b1f1e93": 1,
+      "knowledge:ad70b56b309cbecc48b8deccc0f32409": 1,
+      "knowledge:c1de51667b5385758e0a418daf5d3da5": 1,
+      "knowledge:f60a74218aec60adac2dc5c37edbba94": 1,
+      "knowledge:fe2c38ee540d21d30217dfcbc6d4e5ac": 1
+    },
+    "freshness": {
+      "fresh": 33
+    },
+    "visibility": {
+      "visible": 16,
+      "collapsed": 17
+    },
+    "priorities": [
+      {
+        "composition_id": "17021b0dd3e7b6ea230b8912cdb881b6",
+        "surface_id": "home",
+        "priority": 71,
+        "visibility": "visible"
+      },
+      {
+        "composition_id": "27c092b944b2bc8a97dab64b1de78b41",
+        "surface_id": "home",
+        "priority": 71,
+        "visibility": "visible"
+      },
+      {
+        "composition_id": "665b882245b3482babb52bcbc630f403",
+        "surface_id": "home",
+        "priority": 71,
+        "visibility": "visible"
+      },
+      {
+        "composition_id": "e6ec8a74cb5c84c59b77d92790bfdf5b",
+        "surface_id": "home",
+        "priority": 71,
+        "visibility": "visible"
+      },
+      {
+        "composition_id": "c1d0db9e9986e167d7e48a79631a37b8",
+        "surface_id": "carts",
+        "priority": 70,
+        "visibility": "visible"
+      },
+      {
+        "composition_id": "cae438e3c885589225d10067936ec378",
+        "surface_id": "carts",
+        "priority": 70,
+        "visibility": "visible"
+      },
+      {
+        "composition_id": "f15201e3f567a8fb8fba2baa648b950c",
+        "surface_id": "carts",
+        "priority": 70,
+        "visibility": "visible"
+      },
+      {
+        "composition_id": "06bfe8772bdc754e74f7d9f40e99d8e2",
+        "surface_id": "decision_workspace",
+        "priority": 63,
+        "visibility": "visible"
+      },
+      {
+        "composition_id": "0f7c2cf6369ad2303afea2300037c1b2",
+        "surface_id": "home",
+        "priority": 63,
+        "visibility": "visible"
+      },
+      {
+        "composition_id": "11f4aaf2a2d932301a328540fc80246a",
+        "surface_id": "home",
+        "priority": 63,
+        "visibility": "visible"
+      },
+      {
+        "composition_id": "1ab6d7ee1112236e2733e918df3f6851",
+        "surface_id": "home",
+        "priority": 63,
+        "visibility": "visible"
+      },
+      {
+        "composition_id": "1b5590c79d6a442b8203b6d7641fff1d",
+        "surface_id": "decision_workspace",
+        "priority": 63,
+        "visibility": "visible"
+      },
+      {
+        "composition_id": "26b763027ffe6ca990372e5fc2ad25cb",
+        "surface_id": "home",
+        "priority": 63,
+        "visibility": "collapsed"
+      },
+      {
+        "composition_id": "2d2971d12ffec6176edb9b731f69762d",
+        "surface_id": "home",
+        "priority": 63,
+        "visibility": "collapsed"
+      },
+      {
+        "composition_id": "30b3ea00538d177471f6a0ffc7f53bfa",
+        "surface_id": "home",
+        "priority": 63,
+        "visibility": "collapsed"
+      },
+      {
+        "composition_id": "3cc003bbf91224a23c348b1c0432fffe",
+        "surface_id": "home",
+        "priority": 63,
+        "visibility": "collapsed"
+      },
+      {
+        "composition_id": "8fb783089c87557a40afa12f844f0ae3",
+        "surface_id": "home",
+        "priority": 63,
+        "visibility": "collapsed"
+      },
+      {
+        "composition_id": "99490090ed3a5bd56ff1e60b9b7bd275",
+        "surface_id": "home",
+        "priority": 63,
+        "visibility": "collapsed"
+      },
+      {
+        "composition_id": "ac0e8eba7c307c09298d0099d5b6be73",
+        "surface_id": "home",
+        "priority": 63,
+        "visibility": "collapsed"
+      },
+      {
+        "composition_id": "adaf15c31892f3e5b5cd25eb6604ea0c",
+        "surface_id": "decision_workspace",
+        "priority": 63,
+        "visibility": "visible"
+      },
+      {
+        "composition_id": "b445a4733edd36e535e23666274205ab",
+        "surface_id": "home",
+        "priority": 63,
+        "visibility": "collapsed"
+      },
+      {
+        "composition_id": "bcb5758e69e467e9a5af33936142632e",
+        "surface_id": "home",
+        "priority": 63,
+        "visibility": "collapsed"
+      },
+      {
+        "composition_id": "c035dc9e68d0d9233f6d52080a922310",
+        "surface_id": "home",
+        "priority": 63,
+        "visibility": "collapsed"
+      },
+      {
+        "composition_id": "c2df05c530f647e17a5255f947b72547",
+        "surface_id": "home",
+        "priority": 63,
+        "visibility": "collapsed"
+      },
+      {
+        "composition_id": "c6178adce5108190fcd01dc1827bb8e2",
+        "surface_id": "home",
+        "priority": 63,
+        "visibility": "collapsed"
+      }
+    ],
+    "accounting": {
+      "composed": 16,
+      "collapsed": 17,
+      "suppressed": 0,
+      "expired": 0,
+      "deferred": 0,
+      "rejected": 0,
+      "failed": 0
+    },
+    "composition_count": 33,
+    "accounted_count": 33,
+    "expected_input_count": 33,
+    "duplicate_current": 0,
+    "materialized_row_count": 165,
+    "upserted": 33,
+    "superseded": 2,
+    "failures": [],
+    "sample_compositions": [
+      {
+        "composition_id": "17021b0dd3e7b6ea230b8912cdb881b6",
+        "surface_id": "home",
+        "information_class": "executive_summary",
+        "presentation_intent": "hero",
+        "priority": 71,
+        "freshness_state": "fresh",
+        "visibility": "visible",
+        "duplicate_group": "guidance:3ac1339425f0de6df0b50a5b92592b1f:executive_summary",
+        "owns_full_explanation": true,
+        "accounting_outcome": "composed",
+        "source_type": "merchant_presentation",
+        "source_id": "62e75321be5a99e30c792cc4f1e0d4fe"
+      },
+      {
+        "composition_id": "06bfe8772bdc754e74f7d9f40e99d8e2",
+        "surface_id": "decision_workspace",
+        "information_class": "critical_attention",
+        "presentation_intent": "priority_card",
+        "priority": 63,
+        "freshness_state": "fresh",
+        "visibility": "visible",
+        "duplicate_group": "guidance:d99270a3aefa11585ff35670c30ae304:critical_attention",
+        "owns_full_explanation": true,
+        "accounting_outcome": "composed",
+        "source_type": "merchant_presentation",
+        "source_id": "0c397e95ced3b28b11ad1b7b72b675b1"
+      },
+      {
+        "composition_id": "c1d0db9e9986e167d7e48a79631a37b8",
+        "surface_id": "carts",
+        "information_class": "operational_health",
+        "presentation_intent": "operational_state",
+        "priority": 70,
+        "freshness_state": "fresh",
+        "visibility": "visible",
+        "duplicate_group": "guidance:d99270a3aefa11585ff35670c30ae304:operational_health",
+        "owns_full_explanation": true,
+        "accounting_outcome": "composed",
+        "source_type": "merchant_presentation",
+        "source_id": "45b2511da814ff9d9629e2a96820b620"
+      }
+    ],
+    "errors": [],
+    "migration_satisfied": true,
+    "consumes_governed_inputs_only": true,
+    "no_raw_data_reads": true,
+    "no_page_ui": true,
+    "registries_valid": true,
+    "accounting_ok": true,
+    "non_demo_writes": false
+  },
+  "merchant_presentation": {
+    "ok": true,
+    "store_slug": "demo",
+    "foundation_enabled": true,
+    "flag_env": "CARTFLOW_MERCHANT_PRESENTATION_FOUNDATION_V1",
+    "table_exists": true,
+    "alembic_version": null,
+    "migration_target": "d3e4f5a6b7c8",
+    "assembly_window": "d7",
+    "as_of": "2026-07-22 15:24:28",
+    "deterministic": true,
+    "canonical_fingerprint": "6ff947df8b7fbb829f1cef14eadf2885fd9f0d0fb611d375307f38f8f9cf4d4c",
+    "presentation_registry_version": "mpres_v1",
+    "template_registry_version": "mtpl_v1",
+    "eligible_route_count": 11,
+    "expected_presentation_count": 11,
+    "ready_count": 11,
+    "monitoring_count": 0,
+    "insufficient_evidence_count": 0,
+    "deferred_count": 0,
+    "blocked_count": 0,
+    "expired_count": 0,
+    "failed_count": 0,
+    "unaccounted_count": 0,
+    "presentation_count": 11,
+    "materialized_row_count": 33,
+    "upserted": 11,
+    "superseded": 0,
+    "by_surface": {
+      "carts": {
+        "ready": 3
+      },
+      "decision_workspace": {
+        "ready": 4
+      },
+      "home": {
+        "ready": 4
+      }
+    },
+    "by_type": {
+      "operational_notice": 3,
+      "decision_prompt": 4,
+      "executive_summary": 4
+    },
+    "by_state": {
+      "ready": 11,
+      "monitoring": 0,
+      "insufficient_evidence": 0,
+      "deferred": 0,
+      "blocked": 0,
+      "expired": 0,
+      "failed": 0
+    },
+    "sample_presentations": [
+      {
+        "presentation_id": "f8636816fe776b8fb55f3e353e6125c5",
+        "route_id": "5a7fc74b14bf99606613df9fd6bd3d80",
+        "guidance_id": "0156678c3caa4aa5a0b661cd91bfcf35",
+        "surface_key": "home",
+        "presentation_type": "executive_summary",
+        "presentation_state": "ready",
+        "headline_text": "Cart activity needs a closer look",
+        "primary_statement_text": "Some products are being added to carts without enough completed purchases.",
+        "known_fact_items": [],
+        "unknown_fact_items": [],
+        "evidence_state": "sufficient_evidence",
+        "action_affordance": "navigate",
+        "template_key": "tpl_exec_investigate_v1",
+        "template_version": "mtpl_exec_investigate_v1",
+        "input_fingerprint": "aa4f80dce5851b60ecaca8bf4369161ff75e75f7bb458e9eebcefd67828c43fc",
+        "presentation_fingerprint": "cfb49b28ee7ff6716efcecd59b4fd56427f871c6f0e33ce06ef74289fd3edb62"
+      },
+      {
+        "presentation_id": "4d9cf8f04c5958678a435f605af26778",
+        "route_id": "01f680592bf562efd2c33ef5c8d71150",
+        "guidance_id": "0156678c3caa4aa5a0b661cd91bfcf35",
+        "surface_key": "decision_workspace",
+        "presentation_type": "decision_prompt",
+        "presentation_state": "ready",
+        "headline_text": "Review the conversion path",
+        "primary_statement_text": "Cart intent is visible, but purchase completion is not yet established in the available evidence.",
+        "known_fact_items": [
+          "Cart abandonments have newly appeared during the last 7 days.",
+          "Cart additions have newly appeared during the last 7 days."
+        ],
+        "unknown_fact_items": [
+          "The current evidence does not establish a commercial root cause (shipping, pricing, checkout friction, or product suitability)."
+        ],
+        "evidence_state": "sufficient_evidence",
+        "action_affordance": "review",
+        "template_key": "tpl_decision_investigate_v1",
+        "template_version": "mtpl_decision_investigate_v1",
+        "input_fingerprint": "487d0489d6320ca8f98688a04f5d0004ee724aa94bfaa43b529b09ba72e80ba5",
+        "presentation_fingerprint": "8cf2d3b20557dabab6a34e60562d28de3d87e68f810de991b1c14b2517aec327"
+      },
+      {
+        "presentation_id": "86c050a207f62822bff20c5491450472",
+        "route_id": "fb6fedf46254825e8b67a0c0e7f5e067",
+        "guidance_id": "2ed53dde462aa6cfc94e74a74898a955",
+        "surface_key": "carts",
+        "presentation_type": "operational_notice",
+        "presentation_state": "ready",
+        "headline_text": "Cart progression needs attention",
+        "primary_statement_text": "This product shows cart activity without enough completed purchases.",
+        "known_fact_items": [
+          "Cart additions have newly appeared during the last 7 days.",
+          "Evidence does not include cart_abandoned_count."
+        ],
+        "unknown_fact_items": [
+          "The current evidence does not establish a commercial root cause (shipping, pricing, checkout friction, or product suitability)."
+        ],
+        "evidence_state": "sufficient_evidence",
+        "action_affordance": "inspect",
+        "template_key": "tpl_ops_investigate_v1",
+        "template_version": "mtpl_ops_investigate_v1",
+        "input_fingerprint": "a2047b47681f49d6e4947ea615d11f162ffbdd92202916f171dca05724d080a5",
+        "presentation_fingerprint": "e884a88604eb08854e33784791838d5713be933e7045d69b80e41fe1c25b2643"
+      }
+    ],
+    "claim_boundary_ok": true,
+    "no_home_presentation_fields": true,
+    "errors": [],
+    "migration_satisfied": true,
+    "consumes_guidance_routing_only": true,
+    "accounting_ok": true
+  },
+  "guidance_routing": {
+    "ok": true,
+    "store_slug": "demo",
+    "foundation_enabled": true,
+    "flag_env": "CARTFLOW_GUIDANCE_ROUTING_FOUNDATION_V1",
+    "table_exists": true,
+    "alembic_version": null,
+    "migration_target": "c2d3e4f5a6b7",
+    "assembly_window": "d7",
+    "as_of": "2026-07-22 15:24:30",
+    "deterministic": true,
+    "canonical_fingerprint": "b81924ab3f53fbee058d90813d6ccbd09fa0820b0a8d1a52fb67e83a7015d514",
+    "surface_registry_version": "gsurf_v1",
+    "routing_registry_version": "grule_v1",
+    "active_surfaces": [
+      "carts",
+      "communication",
+      "decision_workspace",
+      "home",
+      "settings"
+    ],
+    "guidance_count": 4,
+    "expected_route_pairs": 20,
+    "eligible_route_count": 11,
+    "ineligible_route_count": 9,
+    "blocked_route_count": 0,
+    "deferred_route_count": 0,
+    "expired_route_count": 0,
+    "failed_route_count": 0,
+    "unaccounted_route_count": 0,
+    "route_count": 20,
+    "materialized_row_count": 60,
+    "upserted": 20,
+    "superseded": 0,
+    "by_surface": {
+      "carts": {
+        "eligible": 3,
+        "ineligible": 1
+      },
+      "communication": {
+        "ineligible": 4
+      },
+      "decision_workspace": {
+        "eligible": 4
+      },
+      "home": {
+        "eligible": 4
+      },
+      "settings": {
+        "ineligible": 4
+      }
+    },
+    "by_guidance_key": {
+      "investigate_conversion_path": {
+        "eligible": 11,
+        "ineligible": 9
+      }
+    },
+    "sample_routes": [
+      {
+        "route_id": "88311558654301ca4b93176732fee1d9",
+        "guidance_id": "4e4252a082461b04aad079c550da78a5",
+        "guidance_key": "investigate_conversion_path",
+        "surface_key": "home",
+        "route_scope": "summary",
+        "route_role": "awareness",
+        "route_status": "eligible",
+        "routing_rationale_code": "eligible:investigate_home_summary",
+        "subject_type": "product",
+        "input_fingerprint": "61801b4ae45db6b7cb9bb28c2eb8b3198accc224cae01b319de98ec268f57ae7",
+        "route_fingerprint": "3129dccf61172b5c688a81775eab1205d8945be7b98ca2a03eb48b8419ede4b9"
+      },
+      {
+        "route_id": "7468c71aa52328e74f109b971e530109",
+        "guidance_id": "4e4252a082461b04aad079c550da78a5",
+        "guidance_key": "investigate_conversion_path",
+        "surface_key": "decision_workspace",
+        "route_scope": "full_context",
+        "route_role": "investigation",
+        "route_status": "eligible",
+        "routing_rationale_code": "eligible:investigate_decision_full",
+        "subject_type": "product",
+        "input_fingerprint": "4f40d13c7a3a740e9c34e2ff448b13c4d91028e878f810c9a51b38949347c5fe",
+        "route_fingerprint": "422d7e2708dac579d73098e8eb27dc2fe943664b26184209887bb4de0044551f"
+      },
+      {
+        "route_id": "0599d57740c4313fb6a100133caa298f",
+        "guidance_id": "4e4252a082461b04aad079c550da78a5",
+        "guidance_key": "investigate_conversion_path",
+        "surface_key": "carts",
+        "route_scope": "operational",
+        "route_role": "operational_attention",
+        "route_status": "eligible",
+        "routing_rationale_code": "eligible:investigate_carts_operational",
+        "subject_type": "product",
+        "input_fingerprint": "d90e445af8ece42bb48545c9ec34009ab752cff5394b315b676acab13b1504c0",
+        "route_fingerprint": "42f5b6ec28db740945c20acf0b04f2149fead1c82303abd7919ddfd5c721f14a"
+      },
+      {
+        "route_id": "f1e98ec89b525b3a373a04fe23ac099d",
+        "guidance_id": "4e4252a082461b04aad079c550da78a5",
+        "guidance_key": "investigate_conversion_path",
+        "surface_key": "settings",
+        "route_scope": "internal_only",
+        "route_role": "suppressed",
+        "route_status": "ineligible",
+        "routing_rationale_code": "ineligible:surface_responsibility:settings",
+        "subject_type": "product",
+        "input_fingerprint": "826211ff977c00ba061a665c9fa89a5132c490ea7d437af4dc4f6623a254eea9",
+        "route_fingerprint": "2e1d7ccada86a95d1f79bfd23d7352ee232dff4539250072d3a5f7ce8275ac59"
+      },
+      {
+        "route_id": "5327c1b7a02f54f6e343582550661604",
+        "guidance_id": "4e4252a082461b04aad079c550da78a5",
+        "guidance_key": "investigate_conversion_path",
+        "surface_key": "communication",
+        "route_scope": "internal_only",
+        "route_role": "suppressed",
+        "route_status": "ineligible",
+        "routing_rationale_code": "ineligible:surface_responsibility:communication",
+        "subject_type": "product",
+        "input_fingerprint": "b79b1f666a637863ff88d208b260ff5fc0b68c2b7727f6b7ab8fb33bf166897b",
+        "route_fingerprint": "a1f38b15dc4142f3c797564759ae75a4ffd99573702a554b5dcff4f4065c3d13"
+      }
+    ],
+    "errors": [],
+    "migration_satisfied": true,
+    "alembic_stamped_exact": false,
+    "consumes_commercial_guidance_only": true,
+    "accounting_ok": true,
+    "no_home_presentation_fields": true
+  },
+  "commercial_guidance": {
+    "ok": true,
+    "store_slug": "demo",
+    "foundation_enabled": true,
+    "flag_env": "CARTFLOW_COMMERCIAL_GUIDANCE_V1",
+    "input_contract_version": "knowledge_statements_current_v1",
+    "intake_policy_version": "cguide_v1",
+    "guidance_version": "cguide_v1",
+    "generation_version": "cguide_v1_gen",
+    "table_exists": true,
+    "alembic_version": null,
+    "migration_target": "g6a7b8c9d0e1",
+    "assembly_window": "d7",
+    "as_of": "2026-07-22 15:24:32",
+    "deterministic": true,
+    "canonical_fingerprint": "c3306062359712239bd3cf6af17d06c02f655830ebb4a78949f29ba05f88c217",
+    "eligible_knowledge_count": 5,
+    "ineligible_knowledge_count": 0,
+    "guidance_created": 0,
+    "guidance_updated": 5,
+    "unchanged": 0,
+    "observe_only": 1,
+    "evidence_gap": 0,
+    "conflicting": 0,
+    "rejected": 0,
+    "abstained": 0,
+    "expired": 0,
+    "failed": 0,
+    "unaccounted": 0,
+    "claim_boundary_ok": true,
+    "lineage_ok": true,
+    "duplicate_current": false,
+    "confidence_reuse": true,
+    "non_demo_writes": 0,
+    "counts_by_knowledge_type": {
+      "product_interest_conversion_gap": 3,
+      "recovery_influence_classification": 1,
+      "traffic_conversion_gap": 1
+    },
+    "counts_by_guidance_key": {
+      "review_product_interest_conversion_gap": 3,
+      "preserve_recovery_influence_boundary": 1,
+      "investigate_conversion_bottlenecks": 1
+    },
+    "sample_records": [
+      {
+        "guidance_id": "f7aea11fde9408eb0277f55770e3f977",
+        "guidance_key": "review_product_interest_conversion_gap",
+        "knowledge_id": "25bdb7b867229570db82e15034cc3c3a",
+        "knowledge_type": "product_interest_conversion_gap",
+        "eligibility_status": "eligible",
+        "merchant_objective": "Review why this product attracts interest but completes fewer purchases.",
+        "confidence_level": "low",
+        "known_facts": [
+          "product=c|demo_pmf_probe",
+          "cart_interest_trend_observed",
+          "purchase_mappings=0"
+        ],
+        "unknown_facts": [
+          "why_purchase_completion_is_weak",
+          "whether_price_or_checkout_is_involved"
+        ],
+        "prohibited_claims": [
+          "root_cause_known",
+          "price_is_the_cause"
+        ],
+        "eligible_actions": [
+          "review_product_journey"
+        ],
+        "forbidden_actions": [
+          "lower_the_price",
+          "claim_price_is_the_cause"
+        ],
+        "source_lineage": {
+          "knowledge_id": "25bdb7b867229570db82e15034cc3c3a",
+          "knowledge_version": "ciknow_v1",
+          "source_type": "commerce_intelligence_synthesis",
+          "source_synthesis_id": "58bd274282bf75b6ef5a6d6df6a7e73f",
+          "source_rule_key": "product_interest_without_purchase",
+          "source_fingerprint": "c06546188a5ea78fabeff2bef33def30cb1f44e726b52eb6fd388d55efcd34ce"
+        }
+      },
+      {
+        "guidance_id": "3611f7aa9a55efad9a0891bb282a6d63",
+        "guidance_key": "review_product_interest_conversion_gap",
+        "knowledge_id": "d95d378222b70b0d27ba3b3670756d59",
+        "knowledge_type": "product_interest_conversion_gap",
+        "eligibility_status": "eligible",
+        "merchant_objective": "Review why this product attracts interest but completes fewer purchases.",
+        "confidence_level": "low",
+        "known_facts": [
+          "product=c|demo_psc_closure",
+          "cart_interest_trend_observed",
+          "purchase_mappings=0"
+        ],
+        "unknown_facts": [
+          "why_purchase_completion_is_weak",
+          "whether_price_or_checkout_is_involved"
+        ],
+        "prohibited_claims": [
+          "root_cause_known",
+          "price_is_the_cause"
+        ],
+        "eligible_actions": [
+          "review_product_journey"
+        ],
+        "forbidden_actions": [
+          "lower_the_price",
+          "claim_price_is_the_cause"
+        ],
+        "source_lineage": {
+          "knowledge_id": "d95d378222b70b0d27ba3b3670756d59",
+          "knowledge_version": "ciknow_v1",
+          "source_type": "commerce_intelligence_synthesis",
+          "source_synthesis_id": "a9dbaa08dfe631f9a21e3920bd5c4149",
+          "source_rule_key": "product_interest_without_purchase",
+          "source_fingerprint": "c6503a37f03f01808de8a0255254ccb08e8001c8a73ba536de16448e705a66fc"
+        }
+      },
+      {
+        "guidance_id": "bd9e9b249b70b7acaedcc2b2b3dc7285",
+        "guidance_key": "review_product_interest_conversion_gap",
+        "knowledge_id": "3f1cf0c4737de45b2ad9bb31b5c5ebeb",
+        "knowledge_type": "product_interest_conversion_gap",
+        "eligibility_status": "eligible",
+        "merchant_objective": "Review why this product attracts interest but completes fewer purchases.",
+        "confidence_level": "low",
+        "known_facts": [
+          "product=c|demo_psc_probe",
+          "cart_interest_trend_observed",
+          "purchase_mappings=0"
+        ],
+        "unknown_facts": [
+          "why_purchase_completion_is_weak",
+          "whether_price_or_checkout_is_involved"
+        ],
+        "prohibited_claims": [
+          "root_cause_known",
+          "price_is_the_cause"
+        ],
+        "eligible_actions": [
+          "review_product_journey"
+        ],
+        "forbidden_actions": [
+          "lower_the_price",
+          "claim_price_is_the_cause"
+        ],
+        "source_lineage": {
+          "knowledge_id": "3f1cf0c4737de45b2ad9bb31b5c5ebeb",
+          "knowledge_version": "ciknow_v1",
+          "source_type": "commerce_intelligence_synthesis",
+          "source_synthesis_id": "6d2faf18cd99ba8724b432927d59c4c9",
+          "source_rule_key": "product_interest_without_purchase",
+          "source_fingerprint": "b43cda7ede52ee06e6a765a0d3e433d27fb22eb6e795cac3b7fbcd7b9226e4c4"
+        }
+      },
+      {
+        "guidance_id": "a3fa9f55dcf881186f7f04560d60a8ad",
+        "guidance_key": "preserve_recovery_influence_boundary",
+        "knowledge_id": "d99350b6758a8d5ea795006995b94ed4",
+        "knowledge_type": "recovery_influence_classification",
+        "eligibility_status": "observe_only",
+        "merchant_objective": "Review recovery influence classifications without collapsing Confirmed Recovery, High Confidence, Possible Influence, or Unattributed Purchase.",
+        "confidence_level": "from_synthesis",
+        "known_facts": [
+          "purchase_confirmed_signals=4",
+          "influence_class_counts={\"confirmed_recovery\":0,\"high_confidence\":0,\"possible_influence\":0,\"unattributed_purchase\":0}",
+          "classifications_preserved_not_collapsed"
+        ],
+        "unknown_facts": [
+          "causal_recovery_effect"
+        ],
+        "prohibited_claims": [
+          "all_purchases_are_recovered_revenue",
+          "collapsed_influence_claim"
+        ],
+        "eligible_actions": [
+          "review_attribution_boundaries"
+        ],
+        "forbidden_actions": [
+          "collapse_influence_into_recovered_revenue",
+          "claim_roi_from_possible_influence"
+        ],
+        "source_lineage": {
+          "knowledge_id": "d99350b6758a8d5ea795006995b94ed4",
+          "knowledge_version": "ciknow_v1",
+          "source_type": "commerce_intelligence_synthesis",
+          "source_synthesis_id": "ef0e6927814c720e1ab1c4e9e7055a6f",
+          "source_rule_key": "recovery_influence_boundary",
+          "source_fingerprint": "574a24fdfe6788c9c1dce47c0880aeeb68557739c94f28a394739b9e59179c6b"
+        }
+      },
+      {
+        "guidance_id": "eb95f030c17008f250792ab192a1e0d6",
+        "guidance_key": "investigate_conversion_bottlenecks",
+        "knowledge_id": "b713a3c4107fafb325f674b18b663de0",
+        "knowledge_type": "traffic_conversion_gap",
+        "eligibility_status": "eligible",
+        "merchant_objective": "Investigate conversion bottlenecks.",
+        "confidence_level": "medium",
+        "known_facts": [
+          "engagement_trend_observations=3",
+          "purchase_mappings=0",
+          "store_activity_present_with_weak_purchase_completion"
+        ],
+        "unknown_facts": [
+          "root_cause_of_weak_conversion",
+          "specific_funnel_stage_fault"
+        ],
+        "prohibited_claims": [
+          "root_cause_known",
+          "traffic_is_insufficient"
+        ],
+        "eligible_actions": [
+          "investigate_conversion_path"
+        ],
+        "forbidden_actions": [
+          "increase_advertising",
+          "claim_traffic_quality_is_the_cause"
+        ],
+        "source_lineage": {
+          "knowledge_id": "b713a3c4107fafb325f674b18b663de0",
+          "knowledge_version": "ciknow_v1",
+          "source_type": "commerce_intelligence_synthesis",
+          "source_synthesis_id": "45a4ff23c60a73f8737bad1bdfd9ca9a",
+          "source_rule_key": "high_traffic_weak_conversion",
+          "source_fingerprint": "7565e4c2b9dc46bac056d9a1b261e1d7e10062bf887faa3c41f21a721f152e97"
+        }
+      }
+    ],
+    "registry_keys": [
+      "collect_additional_evidence",
+      "delay_until_evidence_clearer",
+      "investigate_conversion_bottlenecks",
+      "investigate_shipping_checkout_friction",
+      "no_guidance",
+      "preserve_recovery_influence_boundary",
+      "review_product_interest_conversion_gap",
+      "review_unresolved_hesitation",
+      "review_whatsapp_return_journey"
+    ],
+    "registry_valid": true,
+    "errors": [],
+    "migration_satisfied": true,
+    "consumes_knowledge_only": true,
+    "consumes_cis_direct": false,
+    "consumes_guidance_eligibility": false
+  },
+  "knowledge_foundation": {
+    "ok": true,
+    "store_slug": "demo",
+    "foundation_enabled": true,
+    "flag_env": "CARTFLOW_KNOWLEDGE_FOUNDATION_V1",
+    "table_exists": true,
+    "alembic_version": null,
+    "migration_target": "z9a0b1c2d3e4",
+    "assembly_window": "d7",
+    "as_of": "2026-07-22 15:24:33",
+    "deterministic": true,
+    "canonical_fingerprint": "bf3da05f8859b5565196b21ac2f2996e5bfce08e6057092ad7d95dafc6c4a6f7",
+    "statement_count": 20,
+    "materialized_row_count": 85,
+    "upserted": 20,
+    "sample_statements": [
+      {
+        "knowledge_type": "evidence_gap",
+        "statement": "Evidence does not include purchase_count.",
+        "confidence_level": "very_high",
+        "evidence_confidence_id": "a8b90a5581cc58113e513e4ebb60ebca"
+      },
+      {
+        "knowledge_type": "evidence_quality",
+        "statement": "Evidence quality is very_high.",
+        "confidence_level": "very_high",
+        "evidence_confidence_id": "a8b90a5581cc58113e513e4ebb60ebca"
+      },
+      {
+        "knowledge_type": "metric_trend_observation",
+        "statement": "Cart abandonments have newly appeared during the last 7 days.",
+        "confidence_level": "very_high",
+        "evidence_confidence_id": "a8b90a5581cc58113e513e4ebb60ebca"
+      },
+      {
+        "knowledge_type": "metric_trend_observation",
+        "statement": "Cart additions have newly appeared during the last 7 days.",
+        "confidence_level": "very_high",
+        "evidence_confidence_id": "a8b90a5581cc58113e513e4ebb60ebca"
+      },
+      {
+        "knowledge_type": "metric_trend_observation",
+        "statement": "Evidence-linked events have newly appeared during the last 7 days.",
+        "confidence_level": "very_high",
+        "evidence_confidence_id": "a8b90a5581cc58113e513e4ebb60ebca"
+      }
+    ],
+    "errors": [],
+    "migration_satisfied": true,
+    "alembic_stamped_exact": false,
+    "inputs_evidence_confidence_only": true,
+    "all_statements_reference_confidence": true
+  }
+}

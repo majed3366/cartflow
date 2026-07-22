@@ -1054,6 +1054,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/guidance-routing",
         "/dev/merchant-presentation",
         "/dev/surface-composition",
+        "/dev/merchant-experience",
         "/dev/commerce-intelligence-synthesis",
         "/dev/commerce-intelligence-knowledge",
         "/dev/data-growth-measurement",
@@ -12099,6 +12100,29 @@ def dev_surface_composition(
     return j(report, status)
 
 
+@app.get("/dev/merchant-experience")
+def dev_merchant_experience(
+    store: Optional[str] = None,
+    store_slug: Optional[str] = None,
+    assembly_window: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Merchant Experience Integration V1.
+
+    Bridge from Surface Composition + Knowledge + Operational State to pages.
+    Default allowlist Demo. No new intelligence.
+    """
+    from services.product_data.merchant_experience_integration_prod_probe_v1 import (  # noqa: PLC0415
+        build_merchant_experience_prod_probe_v1,
+    )
+
+    slug = (store or store_slug or "demo").strip() or "demo"
+    window = (assembly_window or "d7").strip() or "d7"
+    report = build_merchant_experience_prod_probe_v1(slug, assembly_window=window)
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
 @app.get("/dev/commerce-intelligence-synthesis")
 def dev_commerce_intelligence_synthesis(
     store: Optional[str] = None,
@@ -20022,6 +20046,14 @@ def _api_json_dashboard_summary(
                 if isinstance(brief_embed, Mapping):
                     out["merchant_daily_brief_v1"] = brief_embed
             stamp_summary_contract_fields(out)
+            try:
+                from services.product_data.merchant_experience_integration_foundation_v1 import (  # noqa: PLC0415
+                    attach_merchant_experience_to_summary_v1,
+                )
+
+                attach_merchant_experience_to_summary_v1(out, slug)
+            except Exception as meif_exc:  # noqa: BLE001
+                log.warning("summary merchant_experience_integration_v1: %s", meif_exc)
     except Exception as exc:  # noqa: BLE001
         log.warning("summary merchant_home_experience_v1: %s", exc)
         db.session.rollback()

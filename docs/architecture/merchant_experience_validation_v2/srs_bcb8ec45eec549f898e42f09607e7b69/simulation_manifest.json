@@ -1,0 +1,388 @@
+{
+  "simulation_run_id": "srs_bcb8ec45eec549f898e42f09607e7b69",
+  "seed": 20260722,
+  "scenario_ids": [
+    "S01_normal_store_baseline",
+    "S03_shipping_cost_hesitation",
+    "S04_product_high_atc_low_purchase",
+    "S05_wa_return_without_purchase",
+    "S06_wa_success",
+    "S09_widget_opened_ignored",
+    "S10_widget_reason_capture",
+    "S11_ignore_all_recovery",
+    "S12_multi_return_customer",
+    "S13_organic_purchase",
+    "S14_ambiguous_influence",
+    "S15_vip_customer",
+    "S16_insufficient_data"
+  ],
+  "scenario_versions": [
+    {
+      "scenario_id": "S01_normal_store_baseline",
+      "scenario_version": "v1",
+      "scenario_revision": 1,
+      "versioned_id": "S01_normal_store_baseline@v1.r1",
+      "planner_key": "baseline",
+      "phase3_eligible": true
+    },
+    {
+      "scenario_id": "S03_shipping_cost_hesitation",
+      "scenario_version": "v1",
+      "scenario_revision": 1,
+      "versioned_id": "S03_shipping_cost_hesitation@v1.r1",
+      "planner_key": "shipping_hesitation",
+      "phase3_eligible": true
+    },
+    {
+      "scenario_id": "S04_product_high_atc_low_purchase",
+      "scenario_version": "v1",
+      "scenario_revision": 1,
+      "versioned_id": "S04_product_high_atc_low_purchase@v1.r1",
+      "planner_key": "product_low_conv",
+      "phase3_eligible": true
+    },
+    {
+      "scenario_id": "S05_wa_return_without_purchase",
+      "scenario_version": "v1",
+      "scenario_revision": 1,
+      "versioned_id": "S05_wa_return_without_purchase@v1.r1",
+      "planner_key": "wa_return_no_purchase",
+      "phase3_eligible": true
+    },
+    {
+      "scenario_id": "S06_wa_success",
+      "scenario_version": "v1",
+      "scenario_revision": 1,
+      "versioned_id": "S06_wa_success@v1.r1",
+      "planner_key": "wa_success",
+      "phase3_eligible": true
+    },
+    {
+      "scenario_id": "S09_widget_opened_ignored",
+      "scenario_version": "v1",
+      "scenario_revision": 1,
+      "versioned_id": "S09_widget_opened_ignored@v1.r1",
+      "planner_key": "widget_ignore",
+      "phase3_eligible": true
+    },
+    {
+      "scenario_id": "S10_widget_reason_capture",
+      "scenario_version": "v1",
+      "scenario_revision": 1,
+      "versioned_id": "S10_widget_reason_capture@v1.r1",
+      "planner_key": "reason_mix",
+      "phase3_eligible": true
+    },
+    {
+      "scenario_id": "S11_ignore_all_recovery",
+      "scenario_version": "v1",
+      "scenario_revision": 1,
+      "versioned_id": "S11_ignore_all_recovery@v1.r1",
+      "planner_key": "ignore_all",
+      "phase3_eligible": true
+    },
+    {
+      "scenario_id": "S12_multi_return_customer",
+      "scenario_version": "v1",
+      "scenario_revision": 1,
+      "versioned_id": "S12_multi_return_customer@v1.r1",
+      "planner_key": "multi_return",
+      "phase3_eligible": true
+    },
+    {
+      "scenario_id": "S13_organic_purchase",
+      "scenario_version": "v1",
+      "scenario_revision": 1,
+      "versioned_id": "S13_organic_purchase@v1.r1",
+      "planner_key": "organic_purchase",
+      "phase3_eligible": true
+    },
+    {
+      "scenario_id": "S14_ambiguous_influence",
+      "scenario_version": "v1",
+      "scenario_revision": 1,
+      "versioned_id": "S14_ambiguous_influence@v1.r1",
+      "planner_key": "ambiguous_influence",
+      "phase3_eligible": true
+    },
+    {
+      "scenario_id": "S15_vip_customer",
+      "scenario_version": "v1",
+      "scenario_revision": 1,
+      "versioned_id": "S15_vip_customer@v1.r1",
+      "planner_key": "vip",
+      "phase3_eligible": true
+    },
+    {
+      "scenario_id": "S16_insufficient_data",
+      "scenario_version": "v1",
+      "scenario_revision": 1,
+      "versioned_id": "S16_insufficient_data@v1.r1",
+      "planner_key": "insufficient",
+      "phase3_eligible": true
+    }
+  ],
+  "commit_hash": "226eab1ade8b8ae8ecfa44ee6be3e27cbf5f7141",
+  "platform_version": "store_reality_simulator_v1_phase3",
+  "start_date": "2026-05-01",
+  "end_date": "2026-05-03",
+  "clock_mode": "SimulationClock",
+  "products": [
+    {
+      "key": "watch_band",
+      "id": "demo_watch_band",
+      "name": "Raven — حزام جلد للساعة",
+      "price": 85.0,
+      "category": "إكسسوارات",
+      "sku": "DEMO-WATCH-BAND"
+    },
+    {
+      "key": "perfume_velvet",
+      "id": "demo_perfume_velvet",
+      "name": "Velvet Musk — عطر يومي",
+      "price": 149.0,
+      "category": "عطور",
+      "sku": "DEMO-PERFUME-VELVET"
+    },
+    {
+      "key": "earbuds",
+      "id": "demo_earbuds",
+      "name": "TrueSound — سماعة لاسلكية",
+      "price": 199.0,
+      "category": "إلكترونيات",
+      "sku": "DEMO-EARBUDS"
+    },
+    {
+      "key": "charger",
+      "id": "demo_charger",
+      "name": "Nano 20W — رأس شحن سريع USB‑PD",
+      "price": 75.0,
+      "category": "إلكترونيات",
+      "sku": "DEMO-CHARGER"
+    }
+  ],
+  "customers": [
+    "srs_cust_f372a3774c46",
+    "srs_cust_812b09702e0f",
+    "srs_cust_3feb4b111193",
+    "srs_cust_2d1011de8410",
+    "srs_cust_4a2757d10333",
+    "srs_cust_e21e1269babe"
+  ],
+  "sessions": [
+    "srs_sess_c52b45e4aa65",
+    "srs_sess_4b6854141277",
+    "srs_sess_f10694fcb8cb",
+    "srs_sess_9a303773a5ce",
+    "srs_sess_16ad1d2bac58",
+    "srs_sess_43f30cbb8e22"
+  ],
+  "expected_events": {
+    "session_started": 6,
+    "page_viewed": 6,
+    "product_viewed": 6,
+    "cart_state_sync": 6,
+    "hesitation_reason_selected": 5,
+    "whatsapp_scheduled": 4,
+    "whatsapp_sent_mock": 4,
+    "dwell_time_recorded": 2,
+    "cart_abandoned": 5,
+    "phone_submitted": 4,
+    "returned_to_site": 4,
+    "passive_return": 2,
+    "scroll_depth_reached": 2,
+    "purchase_created": 2,
+    "widget_opened": 1,
+    "widget_ignored": 1
+  },
+  "expected_event_total": 60,
+  "configuration": {
+    "store_slug": "demo",
+    "scenario_ids": [
+      "S01_normal_store_baseline",
+      "S03_shipping_cost_hesitation",
+      "S04_product_high_atc_low_purchase",
+      "S05_wa_return_without_purchase",
+      "S06_wa_success",
+      "S09_widget_opened_ignored",
+      "S10_widget_reason_capture",
+      "S11_ignore_all_recovery",
+      "S12_multi_return_customer",
+      "S13_organic_purchase",
+      "S14_ambiguous_influence",
+      "S15_vip_customer",
+      "S16_insufficient_data"
+    ],
+    "seed": 20260722,
+    "start_date": "2026-05-01",
+    "duration_days": 3,
+    "scale": 1.0,
+    "mode": "execute",
+    "batch_size": 25,
+    "max_events_per_job": 500,
+    "metadata": {
+      "lab": "merchant_experience_validation_v2",
+      "lab_profile": "merchant_experience_validation_v2"
+    }
+  },
+  "execution_time_ms": 74742.91240001912,
+  "reality_score": {
+    "overall": 72.2,
+    "dimensions": {
+      "customer_diversity": 80.0,
+      "traffic_realism": 80.0,
+      "purchase_realism": 64.0,
+      "product_realism": 72.0,
+      "recovery_realism": 90.0,
+      "knowledge_realism": 76.0,
+      "timeline_realism": 50.0,
+      "session_realism": 55.0,
+      "behaviour_realism": 85.0,
+      "execution_fidelity": 70.0
+    },
+    "internal_only": true,
+    "merchant_facing": false,
+    "sample": {
+      "events": 60,
+      "customers": 6,
+      "sessions": 6,
+      "products": 4
+    }
+  },
+  "warnings": [],
+  "known_limitations": [
+    "Storefront chrome events (page/scroll/dwell/widget_open) are unsupported markers",
+    "WhatsApp uses simulation-safe mock path only — no real provider calls",
+    "Visitor traffic metrics may be unavailable to Knowledge Layer",
+    "Ingress uses service-boundary writers under SimulationClock (not merchant request path)"
+  ],
+  "generated_at": "2026-07-22T16:10:02.122415+00:00",
+  "replay": {
+    "seed": 20260722,
+    "scenario_ids": [
+      "S01_normal_store_baseline",
+      "S03_shipping_cost_hesitation",
+      "S04_product_high_atc_low_purchase",
+      "S05_wa_return_without_purchase",
+      "S06_wa_success",
+      "S09_widget_opened_ignored",
+      "S10_widget_reason_capture",
+      "S11_ignore_all_recovery",
+      "S12_multi_return_customer",
+      "S13_organic_purchase",
+      "S14_ambiguous_influence",
+      "S15_vip_customer",
+      "S16_insufficient_data"
+    ],
+    "scenario_versions": [
+      {
+        "scenario_id": "S01_normal_store_baseline",
+        "scenario_version": "v1",
+        "scenario_revision": 1,
+        "versioned_id": "S01_normal_store_baseline@v1.r1",
+        "planner_key": "baseline",
+        "phase3_eligible": true
+      },
+      {
+        "scenario_id": "S03_shipping_cost_hesitation",
+        "scenario_version": "v1",
+        "scenario_revision": 1,
+        "versioned_id": "S03_shipping_cost_hesitation@v1.r1",
+        "planner_key": "shipping_hesitation",
+        "phase3_eligible": true
+      },
+      {
+        "scenario_id": "S04_product_high_atc_low_purchase",
+        "scenario_version": "v1",
+        "scenario_revision": 1,
+        "versioned_id": "S04_product_high_atc_low_purchase@v1.r1",
+        "planner_key": "product_low_conv",
+        "phase3_eligible": true
+      },
+      {
+        "scenario_id": "S05_wa_return_without_purchase",
+        "scenario_version": "v1",
+        "scenario_revision": 1,
+        "versioned_id": "S05_wa_return_without_purchase@v1.r1",
+        "planner_key": "wa_return_no_purchase",
+        "phase3_eligible": true
+      },
+      {
+        "scenario_id": "S06_wa_success",
+        "scenario_version": "v1",
+        "scenario_revision": 1,
+        "versioned_id": "S06_wa_success@v1.r1",
+        "planner_key": "wa_success",
+        "phase3_eligible": true
+      },
+      {
+        "scenario_id": "S09_widget_opened_ignored",
+        "scenario_version": "v1",
+        "scenario_revision": 1,
+        "versioned_id": "S09_widget_opened_ignored@v1.r1",
+        "planner_key": "widget_ignore",
+        "phase3_eligible": true
+      },
+      {
+        "scenario_id": "S10_widget_reason_capture",
+        "scenario_version": "v1",
+        "scenario_revision": 1,
+        "versioned_id": "S10_widget_reason_capture@v1.r1",
+        "planner_key": "reason_mix",
+        "phase3_eligible": true
+      },
+      {
+        "scenario_id": "S11_ignore_all_recovery",
+        "scenario_version": "v1",
+        "scenario_revision": 1,
+        "versioned_id": "S11_ignore_all_recovery@v1.r1",
+        "planner_key": "ignore_all",
+        "phase3_eligible": true
+      },
+      {
+        "scenario_id": "S12_multi_return_customer",
+        "scenario_version": "v1",
+        "scenario_revision": 1,
+        "versioned_id": "S12_multi_return_customer@v1.r1",
+        "planner_key": "multi_return",
+        "phase3_eligible": true
+      },
+      {
+        "scenario_id": "S13_organic_purchase",
+        "scenario_version": "v1",
+        "scenario_revision": 1,
+        "versioned_id": "S13_organic_purchase@v1.r1",
+        "planner_key": "organic_purchase",
+        "phase3_eligible": true
+      },
+      {
+        "scenario_id": "S14_ambiguous_influence",
+        "scenario_version": "v1",
+        "scenario_revision": 1,
+        "versioned_id": "S14_ambiguous_influence@v1.r1",
+        "planner_key": "ambiguous_influence",
+        "phase3_eligible": true
+      },
+      {
+        "scenario_id": "S15_vip_customer",
+        "scenario_version": "v1",
+        "scenario_revision": 1,
+        "versioned_id": "S15_vip_customer@v1.r1",
+        "planner_key": "vip",
+        "phase3_eligible": true
+      },
+      {
+        "scenario_id": "S16_insufficient_data",
+        "scenario_version": "v1",
+        "scenario_revision": 1,
+        "versioned_id": "S16_insufficient_data@v1.r1",
+        "planner_key": "insufficient",
+        "phase3_eligible": true
+      }
+    ],
+    "start_date": "2026-05-01",
+    "duration_days": 3,
+    "scale_profile": "small",
+    "commit_hash": "226eab1ade8b8ae8ecfa44ee6be3e27cbf5f7141"
+  }
+}

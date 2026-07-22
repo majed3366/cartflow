@@ -7,6 +7,7 @@
 <title>{{ merchant_html_title | default("CartFlow — لوحة التاجر") }}</title>
 <script>window.CARTFLOW_STORE_SLUG = "{{ merchant_store_slug | default('demo') }}";</script>
 <script>window.CARTFLOW_CART_WORKSPACE_V1 = {{ 'true' if merchant_cart_workspace_v1 else 'false' }};</script>
+<script>window.CARTFLOW_MERCHANT_EXPERIENCE_INTEGRATION_V1 = {{ 'true' if merchant_experience_integration_v1 else 'false' }};</script>
 <link rel="stylesheet" href="/static/merchant_app.css">
 <link rel="stylesheet" href="/static/merchant_pe_v2.css?v={{ merchant_setup_render_build | default('unknown') }}">
 <link rel="stylesheet" href="/static/merchant_product_polish_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
@@ -218,6 +219,7 @@
 
   {% if merchant_cart_workspace_v1 %}
   <div class="page" id="page-workspace" data-ma-workspace="1" data-cw-console="1"{% if merchant_cart_workspace_silent_success %} data-cw-silent-success="1"{% endif %}>
+    <div id="meif-decision-root" class="meif-decision-root" aria-live="polite"></div>
     <div class="cw-workspace-shell">
       <span id="cw-merchant-status" hidden aria-live="polite"></span>
       <div id="cw-merchant-host" aria-live="polite"></div>
@@ -247,6 +249,7 @@
       </div>
     </div>
 
+    <div id="meif-carts-truth-banner" class="meif-carts-truth-banner v2-whisper" hidden aria-live="polite"></div>
     <div id="ma-carts-unified-loading" class="ma-carts-unified-loading v2-whisper" hidden aria-live="polite" aria-busy="true">
       <p class="v2-whisper-text">يرجى الانتظار قليلاً.</p>
     </div>
@@ -459,6 +462,12 @@
       </div>
     </div>
     <div class="ma-vip-footnote">⚠️ عند توفر رقم العميل يمكنك المتابعة عبر واتساب — لا يُرسل النظام رسائل تلقائية لسلال VIP</div>
+  </div>
+
+  <div class="page" id="page-communication">
+    <div class="card" id="meif-communication-root">
+      <div class="ma-dash-skel" style="padding:40px 20px;text-align:center;color:var(--muted);">…</div>
+    </div>
   </div>
 
   <div class="page" id="page-messages">
@@ -1024,6 +1033,7 @@
 <script defer src="/static/merchant_product_language_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_vip_automation_ui.js"></script>
 <script defer src="/static/merchant_home_experience.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
+<script defer src="/static/merchant_experience_integration_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_dashboard_home_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_pulse_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_intelligence_carts_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
