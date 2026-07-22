@@ -1,0 +1,210 @@
+# -*- coding: utf-8 -*-
+"""Surface Composition Foundation V1 — catalog constants."""
+from __future__ import annotations
+
+COMPOSITION_VERSION_V1 = "scf_v1"
+GENERATION_VERSION_V1 = "scf_v1_gen"
+SURFACE_REGISTRY_VERSION_V1 = "sreg_v1"
+SOURCE_CONTRACT_VERSION_V1 = "mpf_v1"
+KNOWLEDGE_SOURCE_CONTRACT_VERSION_V1 = "kf_v1"
+
+# Canonical surfaces (V1) — no additional merchant pages.
+SURFACE_HOME = "home"
+SURFACE_DECISION = "decision_workspace"
+SURFACE_CARTS = "carts"
+SURFACE_COMMUNICATION = "communication"
+SURFACE_SETTINGS = "settings"
+
+SURFACES_V1 = frozenset(
+    {
+        SURFACE_HOME,
+        SURFACE_DECISION,
+        SURFACE_CARTS,
+        SURFACE_COMMUNICATION,
+        SURFACE_SETTINGS,
+    }
+)
+
+# Information classes — pages consume classes, not business rules.
+CLASS_EXECUTIVE_SUMMARY = "executive_summary"
+CLASS_CRITICAL_ATTENTION = "critical_attention"
+CLASS_COMMERCIAL_GUIDANCE = "commercial_guidance"
+CLASS_KNOWLEDGE = "knowledge"
+CLASS_OPERATIONAL_HEALTH = "operational_health"
+CLASS_RECOVERY_HEALTH = "recovery_health"
+CLASS_EVIDENCE_GAP = "evidence_gap"
+CLASS_TREND = "trend"
+CLASS_OBSERVATION = "observation"
+CLASS_TIMELINE = "timeline"
+CLASS_ACTION_QUEUE = "action_queue"
+CLASS_CONFIGURATION = "configuration"
+CLASS_EMPTY_STATE = "empty_state"
+
+INFORMATION_CLASSES_V1 = frozenset(
+    {
+        CLASS_EXECUTIVE_SUMMARY,
+        CLASS_CRITICAL_ATTENTION,
+        CLASS_COMMERCIAL_GUIDANCE,
+        CLASS_KNOWLEDGE,
+        CLASS_OPERATIONAL_HEALTH,
+        CLASS_RECOVERY_HEALTH,
+        CLASS_EVIDENCE_GAP,
+        CLASS_TREND,
+        CLASS_OBSERVATION,
+        CLASS_TIMELINE,
+        CLASS_ACTION_QUEUE,
+        CLASS_CONFIGURATION,
+        CLASS_EMPTY_STATE,
+    }
+)
+
+# Presentation intent — semantic only (no pixels / CSS).
+INTENT_HERO = "hero"
+INTENT_HEADLINE = "headline"
+INTENT_PRIORITY_CARD = "priority_card"
+INTENT_INSIGHT_CARD = "insight_card"
+INTENT_SUMMARY_CARD = "summary_card"
+INTENT_OPERATIONAL_STATE = "operational_state"
+INTENT_EVIDENCE_NOTICE = "evidence_notice"
+INTENT_WARNING = "warning"
+INTENT_INFORMATION = "information"
+INTENT_CONFIGURATION = "configuration"
+INTENT_TIMELINE = "timeline"
+INTENT_REFERENCE = "reference"
+
+PRESENTATION_INTENTS_V1 = frozenset(
+    {
+        INTENT_HERO,
+        INTENT_HEADLINE,
+        INTENT_PRIORITY_CARD,
+        INTENT_INSIGHT_CARD,
+        INTENT_SUMMARY_CARD,
+        INTENT_OPERATIONAL_STATE,
+        INTENT_EVIDENCE_NOTICE,
+        INTENT_WARNING,
+        INTENT_INFORMATION,
+        INTENT_CONFIGURATION,
+        INTENT_TIMELINE,
+        INTENT_REFERENCE,
+    }
+)
+
+FRESH_FRESH = "fresh"
+FRESH_AGING = "aging"
+FRESH_STALE = "stale"
+FRESH_EXPIRED = "expired"
+
+FRESHNESS_STATES_V1 = frozenset(
+    {FRESH_FRESH, FRESH_AGING, FRESH_STALE, FRESH_EXPIRED}
+)
+
+VIS_VISIBLE = "visible"
+VIS_COLLAPSED = "collapsed"
+VIS_HIDDEN = "hidden"
+VIS_SUPPRESSED = "suppressed"
+VIS_EXPIRED = "expired"
+
+VISIBILITY_STATES_V1 = frozenset(
+    {VIS_VISIBLE, VIS_COLLAPSED, VIS_HIDDEN, VIS_SUPPRESSED, VIS_EXPIRED}
+)
+
+# Full accounting — no silent loss.
+ACCT_COMPOSED = "composed"
+ACCT_COLLAPSED = "collapsed"
+ACCT_SUPPRESSED = "suppressed"
+ACCT_EXPIRED = "expired"
+ACCT_DEFERRED = "deferred"
+ACCT_REJECTED = "rejected"
+ACCT_FAILED = "failed"
+
+ACCOUNTING_OUTCOMES_V1 = frozenset(
+    {
+        ACCT_COMPOSED,
+        ACCT_COLLAPSED,
+        ACCT_SUPPRESSED,
+        ACCT_EXPIRED,
+        ACCT_DEFERRED,
+        ACCT_REJECTED,
+        ACCT_FAILED,
+    }
+)
+
+LIFECYCLE_CREATE = "create"
+LIFECYCLE_UPDATE = "update"
+LIFECYCLE_UNCHANGED = "unchanged"
+LIFECYCLE_SUPERSEDE = "supersede"
+LIFECYCLE_EXPIRE = "expire"
+LIFECYCLE_SUPPRESS = "suppress"
+
+SOURCE_MERCHANT_PRESENTATION = "merchant_presentation"
+SOURCE_KNOWLEDGE = "knowledge"
+SOURCE_EMPTY_STATE = "empty_state"
+
+__all__ = [
+    "COMPOSITION_VERSION_V1",
+    "GENERATION_VERSION_V1",
+    "SURFACE_REGISTRY_VERSION_V1",
+    "SOURCE_CONTRACT_VERSION_V1",
+    "KNOWLEDGE_SOURCE_CONTRACT_VERSION_V1",
+    "SURFACE_HOME",
+    "SURFACE_DECISION",
+    "SURFACE_CARTS",
+    "SURFACE_COMMUNICATION",
+    "SURFACE_SETTINGS",
+    "SURFACES_V1",
+    "CLASS_EXECUTIVE_SUMMARY",
+    "CLASS_CRITICAL_ATTENTION",
+    "CLASS_COMMERCIAL_GUIDANCE",
+    "CLASS_KNOWLEDGE",
+    "CLASS_OPERATIONAL_HEALTH",
+    "CLASS_RECOVERY_HEALTH",
+    "CLASS_EVIDENCE_GAP",
+    "CLASS_TREND",
+    "CLASS_OBSERVATION",
+    "CLASS_TIMELINE",
+    "CLASS_ACTION_QUEUE",
+    "CLASS_CONFIGURATION",
+    "CLASS_EMPTY_STATE",
+    "INFORMATION_CLASSES_V1",
+    "INTENT_HERO",
+    "INTENT_HEADLINE",
+    "INTENT_PRIORITY_CARD",
+    "INTENT_INSIGHT_CARD",
+    "INTENT_SUMMARY_CARD",
+    "INTENT_OPERATIONAL_STATE",
+    "INTENT_EVIDENCE_NOTICE",
+    "INTENT_WARNING",
+    "INTENT_INFORMATION",
+    "INTENT_CONFIGURATION",
+    "INTENT_TIMELINE",
+    "INTENT_REFERENCE",
+    "PRESENTATION_INTENTS_V1",
+    "FRESH_FRESH",
+    "FRESH_AGING",
+    "FRESH_STALE",
+    "FRESH_EXPIRED",
+    "FRESHNESS_STATES_V1",
+    "VIS_VISIBLE",
+    "VIS_COLLAPSED",
+    "VIS_HIDDEN",
+    "VIS_SUPPRESSED",
+    "VIS_EXPIRED",
+    "VISIBILITY_STATES_V1",
+    "ACCT_COMPOSED",
+    "ACCT_COLLAPSED",
+    "ACCT_SUPPRESSED",
+    "ACCT_EXPIRED",
+    "ACCT_DEFERRED",
+    "ACCT_REJECTED",
+    "ACCT_FAILED",
+    "ACCOUNTING_OUTCOMES_V1",
+    "LIFECYCLE_CREATE",
+    "LIFECYCLE_UPDATE",
+    "LIFECYCLE_UNCHANGED",
+    "LIFECYCLE_SUPERSEDE",
+    "LIFECYCLE_EXPIRE",
+    "LIFECYCLE_SUPPRESS",
+    "SOURCE_MERCHANT_PRESENTATION",
+    "SOURCE_KNOWLEDGE",
+    "SOURCE_EMPTY_STATE",
+]
