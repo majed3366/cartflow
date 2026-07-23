@@ -37,6 +37,36 @@ def product_data_try_line_snapshots(
         )
 
         product_signal_try_from_cart_payload(payload, event_hint=ev)
+        try:
+            from services.evidence_truth.observation_shadow_dual_write_v1 import (  # noqa: PLC0415
+                maybe_shadow_product_signal_observation_v1,
+            )
+
+            _prod_payload = dict(payload) if isinstance(payload, dict) else {}
+            if ev and "event" not in _prod_payload:
+                _prod_payload["event"] = ev
+            _prod_payload.setdefault("capture_source", ev or "")
+            obs_shadow = maybe_shadow_product_signal_observation_v1(
+                _prod_payload, source=f"product_line_snapshots:{ev or 'unknown'}"
+            )
+        except Exception:  # noqa: BLE001
+            obs_shadow = None
+            _prod_payload = dict(payload) if isinstance(payload, dict) else {}
+        try:
+            from services.evidence_truth.evidence_dual_write_v1 import (  # noqa: PLC0415
+                maybe_publish_product_evidence_v1,
+            )
+
+            oid = ""
+            if isinstance(obs_shadow, dict):
+                oid = str(obs_shadow.get("observation_id") or "")
+            maybe_publish_product_evidence_v1(
+                _prod_payload,
+                source=f"product_line_snapshots:{ev or 'unknown'}",
+                observation_id=oid,
+            )
+        except Exception:  # noqa: BLE001
+            pass
     except Exception:  # noqa: BLE001
         pass
 

@@ -287,6 +287,9 @@ from routes.product_excellence_preview_v1 import (  # noqa: E402
 from routes.product_excellence_preview_v2 import (  # noqa: E402
     router as product_excellence_preview_v2_router,
 )
+from routes.executive_knowledge_preview_v1 import (  # noqa: E402
+    router as executive_knowledge_preview_router,
+)
 from routes.dev_diagnostics import router as dev_diagnostics_router  # noqa: E402
 from routes.cart_workspace_v1 import router as cart_workspace_v1_router  # noqa: E402
 from routes.whatsapp_delivery_webhook import (  # noqa: E402
@@ -301,6 +304,7 @@ app.include_router(public_router)
 app.include_router(merchant_pages_router)
 app.include_router(product_excellence_preview_router)
 app.include_router(product_excellence_preview_v2_router)
+app.include_router(executive_knowledge_preview_router)
 app.include_router(dev_diagnostics_router)
 app.include_router(cart_workspace_v1_router)
 app.include_router(whatsapp_delivery_webhook_router)
@@ -11425,6 +11429,29 @@ async def api_cart_event(request: Request, background_tasks: BackgroundTasks):
         except Exception:  # noqa: BLE001
             pass
         try:
+            from services.evidence_truth.observation_shadow_dual_write_v1 import (  # noqa: PLC0415
+                maybe_shadow_cart_event_observation_v1,
+            )
+
+            obs_shadow = maybe_shadow_cart_event_observation_v1(
+                payload, source="cart_event"
+            )
+        except Exception:  # noqa: BLE001
+            obs_shadow = None
+        try:
+            from services.evidence_truth.evidence_dual_write_v1 import (  # noqa: PLC0415
+                maybe_publish_cart_evidence_v1,
+            )
+
+            oid = ""
+            if isinstance(obs_shadow, dict):
+                oid = str(obs_shadow.get("observation_id") or "")
+            maybe_publish_cart_evidence_v1(
+                payload, source="cart_event", observation_id=oid
+            )
+        except Exception:  # noqa: BLE001
+            pass
+        try:
             print(
                 "[CART-EVENT] start "
                 f"event={op_ctx.get('event')} "
@@ -11694,6 +11721,14 @@ async def api_conversion(request: Request) -> Any:
         )
 
         maybe_log_journey_identity_shadow(truth_payload, source="conversion_api")
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from services.evidence_truth.observation_shadow_dual_write_v1 import (  # noqa: PLC0415
+            maybe_shadow_purchase_observation_v1,
+        )
+
+        maybe_shadow_purchase_observation_v1(truth_payload, source="conversion_api")
     except Exception:  # noqa: BLE001
         pass
     from services.purchase_truth import ingest_purchase_truth_payload

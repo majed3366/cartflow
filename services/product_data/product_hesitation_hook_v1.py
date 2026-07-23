@@ -50,6 +50,36 @@ def product_data_try_hesitation_mapping(
             cart_id=cart_id,
             recovery_key=recovery_key,
         )
+        try:
+            from services.evidence_truth.observation_shadow_dual_write_v1 import (  # noqa: PLC0415
+                maybe_shadow_behaviour_observation_v1,
+            )
+            from services.evidence_truth.evidence_dual_write_v1 import (  # noqa: PLC0415
+                maybe_publish_behaviour_evidence_v1,
+            )
+
+            _beh_payload = {
+                "store_slug": store_slug,
+                "session_id": session_id,
+                "cart_id": cart_id or "",
+                "recovery_key": recovery_key or "",
+                "reason": str(reason),
+                "sub_reason": (str(sub_reason) if sub_reason else ""),
+                "event": "hesitation_reason_selected",
+            }
+            obs_shadow = maybe_shadow_behaviour_observation_v1(
+                _beh_payload, source="product_hesitation_hook"
+            )
+            oid = ""
+            if isinstance(obs_shadow, dict):
+                oid = str(obs_shadow.get("observation_id") or "")
+            maybe_publish_behaviour_evidence_v1(
+                _beh_payload,
+                source="product_hesitation_hook",
+                observation_id=oid,
+            )
+        except Exception:  # noqa: BLE001
+            pass
     except Exception as exc:  # noqa: BLE001
         log.debug("hesitation mapping hook skipped: %s", exc)
 
