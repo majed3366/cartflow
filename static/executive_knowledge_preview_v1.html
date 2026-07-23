@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Executive Knowledge Preview — Validation Only</title>
+  <style>
+    :root {
+      --bg: #f3f0e8;
+      --ink: #1c1b19;
+      --muted: #5c574e;
+      --line: #cfc7b6;
+      --panel: #fffdf8;
+      --accent: #0f4c3a;
+      --warn: #8a4b12;
+      --bad: #7a1f1f;
+      --ok: #1f5c3a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 500px at 10% -10%, #e7efe8 0%, transparent 55%),
+        linear-gradient(180deg, #efe9dc 0%, var(--bg) 40%, #ebe4d6 100%);
+      min-height: 100vh;
+    }
+    header {
+      padding: 1.25rem 1.5rem 1rem;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,253,248,0.92);
+    }
+    .badge {
+      display: inline-block;
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: #fff;
+      background: var(--warn);
+      padding: 0.25rem 0.55rem;
+      margin-bottom: 0.55rem;
+    }
+    h1 {
+      margin: 0 0 0.35rem;
+      font-size: 1.45rem;
+      font-weight: 700;
+    }
+    .sub {
+      margin: 0;
+      color: var(--muted);
+      max-width: 52rem;
+      line-height: 1.45;
+      font-size: 0.95rem;
+    }
+    main {
+      padding: 1.25rem 1.5rem 3rem;
+      max-width: 1100px;
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: end;
+      margin-bottom: 1.25rem;
+    }
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    input, button, select {
+      font: inherit;
+      padding: 0.45rem 0.65rem;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+    }
+    button {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      padding: 1rem 1.1rem;
+      margin-bottom: 1rem;
+    }
+    .panel h2 {
+      margin: 0 0 0.65rem;
+      font-size: 1.05rem;
+    }
+    .meta {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+    }
+    .empty {
+      border-left: 4px solid var(--warn);
+      padding: 0.75rem 0.9rem;
+      background: #fff8ef;
+      color: var(--warn);
+      font-weight: 600;
+    }
+    .disabled {
+      border-left: 4px solid var(--bad);
+      padding: 0.75rem 0.9rem;
+      background: #fff1f1;
+      color: var(--bad);
+      font-weight: 600;
+    }
+    .item {
+      border-top: 1px solid var(--line);
+      padding: 0.75rem 0;
+    }
+    .item:first-of-type { border-top: 0; }
+    .pill {
+      display: inline-block;
+      font-size: 0.72rem;
+      padding: 0.15rem 0.45rem;
+      border: 1px solid var(--line);
+      margin-right: 0.35rem;
+      color: var(--muted);
+    }
+    .pill.stable { color: var(--ok); border-color: #9cc5ad; }
+    .pill.insufficient, .pill.immature { color: var(--warn); border-color: #e0c29a; }
+    ul { margin: 0.35rem 0 0; padding-left: 1.2rem; }
+    code { font-size: 0.85em; }
+    footer {
+      margin-top: 1.5rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="badge">Validation surface — not Home — not production</div>
+    <h1>Executive Knowledge Preview</h1>
+    <p class="sub">
+      Temporary Architecture Review surface for WP-ET-10 Shadow Knowledge only.
+      No Findings. No Guidance. No recommendations. No fabricated insights.
+      If Knowledge has nothing to say, that absence is shown honestly.
+    </p>
+  </header>
+  <main>
+    <div class="toolbar">
+      <label>
+        Store slug filter (optional)
+        <input id="storeSlug" type="text" placeholder="e.g. demo" autocomplete="off" />
+      </label>
+      <button type="button" id="reloadBtn">Load preview</button>
+    </div>
+    <div id="status" class="panel meta">Loading…</div>
+    <div id="root"></div>
+    <footer>
+      Flag: <code>CARTFLOW_EXECUTIVE_KNOWLEDGE_PREVIEW</code> (default OFF) ·
+      Input authority: Shadow Knowledge only · Read only · WP-ET-10.5
+    </footer>
+  </main>
+  <script>
+    function pill(maturity) {
+      const m = String(maturity || "immature");
+      return '<span class="pill ' + m + '">' + m + "</span>";
+    }
+
+    function renderSections(data) {
+      const sections = data.sections || {};
+      const order = [
+        "what_cartflow_currently_knows",
+        "stable_patterns",
+        "immature_patterns",
+        "insufficient_evidence",
+        "what_changed_recently",
+      ];
+      let html = "";
+      for (const key of order) {
+        const sec = sections[key];
+        if (!sec) continue;
+        html += '<section class="panel"><h2>' + (sec.title || key) + "</h2>";
+        if (sec.note) html += '<div class="meta">' + sec.note + "</div>";
+        const items = sec.items || [];
+        if (!items.length) {
+          html += '<div class="meta">No Knowledge items in this section.</div>';
+        } else if (key === "what_cartflow_currently_knows") {
+          for (const it of items) {
+            html += '<div class="item">';
+            html += pill(it.readiness) + " <strong>" + (it.store_slug || "") + "</strong> ";
+            html += "<code>" + (it.knowledge_id || "") + "</code>";
+            html += "<ul>";
+            for (const s of it.statements || []) html += "<li>" + s + "</li>";
+            html += "</ul></div>";
+          }
+        } else {
+          for (const it of items) {
+            html += '<div class="item">';
+            html += pill(it.maturity) + " <strong>" + (it.pattern_label || it.knowledge_type) + "</strong> · ";
+            html += (it.store_slug || "") + " · v" + (it.knowledge_version || "") + "<br/>";
+            html += '<span class="meta">as_of ' + (it.as_of || "") +
+              " · readiness " + (it.readiness || "") +
+              " · confidence " + (it.confidence || "") + "</span>";
+            if (it.what_cartflow_knows && it.what_cartflow_knows.length) {
+              html += "<ul>";
+              for (const s of it.what_cartflow_knows) html += "<li>" + s + "</li>";
+              html += "</ul>";
+            }
+            html += "</div>";
+          }
+        }
+        html += "</section>";
+      }
+      return html;
+    }
+
+    async function loadPreview() {
+      const status = document.getElementById("status");
+      const root = document.getElementById("root");
+      const store = (document.getElementById("storeSlug").value || "").trim();
+      const qs = store ? ("?store_slug=" + encodeURIComponent(store)) : "";
+      status.textContent = "Loading…";
+      root.innerHTML = "";
+      try {
+        const res = await fetch("/preview/executive-knowledge/api" + qs, {
+          headers: { Accept: "application/json" },
+        });
+        const data = await res.json();
+        if (!res.ok || data.flag_enabled === false) {
+          status.innerHTML =
+            '<div class="disabled">' +
+            ((data.honesty && data.honesty.message) ||
+              "Preview disabled (flag OFF).") +
+            "</div>";
+          return;
+        }
+        status.innerHTML =
+          '<div class="meta">flag_enabled=' +
+          data.flag_enabled +
+          " · records=" +
+          (data.record_count || 0) +
+          " · stores=" +
+          ((data.stores || []).join(", ") || "(none)") +
+          " · production_home=" +
+          data.production_home +
+          "</div>";
+        if (data.empty) {
+          root.innerHTML =
+            '<div class="panel"><div class="empty">' +
+            ((data.honesty && data.honesty.message) ||
+              "Knowledge has nothing to say.") +
+            "</div></div>";
+          return;
+        }
+        root.innerHTML = renderSections(data);
+      } catch (err) {
+        status.innerHTML =
+          '<div class="disabled">Failed to load preview: ' +
+          String(err) +
+          "</div>";
+      }
+    }
+
+    document.getElementById("reloadBtn").addEventListener("click", loadPreview);
+    loadPreview();
+  </script>
+</body>
+</html>

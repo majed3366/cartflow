@@ -386,7 +386,39 @@ def record_recovery_truth_event(
                 row_id=row_id or None,
                 verify_count=verify_count,
             )
-        return verify_count > 0
+        wrote = verify_count > 0
+        if wrote:
+            try:
+                from services.evidence_truth.observation_shadow_dual_write_v1 import (  # noqa: PLC0415
+                    maybe_shadow_recovery_observation_v1,
+                )
+                from services.evidence_truth.evidence_dual_write_v1 import (  # noqa: PLC0415
+                    maybe_publish_recovery_evidence_v1,
+                )
+
+                _rec_payload = {
+                    "store_slug": slug or "unknown",
+                    "session_id": sid,
+                    "cart_id": cid,
+                    "recovery_key": rk,
+                    "status": st,
+                    "timeline_status": st,
+                    "source": src,
+                }
+                obs_shadow = maybe_shadow_recovery_observation_v1(
+                    _rec_payload, source="recovery_truth_timeline"
+                )
+                oid = ""
+                if isinstance(obs_shadow, dict):
+                    oid = str(obs_shadow.get("observation_id") or "")
+                maybe_publish_recovery_evidence_v1(
+                    _rec_payload,
+                    source="recovery_truth_timeline",
+                    observation_id=oid,
+                )
+            except Exception:  # noqa: BLE001
+                pass
+        return wrote
     except SQLAlchemyError as exc:
         db.session.rollback()
         if trace:

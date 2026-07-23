@@ -303,6 +303,50 @@ def persist_delivery_truth(
         db.session.commit()
         truth.last_event_time = event_time
         _log_delivery_truth(truth)
+        try:
+            from services.evidence_truth.observation_shadow_dual_write_v1 import (  # noqa: PLC0415
+                maybe_shadow_communication_observation_v1,
+            )
+
+            _comm_payload = {
+                "store_slug": truth.store_slug,
+                "session_id": truth.session_id,
+                "cart_id": truth.cart_id,
+                "recovery_key": truth.recovery_key,
+                "message_sid": truth.message_sid,
+                "status": truth.delivery_status or truth.send_status,
+            }
+            obs_shadow = maybe_shadow_communication_observation_v1(
+                _comm_payload,
+                source="whatsapp_delivery_truth",
+                provider=(truth.provider or ""),
+            )
+        except Exception:  # noqa: BLE001
+            obs_shadow = None
+            _comm_payload = {
+                "store_slug": truth.store_slug,
+                "session_id": truth.session_id,
+                "cart_id": truth.cart_id,
+                "recovery_key": truth.recovery_key,
+                "message_sid": truth.message_sid,
+                "status": truth.delivery_status or truth.send_status,
+            }
+        try:
+            from services.evidence_truth.evidence_dual_write_v1 import (  # noqa: PLC0415
+                maybe_publish_communication_evidence_v1,
+            )
+
+            oid = ""
+            if isinstance(obs_shadow, dict):
+                oid = str(obs_shadow.get("observation_id") or "")
+            maybe_publish_communication_evidence_v1(
+                _comm_payload,
+                source="whatsapp_delivery_truth",
+                provider=(truth.provider or ""),
+                observation_id=oid,
+            )
+        except Exception:  # noqa: BLE001
+            pass
         return truth
     except Exception as exc:  # noqa: BLE001
         db.session.rollback()

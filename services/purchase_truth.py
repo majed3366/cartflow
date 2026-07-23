@@ -357,6 +357,31 @@ def ingest_purchase_truth_payload(payload: dict[str, Any]) -> Optional[str]:
         maybe_log_journey_identity_shadow(payload, source="purchase_truth_ingest")
     except Exception:  # noqa: BLE001
         pass
+    try:
+        from services.evidence_truth.observation_shadow_dual_write_v1 import (  # noqa: PLC0415
+            maybe_shadow_purchase_observation_v1,
+        )
+
+        obs_shadow = maybe_shadow_purchase_observation_v1(
+            payload, source="purchase_truth_ingest"
+        )
+    except Exception:  # noqa: BLE001
+        obs_shadow = None
+    try:
+        from services.evidence_truth.evidence_dual_write_v1 import (  # noqa: PLC0415
+            maybe_publish_purchase_evidence_v1,
+        )
+
+        oid = ""
+        if isinstance(obs_shadow, dict):
+            oid = str(obs_shadow.get("observation_id") or "")
+        maybe_publish_purchase_evidence_v1(
+            payload,
+            source="purchase_truth_ingest",
+            observation_id=oid,
+        )
+    except Exception:  # noqa: BLE001
+        pass
 
     payload_slug = str(payload.get("store_slug") or payload.get("store") or "").strip()
     store_slug = resolve_purchase_truth_store_slug(
