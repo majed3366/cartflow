@@ -721,6 +721,15 @@
       '" aria-hidden="true"></span>' +
       '<div class="v2-queue-body">' +
       queueAmountHtml(v, esc) +
+      '<p class="v2-queue-scan ma-cart-product-identity" data-pi-status="' +
+      esc(row.merchant_product_identity_status || "unresolved") +
+      '">' +
+      esc(
+        row.merchant_product_name ||
+          (row.product_identity_v1 && row.product_identity_v1.display_name_ar) ||
+          "اسم المنتج غير متوفر"
+      ) +
+      "</p>" +
       '<p class="v2-queue-scan">' +
       esc(scan) +
       "</p></div>" +

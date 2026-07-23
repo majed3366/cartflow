@@ -1,0 +1,103 @@
+{
+  "attention": {
+    "selected_path": "B",
+    "path_label": "Attention",
+    "section_order": [
+      "business_health",
+      "todays_priority",
+      "biggest_revenue_risk",
+      "business_understanding",
+      "biggest_opportunity",
+      "learning_progress",
+      "business_timeline"
+    ],
+    "order_matches_path": true,
+    "first_focus": "todays_priority",
+    "content_preserved": true
+  },
+  "healthy": {
+    "selected_path": "A",
+    "path_label": "Healthy",
+    "section_order": [
+      "business_health",
+      "business_understanding",
+      "learning_progress",
+      "business_timeline",
+      "biggest_opportunity",
+      "biggest_revenue_risk",
+      "todays_priority"
+    ],
+    "order_matches_path": true,
+    "first_focus": "business_understanding",
+    "content_preserved": true
+  },
+  "insufficient": {
+    "selected_path": "E",
+    "path_label": "Insufficient",
+    "section_order": [
+      "business_health",
+      "business_timeline",
+      "learning_progress",
+      "business_understanding",
+      "todays_priority",
+      "biggest_revenue_risk",
+      "biggest_opportunity"
+    ],
+    "order_matches_path": true,
+    "first_focus": "business_timeline",
+    "content_preserved": true
+  },
+  "operational": {
+    "selected_path": "D",
+    "path_label": "Operational",
+    "section_order": [
+      "business_health",
+      "todays_priority",
+      "learning_progress",
+      "business_understanding",
+      "business_timeline",
+      "biggest_revenue_risk",
+      "biggest_opportunity"
+    ],
+    "order_matches_path": true,
+    "first_focus": "todays_priority",
+    "content_preserved": true
+  },
+  "pending": {
+    "selected_path": "F",
+    "path_label": "Pending",
+    "section_order": [
+      "business_health",
+      "business_understanding",
+      "learning_progress",
+      "business_timeline",
+      "todays_priority",
+      "biggest_revenue_risk",
+      "biggest_opportunity"
+    ],
+    "order_matches_path": true,
+    "first_focus": "business_understanding",
+    "content_preserved": true
+  },
+  "vip": {
+    "selected_path": "C",
+    "path_label": "VIP",
+    "section_order": [
+      "business_health",
+      "todays_priority",
+      "biggest_revenue_risk",
+      "learning_progress",
+      "business_timeline",
+      "business_understanding",
+      "biggest_opportunity"
+    ],
+    "order_matches_path": true,
+    "first_focus": "todays_priority",
+    "content_preserved": true
+  },
+  "_stability": {
+    "path1": "C",
+    "path2": "C",
+    "unchanged": true
+  }
+}

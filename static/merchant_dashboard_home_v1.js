@@ -1,12 +1,63 @@
 /**
  * Dashboard Home — Daily Business Brief V1 (Constitution V3).
- * Story: Health → Risk → Opportunity → Priority → Understanding → Learning → Timeline.
- * One section · one business question · merchant value only. Presentation only.
+ * Adaptive Cognition V2: path focus + section order are merchant-visible.
+ * Experience Reality Fix V1: layout integrity + intelligence on the surface.
  */
 (function () {
   "use strict";
 
   var EMPTY_VALUE = "—";
+  var ACF_SESSION_KEY = "cf_acf_home_session_v1";
+  var ACF_LOCK_KEY = "cf_acf_home_lock_v1";
+  var DEFAULT_SECTION_ORDER = [
+    "business_health",
+    "biggest_revenue_risk",
+    "biggest_opportunity",
+    "todays_priority",
+    "business_understanding",
+    "learning_progress",
+    "business_timeline",
+  ];
+
+  /** Merchant-facing path copy — never expose route letters as product UI. */
+  var PATH_FOCUS_AR = {
+    A: {
+      kicker: "وضع اليوم",
+      title: "عملك في مسار مستقر",
+      hint: "نبدأ بصورة الصحة، ثم بما نفهمه عن متجرك، ثم الاتجاه.",
+      spotlight: "business_understanding",
+    },
+    B: {
+      kicker: "يحتاج قرارك الآن",
+      title: "هناك أمر يستحق انتباهك فوراً",
+      hint: "نضع أولوية اليوم أولاً — ثم نوضح الخطر والسبب.",
+      spotlight: "todays_priority",
+    },
+    C: {
+      kicker: "عميل مهم",
+      title: "عميل VIP بانتظار تواصلك",
+      hint: "التواصل اليدوي هو الخطوة الأولى — التفاصيل تأتي بعده.",
+      spotlight: "todays_priority",
+    },
+    D: {
+      kicker: "أثر تشغيلي",
+      title: "إعداد أو قناة يؤثر على استرجاعك",
+      hint: "نبدأ بما يؤثر على عمل القنوات — قبل تفسير أوسع للأرقام.",
+      spotlight: "todays_priority",
+    },
+    E: {
+      kicker: "أدلة محدودة",
+      title: "نعرض فقط ما نملك عليه أدلة كافية",
+      hint: "لا قرار مبكر. نغلق بما نعرفه بصراحة حتى تكتمل الصورة.",
+      spotlight: "business_timeline",
+    },
+    F: {
+      kicker: "الفهم قيد التشكيل",
+      title: "ما زلنا نبني فهماً واضحاً لمتجرك",
+      hint: "نوضح أين وصل الفهم — بدون دفعك لقرار غير ناضج.",
+      spotlight: "business_understanding",
+    },
+  };
 
   function byId(id) {
     return document.getElementById(id);
@@ -135,10 +186,11 @@
     );
   }
 
-  /** Section 1 — Business Health */
+  /** E1 — Business Health (Executive Home Constitution V1 · Sprint 1 only). */
   function renderBusinessHealth(home, summary) {
     var greeting = (home && home.greeting) || {};
     var health = (home && home.business_health) || {};
+    var disclosure = health.disclosure || {};
     var greet = String(greeting.greeting_ar || greetingArFallback()).trim();
     var name = String(greeting.merchant_name_ar || "متجرك").trim();
     var date =
@@ -148,17 +200,39 @@
     var summaryText =
       String(health.summary_ar || "").trim() ||
       String(health.empty_message_ar || "").trim() ||
-      "نجمع صورة أوضح لصحة العمل.";
-    var direction = String(health.direction_ar || "").trim();
+      "نجمع صورة أوضح لصحة عملك.";
     var confTone = confidenceTone(health.confidence);
     var conf =
       String(health.confidence_ar || "").trim() ||
       confidenceLabelAr(health.confidence);
-    var evidence = String(health.evidence_summary_ar || "").trim();
     var attentionNeeded = !!health.attention_required;
+    var question = String(
+      health.section_question_ar ||
+        health.lead_ar ||
+        "هل عملي بصحة جيدة اليوم؟"
+    ).trim();
+    var trend = String(
+      disclosure.trend_ar || health.direction_ar || ""
+    ).trim();
+    var evidence = String(
+      disclosure.evidence_ar || health.evidence_summary_ar || ""
+    ).trim();
+    // Never paint engineering / counter-style proof on L0 or disclosure body
+    if (/[=_]/.test(evidence) || /\d+\s*سلة/.test(evidence)) {
+      evidence = "";
+    }
+    var discLabel = String(
+      disclosure.label_ar || "كيف وصلنا لهذه الصورة؟"
+    ).trim();
+    var hasDisclosure = !!(trend || evidence);
+    var statusTone = attentionNeeded
+      ? "attention"
+      : status.indexOf("جيدة") >= 0 || status.indexOf("مستقر") >= 0
+        ? "ok"
+        : "neutral";
 
     return (
-      '<section class="ma-ecc-hero" aria-label="صحة العمل" data-ecc-section="health">' +
+      '<section class="ma-ecc-hero ma-ecc-hero--e1" aria-label="صحة العمل" data-ecc-section="health" data-executive-band="E1">' +
       '<div class="ma-ecc-hero__atmosphere" aria-hidden="true"></div>' +
       '<div class="ma-ecc-hero__grid">' +
       '<div class="ma-ecc-hero__main">' +
@@ -172,29 +246,36 @@
       esc(health.title_ar || "صحة العمل") +
       "</h1>" +
       '<p class="ma-ecc-hero__exec-label">' +
-      esc(health.section_question_ar || health.lead_ar || "كيف حال عملي اليوم؟") +
+      esc(question) +
       "</p>" +
       '<p class="ma-ecc-hero__exec-text">' +
       '<span class="ma-ecc-chip ma-ecc-chip--' +
-      (attentionNeeded ? "attention" : "neutral") +
+      statusTone +
       '">' +
       esc(status) +
       "</span> " +
       esc(summaryText) +
       "</p>" +
-      (direction
-        ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">الاتجاه:</span> ' +
-          esc(direction) +
-          "</p>"
-        : "") +
-      '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">الثقة:</span> ' +
+      '<p class="ma-ecc-copy ma-ecc-hero__confidence" data-e1-confidence="1">' +
       '<span class="ma-ecc-chip ma-ecc-chip--conf-' +
       confTone +
       '">' +
       esc(conf) +
       "</span></p>" +
-      (evidence
-        ? '<p class="ma-ecc-copy ma-ecc-copy--muted">' + esc(evidence) + "</p>"
+      (hasDisclosure
+        ? '<details class="ma-ecc-e1-disclosure">' +
+          "<summary>" +
+          esc(discLabel) +
+          "</summary>" +
+          (trend
+            ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">الاتجاه:</span> ' +
+              esc(trend) +
+              "</p>"
+            : "") +
+          (evidence
+            ? '<p class="ma-ecc-copy ma-ecc-copy--muted">' + esc(evidence) + "</p>"
+            : "") +
+          "</details>"
         : "") +
       "</div></div></section>"
     );
@@ -220,6 +301,19 @@
       );
     }
 
+    var riskDetail = "";
+    if (item.evidence_ar) {
+      riskDetail +=
+        '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">الدليل:</span> ' +
+        esc(item.evidence_ar) +
+        "</p>";
+    }
+    if (item.commercial_impact_ar) {
+      riskDetail +=
+        '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">الأثر التجاري:</span> ' +
+        esc(item.commercial_impact_ar) +
+        "</p>";
+    }
     return (
       '<section class="ma-ecc-band ma-ecc-band--attention" data-ecc-section="risk" aria-labelledby="ma-ecc-risk-title">' +
       head +
@@ -234,22 +328,17 @@
           esc(item.why_ar) +
           "</p>"
         : "") +
-      (item.evidence_ar
-        ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">الدليل:</span> ' +
-          esc(item.evidence_ar) +
-          "</p>"
-        : "") +
-      (item.commercial_impact_ar
-        ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">الأثر التجاري:</span> ' +
-          esc(item.commercial_impact_ar) +
-          "</p>"
-        : "") +
       '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">الثقة:</span> ' +
       '<span class="ma-ecc-chip ma-ecc-chip--conf-' +
       confidenceTone(item.confidence) +
       '">' +
       esc(confidenceLabelAr(item.confidence)) +
       "</span></p>" +
+      (riskDetail
+        ? '<details class="ma-ecc-details"><summary>التفاصيل والأثر</summary><div class="ma-ecc-details__body">' +
+          riskDetail +
+          "</div></details>"
+        : "") +
       "</div></div></section>"
     );
   }
@@ -345,6 +434,43 @@
     var merchantRequired =
       (journey && journey.recovery_merchant_required) ||
       item.recovery_merchant_required;
+    var lead =
+      '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">المرحلة الآن:</span> ' +
+      esc(stage) +
+      (channel ? " · " + esc(channel) : "") +
+      "</p>" +
+      (nextMerchant
+        ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">' +
+          (merchantRequired ? "دورك الآن:" : "دورك:") +
+          "</span> " +
+          esc(nextMerchant) +
+          "</p>"
+        : "");
+    var extras = "";
+    if (why) {
+      extras +=
+        '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">لماذا هنا:</span> ' +
+        esc(why) +
+        "</p>";
+    }
+    if (blocker) {
+      extras +=
+        '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">الحاجز:</span> ' +
+        esc(blocker) +
+        "</p>";
+    }
+    if (nextPlatform) {
+      extras +=
+        '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">المنصة الآن:</span> ' +
+        esc(nextPlatform) +
+        "</p>";
+    }
+    if (completion) {
+      extras +=
+        '<p class="ma-ecc-copy ma-ecc-copy--muted"><span class="ma-ecc-why-k">يكتمل عندما:</span> ' +
+        esc(completion) +
+        "</p>";
+    }
     return (
       '<div class="ma-ecc-journey" data-recovery-stage="' +
       esc(
@@ -352,40 +478,11 @@
       ) +
       '">' +
       '<p class="ma-ecc-journey__title">مسار الاسترجاع</p>' +
-      '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">المرحلة الآن:</span> ' +
-      esc(stage) +
-      "</p>" +
-      (channel
-        ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">القناة:</span> ' +
-          esc(channel) +
-          "</p>"
-        : "") +
-      (why
-        ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">لماذا هنا:</span> ' +
-          esc(why) +
-          "</p>"
-        : "") +
-      (blocker
-        ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">الحاجز:</span> ' +
-          esc(blocker) +
-          "</p>"
-        : "") +
-      (nextPlatform
-        ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">المنصة الآن:</span> ' +
-          esc(nextPlatform) +
-          "</p>"
-        : "") +
-      (nextMerchant
-        ? '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">' +
-          (merchantRequired ? "دورك الآن:" : "دورك:") +
-          "</span> " +
-          esc(nextMerchant) +
-          "</p>"
-        : "") +
-      (completion
-        ? '<p class="ma-ecc-copy ma-ecc-copy--muted"><span class="ma-ecc-why-k">يكتمل عندما:</span> ' +
-          esc(completion) +
-          "</p>"
+      lead +
+      (extras
+        ? '<details class="ma-ecc-details"><summary>تفاصيل المسار</summary><div class="ma-ecc-details__body">' +
+          extras +
+          "</div></details>"
         : "") +
       "</div>"
     );
@@ -453,11 +550,6 @@
           esc(outcome) +
           "</p>"
         : "") +
-      (ifIgnored
-        ? '<p class="ma-ecc-copy ma-ecc-copy--muted"><span class="ma-ecc-why-k">إذا تجاهلت:</span> ' +
-          esc(ifIgnored) +
-          "</p>"
-        : "") +
       renderRecoveryJourney(item) +
       (action
         ? '<a class="ma-ecc-btn" href="' +
@@ -467,6 +559,12 @@
           ">" +
           esc(action) +
           "</a>"
+        : "") +
+      (ifIgnored
+        ? '<details class="ma-ecc-details"><summary>إذا تجاهلت هذا</summary><div class="ma-ecc-details__body">' +
+          '<p class="ma-ecc-copy ma-ecc-copy--muted">' +
+          esc(ifIgnored) +
+          "</p></div></details>"
         : "") +
       "</div></div></section>"
     );
@@ -495,10 +593,17 @@
       (home && home.store_understanding) ||
       {};
     var items = section.items || [];
+    var leadItem = items[0] || null;
+    var commercialQ = String(
+      (leadItem && leadItem.commercial_question_ar) ||
+        section.section_question_ar ||
+        section.lead_ar ||
+        "ماذا نفهم عن عملك الآن؟"
+    ).trim();
     var head =
       '<header class="ma-ecc-kl__head">' +
       '<p class="ma-ecc-kicker">' +
-      esc(section.section_question_ar || section.lead_ar || "ماذا نفهم عن عملك الآن؟") +
+      esc(commercialQ) +
       "</p>" +
       '<h2 class="ma-ecc-kl__title" id="ma-ecc-understanding-title">' +
       esc(section.title_ar || "فهم العمل") +
@@ -506,7 +611,7 @@
       '<p class="ma-ecc-kl__purpose">' +
       esc(
         section.purpose_ar ||
-          "ملاحظة → دليل → معنى تجاري → أثر تجاري → اتجاه موصى به → ثقة"
+          "سؤال تجاري → إجابة → دليل → ثقة → معنى للتاجر"
       ) +
       "</p>" +
       "</header>";
@@ -550,7 +655,8 @@
     var conf = confidenceLabelAr(item.confidence);
     var confReason = String(item.confidence_reason_ar || "").trim();
 
-    var flow =
+    var oneLiner = commercial || meaning || direction || "";
+    var detailFlow =
       '<div class="ma-ecc-kl" role="list">' +
       klStep(
         "الملاحظة",
@@ -596,10 +702,27 @@
       ) +
       "</div>";
 
+    var lead =
+      '<p class="ma-ecc-insight-lead">' +
+      esc(observation) +
+      "</p>" +
+      (oneLiner
+        ? '<p class="ma-ecc-insight-one">' + esc(oneLiner) + "</p>"
+        : "") +
+      '<p class="ma-ecc-copy"><span class="ma-ecc-why-k">الثقة:</span> ' +
+      '<span class="ma-ecc-chip ma-ecc-chip--conf-' +
+      confTone +
+      '">' +
+      esc(conf) +
+      "</span></p>" +
+      '<details class="ma-ecc-details"><summary>كيف وصلنا لهذا الفهم</summary><div class="ma-ecc-details__body">' +
+      detailFlow +
+      "</div></details>";
+
     return (
       '<section class="ma-ecc-band ma-ecc-band--knowledge" id="ma-home-understanding" data-ecc-section="understanding" aria-labelledby="ma-ecc-understanding-title">' +
       head +
-      flow +
+      lead +
       "</section>"
     );
   }
@@ -723,6 +846,117 @@
     );
   }
 
+  function readAcfQuery() {
+    try {
+      var q = new URLSearchParams(window.location.search || "");
+      return {
+        fixture: String(q.get("acf_fixture") || "").trim(),
+        trigger: String(q.get("acf_trigger") || "").trim(),
+        session: String(q.get("acf_session") || "").trim(),
+      };
+    } catch (e) {
+      return { fixture: "", trigger: "", session: "" };
+    }
+  }
+
+  function sectionAdmitted(home, key) {
+    if (!home) return true;
+    var section = null;
+    if (key === "business_health") section = home.business_health;
+    else if (key === "todays_priority")
+      section = home.todays_priority || home.attention_today;
+    else if (key === "biggest_revenue_risk") section = home.biggest_revenue_risk;
+    else if (key === "biggest_opportunity") section = home.biggest_opportunity;
+    else if (key === "business_understanding")
+      section = home.business_understanding || home.store_understanding;
+    else if (key === "learning_progress") section = home.learning_progress;
+    else if (key === "business_timeline")
+      section = home.business_timeline || home.while_away;
+    if (!section) return false;
+    if (key === "business_health") return true;
+    var adm = section.home_admission_v1;
+    if (adm && typeof adm.admitted === "boolean") return !!adm.admitted;
+    if (section.suppressed === true) return false;
+    return true;
+  }
+
+  function resolveSectionOrder(home) {
+    var acf = (home && home.adaptive_cognition_v1) || {};
+    var order = acf.section_order;
+    if (!order || !order.length) {
+      try {
+        var locked = sessionStorage.getItem(ACF_LOCK_KEY);
+        if (locked) {
+          var parsed = JSON.parse(locked);
+          if (parsed && parsed.section_order && parsed.section_order.length) {
+            order = parsed.section_order;
+          }
+        }
+      } catch (e2) {
+        order = null;
+      }
+    }
+    if (!order || !order.length) order = DEFAULT_SECTION_ORDER.slice();
+    var seen = {};
+    var out = [];
+    for (var i = 0; i < order.length; i++) {
+      var key = String(order[i] || "");
+      if (!key || seen[key]) continue;
+      if (!sectionAdmitted(home, key)) continue;
+      seen[key] = 1;
+      out.push(key);
+    }
+    // Do NOT re-append suppressed sections. Composition owns admission.
+    if (!seen.business_health) out.unshift("business_health");
+    return out.length ? out : ["business_health"];
+  }
+
+  function renderSectionByKey(key, home, summary) {
+    if (key === "business_health") return renderBusinessHealth(home, summary);
+    if (key === "biggest_revenue_risk") return renderRevenueRisk(home);
+    if (key === "biggest_opportunity") return renderOpportunity(home);
+    if (key === "todays_priority") return renderTodaysPriority(home);
+    if (key === "business_understanding") return renderBusinessUnderstanding(home);
+    if (key === "learning_progress") return renderLearningProgress(home);
+    if (key === "business_timeline") return renderBusinessTimeline(home);
+    return "";
+  }
+
+  function pathFocusMeta(path) {
+    var key = String(path || "A").trim().toUpperCase();
+    return PATH_FOCUS_AR[key] || PATH_FOCUS_AR.A;
+  }
+
+  function renderPathFocus(acf) {
+    var path = String((acf && acf.selected_path) || "").trim().toUpperCase();
+    if (!path || !PATH_FOCUS_AR[path]) return "";
+    var meta = pathFocusMeta(path);
+    return (
+      '<aside class="ma-ecc-focus" data-ecc-section="path-focus" aria-label="تركيز اليوم">' +
+      '<p class="ma-ecc-focus__kicker">' +
+      esc(meta.kicker) +
+      "</p>" +
+      '<p class="ma-ecc-focus__title">' +
+      esc(meta.title) +
+      "</p>" +
+      '<p class="ma-ecc-focus__hint">' +
+      esc(meta.hint) +
+      "</p>" +
+      "</aside>"
+    );
+  }
+
+  function markBandModifier(html, modClass) {
+    if (!html) return html;
+    return html.replace(
+      /class="ma-ecc-band([^"]*)"/,
+      'class="ma-ecc-band$1 ' + modClass + '"'
+    ).replace(
+      /class="ma-ecc-hero"/,
+      'class="ma-ecc-hero ' + modClass + '"'
+    );
+  }
+
   function renderHome(summary) {
     var home = (summary && summary.merchant_home_experience_v1) || {};
     if (!home || home.ok === false) {
@@ -731,18 +965,87 @@
       }
     }
 
-    // Daily Business Brief story (Constitution V3).
+    var acf = home.adaptive_cognition_v1 || {};
+    var path = String(acf.selected_path || "").trim().toUpperCase();
+    var focusMeta = pathFocusMeta(path || "A");
+    var spotlightKey = focusMeta.spotlight;
+    var order = resolveSectionOrder(home);
+    var html = "";
+    var sawHealth = false;
+    for (var i = 0; i < order.length; i++) {
+      var key = order[i];
+      var chunk = renderSectionByKey(key, home, summary);
+      if (!chunk) continue;
+      if (key === "business_health") {
+        html += chunk;
+        sawHealth = true;
+        html += renderPathFocus(acf);
+        continue;
+      }
+      if (!sawHealth && i === 0) {
+        html += renderPathFocus(acf);
+      }
+      if (key === spotlightKey) {
+        chunk = markBandModifier(chunk, "ma-ecc-band--spotlight");
+      } else if (
+        key === "learning_progress" ||
+        key === "business_timeline" ||
+        (spotlightKey === "todays_priority" &&
+          (key === "biggest_opportunity" || key === "business_understanding"))
+      ) {
+        chunk = markBandModifier(chunk, "ma-ecc-band--secondary");
+      }
+      html += chunk;
+    }
+    if (html.indexOf("ma-ecc-focus") === -1) {
+      html = renderPathFocus(acf) + html;
+    }
+
+    var pathAttr = path
+      ? ' data-acf-path="' + esc(path) + '"'
+      : "";
+    var labelAttr = acf.path_label
+      ? ' data-acf-label="' + esc(String(acf.path_label)) + '"'
+      : "";
+    var pathClass = path ? " ma-ecc--path-" + path : "";
+
     return (
-      '<div class="ma-ecc ma-ecc--intel-v3 ma-ecc--daily-brief-v1">' +
-      renderBusinessHealth(home, summary) +
-      renderRevenueRisk(home) +
-      renderOpportunity(home) +
-      renderTodaysPriority(home) +
-      renderBusinessUnderstanding(home) +
-      renderLearningProgress(home) +
-      renderBusinessTimeline(home) +
+      '<div class="ma-ecc ma-ecc--intel-v3 ma-ecc--daily-brief-v1 ma-ecc--acf-v2 ma-ecc--reality-v1' +
+      pathClass +
+      '"' +
+      pathAttr +
+      labelAttr +
+      ">" +
+      html +
       "</div>"
     );
+  }
+
+  function persistAcfSession(home) {
+    var acf = (home && home.adaptive_cognition_v1) || {};
+    if (!acf || !acf.session_id) return;
+    try {
+      sessionStorage.setItem(ACF_SESSION_KEY, String(acf.session_id));
+      sessionStorage.setItem(
+        ACF_LOCK_KEY,
+        JSON.stringify({
+          session_id: acf.session_id,
+          selected_path: acf.selected_path,
+          section_order: acf.section_order || [],
+          locked_at: Date.now(),
+        })
+      );
+    } catch (e) {
+      /* ignore */
+    }
+    try {
+      document.cookie =
+        "cf_acf_session=" +
+        encodeURIComponent(String(acf.session_id)) +
+        "; path=/; SameSite=Lax";
+    } catch (e2) {
+      /* ignore */
+    }
   }
 
   function applyDashboardHomeV1(summary) {
@@ -777,12 +1080,59 @@
       ) {
         root.classList.add("ma-home-experience--calm");
       }
+      persistAcfSession(summary.merchant_home_experience_v1 || {});
       return true;
     } catch (err) {
       root.innerHTML = renderError("حدث خطأ أثناء عرض الرئيسية.");
       return true;
     }
   }
+
+  /** Build /api/dashboard/summary query for Adaptive Cognition session stability. */
+  function maAcfSummaryQuery() {
+    var q = readAcfQuery();
+    var params = [];
+    var trigger = q.trigger;
+    if (!trigger) {
+      try {
+        var nav = performance.getEntriesByType && performance.getEntriesByType("navigation");
+        if (nav && nav[0] && nav[0].type === "reload") {
+          trigger = "full_page_refresh";
+        }
+      } catch (e) {
+        /* ignore */
+      }
+    }
+    if (!trigger) {
+      try {
+        if (!sessionStorage.getItem(ACF_SESSION_KEY)) trigger = "session_start";
+        else trigger = "view_stable";
+      } catch (e2) {
+        trigger = "session_start";
+      }
+    }
+    var sid = q.session;
+    if (!sid) {
+      try {
+        sid = sessionStorage.getItem(ACF_SESSION_KEY) || "";
+      } catch (e3) {
+        sid = "";
+      }
+    }
+    if (trigger) params.push("acf_trigger=" + encodeURIComponent(trigger));
+    if (sid) params.push("acf_session=" + encodeURIComponent(sid));
+    if (q.fixture) params.push("acf_fixture=" + encodeURIComponent(q.fixture));
+    return params.length ? params.join("&") : "";
+  }
+
+  window.maAcfSummaryQuery = maAcfSummaryQuery;
+  window.maAcfMarkReturnFromSurface = function () {
+    try {
+      sessionStorage.setItem("cf_acf_pending_trigger", "return_from_surface");
+    } catch (e) {
+      /* ignore */
+    }
+  };
 
   function paintLoadingShell() {
     var root = byId("ma-home-experience-root");

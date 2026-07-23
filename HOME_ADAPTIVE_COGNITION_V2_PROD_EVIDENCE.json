@@ -1,0 +1,363 @@
+﻿{
+    "path_selection":  {
+                           "attention":  {
+                                             "selected_path":  "B",
+                                             "path_label":  "Attention",
+                                             "session_id":  "uVkBOkx2N-dsBejM_mEj_Q",
+                                             "locked":  null,
+                                             "rationale":  [
+                                                               "R-ACTION",
+                                                               "R-DEFER-POST-RETURN"
+                                                           ]
+                                         },
+                           "operational":  {
+                                               "selected_path":  "D",
+                                               "path_label":  "Operational",
+                                               "session_id":  "nStn8MLY5zK51B_HJnfgBA",
+                                               "locked":  null,
+                                               "rationale":  [
+                                                                 "R-SAFE-OPS",
+                                                                 "R-DEFER-POST-RETURN"
+                                                             ]
+                                           },
+                           "vip":  {
+                                       "selected_path":  "C",
+                                       "path_label":  "VIP",
+                                       "session_id":  "Derx5_RoF8tdLtLgtKx2iA",
+                                       "locked":  null,
+                                       "rationale":  [
+                                                         "R-VIP",
+                                                         "R-DEFER-POST-RETURN",
+                                                         "R-SKIP-HOLLOW-BU"
+                                                     ]
+                                   },
+                           "pending":  {
+                                           "selected_path":  "F",
+                                           "path_label":  "Pending",
+                                           "session_id":  "_1_BTKdGEaBhMnytt_Az2w",
+                                           "locked":  null,
+                                           "rationale":  [
+                                                             "R-PENDING",
+                                                             "R-SKIP-HOLLOW-BU"
+                                                         ]
+                                       },
+                           "insufficient":  {
+                                                "selected_path":  "E",
+                                                "path_label":  "Insufficient",
+                                                "session_id":  "TadvxTk52qMrTs_MXCbMPw",
+                                                "locked":  null,
+                                                "rationale":  [
+                                                                  "R-INSUFFICIENT",
+                                                                  "R-SKIP-HOLLOW-BU",
+                                                                  "R-SKIP-HOLLOW-DIR"
+                                                              ]
+                                            },
+                           "healthy":  {
+                                           "selected_path":  "A",
+                                           "path_label":  "Healthy",
+                                           "session_id":  "_xNLu8vQ9BNounC3cQ6RUg",
+                                           "locked":  null,
+                                           "rationale":  [
+                                                             "R-HEALTHY",
+                                                             "R-SKIP-HOLLOW-BU",
+                                                             "R-SKIP-HOLLOW-DIR"
+                                                         ]
+                                       }
+                       },
+    "stability":  {
+                      "session_id":  "PY_cQeYnmVp4Vu3osy23Rg",
+                      "ticks":  [
+                                    {
+                                        "path":  "C",
+                                        "unchanged":  true,
+                                        "view_ticks":  1,
+                                        "i":  1
+                                    },
+                                    {
+                                        "path":  "C",
+                                        "unchanged":  true,
+                                        "view_ticks":  2,
+                                        "i":  2
+                                    },
+                                    {
+                                        "path":  "C",
+                                        "unchanged":  true,
+                                        "view_ticks":  3,
+                                        "i":  3
+                                    }
+                                ],
+                      "initial_path":  "C"
+                  },
+    "rejected_poll":  {
+                          "ok":  false,
+                          "error":  "ungoverned_trigger",
+                          "trigger":  "periodic_poll",
+                          "message":  "Periodic/background/UI reshuffle is forbidden."
+                      },
+    "return_from_surface":  {
+                                "ok":  true,
+                                "event":  "reevaluated",
+                                "session_id":  "MufujBHarqu50aqbA-iE9A",
+                                "selected_path":  "A",
+                                "path_label":  "Healthy",
+                                "locked":  true,
+                                "locked_at_unix":  1784400068.2528045,
+                                "last_eval_trigger":  "return_from_surface",
+                                "reeval_count":  1,
+                                "view_ticks_while_locked":  0,
+                                "decision":  {
+                                                 "selected_path":  "A",
+                                                 "path_label":  "Healthy",
+                                                 "active_nodes":  [
+                                                                      "ContextRestore",
+                                                                      "Closure"
+                                                                  ],
+                                                 "skipped_nodes":  [
+                                                                       "Understanding",
+                                                                       "Confidence",
+                                                                       "Direction"
+                                                                   ],
+                                                 "deferred_nodes":  [
+
+                                                                    ],
+                                                 "interim_closure":  "A",
+                                                 "route_destination":  null,
+                                                 "rationale_codes":  [
+                                                                         "R-RETURN-CONTINUE",
+                                                                         "R-SKIP-HOLLOW-BU",
+                                                                         "R-SKIP-HOLLOW-DIR",
+                                                                         "R-HEALTHY"
+                                                                     ],
+                                                 "segment":  "RETURN",
+                                                 "ownership":  {
+                                                                   "router_owns":  [
+                                                                                       "sequencing",
+                                                                                       "timing",
+                                                                                       "routing",
+                                                                                       "optional_node_skipping",
+                                                                                       "session_path_lock"
+                                                                                   ],
+                                                                   "router_never_owns":  [
+                                                                                             "business_truth",
+                                                                                             "knowledge_creation",
+                                                                                             "knowledge_modification",
+                                                                                             "truth_filtering",
+                                                                                             "business_interpretation",
+                                                                                             "decision_ownership"
+                                                                                         ],
+                                                                   "truth_owners":  [
+                                                                                        "Knowledge Platform",
+                                                                                        "Business Reasoning (when accepted)",
+                                                                                        "Merchant Alert Platform",
+                                                                                        "Operational Health"
+                                                                                    ]
+                                                               },
+                                                 "truth_fixture_id":  "vip_resolved"
+                                             },
+                                "history":  [
+                                                {
+                                                    "event":  "path_locked",
+                                                    "trigger":  "session_start",
+                                                    "path":  "C",
+                                                    "at_unix":  1784400067.949406
+                                                },
+                                                {
+                                                    "event":  "governed_reevaluation",
+                                                    "trigger":  "return_from_surface",
+                                                    "previous_path":  "C",
+                                                    "new_path":  "A",
+                                                    "path_changed":  true,
+                                                    "at_unix":  1784400068.2528045
+                                                }
+                                            ],
+                                "stability_rule":  "Path remains locked until a governed re-evaluation trigger. No periodic background rerouting. No live cognitive reshuffling.",
+                                "previous_path":  "C",
+                                "path_changed":  true,
+                                "reevaluated":  true
+                            },
+    "significant":  {
+                        "ok":  true,
+                        "event":  "reevaluated",
+                        "session_id":  "PY_cQeYnmVp4Vu3osy23Rg",
+                        "selected_path":  "A",
+                        "path_label":  "Healthy",
+                        "locked":  true,
+                        "locked_at_unix":  1784400067.6763532,
+                        "last_eval_trigger":  "significant_business_state_transition",
+                        "reeval_count":  1,
+                        "view_ticks_while_locked":  0,
+                        "decision":  {
+                                         "selected_path":  "A",
+                                         "path_label":  "Healthy",
+                                         "active_nodes":  [
+                                                              "Arrival",
+                                                              "Orientation",
+                                                              "Closure"
+                                                          ],
+                                         "skipped_nodes":  [
+                                                               "Understanding",
+                                                               "Focus",
+                                                               "Confidence",
+                                                               "Direction"
+                                                           ],
+                                         "deferred_nodes":  [
+
+                                                            ],
+                                         "interim_closure":  "A",
+                                         "route_destination":  null,
+                                         "rationale_codes":  [
+                                                                 "R-HEALTHY",
+                                                                 "R-SKIP-HOLLOW-BU",
+                                                                 "R-SKIP-HOLLOW-DIR"
+                                                             ],
+                                         "segment":  "ENTRY",
+                                         "ownership":  {
+                                                           "router_owns":  [
+                                                                               "sequencing",
+                                                                               "timing",
+                                                                               "routing",
+                                                                               "optional_node_skipping",
+                                                                               "session_path_lock"
+                                                                           ],
+                                                           "router_never_owns":  [
+                                                                                     "business_truth",
+                                                                                     "knowledge_creation",
+                                                                                     "knowledge_modification",
+                                                                                     "truth_filtering",
+                                                                                     "business_interpretation",
+                                                                                     "decision_ownership"
+                                                                                 ],
+                                                           "truth_owners":  [
+                                                                                "Knowledge Platform",
+                                                                                "Business Reasoning (when accepted)",
+                                                                                "Merchant Alert Platform",
+                                                                                "Operational Health"
+                                                                            ]
+                                                       },
+                                         "truth_fixture_id":  "vip_resolved"
+                                     },
+                        "history":  [
+                                        {
+                                            "event":  "path_locked",
+                                            "trigger":  "session_start",
+                                            "path":  "C",
+                                            "at_unix":  1784400066.1297615
+                                        },
+                                        {
+                                            "event":  "view_tick_stable",
+                                            "path":  "C",
+                                            "ticks":  1,
+                                            "at_unix":  1784400066.4436266,
+                                            "reevaluated":  false
+                                        },
+                                        {
+                                            "event":  "view_tick_stable",
+                                            "path":  "C",
+                                            "ticks":  2,
+                                            "at_unix":  1784400066.7651992,
+                                            "reevaluated":  false
+                                        },
+                                        {
+                                            "event":  "view_tick_stable",
+                                            "path":  "C",
+                                            "ticks":  3,
+                                            "at_unix":  1784400067.0800455,
+                                            "reevaluated":  false
+                                        },
+                                        {
+                                            "event":  "governed_reevaluation",
+                                            "trigger":  "significant_business_state_transition",
+                                            "previous_path":  "C",
+                                            "new_path":  "A",
+                                            "path_changed":  true,
+                                            "at_unix":  1784400067.6763532
+                                        }
+                                    ],
+                        "stability_rule":  "Path remains locked until a governed re-evaluation trigger. No periodic background rerouting. No live cognitive reshuffling.",
+                        "previous_path":  "C",
+                        "path_changed":  true,
+                        "reevaluated":  true
+                    },
+    "manual_refresh":  {
+                           "ok":  true,
+                           "event":  "reevaluated",
+                           "session_id":  "2a4JiFXk7srbXhDm2em7BA",
+                           "selected_path":  "A",
+                           "path_label":  "Healthy",
+                           "locked":  true,
+                           "locked_at_unix":  1784400068.884154,
+                           "last_eval_trigger":  "manual_refresh",
+                           "reeval_count":  1,
+                           "view_ticks_while_locked":  0,
+                           "decision":  {
+                                            "selected_path":  "A",
+                                            "path_label":  "Healthy",
+                                            "active_nodes":  [
+                                                                 "Arrival",
+                                                                 "Orientation",
+                                                                 "Closure"
+                                                             ],
+                                            "skipped_nodes":  [
+                                                                  "Understanding",
+                                                                  "Focus",
+                                                                  "Confidence",
+                                                                  "Direction"
+                                                              ],
+                                            "deferred_nodes":  [
+
+                                                               ],
+                                            "interim_closure":  "A",
+                                            "route_destination":  null,
+                                            "rationale_codes":  [
+                                                                    "R-HEALTHY",
+                                                                    "R-SKIP-HOLLOW-BU",
+                                                                    "R-SKIP-HOLLOW-DIR"
+                                                                ],
+                                            "segment":  "ENTRY",
+                                            "ownership":  {
+                                                              "router_owns":  [
+                                                                                  "sequencing",
+                                                                                  "timing",
+                                                                                  "routing",
+                                                                                  "optional_node_skipping",
+                                                                                  "session_path_lock"
+                                                                              ],
+                                                              "router_never_owns":  [
+                                                                                        "business_truth",
+                                                                                        "knowledge_creation",
+                                                                                        "knowledge_modification",
+                                                                                        "truth_filtering",
+                                                                                        "business_interpretation",
+                                                                                        "decision_ownership"
+                                                                                    ],
+                                                              "truth_owners":  [
+                                                                                   "Knowledge Platform",
+                                                                                   "Business Reasoning (when accepted)",
+                                                                                   "Merchant Alert Platform",
+                                                                                   "Operational Health"
+                                                                               ]
+                                                          },
+                                            "truth_fixture_id":  "healthy"
+                                        },
+                           "history":  [
+                                           {
+                                               "event":  "path_locked",
+                                               "trigger":  "session_start",
+                                               "path":  "B",
+                                               "at_unix":  1784400068.5933988
+                                           },
+                                           {
+                                               "event":  "governed_reevaluation",
+                                               "trigger":  "manual_refresh",
+                                               "previous_path":  "B",
+                                               "new_path":  "A",
+                                               "path_changed":  true,
+                                               "at_unix":  1784400068.884154
+                                           }
+                                       ],
+                           "stability_rule":  "Path remains locked until a governed re-evaluation trigger. No periodic background rerouting. No live cognitive reshuffling.",
+                           "previous_path":  "B",
+                           "path_changed":  true,
+                           "reevaluated":  true
+                       }
+}

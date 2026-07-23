@@ -1047,10 +1047,31 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/cartflow-simulation-report",
         "/dev/purchase-truth-trace",
         "/dev/storefront-cart-bridge-truth",
+        "/dev/product-signal-collection",
+        "/dev/product-metrics-foundation",
+        "/dev/product-trends-foundation",
+        "/dev/product-evidence-assembly",
+        "/dev/evidence-confidence",
+        "/dev/knowledge-foundation",
+        "/dev/guidance-eligibility",
+        "/dev/commercial-guidance",
+        "/dev/guidance-routing",
+        "/dev/merchant-presentation",
+        "/dev/surface-composition",
+        "/dev/operational-truth",
+        "/dev/merchant-experience",
+        "/dev/time-authority",
+        "/dev/business-findings-lifecycle",
+        "/dev/commerce-intelligence-synthesis",
+        "/dev/commerce-intelligence-knowledge",
         "/dev/data-growth-measurement",
         "/dev/dashboard-snapshot-archive",
         "/dev/business-findings-review",
         "/dev/business-reasoning-review",
+        "/dev/adaptive-cognition-lab",
+        "/dev/adaptive-cognition-lab/start",
+        "/dev/adaptive-cognition-lab/view-tick",
+        "/dev/adaptive-cognition-lab/reeval",
     }
 )
 
@@ -1333,6 +1354,69 @@ def dev_business_reasoning_review(
     )
 
 
+@app.get("/dev/adaptive-cognition-lab", response_class=HTMLResponse)
+def dev_adaptive_cognition_lab(
+    request: Request,
+    fixture: str = Query("vip"),
+) -> Any:
+    """
+    Adaptive Cognition Lab V2 — Product validation of Cognitive Router.
+
+    Path selection + session stability + governed re-evaluation only.
+    Not Home. Not Wireframe. Not merchant nav.
+    """
+    from services.home_adaptive_cognition_lab_v1 import (  # noqa: PLC0415
+        build_adaptive_cognition_lab_payload_v1,
+    )
+
+    payload = build_adaptive_cognition_lab_payload_v1(
+        fixture=(fixture or "vip").strip() or "vip",
+    )
+    return templates.TemplateResponse(
+        request,
+        "home_adaptive_cognition_lab_v1.html",
+        {"request": request, "payload": payload},
+    )
+
+
+@app.post("/dev/adaptive-cognition-lab/start")
+def dev_adaptive_cognition_lab_start(body: dict[str, Any] | None = None) -> Any:
+    from services.home_adaptive_cognition_lab_v1 import (  # noqa: PLC0415
+        build_adaptive_cognition_lab_payload_v1,
+    )
+
+    payload_in = body if isinstance(body, dict) else {}
+    fixture = str(payload_in.get("fixture") or "vip").strip() or "vip"
+    payload = build_adaptive_cognition_lab_payload_v1(fixture=fixture)
+    return payload
+
+
+@app.post("/dev/adaptive-cognition-lab/view-tick")
+def dev_adaptive_cognition_lab_view_tick(body: dict[str, Any] | None = None) -> Any:
+    from services.home_adaptive_cognition_lab_v1 import (  # noqa: PLC0415
+        lab_view_tick_v1,
+    )
+
+    payload_in = body if isinstance(body, dict) else {}
+    return lab_view_tick_v1(str(payload_in.get("session_id") or ""))
+
+
+@app.post("/dev/adaptive-cognition-lab/reeval")
+def dev_adaptive_cognition_lab_reeval(body: dict[str, Any] | None = None) -> Any:
+    from services.home_adaptive_cognition_lab_v1 import (  # noqa: PLC0415
+        lab_reeval_v1,
+    )
+
+    payload_in = body if isinstance(body, dict) else {}
+    return lab_reeval_v1(
+        str(payload_in.get("session_id") or ""),
+        trigger=str(payload_in.get("trigger") or ""),
+        fixture=(
+            str(payload_in.get("fixture")).strip()
+            if payload_in.get("fixture") is not None
+            else None
+        ),
+    )
 
 
 def _track_objection_cors(resp: Response) -> Response:
@@ -11796,6 +11880,416 @@ def dev_purchase_truth_trace(
     )
 
 
+@app.get("/dev/product-signal-collection")
+def dev_product_signal_collection(
+    store_slug: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Product Signal Collection V1 closure probe.
+
+    Read-only. Default allowlist is Demo Merchant (``store_slug=demo``).
+    No merchant UI. No scoring.
+    """
+    from services.product_data.product_signal_prod_probe_v1 import (  # noqa: PLC0415
+        build_product_signal_prod_probe_v1,
+    )
+
+    slug = (store_slug or "demo").strip() or "demo"
+    report = build_product_signal_prod_probe_v1(slug)
+    # Always return JSON body for allowlisted closure probes (even if table empty).
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
+@app.get("/dev/product-metrics-foundation")
+def dev_product_metrics_foundation(
+    store_slug: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Product Metrics Foundation V1 probe.
+
+    Computes deterministic metrics from Product Signals, optionally materializes
+    ``product_metric_values``. Default allowlist Demo Merchant. No merchant UI.
+    """
+    from services.product_data.product_metrics_prod_probe_v1 import (  # noqa: PLC0415
+        build_product_metrics_prod_probe_v1,
+    )
+
+    slug = (store_slug or "demo").strip() or "demo"
+    report = build_product_metrics_prod_probe_v1(slug)
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
+@app.get("/dev/product-trends-foundation")
+def dev_product_trends_foundation(
+    store_slug: Optional[str] = None,
+    trend_window: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Product Trends Foundation V1 probe.
+
+    Compares Product Metrics across adjacent windows. Default allowlist Demo.
+    No merchant UI. No ranking/guidance.
+    """
+    from services.product_data.product_trends_prod_probe_v1 import (  # noqa: PLC0415
+        build_product_trends_prod_probe_v1,
+    )
+
+    slug = (store_slug or "demo").strip() or "demo"
+    window = (trend_window or "d7").strip() or "d7"
+    report = build_product_trends_prod_probe_v1(slug, trend_window=window)
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
+@app.get("/dev/product-evidence-assembly")
+def dev_product_evidence_assembly(
+    store_slug: Optional[str] = None,
+    assembly_window: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Product Evidence Assembly Foundation V1.
+
+    Assembles Metrics + Trends into evidence bundles. Default allowlist Demo.
+    No merchant UI. No confidence/guidance.
+    """
+    from services.product_data.product_evidence_assembly_prod_probe_v1 import (  # noqa: PLC0415
+        build_product_evidence_assembly_prod_probe_v1,
+    )
+
+    slug = (store_slug or "demo").strip() or "demo"
+    window = (assembly_window or "d7").strip() or "d7"
+    report = build_product_evidence_assembly_prod_probe_v1(
+        slug, assembly_window=window
+    )
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
+@app.get("/dev/evidence-confidence")
+def dev_evidence_confidence(
+    store_slug: Optional[str] = None,
+    assembly_window: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Evidence Confidence Foundation V1.
+
+    Evaluates Evidence Assembly bundles only. Default allowlist Demo.
+    No merchant UI. No knowledge/guidance.
+    """
+    from services.product_data.evidence_confidence_prod_probe_v1 import (  # noqa: PLC0415
+        build_evidence_confidence_prod_probe_v1,
+    )
+
+    slug = (store_slug or "demo").strip() or "demo"
+    window = (assembly_window or "d7").strip() or "d7"
+    report = build_evidence_confidence_prod_probe_v1(
+        slug, assembly_window=window
+    )
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
+@app.get("/dev/knowledge-foundation")
+def dev_knowledge_foundation(
+    store_slug: Optional[str] = None,
+    assembly_window: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Knowledge Foundation V1.
+
+    Factual statements from Evidence Confidence only. Default allowlist Demo.
+    No merchant UI. No guidance/recommendations.
+    """
+    from services.product_data.knowledge_foundation_prod_probe_v1 import (  # noqa: PLC0415
+        build_knowledge_foundation_prod_probe_v1,
+    )
+
+    slug = (store_slug or "demo").strip() or "demo"
+    window = (assembly_window or "d7").strip() or "d7"
+    report = build_knowledge_foundation_prod_probe_v1(
+        slug, assembly_window=window
+    )
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
+@app.get("/dev/guidance-eligibility")
+def dev_guidance_eligibility(
+    store: Optional[str] = None,
+    store_slug: Optional[str] = None,
+    assembly_window: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Guidance Eligibility Foundation V1.
+
+    Permission governance from Knowledge Foundation only. Default allowlist Demo.
+    No merchant UI. No commercial guidance content.
+    """
+    from services.product_data.guidance_eligibility_prod_probe_v1 import (  # noqa: PLC0415
+        build_guidance_eligibility_prod_probe_v1,
+    )
+
+    slug = (store or store_slug or "demo").strip() or "demo"
+    window = (assembly_window or "d7").strip() or "d7"
+    report = build_guidance_eligibility_prod_probe_v1(
+        slug, assembly_window=window
+    )
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
+@app.get("/dev/commercial-guidance")
+def dev_commercial_guidance(
+    store: Optional[str] = None,
+    store_slug: Optional[str] = None,
+    assembly_window: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Commercial Guidance Integration V1.
+
+    Knowledge → governed Commercial Guidance (cguide_v1). Default allowlist Demo.
+    Does not change Guidance Routing or Presentation. No merchant UI / AI / actions.
+    """
+    from services.product_data.commercial_guidance_knowledge_prod_probe_v1 import (  # noqa: PLC0415
+        build_commercial_guidance_knowledge_prod_probe_v1,
+    )
+
+    slug = (store or store_slug or "demo").strip() or "demo"
+    window = (assembly_window or "d7").strip() or "d7"
+    report = build_commercial_guidance_knowledge_prod_probe_v1(
+        slug, assembly_window=window
+    )
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
+@app.get("/dev/guidance-routing")
+def dev_guidance_routing(
+    store: Optional[str] = None,
+    store_slug: Optional[str] = None,
+    assembly_window: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Guidance Routing Foundation V1.
+
+    Surface eligibility from Commercial Guidance only. Default allowlist Demo.
+    No merchant UI, presentation, or page-local routing.
+    """
+    from services.product_data.guidance_routing_prod_probe_v1 import (  # noqa: PLC0415
+        build_guidance_routing_prod_probe_v1,
+    )
+
+    slug = (store or store_slug or "demo").strip() or "demo"
+    window = (assembly_window or "d7").strip() or "d7"
+    report = build_guidance_routing_prod_probe_v1(
+        slug, assembly_window=window
+    )
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
+@app.get("/dev/merchant-presentation")
+def dev_merchant_presentation(
+    store: Optional[str] = None,
+    store_slug: Optional[str] = None,
+    assembly_window: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Merchant Presentation Foundation V1.
+
+    Representation contracts from Guidance Routing only. Default allowlist Demo.
+    No page UI, composition, or action execution.
+    """
+    from services.product_data.merchant_presentation_prod_probe_v1 import (  # noqa: PLC0415
+        build_merchant_presentation_prod_probe_v1,
+    )
+
+    slug = (store or store_slug or "demo").strip() or "demo"
+    window = (assembly_window or "d7").strip() or "d7"
+    report = build_merchant_presentation_prod_probe_v1(
+        slug, assembly_window=window
+    )
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
+@app.get("/dev/surface-composition")
+def dev_surface_composition(
+    store: Optional[str] = None,
+    store_slug: Optional[str] = None,
+    assembly_window: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Surface Composition Foundation V1.
+
+    Composes merchant surfaces from Presentation + Knowledge + Operational Truth.
+    Default allowlist Demo. No page UI, redesign, or action execution.
+    """
+    from services.product_data.surface_composition_prod_probe_v1 import (  # noqa: PLC0415
+        build_surface_composition_prod_probe_v1,
+    )
+
+    slug = (store or store_slug or "demo").strip() or "demo"
+    window = (assembly_window or "d7").strip() or "d7"
+    report = build_surface_composition_prod_probe_v1(slug, assembly_window=window)
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
+@app.get("/dev/operational-truth")
+def dev_operational_truth(
+    store: Optional[str] = None,
+    store_slug: Optional[str] = None,
+    assembly_window: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Operational Truth Integration Foundation V1.
+
+    Governed operational packages for Surface Composition. No recommendations,
+    Guidance, Knowledge generation, or page UI.
+    """
+    from services.product_data.operational_truth_prod_probe_v1 import (  # noqa: PLC0415
+        build_operational_truth_prod_probe_v1,
+    )
+
+    slug = (store or store_slug or "demo").strip() or "demo"
+    window = (assembly_window or "d7").strip() or "d7"
+    report = build_operational_truth_prod_probe_v1(slug, assembly_window=window)
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
+@app.get("/dev/merchant-experience")
+def dev_merchant_experience(
+    store: Optional[str] = None,
+    store_slug: Optional[str] = None,
+    assembly_window: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Merchant Experience Integration V1.
+
+    Bridge from Surface Composition + Knowledge + Operational State to pages.
+    Default allowlist Demo. No new intelligence.
+    """
+    from services.product_data.merchant_experience_integration_prod_probe_v1 import (  # noqa: PLC0415
+        build_merchant_experience_prod_probe_v1,
+    )
+
+    slug = (store or store_slug or "demo").strip() or "demo"
+    window = (assembly_window or "d7").strip() or "d7"
+    report = build_merchant_experience_prod_probe_v1(slug, assembly_window=window)
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
+@app.get("/dev/time-authority")
+def dev_time_authority(
+    store: Optional[str] = None,
+    store_slug: Optional[str] = None,
+    assembly_window: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Time Authority Binding Foundation V1.
+
+    Binding audit, canonical clocks, replay consistency, SCF/OT/MEIF as_of bind.
+    No analytics, timeline redesign, or Knowledge/Guidance logic changes.
+    """
+    from services.product_data.time_authority_binding_prod_probe_v1 import (  # noqa: PLC0415
+        build_time_authority_prod_probe_v1,
+    )
+
+    slug = (store or store_slug or "demo").strip() or "demo"
+    window = (assembly_window or "d7").strip() or "d7"
+    report = build_time_authority_prod_probe_v1(slug, assembly_window=window)
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
+@app.get("/dev/business-findings-lifecycle")
+def dev_business_findings_lifecycle(
+    store: Optional[str] = None,
+    store_slug: Optional[str] = None,
+    materialize: Optional[str] = None,
+    demo_fixture: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Business Findings Lifecycle V1.
+
+    Materialize + per-finding diagnostics (generated/persisted/routed/
+    surface_eligible/displayed/stopped_at). Surfaces consume only — no UI.
+    Default allowlist Demo.
+    """
+    from services.business_findings_lifecycle_v1.prod_probe_v1 import (  # noqa: PLC0415
+        build_business_findings_lifecycle_prod_probe_v1,
+    )
+
+    slug = (store or store_slug or "demo").strip() or "demo"
+    do_mat = (materialize or "1").strip().lower() not in {"0", "false", "no", "off"}
+    use_fixture = (demo_fixture or "0").strip().lower() in {"1", "true", "yes", "on"}
+    report = build_business_findings_lifecycle_prod_probe_v1(
+        slug,
+        materialize=do_mat,
+        demo_fixture=use_fixture,
+        admit_review_fixtures=use_fixture,
+    )
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
+@app.get("/dev/commerce-intelligence-synthesis")
+def dev_commerce_intelligence_synthesis(
+    store: Optional[str] = None,
+    store_slug: Optional[str] = None,
+    time_window_key: Optional[str] = None,
+    assembly_window: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Commerce Intelligence Synthesis V1.
+
+    Cross-domain pattern qualification from governed source contracts only.
+    Default allowlist Demo. No Guidance, Presentation, or page UI.
+    """
+    from services.product_data.commerce_intelligence_synthesis_prod_probe_v1 import (  # noqa: PLC0415
+        build_commerce_intelligence_synthesis_prod_probe_v1,
+    )
+
+    slug = (store or store_slug or "demo").strip() or "demo"
+    window = (time_window_key or assembly_window or "d7").strip() or "d7"
+    report = build_commerce_intelligence_synthesis_prod_probe_v1(
+        slug, time_window_key=window
+    )
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
+@app.get("/dev/commerce-intelligence-knowledge")
+def dev_commerce_intelligence_knowledge(
+    store: Optional[str] = None,
+    store_slug: Optional[str] = None,
+    time_window_key: Optional[str] = None,
+    assembly_window: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): CIS → Knowledge Integration V1.
+
+    Intake of commerce_intelligence_synthesis_v1 into knowledge_statements.
+    Default allowlist Demo. No Guidance, Presentation, or page UI.
+    """
+    from services.product_data.commerce_intelligence_knowledge_prod_probe_v1 import (  # noqa: PLC0415
+        build_commerce_intelligence_knowledge_prod_probe_v1,
+    )
+
+    slug = (store or store_slug or "demo").strip() or "demo"
+    window = (time_window_key or assembly_window or "d7").strip() or "d7"
+    report = build_commerce_intelligence_knowledge_prod_probe_v1(
+        slug, time_window_key=window
+    )
+    status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
+    return j(report, status)
+
+
 @app.get("/dev/storefront-cart-bridge-truth")
 def dev_storefront_cart_bridge_truth(
     store_slug: Optional[str] = None,
@@ -16532,6 +17026,14 @@ def _merchant_normal_recovery_light_payload_merchant_batch(
     except Exception:  # noqa: BLE001
         pass
     try:
+        from services.product_data.product_identity_cart_projection_v1 import (  # noqa: PLC0415
+            attach_product_identity_cart_projection_v1,
+        )
+
+        attach_product_identity_cart_projection_v1(out, abandoned_cart=ac0)
+    except Exception:  # noqa: BLE001
+        pass
+    try:
         from services.merchant_intelligence_v1 import attach_merchant_intelligence_v1  # noqa: PLC0415
 
         attach_merchant_intelligence_v1(out)
@@ -16693,6 +17195,14 @@ def _merchant_normal_recovery_light_payload(
             attempt_cap=cap_lc,
             store_slug=_ac_store_slug,
         )
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from services.product_data.product_identity_cart_projection_v1 import (  # noqa: PLC0415
+            attach_product_identity_cart_projection_v1,
+        )
+
+        attach_product_identity_cart_projection_v1(out, abandoned_cart=ac0)
     except Exception:  # noqa: BLE001
         pass
     return out
@@ -17824,6 +18334,22 @@ def api_dashboard_summary(request: Request):
     )
 
     inspect_mode = wants_activation_inspect(request)
+    try:
+        from services.home_adaptive_cognition_home_bridge_v1 import (  # noqa: PLC0415
+            set_acf_home_request_context_v1,
+        )
+
+        set_acf_home_request_context_v1(
+            trigger=str(request.query_params.get("acf_trigger") or "").strip(),
+            session_id=str(
+                request.query_params.get("acf_session")
+                or request.cookies.get("cf_acf_session")
+                or ""
+            ).strip(),
+            fixture=str(request.query_params.get("acf_fixture") or "").strip(),
+        )
+    except Exception:  # noqa: BLE001
+        pass
     if not inspect_mode:
         from services.dashboard_snapshot_v1 import dashboard_snapshot_mode_enabled
         from services.dashboard_snapshot_enforcement_guard_v1 import (
@@ -19635,6 +20161,20 @@ def _api_json_dashboard_summary(
                 if isinstance(brief_embed, Mapping):
                     out["merchant_daily_brief_v1"] = brief_embed
             stamp_summary_contract_fields(out)
+            try:
+                from services.product_data.merchant_experience_integration_foundation_v1 import (  # noqa: PLC0415
+                    attach_merchant_experience_to_summary_v1,
+                )
+
+                # MEBF V1: MEIF + BFL bind must use the same MQIC-resolved slug as
+                # Home composition (lab/demo attach), not signup primary alone.
+                _home = out.get("merchant_home_experience_v1") or {}
+                _meif_slug = (
+                    str(_home.get("store_slug") or "").strip() or slug
+                )
+                attach_merchant_experience_to_summary_v1(out, _meif_slug)
+            except Exception as meif_exc:  # noqa: BLE001
+                log.warning("summary merchant_experience_integration_v1: %s", meif_exc)
     except Exception as exc:  # noqa: BLE001
         log.warning("summary merchant_home_experience_v1: %s", exc)
         db.session.rollback()

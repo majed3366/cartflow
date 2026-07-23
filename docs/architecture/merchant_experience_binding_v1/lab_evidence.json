@@ -1,0 +1,433 @@
+{
+  "lab": "merchant_experience_binding_v1",
+  "generated_at_utc": "2026-07-22T21:38:54.784770+00:00",
+  "database_path": "C:\\Users\\Toshiba\\AppData\\Local\\Temp\\cartflow_mebf_v1_20260722.db",
+  "constraints": {
+    "demo_fixture": false,
+    "admit_review_fixtures": false,
+    "load_db": true,
+    "pure_consumer": true
+  },
+  "simulation": {
+    "simulation_run_id": "srs_921fb5de70e349e4ad6bc909483d5002",
+    "reality_score": {
+      "overall": 80.0,
+      "dimensions": {
+        "customer_diversity": 100.0,
+        "traffic_realism": 80.0,
+        "purchase_realism": 90.0,
+        "product_realism": 100.0,
+        "recovery_realism": 90.0,
+        "knowledge_realism": 80.0,
+        "timeline_realism": 50.0,
+        "session_realism": 55.0,
+        "behaviour_realism": 85.0,
+        "execution_fidelity": 70.0
+      },
+      "internal_only": true,
+      "merchant_facing": false,
+      "sample": {
+        "events": 244,
+        "customers": 27,
+        "sessions": 27,
+        "products": 8
+      }
+    }
+  },
+  "materialize": {
+    "ok": true,
+    "detected": 7,
+    "persisted": 6,
+    "surface_eligible": 5,
+    "errors": []
+  },
+  "meif_binding": {
+    "ok": true,
+    "enabled": true,
+    "binding_version": "mebf_v1",
+    "source": "lifecycle_consume",
+    "findings_bound": 5,
+    "home_bound": 5,
+    "decision_bound": 0,
+    "carts_bound": 1,
+    "communication_bound": 1,
+    "diagnostics": [
+      {
+        "finding_id": "finding:traffic_versus_conversion_v1",
+        "finding_type": "traffic_versus_conversion_v1",
+        "surface_requested": [
+          "home"
+        ],
+        "renderer_invoked": false,
+        "render_accepted": false,
+        "render_skipped": false,
+        "skip_reason": null
+      },
+      {
+        "finding_id": "finding:recovery_channel_effectiveness_v1:whatsapp",
+        "finding_type": "recovery_channel_effectiveness_v1",
+        "surface_requested": [
+          "home",
+          "communication"
+        ],
+        "renderer_invoked": false,
+        "render_accepted": false,
+        "render_skipped": false,
+        "skip_reason": null
+      },
+      {
+        "finding_id": "finding:dominant_hesitation_reason_v1:not_dominant",
+        "finding_type": "dominant_hesitation_reason_v1",
+        "surface_requested": [
+          "home"
+        ],
+        "renderer_invoked": false,
+        "render_accepted": false,
+        "render_skipped": false,
+        "skip_reason": null
+      },
+      {
+        "finding_id": "finding:insufficient_or_conflicting_evidence_v1:conflict",
+        "finding_type": "insufficient_or_conflicting_evidence_v1",
+        "surface_requested": [
+          "home"
+        ],
+        "renderer_invoked": false,
+        "render_accepted": false,
+        "render_skipped": false,
+        "skip_reason": null
+      },
+      {
+        "finding_id": "finding:recovery_channel_effectiveness_v1:widget",
+        "finding_type": "recovery_channel_effectiveness_v1",
+        "surface_requested": [
+          "home",
+          "carts"
+        ],
+        "renderer_invoked": false,
+        "render_accepted": false,
+        "render_skipped": false,
+        "skip_reason": null
+      }
+    ],
+    "errors": [],
+    "pure_consumer": true,
+    "never_generates_findings": true
+  },
+  "home_business_findings": [
+    {
+      "finding_id": "finding:traffic_versus_conversion_v1",
+      "finding_type": "traffic_versus_conversion_v1",
+      "title": "لا يمكن بعد التمييز بين ضعف الزيارات وضعف التحويل",
+      "explanation": "أي توصية إعلانية أو مرورية الآن ستكون افتراضاً لا دليلاً.",
+      "evidence_summary": "visitor_total=unavailable; carts_not_used_as_traffic_proxy",
+      "confidence": "insufficient",
+      "recommended_action": "اربط مصدر زيارات موثوقاً قبل الحكم على الزيارات مقابل التحويل.",
+      "severity": "",
+      "eligible_surfaces": [
+        "merchant_home",
+        "knowledge_layer"
+      ],
+      "lifecycle_state": "surface_eligible",
+      "information_class": "business_finding",
+      "source_type": "business_finding",
+      "trust_class": "observation",
+      "trust_class_ar": "استنتاج تجاري",
+      "merchant_statement_ar": "لا يمكن بعد التمييز بين ضعف الزيارات وضعف التحويل",
+      "presentation_intent": "insight_card",
+      "bfl_binding": true,
+      "binding_version": "mebf_v1",
+      "source_lineage": {
+        "finding_id": "finding:traffic_versus_conversion_v1",
+        "finding_type": "traffic_versus_conversion_v1",
+        "source_type": "business_finding",
+        "confidence": "insufficient",
+        "explainability": {
+          "what_happened_ar": "لا يمكن بعد التمييز بين ضعف الزيارات وضعف التحويل",
+          "why_true_ar": "أي توصية إعلانية أو مرورية الآن ستكون افتراضاً لا دليلاً.",
+          "evidence_ar": "visitor_total=unavailable; carts_not_used_as_traffic_proxy",
+          "next_step_ar": "اربط مصدر زيارات موثوقاً قبل الحكم على الزيارات مقابل التحويل."
+        }
+      },
+      "priority": 10
+    },
+    {
+      "finding_id": "finding:recovery_channel_effectiveness_v1:whatsapp",
+      "finding_type": "recovery_channel_effectiveness_v1",
+      "title": "فعالية واتساب التجارية ما زالت قيد التشكّل",
+      "explanation": "الإشارات مختلطة أو العينة لا تدعم حكماً قوياً بعد.",
+      "evidence_summary": "sent=26 returned=0 purchased=0 failed=0 suppressed=0",
+      "confidence": "high",
+      "recommended_action": "حافظ على القناة إن كانت تُعيد الاهتمام، وركّز التحسين على ما بعد العودة.",
+      "severity": "",
+      "eligible_surfaces": [
+        "merchant_home",
+        "whatsapp"
+      ],
+      "lifecycle_state": "surface_eligible",
+      "information_class": "business_finding",
+      "source_type": "business_finding",
+      "trust_class": "observation",
+      "trust_class_ar": "استنتاج تجاري",
+      "merchant_statement_ar": "فعالية واتساب التجارية ما زالت قيد التشكّل",
+      "presentation_intent": "insight_card",
+      "bfl_binding": true,
+      "binding_version": "mebf_v1",
+      "source_lineage": {
+        "finding_id": "finding:recovery_channel_effectiveness_v1:whatsapp",
+        "finding_type": "recovery_channel_effectiveness_v1",
+        "source_type": "business_finding",
+        "confidence": "high",
+        "explainability": {
+          "what_happened_ar": "فعالية واتساب التجارية ما زالت قيد التشكّل",
+          "why_true_ar": "الإشارات مختلطة أو العينة لا تدعم حكماً قوياً بعد.",
+          "evidence_ar": "sent=26 returned=0 purchased=0 failed=0 suppressed=0",
+          "next_step_ar": "حافظ على القناة إن كانت تُعيد الاهتمام، وركّز التحسين على ما بعد العودة."
+        }
+      },
+      "priority": 10
+    },
+    {
+      "finding_id": "finding:dominant_hesitation_reason_v1:not_dominant",
+      "finding_type": "dominant_hesitation_reason_v1",
+      "title": "أسباب التردد موزّعة — لا سبب مهيمن بوضوح بعد",
+      "explanation": "التركيز على سبب واحد الآن قد يتجاهل تردداً موزّعاً بين عدة عوامل.",
+      "evidence_summary": "top=delivery:8/36 share=22%",
+      "confidence": "low",
+      "recommended_action": "راقب التوزيع لأيام إضافية قبل تغيير العرض.",
+      "severity": "",
+      "eligible_surfaces": [
+        "merchant_home",
+        "knowledge_layer"
+      ],
+      "lifecycle_state": "surface_eligible",
+      "information_class": "business_finding",
+      "source_type": "business_finding",
+      "trust_class": "observation",
+      "trust_class_ar": "استنتاج تجاري",
+      "merchant_statement_ar": "أسباب التردد موزّعة — لا سبب مهيمن بوضوح بعد",
+      "presentation_intent": "insight_card",
+      "bfl_binding": true,
+      "binding_version": "mebf_v1",
+      "source_lineage": {
+        "finding_id": "finding:dominant_hesitation_reason_v1:not_dominant",
+        "finding_type": "dominant_hesitation_reason_v1",
+        "source_type": "business_finding",
+        "confidence": "low",
+        "explainability": {
+          "what_happened_ar": "أسباب التردد موزّعة — لا سبب مهيمن بوضوح بعد",
+          "why_true_ar": "التركيز على سبب واحد الآن قد يتجاهل تردداً موزّعاً بين عدة عوامل.",
+          "evidence_ar": "top=delivery:8/36 share=22%",
+          "next_step_ar": "راقب التوزيع لأيام إضافية قبل تغيير العرض."
+        }
+      },
+      "priority": 10
+    },
+    {
+      "finding_id": "finding:insufficient_or_conflicting_evidence_v1:conflict",
+      "finding_type": "insufficient_or_conflicting_evidence_v1",
+      "title": "سلوك العملاء يشير حالياً إلى اتجاهات متعارضة",
+      "explanation": "التعارض يعني أن القرار المتسرّع قد يُصلح جانباً ويُفسد آخر.",
+      "evidence_summary": "confirmed_types=['dominant_hesitation_reason_v1', 'low_product_interest_v1', 'recovery_channel_effectiveness_v1']; titles_blob_len=212",
+      "confidence": "medium",
+      "recommended_action": "افصل الشرائح (سبب/منتج/قناة) قبل تغيير واسع.",
+      "severity": "",
+      "eligible_surfaces": [
+        "merchant_home",
+        "knowledge_layer"
+      ],
+      "lifecycle_state": "surface_eligible",
+      "information_class": "business_finding",
+      "source_type": "business_finding",
+      "trust_class": "observation",
+      "trust_class_ar": "استنتاج تجاري",
+      "merchant_statement_ar": "سلوك العملاء يشير حالياً إلى اتجاهات متعارضة",
+      "presentation_intent": "insight_card",
+      "bfl_binding": true,
+      "binding_version": "mebf_v1",
+      "source_lineage": {
+        "finding_id": "finding:insufficient_or_conflicting_evidence_v1:conflict",
+        "finding_type": "insufficient_or_conflicting_evidence_v1",
+        "source_type": "business_finding",
+        "confidence": "medium",
+        "explainability": {
+          "what_happened_ar": "سلوك العملاء يشير حالياً إلى اتجاهات متعارضة",
+          "why_true_ar": "التعارض يعني أن القرار المتسرّع قد يُصلح جانباً ويُفسد آخر.",
+          "evidence_ar": "confirmed_types=['dominant_hesitation_reason_v1', 'low_product_interest_v1', 'recovery_channel_effectiveness_v1']; titles_blob_len=212",
+          "next_step_ar": "افصل الشرائح (سبب/منتج/قناة) قبل تغيير واسع."
+        }
+      },
+      "priority": 10
+    },
+    {
+      "finding_id": "finding:recovery_channel_effectiveness_v1:widget",
+      "finding_type": "recovery_channel_effectiveness_v1",
+      "title": "التفاعل يلتقط أسباب التردد لكن بيانات التواصل ما زالت ضعيفة",
+      "explanation": "معرفة سبب التردد دون تواصل صالح تُبقي كثيراً من السلال خارج الاسترجاع.",
+      "evidence_summary": "reasons=36 contacts=0",
+      "confidence": "medium",
+      "recommended_action": "اختبر تحسين لحظة طلب التواصل بعد التقاط السبب — كتوصية اختبار.",
+      "severity": "",
+      "eligible_surfaces": [
+        "merchant_home",
+        "carts"
+      ],
+      "lifecycle_state": "surface_eligible",
+      "information_class": "business_finding",
+      "source_type": "business_finding",
+      "trust_class": "observation",
+      "trust_class_ar": "استنتاج تجاري",
+      "merchant_statement_ar": "التفاعل يلتقط أسباب التردد لكن بيانات التواصل ما زالت ضعيفة",
+      "presentation_intent": "insight_card",
+      "bfl_binding": true,
+      "binding_version": "mebf_v1",
+      "source_lineage": {
+        "finding_id": "finding:recovery_channel_effectiveness_v1:widget",
+        "finding_type": "recovery_channel_effectiveness_v1",
+        "source_type": "business_finding",
+        "confidence": "medium",
+        "explainability": {
+          "what_happened_ar": "التفاعل يلتقط أسباب التردد لكن بيانات التواصل ما زالت ضعيفة",
+          "why_true_ar": "معرفة سبب التردد دون تواصل صالح تُبقي كثيراً من السلال خارج الاسترجاع.",
+          "evidence_ar": "reasons=36 contacts=0",
+          "next_step_ar": "اختبر تحسين لحظة طلب التواصل بعد التقاط السبب — كتوصية اختبار."
+        }
+      },
+      "priority": 10
+    }
+  ],
+  "screenshots": {
+    "shots": [
+      "01_desktop_home_business_finding.png",
+      "02_mobile_home_business_finding.png"
+    ],
+    "painted_finding_cards": 7,
+    "titles": [
+      "التفاعل يلتقط أسباب التردد لكن بيانات التواصل ما زالت ضعيفة",
+      "سلوك العملاء يشير حالياً إلى اتجاهات متعارضة",
+      "أسباب التردد موزّعة — لا سبب مهيمن بوضوح بعد",
+      "فعالية واتساب التجارية ما زالت قيد التشكّل",
+      "لا يمكن بعد التمييز بين ضعف الزيارات وضعف التحويل",
+      "التفاعل يلتقط أسباب التردد لكن بيانات التواصل ما زالت ضعيفة",
+      "فعالية واتساب التجارية ما زالت قيد التشكّل"
+    ],
+    "render_diagnostics": {
+      "binding_version": "mebf_v1",
+      "surface": "home",
+      "findings_bound": "5",
+      "home_bound": "5",
+      "diagnostics": [
+        {
+          "finding_id": "finding:recovery_channel_effectiveness_v1:widget",
+          "finding_type": "recovery_channel_effectiveness_v1",
+          "surface_requested": [
+            "home",
+            "carts"
+          ],
+          "renderer_invoked": true,
+          "render_accepted": true,
+          "render_skipped": false,
+          "skip_reason": "None",
+          "surface_rendered": "home"
+        },
+        {
+          "finding_id": "finding:insufficient_or_conflicting_evidence_v1:conflict",
+          "finding_type": "insufficient_or_conflicting_evidence_v1",
+          "surface_requested": [
+            "home"
+          ],
+          "renderer_invoked": true,
+          "render_accepted": true,
+          "render_skipped": false,
+          "skip_reason": "None",
+          "surface_rendered": "home"
+        },
+        {
+          "finding_id": "finding:dominant_hesitation_reason_v1:not_dominant",
+          "finding_type": "dominant_hesitation_reason_v1",
+          "surface_requested": [
+            "home"
+          ],
+          "renderer_invoked": true,
+          "render_accepted": true,
+          "render_skipped": false,
+          "skip_reason": "None",
+          "surface_rendered": "home"
+        },
+        {
+          "finding_id": "finding:recovery_channel_effectiveness_v1:whatsapp",
+          "finding_type": "recovery_channel_effectiveness_v1",
+          "surface_requested": [
+            "home",
+            "communication"
+          ],
+          "renderer_invoked": true,
+          "render_accepted": true,
+          "render_skipped": false,
+          "skip_reason": "None",
+          "surface_rendered": "home"
+        },
+        {
+          "finding_id": "finding:traffic_versus_conversion_v1",
+          "finding_type": "traffic_versus_conversion_v1",
+          "surface_requested": [
+            "home"
+          ],
+          "renderer_invoked": true,
+          "render_accepted": true,
+          "render_skipped": false,
+          "skip_reason": "None",
+          "surface_rendered": "home"
+        }
+      ],
+      "paint_events": [
+        {
+          "finding_id": "finding:recovery_channel_effectiveness_v1:widget",
+          "finding_type": "recovery_channel_effectiveness_v1",
+          "surface_requested": "home",
+          "renderer_invoked": true,
+          "render_accepted": true,
+          "render_skipped": false,
+          "skip_reason": null
+        },
+        {
+          "finding_id": "finding:insufficient_or_conflicting_evidence_v1:conflict",
+          "finding_type": "insufficient_or_conflicting_evidence_v1",
+          "surface_requested": "home",
+          "renderer_invoked": true,
+          "render_accepted": true,
+          "render_skipped": false,
+          "skip_reason": null
+        },
+        {
+          "finding_id": "finding:dominant_hesitation_reason_v1:not_dominant",
+          "finding_type": "dominant_hesitation_reason_v1",
+          "surface_requested": "home",
+          "renderer_invoked": true,
+          "render_accepted": true,
+          "render_skipped": false,
+          "skip_reason": null
+        },
+        {
+          "finding_id": "finding:recovery_channel_effectiveness_v1:whatsapp",
+          "finding_type": "recovery_channel_effectiveness_v1",
+          "surface_requested": "home",
+          "renderer_invoked": true,
+          "render_accepted": true,
+          "render_skipped": false,
+          "skip_reason": null
+        },
+        {
+          "finding_id": "finding:traffic_versus_conversion_v1",
+          "finding_type": "traffic_versus_conversion_v1",
+          "surface_requested": "home",
+          "renderer_invoked": true,
+          "render_accepted": true,
+          "render_skipped": false,
+          "skip_reason": null
+        }
+      ]
+    }
+  },
+  "acceptance_home_painted": true
+}

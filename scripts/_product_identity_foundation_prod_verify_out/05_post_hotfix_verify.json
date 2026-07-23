@@ -1,0 +1,57 @@
+{
+  "home": {
+    "product_x": false,
+    "demo_rich": false
+  },
+  "carts_ui": {
+    "count": 3,
+    "texts": [
+      {
+        "text": "TrueSound Pro — سماعة لاسلكية مع عزل ضوضاء",
+        "status": "resolved"
+      },
+      {
+        "text": "TrueSound Pro — سماعة لاسلكية مع عزل ضوضاء",
+        "status": "resolved"
+      },
+      {
+        "text": "TrueSound Pro — سماعة لاسلكية مع عزل ضوضاء",
+        "status": "resolved"
+      }
+    ],
+    "body_has_truesound": true,
+    "body_has_unresolved": false,
+    "body_has_product_x": false,
+    "body_has_hp_air": false
+  },
+  "carts_api": {
+    "status": 200,
+    "row_count": 1,
+    "merchant_product_name": "TrueSound Pro — سماعة لاسلكية مع عزل ضوضاء",
+    "status_pi": "resolved",
+    "pi": {
+      "version": "product_identity_cart_projection_v1",
+      "status": "resolved",
+      "product_name": "TrueSound Pro — سماعة لاسلكية مع عزل ضوضاء",
+      "product_names": [
+        "TrueSound Pro — سماعة لاسلكية مع عزل ضوضاء"
+      ],
+      "product_id": "demo_hp_pro",
+      "product_ids": [
+        "demo_hp_pro"
+      ],
+      "identity_source": "raw_payload",
+      "display_name_ar": "TrueSound Pro — سماعة لاسلكية مع عزل ضوضاء",
+      "unresolved": false
+    },
+    "has_product_x": false,
+    "has_demo_rich": false
+  },
+  "home_api": {
+    "status": 200,
+    "has_product_x": false,
+    "has_demo_rich": false
+  },
+  "auth_email": "pi.f6d.70cc1788@smartreplyai.net",
+  "commit": "c80df102b3f8b85787203b47dab0ac48a32777d1"
+}

@@ -14,23 +14,6 @@ _LAZY = (_ROOT / "static" / "merchant_dashboard_lazy.js").read_text(encoding="ut
 _APP = (_ROOT / "static" / "merchant_app.js").read_text(encoding="utf-8")
 
 
-def _section_order_positions(js: str) -> list[int]:
-    """Return render call order positions inside renderHome."""
-    m = re.search(r"function renderHome\(summary\)[\s\S]*?return\s*\(([\s\S]*?)\);\s*\}", js)
-    assert m, "renderHome body not found"
-    body = m.group(1)
-    keys = [
-        "renderBusinessHealth(",
-        "renderRevenueRisk(",
-        "renderOpportunity(",
-        "renderTodaysPriority(",
-        "renderBusinessUnderstanding(",
-        "renderLearningProgress(",
-        "renderBusinessTimeline(",
-    ]
-    return [body.index(k) for k in keys]
-
-
 class DashboardHomeDailyBriefV1Tests(unittest.TestCase):
     def test_assets_wired_in_template(self) -> None:
         self.assertIn("merchant_dashboard_home_v1.js", _TMPL)
@@ -41,8 +24,25 @@ class DashboardHomeDailyBriefV1Tests(unittest.TestCase):
         self.assertIn("maApplyDashboardHomeV1", _LAZY)
 
     def test_canonical_brief_section_order(self) -> None:
-        positions = _section_order_positions(_JS)
-        self.assertEqual(positions, sorted(positions))
+        # Adaptive Cognition V2: order is data-driven via section_order / renderSectionByKey.
+        self.assertIn("DEFAULT_SECTION_ORDER", _JS)
+        self.assertIn("resolveSectionOrder", _JS)
+        self.assertIn("renderSectionByKey", _JS)
+        self.assertIn("adaptive_cognition_v1", _JS)
+        self.assertIn("ma-ecc--acf-v2", _JS)
+        self.assertIn("ma-ecc--reality-v1", _JS)
+        self.assertIn("ma-ecc-focus", _JS)
+        self.assertIn("PATH_FOCUS_AR", _JS)
+        self.assertIn("maAcfSummaryQuery", _JS)
+        self.assertIn("maAcfSummaryQuery", _LAZY)
+        self.assertIn("acf_trigger", _LAZY)
+        # Layout integrity: attention cards must not force a 40px-only first column.
+        self.assertIn("ma-ecc-attention__item", _CSS)
+        self.assertIn("display: flex", _CSS)
+        self.assertIn(
+            "A single-child 40px|1fr grid collapses body text",
+            _CSS,
+        )
         for section in (
             "health",
             "risk",

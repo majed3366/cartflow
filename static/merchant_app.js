@@ -11,6 +11,7 @@
     completed: "السلال",
     vip: "السلال",
     messages: "الرسائل المرسلة",
+    communication: "التواصل",
     reasons: "أسباب التردد",
     "trigger-templates": "قوالب الاسترجاع",
     widget: "الودجيت",
@@ -50,6 +51,7 @@
     completed: "سلال أنهت مسار الاسترجاع — شراء أو استرداد ناجح.",
     vip: "سلال عالية القيمة تحتاج متابعة خاصة منك.",
     messages: "سجل رسائل استرداد واتساب المسجّلة لمتجرك.",
+    communication: "ما حدث في التواصل، وما يحتاج متابعة.",
     reasons: "ما يمنع عملاءك من إتمام الشراء — خلال آخر 30 يوماً.",
     "trigger-templates": "محتوى رسائل الاسترجاع لكل سبب تردد.",
     widget: "مظهر الودجيت ومتى يظهر للعميل في المتجر.",
@@ -85,6 +87,7 @@
     completed: "carts",
     vip: "carts",
     messages: "comms",
+    communication: "comms",
     reasons: "comms",
     "trigger-templates": "comms",
     widget: "settings",
@@ -136,6 +139,7 @@
     "#completed": "completed",
     "#vip": "vip",
     "#messages": "messages",
+    "#communication": "communication",
     "#reasons": "reasons",
     "#trigger-templates": "trigger-templates",
     "#templates": "trigger-templates",
@@ -786,7 +790,34 @@
 
   window.goToSection = function (section) {
     var sec = (section || "home").trim();
+    var leavingHome =
+      sec !== "home" &&
+      String(location.hash || "")
+        .split("?")[0]
+        .replace(/^#/, "") === "home";
+    if (leavingHome) {
+      try {
+        sessionStorage.setItem("cf_acf_left_home", "1");
+      } catch (eLeave) {
+        /* ignore */
+      }
+    }
     if (sec === "home") {
+      try {
+        if (sessionStorage.getItem("cf_acf_left_home") === "1") {
+          sessionStorage.removeItem("cf_acf_left_home");
+          if (window.maAcfMarkReturnFromSurface) {
+            window.maAcfMarkReturnFromSurface();
+          } else {
+            sessionStorage.setItem(
+              "cf_acf_pending_trigger",
+              "return_from_surface"
+            );
+          }
+        }
+      } catch (eRet) {
+        /* ignore */
+      }
       goTo("home");
       return;
     }
@@ -799,11 +830,21 @@
       return;
     }
     if (sec === "comms") {
-      goTo("messages");
+      /* MEIF V1: Communication is its own experience (MEV1-M01). */
+      if (window.CARTFLOW_MERCHANT_EXPERIENCE_INTEGRATION_V1) {
+        goTo("communication");
+      } else {
+        goTo("messages");
+      }
       return;
     }
     if (sec === "settings") {
-      goTo("whatsapp");
+      /* MEIF V1: Settings nav must not land on WhatsApp (MEV1-M01 sibling). */
+      if (window.CARTFLOW_MERCHANT_EXPERIENCE_INTEGRATION_V1) {
+        goTo("settings");
+      } else {
+        goTo("whatsapp");
+      }
       return;
     }
     goTo("home");

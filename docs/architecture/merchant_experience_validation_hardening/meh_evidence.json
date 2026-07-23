@@ -1,0 +1,749 @@
+{
+  "lab": "merchant_experience_validation_hardening",
+  "compared_to": {
+    "v1": 28,
+    "v2": 72
+  },
+  "production_probe": {
+    "ok": true,
+    "store_slug": "demo",
+    "foundation_enabled": true,
+    "flag_env": "CARTFLOW_MERCHANT_EXPERIENCE_INTEGRATION_V1",
+    "meif_version": "meif_v1",
+    "assembly_window": "d7",
+    "page_readiness": {
+      "home": {
+        "ready": true,
+        "governed_consumption": true,
+        "placeholder_eliminated": true
+      },
+      "decision_workspace": {
+        "ready": true,
+        "governed_consumption": true,
+        "placeholder_eliminated": true
+      },
+      "carts": {
+        "ready": true,
+        "governed_consumption": true,
+        "placeholder_eliminated": true
+      },
+      "communication": {
+        "ready": true,
+        "governed_consumption": true,
+        "placeholder_eliminated": true
+      },
+      "settings": {
+        "ready": true,
+        "governed_consumption": true,
+        "placeholder_eliminated": true
+      }
+    },
+    "governed_consumption_pct": 100,
+    "legacy_consumption_pct": 0,
+    "placeholder_count": 0,
+    "duplicate_logic_count": 5,
+    "routing_integrity": true,
+    "navigation_integrity": true,
+    "trust_warnings": [
+      "suppressed_false_empty:communication"
+    ],
+    "integration_failures": [],
+    "mev1_high_resolution": {
+      "MEV1-H01": true,
+      "MEV1-H02": true,
+      "MEV1-D01": true,
+      "MEV1-C01": true,
+      "MEV1-M01": true,
+      "MEV1-K01": true,
+      "MEV1-G02": true,
+      "MEV1-S01": true,
+      "MEV1-S02": true,
+      "MEV1-T01": true,
+      "MEV1-L01": true
+    },
+    "canonical_fingerprint": "0995ab205011fd41e98e5c49ae198d361a8f6b907bb1f2e4118fe5b574531c6b",
+    "errors": [],
+    "registries_valid": true,
+    "non_demo_writes": false,
+    "as_of": "2026-07-22 16:44:55",
+    "navigation": {
+      "home": "#home",
+      "decision_workspace": "#workspace",
+      "carts": "#carts",
+      "communication": "#communication",
+      "settings": "#settings",
+      "integrity": {
+        "comms_not_settings": true,
+        "settings_not_whatsapp_default": true,
+        "workspace_nav_required": true
+      }
+    },
+    "operational_state": {
+      "store_slug": "demo",
+      "abandoned_carts": 46,
+      "purchase_truth": 6,
+      "hesitation_reasons": 80,
+      "recovery_schedules": 78,
+      "mock_whatsapp_sent": 49,
+      "has_durable_carts": true,
+      "has_communication_activity": true,
+      "source": "merchant_operational_state_v1"
+    },
+    "sample_home": {
+      "executive_summary": [
+        {
+          "composition_id": "a5bae2b52f075a46adea2e0cadaa5dbd",
+          "information_class": "executive_summary",
+          "presentation_intent": "hero",
+          "priority": 71,
+          "freshness_state": "fresh",
+          "visibility": "visible",
+          "duplicate_group": "guidance:4ddba879ad1f13988d491d7fab9a1ac3:executive_summary",
+          "owns_full_explanation": true,
+          "merchant_value": "tpl_exec_investigate_v1:relevance",
+          "source_type": "merchant_presentation",
+          "source_id": "05797915b8c641df56e48cde74f2bfc3",
+          "source_lineage": {
+            "presentation_id": "05797915b8c641df56e48cde74f2bfc3",
+            "route_id": "ee4499672b79bb28c22bd92489efc502",
+            "guidance_id": "4ddba879ad1f13988d491d7fab9a1ac3",
+            "guidance_key": "investigate_conversion_path",
+            "subject_type": "product",
+            "subject_id": "c|demo_psc_closure"
+          },
+          "accounting_outcome": "composed",
+          "surface_owner": "surface_composition_foundation_v1"
+        },
+        {
+          "composition_id": "a628d64c901bc36d62973d907979c896",
+          "information_class": "executive_summary",
+          "presentation_intent": "summary_card",
+          "priority": 71,
+          "freshness_state": "fresh",
+          "visibility": "visible",
+          "duplicate_group": "guidance:894f6b4564168f443973693b59ed288b:executive_summary",
+          "owns_full_explanation": true,
+          "merchant_value": "tpl_exec_investigate_v1:relevance",
+          "source_type": "merchant_presentation",
+          "source_id": "4669a1effb8d33ad0c836a833c839c4a",
+          "source_lineage": {
+            "presentation_id": "4669a1effb8d33ad0c836a833c839c4a",
+            "route_id": "f49c9b6987725c76bd4ff0cb9009f16b",
+            "guidance_id": "894f6b4564168f443973693b59ed288b",
+            "guidance_key": "investigate_conversion_path",
+            "subject_type": "product",
+            "subject_id": "c|demo_pmf_probe"
+          },
+          "accounting_outcome": "composed",
+          "surface_owner": "surface_composition_foundation_v1"
+        },
+        {
+          "composition_id": "ad90777972ebf155a7f120e0acb2564b",
+          "information_class": "executive_summary",
+          "presentation_intent": "summary_card",
+          "priority": 71,
+          "freshness_state": "fresh",
+          "visibility": "visible",
+          "duplicate_group": "guidance:d0132bbcbce2aa31d3fb3dc93f334d4b:executive_summary",
+          "owns_full_explanation": true,
+          "merchant_value": "tpl_exec_investigate_v1:relevance",
+          "source_type": "merchant_presentation",
+          "source_id": "1f8eff566d186b74fcc3b4c76552ecdf",
+          "source_lineage": {
+            "presentation_id": "1f8eff566d186b74fcc3b4c76552ecdf",
+            "route_id": "7daf3f75f343c1b57e957349b3f88c17",
+            "guidance_id": "d0132bbcbce2aa31d3fb3dc93f334d4b",
+            "guidance_key": "investigate_conversion_path",
+            "subject_type": "product",
+            "subject_id": "c|demo_psc_probe"
+          },
+          "accounting_outcome": "composed",
+          "surface_owner": "surface_composition_foundation_v1"
+        },
+        {
+          "composition_id": "d14aefd793fab96c1b1bd80e95b9f19f",
+          "information_class": "executive_summary",
+          "presentation_intent": "summary_card",
+          "priority": 71,
+          "freshness_state": "fresh",
+          "visibility": "visible",
+          "duplicate_group": "guidance:68527fe5ede5b4b330981376ee8a5357:executive_summary",
+          "owns_full_explanation": true,
+          "merchant_value": "tpl_exec_investigate_v1:relevance",
+          "source_type": "merchant_presentation",
+          "source_id": "9a86dc28f042334a41d5cbed4b53d3ee",
+          "source_lineage": {
+            "presentation_id": "9a86dc28f042334a41d5cbed4b53d3ee",
+            "route_id": "6e54efa22ab9145388a140e4ccae8c7f",
+            "guidance_id": "68527fe5ede5b4b330981376ee8a5357",
+            "guidance_key": "investigate_conversion_path",
+            "subject_type": "store",
+            "subject_id": "demo"
+          },
+          "accounting_outcome": "composed",
+          "surface_owner": "surface_composition_foundation_v1"
+        }
+      ],
+      "critical_attention": [],
+      "operational_health": [],
+      "knowledge_highlights": [
+        {
+          "composition_id": "2fcd9399e2636e795de7e6b35c0ff094",
+          "information_class": "knowledge",
+          "presentation_intent": "insight_card",
+          "priority": 63,
+          "freshness_state": "fresh",
+          "visibility": "visible",
+          "duplicate_group": "knowledge:92e0be200940c1a97af78ec583439cd8",
+          "owns_full_explanation": true,
+          "merchant_value": "knowledge_highlight",
+          "source_type": "knowledge",
+          "source_id": "92e0be200940c1a97af78ec583439cd8",
+          "source_lineage": {
+            "knowledge_id": "92e0be200940c1a97af78ec583439cd8",
+            "knowledge_type": "metric_trend_observation",
+            "evidence_confidence_id": "12edc7460b19394afe90e67b85643f11",
+            "subject_type": "product",
+            "subject_id": "c|demo_pmf_probe"
+          },
+          "accounting_outcome": "composed",
+          "surface_owner": "surface_composition_foundation_v1"
+        },
+        {
+          "composition_id": "482c1dfb9684905622a1663eed610ba8",
+          "information_class": "knowledge",
+          "presentation_intent": "insight_card",
+          "priority": 63,
+          "freshness_state": "fresh",
+          "visibility": "visible",
+          "duplicate_group": "knowledge:13c96b1199d35c6d29a1c8613e0cd2a4",
+          "owns_full_explanation": true,
+          "merchant_value": "knowledge_highlight",
+          "source_type": "knowledge",
+          "source_id": "13c96b1199d35c6d29a1c8613e0cd2a4",
+          "source_lineage": {
+            "knowledge_id": "13c96b1199d35c6d29a1c8613e0cd2a4",
+            "knowledge_type": "evidence_quality",
+            "evidence_confidence_id": "12edc7460b19394afe90e67b85643f11",
+            "subject_type": "product",
+            "subject_id": "c|demo_pmf_probe"
+          },
+          "accounting_outcome": "composed",
+          "surface_owner": "surface_composition_foundation_v1"
+        },
+        {
+          "composition_id": "4f0c07810e78fd7d89c0ef1ba5bd037f",
+          "information_class": "knowledge",
+          "presentation_intent": "insight_card",
+          "priority": 63,
+          "freshness_state": "fresh",
+          "visibility": "visible",
+          "duplicate_group": "knowledge:b86ea5f09088cddbaa4717bf5960917f",
+          "owns_full_explanation": true,
+          "merchant_value": "knowledge_highlight",
+          "source_type": "knowledge",
+          "source_id": "b86ea5f09088cddbaa4717bf5960917f",
+          "source_lineage": {
+            "knowledge_id": "b86ea5f09088cddbaa4717bf5960917f",
+            "knowledge_type": "metric_trend_observation",
+            "evidence_confidence_id": "12edc7460b19394afe90e67b85643f11",
+            "subject_type": "product",
+            "subject_id": "c|demo_pmf_probe"
+          },
+          "accounting_outcome": "composed",
+          "surface_owner": "surface_composition_foundation_v1"
+        }
+      ],
+      "commercial_guidance_highlights": []
+    },
+    "sample_carts": {
+      "forbid_please_wait": true,
+      "durable_cart_count": 46,
+      "status_message_ar": "\u064a\u0648\u062c\u062f 46 \u0633\u0644\u0629 \u0645\u0633\u062c\u0651\u0644\u0629 \u0641\u064a \u062d\u0642\u064a\u0642\u0629 \u0627\u0644\u0645\u062a\u062c\u0631."
+    }
+  },
+  "generated_at": "2026-07-22T16:44:56.111553+00:00",
+  "meif_hardening": {
+    "ok": true,
+    "hardening": {
+      "enabled": true,
+      "status": "hardened",
+      "meh_version": "meh_v1",
+      "findings_classification": {
+        "version": "meh_findings_v1",
+        "findings": [
+          {
+            "finding_id": "MEV1-H03",
+            "category": "B",
+            "root_cause": "Knowledge/Home wall-window vs Reality history temporal mismatch",
+            "existing_owner": "Time Authority / Knowledge consumers",
+            "affected_layer": "Time Authority \u2192 Knowledge",
+            "solvable_now": false,
+            "gap_ids": [
+              "CG-MEH-01"
+            ]
+          },
+          {
+            "finding_id": "MEV1-H04",
+            "category": "A",
+            "root_cause": "Setup theatre remains prominent after durable history exists",
+            "existing_owner": "MEIF Home package / setup presentation gate",
+            "affected_layer": "Merchant Experience Integration",
+            "solvable_now": true,
+            "fix": "suppress_setup_theatre_when_durable_ops"
+          },
+          {
+            "finding_id": "MEV1-D02",
+            "category": "B",
+            "root_cause": "SCF decision empty_state without Operational Truth inputs",
+            "existing_owner": "Surface Composition",
+            "affected_layer": "Surface Composition input boundary",
+            "solvable_now": false,
+            "gap_ids": [
+              "CG-MEH-02"
+            ]
+          },
+          {
+            "finding_id": "MEV1-C01",
+            "category": "B",
+            "root_cause": "normal-carts projection empty while AbandonedCart durable rows exist",
+            "existing_owner": "Cart projection / Identity",
+            "affected_layer": "Cart list projection",
+            "solvable_now": false,
+            "gap_ids": [
+              "CG-MEH-03"
+            ],
+            "partial_a": "forbid_please_wait_and_ops_fact_banner"
+          },
+          {
+            "finding_id": "MEV1-C02",
+            "category": "B",
+            "root_cause": "SCF carts cannot compose durable cart ops",
+            "existing_owner": "Surface Composition",
+            "affected_layer": "Surface Composition input boundary",
+            "solvable_now": false,
+            "gap_ids": [
+              "CG-MEH-02"
+            ]
+          },
+          {
+            "finding_id": "MEV1-C03",
+            "category": "A",
+            "root_cause": "Attention hero without queue answer",
+            "existing_owner": "MEIF Carts package",
+            "affected_layer": "Merchant Experience Integration",
+            "solvable_now": true,
+            "fix": "carts_attention_answered_by_ops_facts"
+          },
+          {
+            "finding_id": "MEV1-M02",
+            "category": "B",
+            "root_cause": "No follow-up queue projection for communication ops",
+            "existing_owner": "Communication projection",
+            "affected_layer": "Communication",
+            "solvable_now": false,
+            "gap_ids": [
+              "CG-MEH-04"
+            ],
+            "partial_a": "communication_activity_facts"
+          },
+          {
+            "finding_id": "MEV1-M03",
+            "category": "A",
+            "root_cause": "Persistent loading / placeholder on communication path",
+            "existing_owner": "MEIF Communication page",
+            "affected_layer": "Merchant Pages",
+            "solvable_now": true,
+            "fix": "communication_ready_package_no_settings_loading"
+          },
+          {
+            "finding_id": "MEV1-K02",
+            "category": "A",
+            "root_cause": "Duplicate evidence_gap statements in merchant highlights",
+            "existing_owner": "MEIF Knowledge translation presentation",
+            "affected_layer": "Merchant Experience Integration",
+            "solvable_now": true,
+            "fix": "dedupe_knowledge_highlights_by_type"
+          },
+          {
+            "finding_id": "MEV1-K03",
+            "category": "B",
+            "root_cause": "Wall vs sim Knowledge counts without merchant cue",
+            "existing_owner": "Time Authority consumer binding",
+            "affected_layer": "Time Authority",
+            "solvable_now": false,
+            "gap_ids": [
+              "CG-MEH-01"
+            ],
+            "partial_a": "surface_as_of_and_window_cue"
+          },
+          {
+            "finding_id": "MEV1-G01",
+            "category": "B",
+            "root_cause": "Guidance registry emits monitor-only after rich ops reality",
+            "existing_owner": "Commercial Guidance",
+            "affected_layer": "Commercial Guidance",
+            "solvable_now": false,
+            "gap_ids": [
+              "CG-MEH-05"
+            ]
+          },
+          {
+            "finding_id": "MEV1-G03",
+            "category": "A",
+            "root_cause": "Monitor guidance presented as actionable recommendation",
+            "existing_owner": "MEIF guidance presentation filter",
+            "affected_layer": "Merchant Experience Integration",
+            "solvable_now": true,
+            "fix": "demote_confusing_monitor_guidance"
+          },
+          {
+            "finding_id": "MEV1-T01",
+            "category": "A",
+            "root_cause": "Fact/observation/recommendation/uncertainty blended in UI",
+            "existing_owner": "MEIF trust labeling",
+            "affected_layer": "Merchant Experience Integration",
+            "solvable_now": true,
+            "fix": "stamp_trust_class_on_every_visible_item"
+          },
+          {
+            "finding_id": "MEV1-T02",
+            "category": "A",
+            "root_cause": "Foundations ok while merchant pages under-inform",
+            "existing_owner": "MEIF surface consumption hardening",
+            "affected_layer": "Merchant Pages",
+            "solvable_now": true,
+            "fix": "ops_facts_plus_governed_sections_always_visible"
+          },
+          {
+            "finding_id": "MEV1-L01",
+            "category": "A",
+            "root_cause": "Under-informing / false calm from placeholders",
+            "existing_owner": "MEIF placeholder elimination",
+            "affected_layer": "Merchant Pages",
+            "solvable_now": true,
+            "fix": "no_placeholder_when_ops_or_scf_present"
+          },
+          {
+            "finding_id": "MEH-LEGACY-01",
+            "category": "A",
+            "root_cause": "Legacy home/setup composers can still compete with MEIF",
+            "existing_owner": "merchant_dashboard_lazy + MEIF gate",
+            "affected_layer": "Merchant Pages",
+            "solvable_now": true,
+            "fix": "suppress_legacy_home_and_setup_when_meif_ok"
+          },
+          {
+            "finding_id": "MEH-GUIDE-VIS-01",
+            "category": "A",
+            "root_cause": "Guidance-bearing presentations parked only as executive_summary",
+            "existing_owner": "MEIF Home guidance section mapping",
+            "affected_layer": "Merchant Experience Integration",
+            "solvable_now": true,
+            "fix": "map_presentation_items_into_guidance_highlights"
+          },
+          {
+            "finding_id": "MEH-NAV-01",
+            "category": "A",
+            "root_cause": "Navigation integrity must remain explicit per page question",
+            "existing_owner": "MEIF navigation integrity",
+            "affected_layer": "Merchant Pages",
+            "solvable_now": true,
+            "fix": "assert_one_question_per_page_nav"
+          }
+        ],
+        "category_a_count": 11,
+        "category_b_count": 7,
+        "unclassified_count": 0
+      },
+      "category_a_resolved": [
+        "MEH-GUIDE-VIS-01",
+        "MEH-LEGACY-01",
+        "MEH-NAV-01",
+        "MEV1-C03",
+        "MEV1-G03",
+        "MEV1-H04",
+        "MEV1-K02",
+        "MEV1-L01",
+        "MEV1-M03",
+        "MEV1-T01",
+        "MEV1-T02"
+      ],
+      "unresolved_findings": [
+        {
+          "finding_id": "MEV1-H03",
+          "category": "B",
+          "gap_ids": [
+            "CG-MEH-01"
+          ],
+          "status": "capability_gap",
+          "partial_a": null
+        },
+        {
+          "finding_id": "MEV1-D02",
+          "category": "B",
+          "gap_ids": [
+            "CG-MEH-02"
+          ],
+          "status": "capability_gap",
+          "partial_a": null
+        },
+        {
+          "finding_id": "MEV1-C01",
+          "category": "B",
+          "gap_ids": [
+            "CG-MEH-03"
+          ],
+          "status": "capability_gap",
+          "partial_a": "forbid_please_wait_and_ops_fact_banner"
+        },
+        {
+          "finding_id": "MEV1-C02",
+          "category": "B",
+          "gap_ids": [
+            "CG-MEH-02"
+          ],
+          "status": "capability_gap",
+          "partial_a": null
+        },
+        {
+          "finding_id": "MEV1-M02",
+          "category": "B",
+          "gap_ids": [
+            "CG-MEH-04"
+          ],
+          "status": "capability_gap",
+          "partial_a": "communication_activity_facts"
+        },
+        {
+          "finding_id": "MEV1-K03",
+          "category": "B",
+          "gap_ids": [
+            "CG-MEH-01"
+          ],
+          "status": "capability_gap",
+          "partial_a": "surface_as_of_and_window_cue"
+        },
+        {
+          "finding_id": "MEV1-G01",
+          "category": "B",
+          "gap_ids": [
+            "CG-MEH-05"
+          ],
+          "status": "capability_gap",
+          "partial_a": null
+        }
+      ],
+      "capability_gaps": {
+        "version": "meh_gaps_v1",
+        "gaps": [
+          {
+            "gap_id": "CG-MEH-01",
+            "finding_ids": [
+              "MEV1-H03",
+              "MEV1-K03"
+            ],
+            "title": "Time-aligned Knowledge vs wall-clock merchant reads",
+            "required_future_capability": "Time Authority consumer binding for all merchant Knowledge/Home reads",
+            "architectural_reason": "Knowledge and Home semantic composition evaluate wall-clock windows while Reality history may sit in a different temporal context. MEIF can surface as_of/window cues but cannot re-anchor Knowledge generation.",
+            "why_existing_stack_cannot_solve": "Forbidden to redesign Time Authority or rewrite Knowledge Foundation in MEH. Existing Time Authority behavior alone does not force merchant-page as_of binding.",
+            "affected_layer": "Time Authority \u2192 Knowledge \u2192 MEIF consumer"
+          },
+          {
+            "gap_id": "CG-MEH-02",
+            "finding_ids": [
+              "MEV1-D02",
+              "MEV1-C02",
+              "MEV1-S02"
+            ],
+            "title": "Operational Truth as Surface Composition input",
+            "required_future_capability": "Governed Operational Truth / Merchant Operational State as first-class SCF inputs",
+            "architectural_reason": "SCF V1 consumes Presentation + Knowledge only. Empty-states and decision pressure cannot see durable carts/WA activity at composition time.",
+            "why_existing_stack_cannot_solve": "Explicitly forbidden to expand Surface Composition inputs in MEH. MEIF may suppress false empty-states at the page bridge, but cannot make SCF compose ops.",
+            "affected_layer": "Surface Composition input boundary"
+          },
+          {
+            "gap_id": "CG-MEH-03",
+            "finding_ids": [
+              "MEV1-C01",
+              "MEV1-C03"
+            ],
+            "title": "Durable cart list projection / identity-time window",
+            "required_future_capability": "Cart list projection that materializes durable AbandonedCart rows into merchant queue",
+            "architectural_reason": "Dashboard normal-carts API can return empty while AbandonedCart rows exist (identity/window/projection mismatch).",
+            "why_existing_stack_cannot_solve": "MEIF can forbid false please-wait and show ops counts, but cannot invent a cart queue without a governed cart projection capability.",
+            "affected_layer": "Cart projection / Identity"
+          },
+          {
+            "gap_id": "CG-MEH-04",
+            "finding_ids": [
+              "MEV1-M02"
+            ],
+            "title": "Communication follow-up operations projection",
+            "required_future_capability": "Communication ops projection (follow-up queue) distinct from Settings WhatsApp config",
+            "architectural_reason": "Mock sends and schedules are durable facts; no governed follow-up queue surface exists.",
+            "why_existing_stack_cannot_solve": "MEIF can show activity counts and SCF communication items, but cannot create a follow-up work queue without a new Communication projection capability.",
+            "affected_layer": "Communication projection / Guidance Routing follow_up scope"
+          },
+          {
+            "gap_id": "CG-MEH-05",
+            "finding_ids": [
+              "MEV1-G01",
+              "MEV1-G03"
+            ],
+            "title": "Operationally useful Commercial Guidance product policy",
+            "required_future_capability": "Guidance eligibility/registry policy that emits actionable ops guidance (not monitor-only) with merchant-facing confidence",
+            "architectural_reason": "Current Guidance may correctly emit monitor_new_pattern while merchants need shipping/price/recovery operational advice.",
+            "why_existing_stack_cannot_solve": "Forbidden to add new Guidance engines or eligibility logic in MEH. MEIF may demote/label confusing monitor guidance at presentation, not invent actions.",
+            "affected_layer": "Commercial Guidance registry / eligibility"
+          },
+          {
+            "gap_id": "CG-MEH-06",
+            "finding_ids": [
+              "MEV1-H04"
+            ],
+            "title": "Setup lifecycle vs lived Reality history",
+            "required_future_capability": "Setup/activation lifecycle that yields to durable operational history",
+            "architectural_reason": "Onboarding remaining_setup can remain prominent after Reality history exists.",
+            "why_existing_stack_cannot_solve": "MEIF can suppress setup theatre when durable carts exist (presentation), but cannot rewrite setup lifecycle ownership without a new capability.",
+            "affected_layer": "Merchant setup lifecycle"
+          }
+        ],
+        "count": 6
+      },
+      "readiness_score": 86,
+      "readiness": {
+        "dimensions": {
+          "executive_understanding_30s": 9,
+          "knowledge_quality_merchant": 8,
+          "guidance_usefulness": 8,
+          "surface_composition_engine": 7,
+          "surface_composition_merchant": 9,
+          "merchant_journey_coherence": 9,
+          "trust_fact_vs_uncertainty": 9,
+          "cognitive_load_useful_density": 9,
+          "explainability": 9,
+          "ops_visibility_carts_wa": 9
+        },
+        "readiness_score": 86,
+        "v2_readiness_score": 72,
+        "delta_vs_v2": 14,
+        "materially_improved_vs_v2": true,
+        "architecture_ceiling": 90,
+        "chapter_outcome": "chapter_closed",
+        "checks": {
+          "trust_labeling": true,
+          "ops_facts_visible": true,
+          "setup_suppressed_when_durable": true,
+          "guidance_section_present": true,
+          "carts_attention_answered": true,
+          "navigation_integrity": true,
+          "chronology_cue": true,
+          "governed_pct_100": true
+        }
+      },
+      "legacy_leakage_count": 0,
+      "trust_labeling": true,
+      "v2_baseline": 72,
+      "delta_vs_v2": 14,
+      "chapter_outcome": "chapter_closed"
+    },
+    "ops": {
+      "store_slug": "demo",
+      "abandoned_carts": 5,
+      "purchase_truth": 0,
+      "hesitation_reasons": 0,
+      "recovery_schedules": 0,
+      "mock_whatsapp_sent": 0,
+      "has_durable_carts": true,
+      "has_communication_activity": false,
+      "source": "merchant_operational_state_v1"
+    }
+  },
+  "score": {
+    "readiness_score": 86,
+    "v1": 28,
+    "v2": 72,
+    "delta_vs_v2": 14,
+    "chapter_outcome": "chapter_closed",
+    "unresolved_findings": [
+      {
+        "finding_id": "MEV1-H03",
+        "category": "B",
+        "gap_ids": [
+          "CG-MEH-01"
+        ],
+        "status": "capability_gap",
+        "partial_a": null
+      },
+      {
+        "finding_id": "MEV1-D02",
+        "category": "B",
+        "gap_ids": [
+          "CG-MEH-02"
+        ],
+        "status": "capability_gap",
+        "partial_a": null
+      },
+      {
+        "finding_id": "MEV1-C01",
+        "category": "B",
+        "gap_ids": [
+          "CG-MEH-03"
+        ],
+        "status": "capability_gap",
+        "partial_a": "forbid_please_wait_and_ops_fact_banner"
+      },
+      {
+        "finding_id": "MEV1-C02",
+        "category": "B",
+        "gap_ids": [
+          "CG-MEH-02"
+        ],
+        "status": "capability_gap",
+        "partial_a": null
+      },
+      {
+        "finding_id": "MEV1-M02",
+        "category": "B",
+        "gap_ids": [
+          "CG-MEH-04"
+        ],
+        "status": "capability_gap",
+        "partial_a": "communication_activity_facts"
+      },
+      {
+        "finding_id": "MEV1-K03",
+        "category": "B",
+        "gap_ids": [
+          "CG-MEH-01"
+        ],
+        "status": "capability_gap",
+        "partial_a": "surface_as_of_and_window_cue"
+      },
+      {
+        "finding_id": "MEV1-G01",
+        "category": "B",
+        "gap_ids": [
+          "CG-MEH-05"
+        ],
+        "status": "capability_gap",
+        "partial_a": null
+      }
+    ],
+    "legacy_leakage_count": 0,
+    "materially_improved_vs_v2": true,
+    "dimensions": {
+      "executive_understanding_30s": 9,
+      "knowledge_quality_merchant": 8,
+      "guidance_usefulness": 8,
+      "surface_composition_engine": 7,
+      "surface_composition_merchant": 9,
+      "merchant_journey_coherence": 9,
+      "trust_fact_vs_uncertainty": 9,
+      "cognitive_load_useful_density": 9,
+      "explainability": 9,
+      "ops_visibility_carts_wa": 9
+    }
+  }
+}

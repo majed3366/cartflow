@@ -1,0 +1,129 @@
+{
+  "ok": true,
+  "questions_answered_count": 4,
+  "dimensions_answered": [
+    "contact",
+    "products",
+    "recovery",
+    "traffic"
+  ],
+  "questions_answered": [
+    "CQ-C01",
+    "CQ-P01",
+    "CQ-R02",
+    "CQ-T01"
+  ],
+  "success_metric": "number of different commercial questions answered with evidence",
+  "question_to_insight_mapping": [
+    {
+      "section": "business_health",
+      "admitted": true,
+      "question_id": null,
+      "question_ar": "كيف حال عملي اليوم؟",
+      "dimension": null,
+      "answer": "المتجر يعمل — ولدينا فهم تجاري متعدد الأبعاد يحتاج انتباهك.",
+      "evidence": null,
+      "confidence": "high",
+      "meaning": null
+    },
+    {
+      "section": "todays_priority",
+      "admitted": true,
+      "question_id": "CQ-C01",
+      "question_ar": "هل نقص بيانات التواصل يعيق استرجاع الإيراد؟",
+      "dimension": "contact",
+      "answer": "يوجد حالياً 43 سلة لا يمكن بدء استرجاعها لأن وسيلة التواصل غير متوفرة.",
+      "evidence": "43 سلة نشطة بلا رقم صالح من أصل 60.",
+      "confidence": null,
+      "meaning": "كل سلة بلا تواصل صالح تبقى خارج مسار واتساب، فيتأجل استرجاع الإيراد."
+    },
+    {
+      "section": "business_understanding",
+      "admitted": true,
+      "question_id": "CQ-P01",
+      "question_ar": "أي منتجات تجذب الانتباه لكنها تفشل في التحويل؟",
+      "dimension": "products",
+      "answer": "أُضيف منتج X إلى السلة 34 مرة عبر 22 سلة، بينما اكتمل الشراء 2 مرة فقط (6%).",
+      "evidence": "add_to_cart=34 unique_carts=22 purchases=2 store_baseline=16%",
+      "confidence": "high",
+      "meaning": "الاهتمام موجود، لكن مسار الشراء يتعثّر قبل الإتمام — الفرصة التجارية معلّقة."
+    },
+    {
+      "section": "biggest_opportunity",
+      "admitted": true,
+      "question_id": "CQ-R02",
+      "question_ar": "هل قناة الاسترجاع ترفع المشتريات أم العودة فقط؟",
+      "dimension": "recovery",
+      "answer": "عادات العودة واضحة (18/32) بينما الشراء (3) ما زال منخفضاً نسبياً.",
+      "evidence": "sent=32 returned=18 purchased=3 failed=2 suppressed=1",
+      "confidence": "high",
+      "meaning": "القناة تُحرّك العودة، بينما قيمة الإيراد تتحقق عند إغلاق الشراء بعد العودة."
+    },
+    {
+      "section": "learning_progress",
+      "admitted": true,
+      "question_id": "CQ-T01",
+      "question_ar": "هل لدينا أدلة كافية لتقييم جودة الزيارات؟",
+      "dimension": "traffic",
+      "answer": "بيانات زيارات المتجر الموثوقة غير متاحة حالياً، ولا يصح استنتاج حجم الزيارات من عدد السلال وحدها.",
+      "evidence": "visitor_total=unavailable; carts_not_used_as_traffic_proxy",
+      "confidence": "insufficient",
+      "meaning": "أي توصية إعلانية أو مرورية الآن ستكون افتراضاً لا دليلاً."
+    }
+  ],
+  "evidence_flow": [
+    "EvidenceBundle(demo_rich)",
+    "Business Findings Engine",
+    "Commercial Question Registry",
+    "Home Commercial Intelligence admission",
+    "Semantic composition",
+    "Adaptive Cognition section_order"
+  ],
+  "home_commercial_intelligence_v1": {
+    "ok": true,
+    "engine": "home_commercial_intelligence_v1",
+    "registry_version": "commercial_question_registry_v1",
+    "findings_engine": "business_findings_engine_v1",
+    "evidence_loaded_from": "demo_rich_fixture_v1",
+    "admitted": [
+      {
+        "section": "business_understanding",
+        "question_id": "CQ-P01",
+        "dimension": "products"
+      },
+      {
+        "section": "biggest_opportunity",
+        "question_id": "CQ-R02",
+        "dimension": "recovery"
+      },
+      {
+        "section": "learning_progress",
+        "question_id": "CQ-T01",
+        "dimension": "traffic"
+      },
+      {
+        "section": "todays_priority",
+        "question_id": "CQ-C01",
+        "dimension": "contact"
+      }
+    ],
+    "rejected": [],
+    "dimensions_answered": [
+      "contact",
+      "products",
+      "recovery",
+      "traffic"
+    ],
+    "questions_answered": [
+      "CQ-C01",
+      "CQ-P01",
+      "CQ-R02",
+      "CQ-T01"
+    ],
+    "questions_answered_count": 4,
+    "diversity_ok": true,
+    "success_metric": "number of different commercial questions answered with evidence",
+    "findings_produced": 11,
+    "ai_used": false
+  }
+}

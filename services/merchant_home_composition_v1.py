@@ -712,7 +712,13 @@ def _compose_business_health_v1(
     has_primary_risk: bool,
     understanding_confidence: str,
 ) -> dict[str, Any]:
-    """Section 1 — How is my business today? Status first; never an event list."""
+    """
+    E1 — Business Health (Executive Home Constitution V1 / Sprint 1).
+
+    L0 answers only: «هل عملي بصحة جيدة اليوم؟»
+    Trend / supporting meaning live in progressive disclosure — never raw
+    counters, field names, or engineering diagnostics.
+    """
     no_phone = _nav_int(nav, "canonical_no_phone_total")
     active = _nav_int(nav, "knowledge_cart_count", "active_carts")
     attention_required = bool(attention_count > 0 or has_primary_risk or no_phone > 0)
@@ -722,55 +728,64 @@ def _compose_business_health_v1(
         summary_ar = (
             "المتجر يعمل، لكن عائقاً تجارياً يحدّ من استرجاع الإيراد الآن."
         )
-        direction_ar = "يتراجع تحت ضغط الاسترجاع"
+        direction_ar = "الصحة تحت ضغط اليوم — الاسترجاع أضعف مما ينبغي."
         direction_key = "declining_pressure"
+        evidence_ar = (
+            "عائق تجاري بارز يحدّ من قدرة المتجر على استرجاع الإيراد اليوم."
+        )
     elif attention_count > 0:
         status_ar = "يحتاج قراراً"
-        summary_ar = "يوجد قرار تجاري واحد يستحق تركيزك اليوم."
-        direction_ar = "مستقر مع قرار معلق"
+        summary_ar = "الصحة العامة مستقرة، لكن قراراً واحداً يستحق تركيزك اليوم."
+        direction_ar = "مستقرة مع قرار معلّق يؤثر على اليوم."
         direction_key = "stable_with_decision"
+        evidence_ar = "يوجد قرار تجاري واحد معلّق — لا يظهر كأزمة شاملة."
     else:
-        status_ar = "مستقر"
-        summary_ar = "لا عائق تجاري بارز اليوم — المتجر في وضع تشغيلي هادئ."
-        direction_ar = "مستقر"
+        status_ar = "بصحة جيدة"
+        summary_ar = "لا عائق تجاري بارز اليوم — عملك في وضع هادئ ومفهوم."
+        direction_ar = "مستقرة دون ضغط بارز."
         direction_key = "stable"
+        if active > 0:
+            evidence_ar = "لا مؤشرات تدهور بارزة في صحة العمل اليوم."
+        else:
+            evidence_ar = "ما زلنا نبني صورة أوضح — لا أزمة ظاهرة الآن."
 
     conf = _norm(understanding_confidence).lower()
     if conf in ("high", "confirmed"):
-        confidence_ar = "عالية"
+        confidence_ar = "ثقتنا بهذه الصورة عالية"
         confidence = "high"
     elif conf == "medium":
-        confidence_ar = "متوسطة"
+        confidence_ar = "ثقتنا بهذه الصورة متوسطة"
         confidence = "medium"
     elif attention_required:
-        confidence_ar = "متوسطة"
+        confidence_ar = "ثقتنا بهذه الصورة متوسطة"
         confidence = "medium"
     else:
-        confidence_ar = "أدلة غير كافية"
+        confidence_ar = "ما زلنا نتعلم — الأدلة غير كافية بعد"
         confidence = "insufficient"
 
-    evidence_bits: list[str] = []
-    if active > 0:
-        evidence_bits.append(f"{active} سلة نشطة")
-    if no_phone > 0:
-        evidence_bits.append(f"{no_phone} بانتظار بيانات تواصل")
-    if attention_count > 0:
-        evidence_bits.append("قرار واحد اليوم")
-
+    question_ar = "هل عملي بصحة جيدة اليوم؟"
     return {
         "title_ar": "صحة العمل",
-        "lead_ar": "كيف حال عملي اليوم؟",
-        "section_question_ar": "كيف حال عملي اليوم؟",
+        "lead_ar": question_ar,
+        "section_question_ar": question_ar,
+        "executive_band": "E1",
+        "executive_question_id": "EQ-01",
         "knowledge_role": "business_health",
         "status_ar": status_ar,
         "summary_ar": summary_ar,
         "confidence": confidence,
         "confidence_ar": confidence_ar,
         "attention_required": attention_required,
+        # Kept for ACF / legacy readers — UI prefers disclosure.*
         "direction_ar": direction_ar,
         "direction_key": direction_key,
-        "evidence_summary_ar": " · ".join(evidence_bits) if evidence_bits else "",
-        "empty_message_ar": "نجمع صورة أوضح لصحة العمل.",
+        "evidence_summary_ar": "",
+        "disclosure": {
+            "label_ar": "كيف وصلنا لهذه الصورة؟",
+            "trend_ar": direction_ar,
+            "evidence_ar": evidence_ar,
+        },
+        "empty_message_ar": "نجمع صورة أوضح لصحة عملك.",
     }
 
 
@@ -982,6 +997,11 @@ def finalize_home_daily_business_brief_v1(
     home: dict[str, Any],
     *,
     nav_metadata: Optional[Mapping[str, Any]] = None,
+    findings_package: Optional[Mapping[str, Any]] = None,
+    commercial_intel_load_db: bool = False,
+    commercial_intel_demo: bool = False,
+    dash_store: Any = None,
+    admit_review_fixtures: bool = False,
 ) -> dict[str, Any]:
     """
     Shape composed Home into Constitution V3 Daily Business Brief sections.
@@ -1138,6 +1158,39 @@ def finalize_home_daily_business_brief_v1(
         isinstance(home.get("biggest_opportunity"), Mapping)
         and home["biggest_opportunity"].get("item")
     )
+
+    # Commercial Intelligence Transition V1 — admit insights that answer
+    # commercial questions (products/hesitation/traffic/recovery/…), not counts.
+    try:
+        from services.home_commercial_intelligence_v1 import (  # noqa: PLC0415
+            apply_home_commercial_intelligence_v1,
+        )
+
+        apply_home_commercial_intelligence_v1(
+            home,
+            store_slug=_norm(home.get("store_slug")),
+            findings_package=findings_package,
+            dash_store=dash_store,
+            load_db=bool(commercial_intel_load_db),
+            # PI-F1: merchant Home never defaults to demo fixture
+            demo_fixture=bool(commercial_intel_demo)
+            and bool(admit_review_fixtures)
+            and not commercial_intel_load_db,
+            admit_review_fixtures=bool(admit_review_fixtures),
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
+    # Cross-section semantic composition — one coherent story (no paraphrase fan-out).
+    try:
+        from services.home_semantic_composition_v1 import (  # noqa: PLC0415
+            apply_home_semantic_composition_v1,
+        )
+
+        apply_home_semantic_composition_v1(home)
+    except Exception:  # noqa: BLE001
+        pass
+
     return home
 
 
@@ -1161,6 +1214,11 @@ def compose_merchant_home_experience_v1(
     routed_home_feed: Optional[Mapping[str, Any]] = None,
     store_slug: str = "",
     mqic: Any = None,
+    findings_package: Optional[Mapping[str, Any]] = None,
+    commercial_intel_load_db: bool = False,
+    commercial_intel_demo: bool = False,
+    dash_store: Any = None,
+    admit_review_fixtures: bool = False,
 ) -> dict[str, Any]:
     """Compose Merchant Home experience sections from governed upstream payloads."""
     day = brief_date or brief_date_iso()
@@ -1422,9 +1480,15 @@ def compose_merchant_home_experience_v1(
     except Exception:  # noqa: BLE001
         pass
 
+    home["store_slug"] = _norm(store_slug) or _norm(home.get("store_slug"))
     return finalize_home_daily_business_brief_v1(
         home,
         nav_metadata=nav_metadata if isinstance(nav_metadata, Mapping) else {},
+        findings_package=findings_package,
+        commercial_intel_load_db=commercial_intel_load_db,
+        commercial_intel_demo=commercial_intel_demo,
+        dash_store=dash_store,
+        admit_review_fixtures=admit_review_fixtures,
     )
 
 
@@ -1523,6 +1587,19 @@ def build_merchant_home_experience_api_payload(
                 # Home badge equals Knowledge cart_count for the session.
                 nav["active_carts"] = knowledge_cart_count
 
+            # BFL V1: Home consumes persisted findings only — never runs the engine.
+            findings_package = None
+            try:
+                from services.business_findings_lifecycle_v1.consume_home_v1 import (  # noqa: PLC0415
+                    load_current_findings_package_v1,
+                )
+
+                findings_package = load_current_findings_package_v1(
+                    slug, mark_displayed=True
+                )
+            except Exception:  # noqa: BLE001
+                findings_package = None
+
             composed = compose_merchant_home_experience_v1(
                 merchant_name_ar=name_ar,
                 date_ar=date_ar,
@@ -1534,6 +1611,11 @@ def build_merchant_home_experience_api_payload(
                 experience_tier=experience_tier,
                 store_slug=slug,
                 mqic=identity,
+                findings_package=findings_package,
+                commercial_intel_load_db=False,
+                commercial_intel_demo=False,
+                admit_review_fixtures=False,
+                dash_store=dash_store,
             )
             from services.knowledge_time_authority_v1 import (  # noqa: PLC0415
                 knowledge_stamp_now,

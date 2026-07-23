@@ -42,6 +42,18 @@ def product_data_try_purchase_mapping(
             purchase_source=purchase_source,
             purchased_at=purchased_at,
         )
+        from services.product_data.product_signal_hook_v1 import (  # noqa: PLC0415
+            product_signal_try_from_purchase,
+        )
+
+        product_signal_try_from_purchase(
+            store_slug,
+            session_id,
+            cart_id=cart_id,
+            recovery_key=recovery_key,
+            order_id=order_id,
+            purchased_at=purchased_at,
+        )
     except Exception as exc:  # noqa: BLE001
         log.debug("purchase mapping hook skipped: %s", exc)
 

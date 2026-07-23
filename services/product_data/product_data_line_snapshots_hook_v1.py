@@ -32,6 +32,11 @@ def product_data_try_line_snapshots(
         )
 
         product_data_try_catalog_normalize(payload, event_hint=ev)
+        from services.product_data.product_signal_hook_v1 import (  # noqa: PLC0415
+            product_signal_try_from_cart_payload,
+        )
+
+        product_signal_try_from_cart_payload(payload, event_hint=ev)
         try:
             from services.evidence_truth.observation_shadow_dual_write_v1 import (  # noqa: PLC0415
                 maybe_shadow_product_signal_observation_v1,

@@ -873,6 +873,656 @@ class ProductPurchaseMapping(Base):
     dedup_hash = Column(String(64), nullable=False)
 
 
+class ProductSignalEvent(Base):
+    """
+    Immutable Product Signal Collection V1 row — atomic product fact.
+
+    Insert-only history of what happened about a Product Identity. No scoring,
+    ranking, recommendations, or presentation fields.
+    """
+
+    __tablename__ = "product_signal_events"
+    __table_args__ = (
+        UniqueConstraint(
+            "dedup_hash",
+            name="uq_product_signal_dedup",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    session_id = Column(String(512), nullable=False, default="", index=True)
+    cart_id = Column(String(255), nullable=False, default="", index=True)
+    recovery_key = Column(String(512), nullable=True, index=True)
+    stable_identity_key = Column(String(256), nullable=False, index=True)
+    identity_tier = Column(String(8), nullable=False, default="")
+    product_id = Column(String(128), nullable=True, index=True)
+    signal_family = Column(String(64), nullable=False, index=True)
+    signal_type = Column(String(64), nullable=False, index=True)
+    observed_at = Column(DateTime, nullable=False, index=True)
+    source = Column(String(128), nullable=False, index=True)
+    evidence_ref_type = Column(String(64), nullable=True)
+    evidence_ref_id = Column(String(128), nullable=True)
+    dedup_hash = Column(String(64), nullable=False)
+
+
+class ProductMetricValue(Base):
+    """
+    Product Metrics Foundation V1 materialization — measurable count facts.
+
+    Deterministic aggregates from product_signal_events only. No trends,
+    scores, recommendations, or presentation fields.
+    """
+
+    __tablename__ = "product_metric_values"
+    __table_args__ = (
+        UniqueConstraint(
+            "store_slug",
+            "stable_identity_key",
+            "metric_key",
+            "window_code",
+            "window_start_key",
+            "window_end_key",
+            name="uq_product_metric_value_grain",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    stable_identity_key = Column(String(256), nullable=False, default="", index=True)
+    metric_key = Column(String(64), nullable=False, index=True)
+    metric_family = Column(String(64), nullable=False, index=True)
+    window_code = Column(String(16), nullable=False, default="all", index=True)
+    window_start = Column(DateTime, nullable=True)
+    window_end = Column(DateTime, nullable=True)
+    # Empty-string sentinels for unique constraint when window bounds are null.
+    window_start_key = Column(String(32), nullable=False, default="")
+    window_end_key = Column(String(32), nullable=False, default="")
+    value = Column(Integer, nullable=False, default=0)
+    source_signal_type = Column(String(64), nullable=False, default="")
+    computation_version = Column(String(32), nullable=False, default="pmf_v1_count")
+    content_hash = Column(String(64), nullable=False, default="")
+    computed_at = Column(DateTime, nullable=False, index=True)
+
+
+class ProductTrendValue(Base):
+    """
+    Product Trends Foundation V1 materialization — temporal change facts only.
+
+    Compares Product Metrics across adjacent windows. No ranking, health,
+    recommendations, or presentation fields.
+    """
+
+    __tablename__ = "product_trend_values"
+    __table_args__ = (
+        UniqueConstraint(
+            "store_slug",
+            "stable_identity_key",
+            "metric_key",
+            "trend_window",
+            "as_of_key",
+            name="uq_product_trend_value_grain",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    stable_identity_key = Column(String(256), nullable=False, default="", index=True)
+    metric_key = Column(String(64), nullable=False, index=True)
+    metric_family = Column(String(64), nullable=False, default="", index=True)
+    trend_window = Column(String(16), nullable=False, index=True)
+    as_of = Column(DateTime, nullable=False, index=True)
+    as_of_key = Column(String(32), nullable=False, default="")
+    current_value = Column(Integer, nullable=False, default=0)
+    previous_value = Column(Integer, nullable=False, default=0)
+    delta_abs = Column(Integer, nullable=False, default=0)
+    trend_direction = Column(String(32), nullable=False, index=True)
+    computation_version = Column(String(32), nullable=False, default="ptf_v1_delta")
+    content_hash = Column(String(64), nullable=False, default="")
+    computed_at = Column(DateTime, nullable=False, index=True)
+
+
+class ProductEvidenceBundle(Base):
+    """
+    Product Evidence Assembly V1 — governed evidence bundle header.
+
+    Assembled from Metrics + Trends only. No confidence, ranking, or guidance.
+    """
+
+    __tablename__ = "product_evidence_bundles"
+    __table_args__ = (
+        UniqueConstraint(
+            "store_slug",
+            "subject_type",
+            "subject_id",
+            "assembly_window",
+            "as_of_key",
+            "bundle_version",
+            name="uq_product_evidence_bundle_grain",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    evidence_bundle_id = Column(String(64), nullable=False, unique=True, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    subject_type = Column(String(32), nullable=False, index=True)
+    subject_id = Column(String(256), nullable=False, index=True)
+    bundle_version = Column(String(32), nullable=False, default="pea_v1")
+    assembled_at = Column(DateTime, nullable=False, index=True)
+    assembly_window = Column(String(16), nullable=False, index=True)
+    as_of = Column(DateTime, nullable=False, index=True)
+    as_of_key = Column(String(32), nullable=False, default="")
+    source_count = Column(Integer, nullable=False, default=0)
+    fingerprint = Column(String(64), nullable=False, default="")
+    computation_version = Column(String(32), nullable=False, default="pea_v1_assemble")
+
+
+class ProductEvidenceItem(Base):
+    """
+    Product Evidence Assembly V1 — single factual evidence item with lineage.
+    """
+
+    __tablename__ = "product_evidence_items"
+    __table_args__ = (
+        UniqueConstraint(
+            "evidence_bundle_id",
+            "evidence_item_id",
+            name="uq_product_evidence_item_id",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    evidence_bundle_id = Column(String(64), nullable=False, index=True)
+    evidence_item_id = Column(String(64), nullable=False, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    subject_type = Column(String(32), nullable=False, default="")
+    subject_id = Column(String(256), nullable=False, default="")
+    metric_key = Column(String(64), nullable=False, index=True)
+    metric_value = Column(Integer, nullable=True)
+    trend_direction = Column(String(32), nullable=True)
+    trend_window = Column(String(16), nullable=False, default="")
+    source_layer = Column(String(32), nullable=False, index=True)
+    source_record_id = Column(String(128), nullable=False, default="")
+    observed_from = Column(DateTime, nullable=True)
+    observed_to = Column(DateTime, nullable=True)
+    lineage_json = Column(Text, nullable=False, default="{}")
+    content_hash = Column(String(64), nullable=False, default="")
+    assembled_at = Column(DateTime, nullable=False, index=True)
+
+
+class EvidenceConfidenceEvaluation(Base):
+    """
+    Evidence Confidence Foundation V1 — quality evaluation of an evidence bundle.
+
+    Evaluates assembled evidence only. No recommendations, health, or ranking.
+    """
+
+    __tablename__ = "evidence_confidence_evaluations"
+    __table_args__ = (
+        UniqueConstraint(
+            "confidence_id",
+            name="uq_evidence_confidence_id",
+        ),
+        UniqueConstraint(
+            "evidence_bundle_id",
+            "confidence_version",
+            "evaluator_version",
+            "as_of_key",
+            name="uq_evidence_confidence_grain",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    confidence_id = Column(String(64), nullable=False, index=True)
+    evidence_bundle_id = Column(String(64), nullable=False, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    subject_type = Column(String(32), nullable=False, default="")
+    subject_id = Column(String(256), nullable=False, default="")
+    confidence_level = Column(String(32), nullable=False, index=True)
+    confidence_score = Column(Integer, nullable=False, default=0)
+    confidence_version = Column(String(32), nullable=False, default="ecf_v1")
+    evaluator_version = Column(String(32), nullable=False, default="ecf_v1_eval")
+    evaluated_at = Column(DateTime, nullable=False, index=True)
+    as_of = Column(DateTime, nullable=False, index=True)
+    as_of_key = Column(String(32), nullable=False, default="")
+    completeness = Column(Integer, nullable=False, default=0)
+    freshness = Column(Integer, nullable=False, default=0)
+    consistency = Column(Integer, nullable=False, default=0)
+    source_diversity = Column(Integer, nullable=False, default=0)
+    sample_size = Column(Integer, nullable=False, default=0)
+    missing_sources_json = Column(Text, nullable=False, default="[]")
+    conflicting_signals = Column(Boolean, nullable=False, default=False)
+    confidence_notes_json = Column(Text, nullable=False, default="[]")
+    factors_json = Column(Text, nullable=False, default="{}")
+    content_hash = Column(String(64), nullable=False, default="")
+
+
+class KnowledgeStatement(Base):
+    """
+    Knowledge Foundation V1 — factual observation from Evidence Confidence.
+
+    Not advice, recommendation, or decision. Always references confidence_id.
+    """
+
+    __tablename__ = "knowledge_statements"
+    __table_args__ = (
+        UniqueConstraint(
+            "knowledge_id",
+            name="uq_knowledge_statement_id",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    knowledge_id = Column(String(64), nullable=False, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    subject_type = Column(String(32), nullable=False, default="", index=True)
+    subject_id = Column(String(256), nullable=False, default="", index=True)
+    knowledge_type = Column(String(64), nullable=False, index=True)
+    statement = Column(Text, nullable=False, default="")
+    evidence_confidence_id = Column(String(64), nullable=False, index=True)
+    confidence_level = Column(String(32), nullable=False, default="")
+    assembly_window = Column(String(16), nullable=False, default="")
+    valid_from = Column(DateTime, nullable=False, index=True)
+    valid_until = Column(DateTime, nullable=False, index=True)
+    generated_at = Column(DateTime, nullable=False, index=True)
+    as_of = Column(DateTime, nullable=False, index=True)
+    as_of_key = Column(String(32), nullable=False, default="")
+    knowledge_version = Column(String(32), nullable=False, default="kf_v1")
+    fingerprint = Column(String(64), nullable=False, default="")
+    # CIS → Knowledge intake (ciknow_v1) lineage — unused by ECF path (defaults).
+    source_type = Column(String(64), nullable=False, default="evidence_confidence")
+    source_contract_version = Column(String(64), nullable=False, default="")
+    source_synthesis_id = Column(String(64), nullable=False, default="", index=True)
+    source_synthesis_key = Column(String(64), nullable=False, default="")
+    source_rule_key = Column(String(64), nullable=False, default="", index=True)
+    source_rule_version = Column(String(32), nullable=False, default="")
+    source_fingerprint = Column(String(64), nullable=False, default="")
+    source_window_start = Column(DateTime, nullable=True)
+    source_window_end = Column(DateTime, nullable=True)
+    source_domains_json = Column(Text, nullable=False, default="[]")
+    known_facts_json = Column(Text, nullable=False, default="[]")
+    unknown_facts_json = Column(Text, nullable=False, default="[]")
+    prohibited_claims_json = Column(Text, nullable=False, default="[]")
+    is_current = Column(Boolean, nullable=False, default=True, index=True)
+    superseded_at = Column(DateTime, nullable=True)
+
+
+class GuidanceEligibilityEvaluation(Base):
+    """
+    Guidance Eligibility Foundation V1 — permission to generate guidance.
+
+    Governance only. Does not contain recommendations or guidance content.
+    """
+
+    __tablename__ = "guidance_eligibility_evaluations"
+    __table_args__ = (
+        UniqueConstraint(
+            "eligibility_id",
+            name="uq_guidance_eligibility_id",
+        ),
+        UniqueConstraint(
+            "store_slug",
+            "subject_type",
+            "subject_id",
+            "eligibility_version",
+            "as_of_key",
+            name="uq_guidance_eligibility_grain",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    eligibility_id = Column(String(64), nullable=False, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    subject_type = Column(String(32), nullable=False, default="", index=True)
+    subject_id = Column(String(256), nullable=False, default="", index=True)
+    eligibility_status = Column(String(64), nullable=False, index=True)
+    eligibility_reason = Column(Text, nullable=False, default="")
+    knowledge_count = Column(Integer, nullable=False, default=0)
+    required_knowledge_count = Column(Integer, nullable=False, default=2)
+    blocking_conditions_json = Column(Text, nullable=False, default="[]")
+    knowledge_ids_json = Column(Text, nullable=False, default="[]")
+    evaluated_at = Column(DateTime, nullable=False, index=True)
+    as_of = Column(DateTime, nullable=False, index=True)
+    as_of_key = Column(String(32), nullable=False, default="")
+    eligibility_version = Column(String(32), nullable=False, default="gef_v1")
+    fingerprint = Column(String(64), nullable=False, default="")
+
+
+class CommercialGuidanceRecord(Base):
+    """
+    Commercial Guidance — permitted guidance records.
+
+    cgf_v1: from Guidance Eligibility. cguide_v1: from Knowledge intake.
+    Not merchant UI copy. Not automatic action. Registry-bounded.
+    """
+
+    __tablename__ = "commercial_guidance_records"
+    __table_args__ = (
+        UniqueConstraint(
+            "guidance_id",
+            name="uq_commercial_guidance_id",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    guidance_id = Column(String(64), nullable=False, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    subject_type = Column(String(32), nullable=False, default="", index=True)
+    subject_id = Column(String(256), nullable=False, default="", index=True)
+    guidance_key = Column(String(64), nullable=False, index=True)
+    guidance_version = Column(String(32), nullable=False, default="cgf_v1")
+    guidance_scope = Column(String(64), nullable=False, default="commercial_v1")
+    eligibility_id = Column(String(64), nullable=False, default="")
+    eligibility_status = Column(String(64), nullable=False, default="")
+    knowledge_reference_ids_json = Column(Text, nullable=False, default="[]")
+    source_contract_version = Column(String(64), nullable=False, default="")
+    rule_version = Column(String(64), nullable=False, default="")
+    guidance_status = Column(String(32), nullable=False, index=True)
+    rationale_code = Column(String(128), nullable=False, default="")
+    rationale_summary = Column(Text, nullable=False, default="")
+    known_facts_json = Column(Text, nullable=False, default="[]")
+    unknown_facts_json = Column(Text, nullable=False, default="[]")
+    prohibited_claims_json = Column(Text, nullable=False, default="[]")
+    # cguide_v1 Knowledge intake lineage (unused by cgf eligibility path).
+    knowledge_id = Column(String(64), nullable=False, default="", index=True)
+    knowledge_type = Column(String(64), nullable=False, default="", index=True)
+    merchant_objective = Column(Text, nullable=False, default="")
+    eligible_actions_json = Column(Text, nullable=False, default="[]")
+    forbidden_actions_json = Column(Text, nullable=False, default="[]")
+    confidence_level = Column(String(32), nullable=False, default="")
+    source_knowledge_fingerprint = Column(String(64), nullable=False, default="")
+    valid_from = Column(DateTime, nullable=False)
+    valid_until = Column(DateTime, nullable=False)
+    generated_at = Column(DateTime, nullable=False)
+    refreshed_at = Column(DateTime, nullable=False)
+    superseded_at = Column(DateTime, nullable=True)
+    is_current = Column(Boolean, nullable=False, default=True, index=True)
+    input_fingerprint = Column(String(64), nullable=False, default="")
+    guidance_fingerprint = Column(String(64), nullable=False, default="")
+    generation_version = Column(String(32), nullable=False, default="cgf_v1_gen")
+    as_of = Column(DateTime, nullable=False, index=True)
+    as_of_key = Column(String(32), nullable=False, default="")
+
+
+class GuidanceRoute(Base):
+    """
+    Guidance Routing Foundation V1 — surface eligibility for commercial guidance.
+
+    Not presentation, wording, or UI. One current row per guidance×surface.
+    """
+
+    __tablename__ = "guidance_routes"
+    __table_args__ = (
+        UniqueConstraint(
+            "route_id",
+            name="uq_guidance_route_id",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    route_id = Column(String(64), nullable=False, index=True)
+    guidance_id = Column(String(64), nullable=False, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    subject_type = Column(String(32), nullable=False, default="")
+    subject_id = Column(String(256), nullable=False, default="")
+    surface_key = Column(String(64), nullable=False, index=True)
+    guidance_key = Column(String(64), nullable=False, default="")
+    route_scope = Column(String(64), nullable=False, default="")
+    route_role = Column(String(64), nullable=False, default="")
+    route_status = Column(String(32), nullable=False, index=True)
+    routing_rationale_code = Column(String(128), nullable=False, default="")
+    routing_context_digest = Column(String(64), nullable=False, default="")
+    valid_from = Column(DateTime, nullable=False)
+    valid_until = Column(DateTime, nullable=False, index=True)
+    is_current = Column(Boolean, nullable=False, default=True, index=True)
+    routing_version = Column(String(32), nullable=False, default="grf_v1")
+    routing_rule_version = Column(String(64), nullable=False, default="")
+    surface_registry_version = Column(String(32), nullable=False, default="gsurf_v1")
+    routing_registry_version = Column(String(32), nullable=False, default="grule_v1")
+    source_contract_version = Column(String(64), nullable=False, default="")
+    input_fingerprint = Column(String(64), nullable=False, default="")
+    route_fingerprint = Column(String(64), nullable=False, default="", index=True)
+    generation_version = Column(String(32), nullable=False, default="grf_v1_eval")
+    as_of = Column(DateTime, nullable=False)
+    as_of_key = Column(String(32), nullable=False, default="")
+    created_at = Column(DateTime, nullable=False)
+    refreshed_at = Column(DateTime, nullable=False)
+    superseded_at = Column(DateTime, nullable=True)
+
+
+class MerchantPresentation(Base):
+    """
+    Merchant Presentation Foundation V1 — representation contract for a route.
+
+    Not page layout. Not action execution. Registry + template bounded.
+    """
+
+    __tablename__ = "merchant_presentations"
+    __table_args__ = (
+        UniqueConstraint(
+            "presentation_id",
+            name="uq_merchant_presentation_id",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    presentation_id = Column(String(64), nullable=False, index=True)
+    route_id = Column(String(64), nullable=False, index=True)
+    guidance_id = Column(String(64), nullable=False, default="")
+    store_slug = Column(String(255), nullable=False, index=True)
+    subject_type = Column(String(32), nullable=False, default="")
+    subject_id = Column(String(256), nullable=False, default="")
+    surface_key = Column(String(64), nullable=False, index=True)
+    route_scope = Column(String(64), nullable=False, default="")
+    route_role = Column(String(64), nullable=False, default="")
+    guidance_key = Column(String(64), nullable=False, default="")
+    presentation_type = Column(String(64), nullable=False, index=True)
+    presentation_state = Column(String(32), nullable=False, index=True)
+    headline_key = Column(String(128), nullable=False, default="")
+    headline_text = Column(Text, nullable=False, default="")
+    primary_statement_key = Column(String(128), nullable=False, default="")
+    primary_statement_text = Column(Text, nullable=False, default="")
+    supporting_statement_key = Column(String(128), nullable=False, default="")
+    supporting_statement_text = Column(Text, nullable=False, default="")
+    known_facts_json = Column(Text, nullable=False, default="[]")
+    unknown_facts_json = Column(Text, nullable=False, default="[]")
+    evidence_state = Column(String(64), nullable=False, default="")
+    merchant_relevance_key = Column(String(128), nullable=False, default="")
+    merchant_relevance_text = Column(Text, nullable=False, default="")
+    action_affordance = Column(String(32), nullable=False, default="none")
+    action_label_key = Column(String(64), nullable=False, default="")
+    disclaimer_key = Column(String(64), nullable=False, default="")
+    status_label_key = Column(String(64), nullable=False, default="")
+    template_key = Column(String(64), nullable=False, default="")
+    template_version = Column(String(64), nullable=False, default="")
+    presentation_rule_version = Column(String(64), nullable=False, default="")
+    language_code = Column(String(16), nullable=False, default="en")
+    failure_reason = Column(String(128), nullable=False, default="")
+    valid_from = Column(DateTime, nullable=False)
+    valid_until = Column(DateTime, nullable=False, index=True)
+    is_current = Column(Boolean, nullable=False, default=True, index=True)
+    presentation_version = Column(String(32), nullable=False, default="mpf_v1")
+    generation_version = Column(String(32), nullable=False, default="mpf_v1_gen")
+    source_contract_version = Column(String(64), nullable=False, default="")
+    input_fingerprint = Column(String(64), nullable=False, default="")
+    presentation_fingerprint = Column(String(64), nullable=False, default="", index=True)
+    as_of = Column(DateTime, nullable=False)
+    as_of_key = Column(String(32), nullable=False, default="")
+    created_at = Column(DateTime, nullable=False)
+    refreshed_at = Column(DateTime, nullable=False)
+    superseded_at = Column(DateTime, nullable=True)
+
+
+class SurfaceComposition(Base):
+    """
+    Surface Composition Foundation V1 — what each merchant surface should receive.
+
+    Not UI, layout, pixels, or page implementation. Projection only.
+    """
+
+    __tablename__ = "surface_compositions"
+    __table_args__ = (
+        UniqueConstraint(
+            "composition_id",
+            name="uq_surface_composition_id",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    composition_id = Column(String(64), nullable=False, index=True)
+    surface_id = Column(String(64), nullable=False, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    source_type = Column(String(64), nullable=False, default="")
+    source_id = Column(String(64), nullable=False, default="", index=True)
+    source_lineage_json = Column(Text, nullable=False, default="{}")
+    information_class = Column(String(64), nullable=False, index=True)
+    presentation_intent = Column(String(64), nullable=False, default="")
+    merchant_value = Column(String(128), nullable=False, default="")
+    urgency = Column(Integer, nullable=False, default=0)
+    freshness_state = Column(String(32), nullable=False, default="", index=True)
+    confidence = Column(String(64), nullable=False, default="")
+    expiry = Column(DateTime, nullable=False)
+    visibility = Column(String(32), nullable=False, default="", index=True)
+    visibility_reason = Column(String(128), nullable=False, default="")
+    destination_surfaces_json = Column(Text, nullable=False, default="[]")
+    duplicate_group = Column(String(128), nullable=False, default="", index=True)
+    owns_full_explanation = Column(Boolean, nullable=False, default=False)
+    suppression_rules_json = Column(Text, nullable=False, default="[]")
+    priority = Column(Integer, nullable=False, default=0, index=True)
+    accounting_outcome = Column(String(32), nullable=False, default="", index=True)
+    lifecycle = Column(String(32), nullable=False, default="create")
+    valid_from = Column(DateTime, nullable=False)
+    valid_until = Column(DateTime, nullable=False, index=True)
+    is_current = Column(Boolean, nullable=False, default=True, index=True)
+    composition_version = Column(String(32), nullable=False, default="scf_v1")
+    generation_version = Column(String(32), nullable=False, default="scf_v1_gen")
+    surface_registry_version = Column(String(32), nullable=False, default="sreg_v1")
+    source_contract_version = Column(String(64), nullable=False, default="")
+    input_fingerprint = Column(String(64), nullable=False, default="")
+    fingerprint = Column(String(64), nullable=False, default="", index=True)
+    failure_reason = Column(String(128), nullable=False, default="")
+    as_of = Column(DateTime, nullable=False)
+    as_of_key = Column(String(32), nullable=False, default="")
+    created_at = Column(DateTime, nullable=False)
+    refreshed_at = Column(DateTime, nullable=False)
+    superseded_at = Column(DateTime, nullable=True)
+
+
+class BusinessFinding(Base):
+    """
+    Business Findings Lifecycle V1 — durable commercial finding object.
+
+    Not a Home calculation. Surfaces consume; they must not generate.
+    """
+
+    __tablename__ = "business_findings"
+    __table_args__ = (
+        UniqueConstraint(
+            "finding_id",
+            name="uq_business_finding_id",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    finding_id = Column(String(128), nullable=False, index=True)
+    finding_type = Column(String(96), nullable=False, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    merchant_id = Column(String(64), nullable=False, default="", index=True)
+    product_id = Column(String(256), nullable=True, index=True)
+    category_id = Column(String(128), nullable=True, index=True)
+    evidence_json = Column(Text, nullable=False, default="{}")
+    confidence = Column(String(32), nullable=False, default="")
+    confidence_score = Column(String(32), nullable=False, default="")
+    severity = Column(String(32), nullable=False, default="")
+    generated_at = Column(DateTime, nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=True, index=True)
+    lifecycle_state = Column(String(48), nullable=False, default="detected", index=True)
+    visibility_state = Column(String(32), nullable=False, default="hidden", index=True)
+    reasoning_json = Column(Text, nullable=False, default="{}")
+    recommended_action = Column(Text, nullable=False, default="")
+    title = Column(Text, nullable=False, default="")
+    merchant_summary = Column(Text, nullable=False, default="")
+    payload_json = Column(Text, nullable=False, default="{}")
+    routing_json = Column(Text, nullable=False, default="{}")
+    lifecycle_events_json = Column(Text, nullable=False, default="[]")
+    diagnostics_json = Column(Text, nullable=False, default="{}")
+    fingerprint = Column(String(64), nullable=False, default="", index=True)
+    engine_version = Column(String(64), nullable=False, default="")
+    lifecycle_version = Column(String(32), nullable=False, default="bfl_v1")
+    is_current = Column(Boolean, nullable=False, default=True, index=True)
+    as_of = Column(DateTime, nullable=False)
+    as_of_key = Column(String(32), nullable=False, default="")
+    created_at = Column(DateTime, nullable=False)
+    refreshed_at = Column(DateTime, nullable=False)
+    superseded_at = Column(DateTime, nullable=True)
+
+
+class CommerceIntelligenceSynthesis(Base):
+    """
+    Commerce Intelligence Synthesis Foundation V1 — qualified cross-domain pattern.
+
+    Not Guidance. Not Presentation. Not aggregation-only metrics.
+    """
+
+    __tablename__ = "commerce_intelligence_syntheses"
+    __table_args__ = (
+        UniqueConstraint(
+            "synthesis_id",
+            name="uq_commerce_intelligence_synthesis_id",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    synthesis_id = Column(String(64), nullable=False, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    synthesis_key = Column(String(64), nullable=False, index=True)
+    synthesis_rule_key = Column(String(64), nullable=False, index=True)
+    subject_type = Column(String(32), nullable=False, default="", index=True)
+    subject_id = Column(String(256), nullable=False, default="")
+    comparison_subject_type = Column(String(32), nullable=False, default="")
+    comparison_subject_id = Column(String(256), nullable=False, default="")
+    time_window_key = Column(String(16), nullable=False, default="")
+    window_start = Column(DateTime, nullable=False)
+    window_end = Column(DateTime, nullable=False)
+    synthesis_state = Column(String(32), nullable=False, index=True)
+    pattern_type = Column(String(64), nullable=False, default="", index=True)
+    pattern_direction = Column(String(64), nullable=False, default="")
+    commercial_domain = Column(String(64), nullable=False, default="")
+    source_domains_json = Column(Text, nullable=False, default="[]")
+    source_record_ids_json = Column(Text, nullable=False, default="[]")
+    source_contributions_json = Column(Text, nullable=False, default="{}")
+    required_source_domains_json = Column(Text, nullable=False, default="[]")
+    missing_source_domains_json = Column(Text, nullable=False, default="[]")
+    known_facts_json = Column(Text, nullable=False, default="[]")
+    unknown_facts_json = Column(Text, nullable=False, default="[]")
+    conflicting_facts_json = Column(Text, nullable=False, default="[]")
+    prohibited_claims_json = Column(Text, nullable=False, default="[]")
+    supporting_evidence_count = Column(Integer, nullable=False, default=0)
+    contradicting_evidence_count = Column(Integer, nullable=False, default=0)
+    sample_size = Column(Integer, nullable=False, default=0)
+    minimum_sample_size = Column(Integer, nullable=False, default=0)
+    evidence_coverage = Column(Float, nullable=False, default=0.0)
+    confidence_input_json = Column(Text, nullable=False, default="{}")
+    significance_input_json = Column(Text, nullable=False, default="{}")
+    commercial_relevance_input_json = Column(Text, nullable=False, default="{}")
+    synthesis_summary_key = Column(String(128), nullable=False, default="")
+    input_fingerprint = Column(String(64), nullable=False, default="")
+    synthesis_fingerprint = Column(String(64), nullable=False, default="", index=True)
+    rule_version = Column(String(32), nullable=False, default="")
+    contract_version = Column(String(64), nullable=False, default="")
+    synthesis_version = Column(String(32), nullable=False, default="cisyn_v1")
+    generation_version = Column(String(32), nullable=False, default="cisyn_v1_gen")
+    failure_reason = Column(String(128), nullable=False, default="")
+    valid_from = Column(DateTime, nullable=False)
+    valid_until = Column(DateTime, nullable=False, index=True)
+    is_current = Column(Boolean, nullable=False, default=True, index=True)
+    as_of = Column(DateTime, nullable=False)
+    as_of_key = Column(String(32), nullable=False, default="")
+    created_at = Column(DateTime, nullable=False)
+    refreshed_at = Column(DateTime, nullable=False)
+    superseded_at = Column(DateTime, nullable=True)
+
+
 class DashboardSnapshot(Base):
     """
     Precomputed merchant dashboard payload — read-only on API hot path

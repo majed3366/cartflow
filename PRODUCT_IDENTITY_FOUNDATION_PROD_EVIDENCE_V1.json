@@ -1,0 +1,45 @@
+{
+  "generated_at_utc": "2026-07-19T13:12:00+00:00",
+  "status": "DEPLOYED_READY_FOR_PRODUCT_REVIEW",
+  "production_url": "https://smartreplyai.net/dashboard#home",
+  "commits": {
+    "foundation_pr9_merge": "7ae6d19453edb54ff82a3fb90aee0eb837ca9d74",
+    "foundation_feature": "8b884a50d963d6ac18d0c6e388126c7ce9fb83a8",
+    "carts_surface_hotfix_pr10_merge": "c80df102b3f8b85787203b47dab0ac48a32777d1",
+    "deployed": "c80df102b3f8b85787203b47dab0ac48a32777d1"
+  },
+  "health": {"ok": true, "service": "cartflow"},
+  "static": {
+    "merchant_dashboard_lazy_js_matches_main": true,
+    "last_modified": "Sun, 19 Jul 2026 13:07:54 GMT",
+    "needles": {
+      "product_identity_v1": true,
+      "v2-conv-product": true,
+      "اسم المنتج غير متوفر": true
+    }
+  },
+  "verdicts": {
+    "home_no_product_x": true,
+    "home_no_demo_rich_fixture": true,
+    "carts_shows_catalog_display_name": true,
+    "carts_no_placeholders_or_keys": true,
+    "identity_chain_api_projection": true,
+    "simulator_display_name_path": true,
+    "no_pi_console_errors": true,
+    "overall_ready_for_product_review": true
+  },
+  "post_hotfix_carts_sample": {
+    "ui_identity_nodes": 3,
+    "display_name_contains": "TrueSound Pro",
+    "api_status": "resolved",
+    "identity_source": "raw_payload"
+  },
+  "screenshots": {
+    "home": "scripts/_product_identity_foundation_prod_verify_out/01_home.png",
+    "carts": "scripts/_product_identity_foundation_prod_verify_out/02_carts.png"
+  },
+  "unexpected_observations": [
+    "PR #9 API projection worked, but MI queue + PE conversation omitted the name line until PR #10 hotfix."
+  ],
+  "stop": "Do not begin Commercial Knowledge Expansion V1. Await Product Review."
+}

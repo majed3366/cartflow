@@ -1,0 +1,436 @@
+{
+  "ok": true,
+  "store_slug": "demo",
+  "foundation_enabled": true,
+  "flag_env": "CARTFLOW_TIME_AUTHORITY_BINDING_V1",
+  "tabf_version": "tabf_v1",
+  "assembly_window": "d7",
+  "binding_status": {
+    "resolved_as_of": "2026-07-22 18:36:51",
+    "source": "query_time_context",
+    "qtc_mode": "current_production",
+    "authority_source_id": "system",
+    "provider": "SystemClockProvider",
+    "binding_enabled": true,
+    "clocks": {
+      "event_time": "preserved_on_facts",
+      "processing_time": "authority_now_in_workers",
+      "observation_time": "resolve_bound_as_of_v1",
+      "display_time": "bound_as_of_via_scf_meif",
+      "replay_time": "qtc_historical_or_simulation"
+    }
+  },
+  "canonical_clocks": {
+    "event_time": "preserved_on_facts",
+    "processing_time": "authority_now_in_workers",
+    "observation_time": "resolve_bound_as_of_v1",
+    "display_time": "bound_as_of_via_scf_meif",
+    "replay_time": "qtc_historical_or_simulation"
+  },
+  "replay_consistency": {
+    "deterministic_scf": true,
+    "deterministic_ot": true,
+    "ordering_consistent": true,
+    "replay_consistent": true,
+    "scf_fingerprint": "5c053c31a4ecada63b859a6ab224ed27ac438a4f335d8c148b567cd6db631511",
+    "ot_fingerprint": "714f41d9d2f91194ccfec03da62d3ca38ff92d8d79e0dc179c87250a23716d9a",
+    "as_of": "2026-07-22 18:36:51"
+  },
+  "ordering_conflicts": [],
+  "chronology_warnings": [
+    "partial_binding:truth:event vs process when late reconcile"
+  ],
+  "drift_detection": [],
+  "stale_interpretations": [
+    "timeline_ordering"
+  ],
+  "subsystem_bindings": {
+    "bindings": [
+      {
+        "subsystem_id": "truth",
+        "owner": "purchase/lifecycle truth",
+        "consumes_clock": "event_time",
+        "binding_status": "partial",
+        "canonical_source": "event timestamps",
+        "legacy_interpretation": "process time for some reconciles",
+        "conflicts": "event vs process when late reconcile",
+        "drift_risk": "medium",
+        "resolve_entry": "preserve_event_time",
+        "version": "tabf_reg_v1",
+        "runtime_binding_status": "partial",
+        "bound": true
+      },
+      {
+        "subsystem_id": "evidence",
+        "owner": "evidence_confidence_foundation_v1",
+        "consumes_clock": "observation_time",
+        "binding_status": "bound",
+        "canonical_source": "resolve_bound_as_of_v1",
+        "legacy_interpretation": "wall _utc_naive_now",
+        "conflicts": "none_when_bound",
+        "drift_risk": "low",
+        "resolve_entry": "generate_evidence_* as_of",
+        "version": "tabf_reg_v1",
+        "runtime_binding_status": "bound",
+        "bound": true
+      },
+      {
+        "subsystem_id": "commerce_intelligence",
+        "owner": "commerce_intelligence_synthesis_foundation_v1",
+        "consumes_clock": "observation_time",
+        "binding_status": "bound",
+        "canonical_source": "resolve_bound_as_of_v1",
+        "legacy_interpretation": "wall _utc_naive_now",
+        "conflicts": "none_when_bound",
+        "drift_risk": "low",
+        "resolve_entry": "generate_commerce_intelligence_syntheses_v1 as_of",
+        "version": "tabf_reg_v1",
+        "runtime_binding_status": "bound",
+        "bound": true
+      },
+      {
+        "subsystem_id": "knowledge",
+        "owner": "knowledge_foundation_v1",
+        "consumes_clock": "observation_time",
+        "binding_status": "bound",
+        "canonical_source": "resolve_bound_as_of_v1",
+        "legacy_interpretation": "wall default as_of (CG-MEH-01)",
+        "conflicts": "wall vs sim without QTC",
+        "drift_risk": "high_if_unbound",
+        "resolve_entry": "generate_knowledge_v1 as_of",
+        "version": "tabf_reg_v1",
+        "runtime_binding_status": "bound",
+        "bound": true
+      },
+      {
+        "subsystem_id": "commercial_guidance",
+        "owner": "commercial_guidance_foundation_v1 / routing / presentation",
+        "consumes_clock": "observation_time",
+        "binding_status": "bound",
+        "canonical_source": "resolve_bound_as_of_v1",
+        "legacy_interpretation": "wall default as_of",
+        "conflicts": "none_when_caller_passes_bound_as_of",
+        "drift_risk": "medium",
+        "resolve_entry": "generate_*_v1 as_of chain",
+        "version": "tabf_reg_v1",
+        "runtime_binding_status": "bound",
+        "bound": true
+      },
+      {
+        "subsystem_id": "operational_truth",
+        "owner": "operational_truth_foundation_v1",
+        "consumes_clock": "observation_time",
+        "binding_status": "bound",
+        "canonical_source": "resolve_bound_as_of_v1",
+        "legacy_interpretation": "wall _utc_naive_now",
+        "conflicts": "none_when_bound",
+        "drift_risk": "low",
+        "resolve_entry": "generate_operational_truth_v1 as_of",
+        "version": "tabf_reg_v1",
+        "runtime_binding_status": "bound",
+        "bound": true
+      },
+      {
+        "subsystem_id": "surface_composition",
+        "owner": "surface_composition_foundation_v1",
+        "consumes_clock": "observation_time",
+        "binding_status": "bound",
+        "canonical_source": "resolve_bound_as_of_v1 + freshness_state_v1(as_of)",
+        "legacy_interpretation": "wall as_of; page freshness forbidden",
+        "conflicts": "none_when_bound",
+        "drift_risk": "low",
+        "resolve_entry": "generate_surface_compositions_v1 as_of",
+        "version": "tabf_reg_v1",
+        "runtime_binding_status": "bound",
+        "bound": true
+      },
+      {
+        "subsystem_id": "merchant_experience",
+        "owner": "merchant_experience_integration_foundation_v1",
+        "consumes_clock": "display_time",
+        "binding_status": "bound",
+        "canonical_source": "resolve_bound_as_of_v1 \u2192 SCF/KF",
+        "legacy_interpretation": "wall summary chronology",
+        "conflicts": "display vs observation if unbound",
+        "drift_risk": "medium",
+        "resolve_entry": "generate_merchant_experience_integration_v1 as_of",
+        "version": "tabf_reg_v1",
+        "runtime_binding_status": "bound",
+        "bound": true
+      }
+    ],
+    "unbound_subsystems": [],
+    "all_required_bound": true
+  },
+  "scf_binding": {
+    "ok": true,
+    "as_of": "2026-07-22 18:36:51",
+    "uses_bound_as_of": true,
+    "composition_count": 44,
+    "freshness_from_as_of": true
+  },
+  "operational_truth_binding": {
+    "ok": true,
+    "as_of": "2026-07-22 18:36:51",
+    "uses_bound_as_of": true
+  },
+  "merchant_experience_binding": {
+    "ok": true,
+    "as_of": "2026-07-22 18:36:51",
+    "uses_bound_as_of": true,
+    "chronology_cue_as_of": "2026-07-22 18:36:51"
+  },
+  "canonical_fingerprint": "966f932e1c43f38e09d72562bc35e9b3540bf07510eb8a6a4bd3dc6035cefdb8",
+  "errors": [],
+  "no_analytics": true,
+  "no_timeline_redesign": true,
+  "no_guidance_logic_change": true,
+  "no_knowledge_logic_change": true,
+  "as_of": "2026-07-22 18:36:51",
+  "binding_audit": {
+    "bindings": [
+      {
+        "subsystem_id": "truth",
+        "owner": "purchase/lifecycle truth",
+        "consumes_clock": "event_time",
+        "binding_status": "partial",
+        "canonical_source": "event timestamps",
+        "legacy_interpretation": "process time for some reconciles",
+        "conflicts": "event vs process when late reconcile",
+        "drift_risk": "medium",
+        "resolve_entry": "preserve_event_time",
+        "version": "tabf_reg_v1",
+        "runtime_binding_status": "partial",
+        "bound": true
+      },
+      {
+        "subsystem_id": "evidence",
+        "owner": "evidence_confidence_foundation_v1",
+        "consumes_clock": "observation_time",
+        "binding_status": "bound",
+        "canonical_source": "resolve_bound_as_of_v1",
+        "legacy_interpretation": "wall _utc_naive_now",
+        "conflicts": "none_when_bound",
+        "drift_risk": "low",
+        "resolve_entry": "generate_evidence_* as_of",
+        "version": "tabf_reg_v1",
+        "runtime_binding_status": "bound",
+        "bound": true
+      },
+      {
+        "subsystem_id": "commerce_intelligence",
+        "owner": "commerce_intelligence_synthesis_foundation_v1",
+        "consumes_clock": "observation_time",
+        "binding_status": "bound",
+        "canonical_source": "resolve_bound_as_of_v1",
+        "legacy_interpretation": "wall _utc_naive_now",
+        "conflicts": "none_when_bound",
+        "drift_risk": "low",
+        "resolve_entry": "generate_commerce_intelligence_syntheses_v1 as_of",
+        "version": "tabf_reg_v1",
+        "runtime_binding_status": "bound",
+        "bound": true
+      },
+      {
+        "subsystem_id": "knowledge",
+        "owner": "knowledge_foundation_v1",
+        "consumes_clock": "observation_time",
+        "binding_status": "bound",
+        "canonical_source": "resolve_bound_as_of_v1",
+        "legacy_interpretation": "wall default as_of (CG-MEH-01)",
+        "conflicts": "wall vs sim without QTC",
+        "drift_risk": "high_if_unbound",
+        "resolve_entry": "generate_knowledge_v1 as_of",
+        "version": "tabf_reg_v1",
+        "runtime_binding_status": "bound",
+        "bound": true
+      },
+      {
+        "subsystem_id": "commercial_guidance",
+        "owner": "commercial_guidance_foundation_v1 / routing / presentation",
+        "consumes_clock": "observation_time",
+        "binding_status": "bound",
+        "canonical_source": "resolve_bound_as_of_v1",
+        "legacy_interpretation": "wall default as_of",
+        "conflicts": "none_when_caller_passes_bound_as_of",
+        "drift_risk": "medium",
+        "resolve_entry": "generate_*_v1 as_of chain",
+        "version": "tabf_reg_v1",
+        "runtime_binding_status": "bound",
+        "bound": true
+      },
+      {
+        "subsystem_id": "operational_truth",
+        "owner": "operational_truth_foundation_v1",
+        "consumes_clock": "observation_time",
+        "binding_status": "bound",
+        "canonical_source": "resolve_bound_as_of_v1",
+        "legacy_interpretation": "wall _utc_naive_now",
+        "conflicts": "none_when_bound",
+        "drift_risk": "low",
+        "resolve_entry": "generate_operational_truth_v1 as_of",
+        "version": "tabf_reg_v1",
+        "runtime_binding_status": "bound",
+        "bound": true
+      },
+      {
+        "subsystem_id": "surface_composition",
+        "owner": "surface_composition_foundation_v1",
+        "consumes_clock": "observation_time",
+        "binding_status": "bound",
+        "canonical_source": "resolve_bound_as_of_v1 + freshness_state_v1(as_of)",
+        "legacy_interpretation": "wall as_of; page freshness forbidden",
+        "conflicts": "none_when_bound",
+        "drift_risk": "low",
+        "resolve_entry": "generate_surface_compositions_v1 as_of",
+        "version": "tabf_reg_v1",
+        "runtime_binding_status": "bound",
+        "bound": true
+      },
+      {
+        "subsystem_id": "merchant_experience",
+        "owner": "merchant_experience_integration_foundation_v1",
+        "consumes_clock": "display_time",
+        "binding_status": "bound",
+        "canonical_source": "resolve_bound_as_of_v1 \u2192 SCF/KF",
+        "legacy_interpretation": "wall summary chronology",
+        "conflicts": "display vs observation if unbound",
+        "drift_risk": "medium",
+        "resolve_entry": "generate_merchant_experience_integration_v1 as_of",
+        "version": "tabf_reg_v1",
+        "runtime_binding_status": "bound",
+        "bound": true
+      }
+    ],
+    "unbound_subsystems": [],
+    "all_required_bound": true
+  },
+  "inventory": {
+    "version": "tabf_reg_v1",
+    "sites": {
+      "event_timestamps": {
+        "site_id": "event_timestamps",
+        "description": "Storefront/widget/cart event occurred_at stamps",
+        "location": "ingress / models event fields",
+        "canonical_clock": "event_time",
+        "legacy_interpretation": "provider/wall mix",
+        "bound_via": "event_time_preserved_as_fact",
+        "drift_risk": "low_if_not_reinterpreted",
+        "version": "tabf_reg_v1"
+      },
+      "scheduler_execution": {
+        "site_id": "scheduler_execution",
+        "description": "Recovery scanner / job due evaluation",
+        "location": "services/recovery* / worker scopes",
+        "canonical_clock": "processing_time",
+        "legacy_interpretation": "datetime.utcnow / system",
+        "bound_via": "worker_scope_authority_now",
+        "drift_risk": "medium",
+        "version": "tabf_reg_v1"
+      },
+      "purchase_detection": {
+        "site_id": "purchase_detection",
+        "description": "Purchase truth detection windows",
+        "location": "purchase_truth / conversion reconcile",
+        "canonical_clock": "event_time",
+        "legacy_interpretation": "mixed event vs process",
+        "bound_via": "event_time_primary",
+        "drift_risk": "medium",
+        "version": "tabf_reg_v1"
+      },
+      "recovery_eligibility": {
+        "site_id": "recovery_eligibility",
+        "description": "Recovery delay / eligibility windows",
+        "location": "recovery schedule materialization",
+        "canonical_clock": "processing_time",
+        "legacy_interpretation": "wall clock due",
+        "bound_via": "authority_now_in_worker",
+        "drift_risk": "medium",
+        "version": "tabf_reg_v1"
+      },
+      "cooldown_windows": {
+        "site_id": "cooldown_windows",
+        "description": "Widget/recovery cooldown intervals",
+        "location": "widget / recovery settings",
+        "canonical_clock": "processing_time",
+        "legacy_interpretation": "wall deltas",
+        "bound_via": "authority_now",
+        "drift_risk": "low",
+        "version": "tabf_reg_v1"
+      },
+      "waiting_periods": {
+        "site_id": "waiting_periods",
+        "description": "Cart waiting / abandon delay",
+        "location": "abandoned cart lifecycle",
+        "canonical_clock": "event_time",
+        "legacy_interpretation": "event + delay",
+        "bound_via": "event_plus_configured_delay",
+        "drift_risk": "low",
+        "version": "tabf_reg_v1"
+      },
+      "freshness": {
+        "site_id": "freshness",
+        "description": "SCF freshness_state_v1 vs valid_until",
+        "location": "surface_composition_foundation_v1.freshness_state_v1",
+        "canonical_clock": "observation_time",
+        "legacy_interpretation": "as_of or wall",
+        "bound_via": "tabf_resolve_bound_as_of",
+        "drift_risk": "high_if_unbound",
+        "version": "tabf_reg_v1"
+      },
+      "timeline_ordering": {
+        "site_id": "timeline_ordering",
+        "description": "Merchant timeline / home ordering",
+        "location": "merchant home / MEIF packages",
+        "canonical_clock": "display_time",
+        "legacy_interpretation": "wall brief_date",
+        "bound_via": "scf_priority_and_bound_as_of",
+        "drift_risk": "high_if_page_owned",
+        "version": "tabf_reg_v1"
+      },
+      "replay": {
+        "site_id": "replay",
+        "description": "Historical / recovery replay scopes",
+        "location": "time_authority.context_scope.historical_replay_scope",
+        "canonical_clock": "replay_time",
+        "legacy_interpretation": "FixedAsOfProvider",
+        "bound_via": "query_time_context",
+        "drift_risk": "low_when_activated",
+        "version": "tabf_reg_v1"
+      },
+      "historical_simulation": {
+        "site_id": "historical_simulation",
+        "description": "Reality Simulator write + read clocks",
+        "location": "store_reality_simulator + reality_attach_v1",
+        "canonical_clock": "replay_time",
+        "legacy_interpretation": "SimulationClock vs Product Performance wall",
+        "bound_via": "reality_attach_bind_time_plus_tabf",
+        "drift_risk": "critical_if_pp_unbound",
+        "version": "tabf_reg_v1"
+      },
+      "dashboard_chronology": {
+        "site_id": "dashboard_chronology",
+        "description": "Dashboard KPI / summary chronology",
+        "location": "dashboard_kpi_time_v1 / summary",
+        "canonical_clock": "display_time",
+        "legacy_interpretation": "partial WP-5 binding",
+        "bound_via": "dashboard_kpi_time_v1",
+        "drift_risk": "medium",
+        "version": "tabf_reg_v1"
+      },
+      "operational_stability_windows": {
+        "site_id": "operational_stability_windows",
+        "description": "OTIF severity/stability as-of snapshots",
+        "location": "operational_truth_foundation_v1",
+        "canonical_clock": "observation_time",
+        "legacy_interpretation": "wall as_of default",
+        "bound_via": "tabf_resolve_bound_as_of",
+        "drift_risk": "medium",
+        "version": "tabf_reg_v1"
+      }
+    },
+    "count": 12
+  },
+  "registries_valid": true,
+  "enabled": true
+}

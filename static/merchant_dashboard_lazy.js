@@ -2257,22 +2257,36 @@
     setText("ma-topbar-date", d.merchant_ar_date_header || "");
     ingestRefreshToken(d, "summary");
     applyTopbarReadiness(d);
-    applySetupReadinessPanelWithFallback(d);
-    applyMerchantSetupExperience(d.merchant_setup_experience);
-    if (
-      d.merchant_setup_experience &&
-      d.merchant_setup_experience.activation_journey_v2
-    ) {
-      applyActivationJourneySideEffects(
+    var meifPkg = d.merchant_experience_integration_v1 || null;
+    var meifHome = (meifPkg && meifPkg.pages && meifPkg.pages.home) || null;
+    var suppressSetupTheatre = !!(meifHome && meifHome.suppress_setup_theatre);
+    /* MEH V1: when durable ops exist, do not paint setup theatre over lived history. */
+    if (!suppressSetupTheatre) {
+      applySetupReadinessPanelWithFallback(d);
+      applyMerchantSetupExperience(d.merchant_setup_experience);
+      if (
+        d.merchant_setup_experience &&
         d.merchant_setup_experience.activation_journey_v2
-      );
+      ) {
+        applyActivationJourneySideEffects(
+          d.merchant_setup_experience.activation_journey_v2
+        );
+      }
+      applyHomeLayoutAfterSetup(d.merchant_activation, d.merchant_setup_experience);
     }
-    applyHomeLayoutAfterSetup(d.merchant_activation, d.merchant_setup_experience);
     logSetupRenderDebug("summary_dom", probeSetupExperienceRoot());
 
     var pulseRendered = false;
     var homeV1Rendered = false;
-    if (window.maApplyDashboardHomeV1) {
+    /* MEIF/MEH: prefer governed integration package over legacy Home composer. */
+    if (window.maApplyMerchantExperienceIntegrationV1) {
+      try {
+        homeV1Rendered = !!window.maApplyMerchantExperienceIntegrationV1(d);
+      } catch (meifErr) {
+        homeV1Rendered = false;
+      }
+    }
+    if (!homeV1Rendered && window.maApplyDashboardHomeV1) {
       try {
         homeV1Rendered = !!window.maApplyDashboardHomeV1(d);
       } catch (homeV1Err) {
@@ -3419,6 +3433,15 @@
       '<p class="v2-conv-status">' +
       esc(merchantPeV2ConvStatus(mc)) +
       "</p>" +
+      '<p class="v2-conv-product ma-cart-product-identity" data-pi-status="' +
+      esc(mc.merchant_product_identity_status || "unresolved") +
+      '">' +
+      esc(
+        mc.merchant_product_name ||
+          (mc.product_identity_v1 && mc.product_identity_v1.display_name_ar) ||
+          "اسم المنتج غير متوفر"
+      ) +
+      "</p>" +
       '<h2 class="v2-conv-headline">' +
       esc(merchantPeV2ConvHeadline(expl, mc)) +
       "</h2>" +
@@ -3438,6 +3461,15 @@
       '<div class="ma-pe-v2-mobile-panel v2-conversation v2-conversation--mobile" data-mxp="carts-pe-v2" aria-label="محادثة السلة">' +
       '<p class="v2-action-eyebrow">المحددة · ' +
       formatMerchantSarHtml(v) +
+      "</p>" +
+      '<p class="v2-conv-product ma-cart-product-identity" data-pi-status="' +
+      esc(mc.merchant_product_identity_status || "unresolved") +
+      '">' +
+      esc(
+        mc.merchant_product_name ||
+          (mc.product_identity_v1 && mc.product_identity_v1.display_name_ar) ||
+          "اسم المنتج غير متوفر"
+      ) +
       "</p>" +
       '<h2 class="v2-action-headline">' +
       esc(merchantPeV2ConvHeadline(expl, mc)) +
@@ -3501,6 +3533,15 @@
       '"></span>' +
       '<div class="v2-queue-body">' +
       queueAmountHtml(v) +
+      '<p class="v2-queue-scan ma-cart-product-identity" data-pi-status="' +
+      esc(mc.merchant_product_identity_status || "unresolved") +
+      '">' +
+      esc(
+        mc.merchant_product_name ||
+          (mc.product_identity_v1 && mc.product_identity_v1.display_name_ar) ||
+          "اسم المنتج غير متوفر"
+      ) +
+      "</p>" +
       '<p class="v2-queue-scan">' +
       esc(scan) +
       "</p></div>" +
@@ -3564,6 +3605,15 @@
       formatMerchantSar(v) +
       '</div><div class="ctime">' +
       esc(mc.merchant_time_relative_ar || "—") +
+      "</div>" +
+      '<div class="ctime ma-cart-product-identity" data-pi-status="' +
+      esc(mc.merchant_product_identity_status || "unresolved") +
+      '">' +
+      esc(
+        mc.merchant_product_name ||
+          (mc.product_identity_v1 && mc.product_identity_v1.display_name_ar) ||
+          "اسم المنتج غير متوفر"
+      ) +
       "</div></td>" +
       '<td><span class="chip ' +
       esc(mc.merchant_reason_chip_class || "c-other") +
@@ -7006,6 +7056,26 @@
     var u = String(url || "");
     var sep = u.indexOf("?") >= 0 ? "&" : "?";
     var bust = "_ts=" + Date.now();
+    if (u.indexOf("/api/dashboard/summary") === 0 && window.maAcfSummaryQuery) {
+      try {
+        var pending = "";
+        try {
+          pending = sessionStorage.getItem("cf_acf_pending_trigger") || "";
+          if (pending) sessionStorage.removeItem("cf_acf_pending_trigger");
+        } catch (ePend) {
+          pending = "";
+        }
+        var acf = window.maAcfSummaryQuery() || "";
+        if (pending) {
+          acf = acf.replace(/acf_trigger=[^&]*/g, "");
+          if (acf && acf.charAt(acf.length - 1) !== "&" && acf.length) acf += "&";
+          acf += "acf_trigger=" + encodeURIComponent(pending);
+        }
+        if (acf) bust += "&" + acf;
+      } catch (eAcf) {
+        /* ignore */
+      }
+    }
     return fetch(u + sep + bust, { credentials: "same-origin", cache: "no-store" })
       .then(function (r) {
         return r.json();

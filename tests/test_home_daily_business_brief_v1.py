@@ -64,22 +64,49 @@ class TestHomeDailyBusinessBriefV1(unittest.TestCase):
         self.assertTrue(health.get("attention_required"))
         self.assertNotIn("items", health)
 
-    def test_single_ranked_revenue_risk(self) -> None:
+    def test_e1_business_health_executive_contract(self) -> None:
+        """Executive Home Sprint 1 — E1 answers EQ-01; proof in disclosure only."""
+        home = self._home()
+        health = home["business_health"]
+        self.assertEqual(health.get("executive_band"), "E1")
+        self.assertEqual(health.get("executive_question_id"), "EQ-01")
+        self.assertEqual(
+            health.get("section_question_ar"), "هل عملي بصحة جيدة اليوم؟"
+        )
+        self.assertEqual(health.get("evidence_summary_ar") or "", "")
+        disc = health.get("disclosure") or {}
+        self.assertTrue(disc.get("label_ar"))
+        self.assertTrue(disc.get("trend_ar") or disc.get("evidence_ar"))
+        blob = (
+            f"{health.get('status_ar')} {health.get('summary_ar')} "
+            f"{health.get('confidence_ar')} {disc.get('evidence_ar')} "
+            f"{disc.get('trend_ar')}"
+        )
+        self.assertNotIn("hesitation_total", blob)
+        self.assertNotIn("returns=", blob)
+        self.assertNotRegex(blob, r"\d+\s*سلة")
+        self.assertNotIn("hesitation_", blob)
+        self.assertNotIn("loaded_from", blob)
+
+    def test_revenue_risk_suppressed_when_same_problem_as_priority(self) -> None:
+        """Semantic composition: risk must not paraphrase Priority's contact problem."""
         home = self._home()
         risk = home["biggest_revenue_risk"]
-        item = risk.get("item")
-        self.assertIsInstance(item, dict)
-        self.assertIn("نقص بيانات التواصل", str(item.get("headline_ar") or ""))
-        self.assertEqual(len(risk.get("items") or []), 1)
+        self.assertFalse(risk.get("home_admission_v1", {}).get("admitted"))
+        self.assertIsNone(risk.get("item"))
+        self.assertEqual(risk.get("items") or [], [])
 
-    def test_opportunity_differs_from_risk_and_has_evidence(self) -> None:
+    def test_opportunity_not_inverse_contact_restatement(self) -> None:
         home = self._home(no_phone=50, active=80)
-        risk_fact = str((home["biggest_revenue_risk"].get("item") or {}).get("fact_key"))
         opp = home["biggest_opportunity"].get("item")
-        self.assertIsInstance(opp, dict)
-        self.assertNotEqual(str(opp.get("fact_key") or ""), risk_fact)
-        self.assertTrue(opp.get("evidence_ar"))
-        self.assertIn("سلة", str(opp.get("headline_ar") or ""))
+        if opp:
+            self.assertNotIn(
+                "recoverable_with_contact", str(opp.get("fact_key") or "")
+            )
+        else:
+            self.assertFalse(
+                home["biggest_opportunity"].get("home_admission_v1", {}).get("admitted")
+            )
 
     def test_priority_is_exactly_one(self) -> None:
         home = self._home()
@@ -102,27 +129,32 @@ class TestHomeDailyBusinessBriefV1(unittest.TestCase):
         self.assertFalse(str(lead.get("action_ar") or "").strip())
         self.assertFalse(str(lead.get("cta_label_ar") or "").strip())
 
-    def test_no_duplicate_risk_opportunity_priority_headlines(self) -> None:
+    def test_progressive_priority_and_understanding_not_paraphrase_twins(self) -> None:
         home = self._home()
-        risk_h = str(
-            (home["biggest_revenue_risk"].get("item") or {}).get("headline_ar") or ""
-        ).strip()
-        opp_h = str(
-            (home["biggest_opportunity"].get("item") or {}).get("headline_ar") or ""
-        ).strip()
         pri_h = str(
             (home["attention_today"]["items"][0] or {}).get("headline_ar") or ""
         ).strip()
-        self.assertTrue(risk_h and opp_h and pri_h)
-        self.assertNotEqual(risk_h, opp_h)
-        self.assertNotEqual(risk_h, pri_h)
-        self.assertNotEqual(opp_h, pri_h)
+        und_h = str(
+            (home["store_understanding"]["items"][0] or {}).get("observation_ar") or ""
+        ).strip()
+        self.assertTrue(pri_h and und_h)
+        self.assertNotEqual(pri_h, und_h)
+        self.assertEqual(
+            home["attention_today"]["items"][0].get("cognitive_role"), "action"
+        )
+        self.assertEqual(
+            home["store_understanding"]["items"][0].get("cognitive_role"), "explain"
+        )
 
-    def test_learning_progress_present(self) -> None:
+    def test_learning_progress_not_contact_paraphrase(self) -> None:
         home = self._home()
-        items = home["learning_progress"]["items"]
-        self.assertGreaterEqual(len(items), 1)
-        self.assertTrue(items[0].get("progress_ar"))
+        learning = home["learning_progress"]
+        items = learning.get("items") or []
+        for it in items:
+            self.assertNotEqual(
+                str(it.get("fact_key") or ""),
+                "fact:learning:contact_blocker_pattern",
+            )
 
     def test_timeline_has_why_it_matters_when_events_exist(self) -> None:
         home = compose_merchant_home_experience_v1(
@@ -154,25 +186,14 @@ class TestHomeDailyBusinessBriefV1(unittest.TestCase):
         js = (_REPO / "static" / "merchant_dashboard_home_v1.js").read_text(
             encoding="utf-8", errors="replace"
         )
-        home_fn = js[js.find("function renderHome") : js.find("function applyDashboardHomeV1")]
-        order = [
-            "renderBusinessHealth(home, summary)",
-            "renderRevenueRisk(home)",
-            "renderOpportunity(home)",
-            "renderTodaysPriority(home)",
-            "renderBusinessUnderstanding(home)",
-            "renderLearningProgress(home)",
-            "renderBusinessTimeline(home)",
-        ]
-        positions = [home_fn.find(name) for name in order]
-        self.assertTrue(all(p >= 0 for p in positions))
-        self.assertEqual(positions, sorted(positions))
+        self.assertIn("resolveSectionOrder", js)
+        self.assertIn("sectionAdmitted", js)
+        self.assertIn("renderSectionByKey", js)
         self.assertIn("daily-brief-v1", js)
         self.assertNotIn("طابور قرارات", js)
         self.assertNotIn("طبقة المعرفة", js)
         self.assertNotIn("renderMetrics", js)
         self.assertNotIn("مؤشرات سريعة", js)
-        # Understanding must not own CTA instruct step
         kn = js[
             js.find("function renderBusinessUnderstanding") : js.find(
                 "function renderLearningProgress"
