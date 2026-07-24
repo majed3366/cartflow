@@ -1,5 +1,5 @@
 {
-  "email": "cf.hes.046da2859b@smartreplyai.net",
+  "email": "cf.hes.665f7db0f6@smartreplyai.net",
   "probe": {
     "http": 200,
     "surface_mode": "executive_summary_v1",
@@ -7,22 +7,29 @@
     "section_ids": [
       "health",
       "decisions",
-      "observations"
+      "observations",
+      "carts",
+      "communication"
     ],
+    "has_five_sections": true,
+    "has_status": true,
     "obs_empty": "True",
     "obs_summary": "لا توجد أدلة كافية لإصدار ملاحظة مرتبطة بمنتج محدد.",
     "orv_findings": 0,
     "has_demo_perfume": false,
     "has_hes_title": true,
     "has_view_details": true,
-    "text_sample": "ملخص تنفيذي\n\nماذا يجب أن تعرف الآن؟\n\nملخص سريع فقط — التفاصيل في صفحاتها.\n\nصحة العمل\n\nلا نشاط كافٍ بعد لملخص تشغيلي — استمر في جمع الأدلة.\n\nعرض التفاصيل ←\n\nقرارات اليوم\n0\n\nلا قرار قابل للتنفيذ اليوم — راجع مساحة القرار عند توفر أدلة.\n\nعرض التفاصيل ←\n\nملاحظات المنتجات\n0\n\nلا توجد أدلة كافية لإصدار ملاحظة مرتبطة بمنتج محدد.\n\nعرض التفاصيل ←\n\nالصفحة الرئيسية = ملخص تنفيذي · القرارات في مساحة القرار · السلال للتشغيل · الإعدادات للضبط."
+    "has_carts_section": true,
+    "has_communication_section": true,
+    "text_sample": "ملخص تنفيذي\n\nماذا يجب أن تعرف الآن؟\n\nملخص سريع فقط — التفاصيل في صفحاتها.\n\nصحة العمل\nبانتظار أدلة\n\nلا نشاط كافٍ بعد لملخص تشغيلي — استمر في جمع الأدلة.\n\nعرض التفاصيل ←\n\nقرارات اليوم\nلا قرار\n0\n\nلا قرار قابل للتنفيذ اليوم — راجع مساحة القرار عند توفر أدلة.\n\nعرض التفاصيل ←\n\nملاحظات المنتجات\nأدلة غير كافية\n0\n\nلا توجد أدلة كافية لإصدار ملاحظة مرتبطة بمنتج محدد.\n\nعرض التفاصيل ←\n\nالسلال\nفارغ\n0\n\nلا سلات مسجّلة بعد — راقب عند توفر نشاط.\n\nعرض التفاصيل ←\n\nالتواصل\nبانتظار\n0\n\nلا نشاط تواصل تشغيلي مسجّل بعد.\n\nعرض التفاصيل ←\n\nالصفحة الرئيسية = ملخص تنفيذي · القرارات في مساحة القرار · السلال للتشغيل · التواصل للمتابعة · الإعدادات للضبط."
   },
-  "generated_at_utc": "2026-07-24T17:46:56.578133+00:00",
+  "generated_at_utc": "2026-07-24T18:18:12.163242+00:00",
   "production_url": "https://smartreplyai.net/dashboard#home",
+  "sprint": "home_stabilization_v1",
   "screenshots": {
     "desktop": "docs/product/home_executive_summary_v1/01_desktop_home_executive_summary.png",
     "mobile": "docs/product/home_executive_summary_v1/02_mobile_home_executive_summary.png"
   },
   "ok": true,
-  "status": "AWAITING_PRODUCTION_REVIEW_APPROVAL"
+  "status": "AWAITING_CEO_REVIEW_BEFORE_PRODUCT_INTELLIGENCE_V1"
 }
