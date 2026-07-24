@@ -63,11 +63,14 @@
     var comp = projection.decision_composition_v1 || {};
     var needsN = Number(comp.needs_action_now || 0);
     var monitorN = Number(comp.monitor || 0);
+    var landscape = Array.isArray(comp.category_landscape)
+      ? comp.category_landscape
+      : [];
 
     html.push(
-      '<div class="cw-ops cw-ops--decisions-only" dir="rtl" data-open-count="' +
+      '<div class="cw-ops cw-ops--decisions-only cw-ops--portfolio" dir="rtl" data-open-count="' +
         esc(openCount) +
-        '" data-gate2a="1" data-gate2b="1">'
+        '" data-gate2a="1" data-gate2b="1" data-gate2c="1">'
     );
 
     html.push(
@@ -77,6 +80,7 @@
         '<h2 class="cw-ops__mission">' +
         esc(mission) +
         "</h2>" +
+        '<p class="cw-ops__subtitle">محفظة القرارات — أولوية مرتبة عبر فئات العمل</p>' +
         (hasDecisions
           ? '<p class="cw-ops__bands">' +
             "يحتاج إجراء الآن: <strong>" +
@@ -94,6 +98,26 @@
         "</strong></p>" +
         "</header>"
     );
+
+    if (landscape.length) {
+      html.push('<section class="cw-landscape" aria-label="فئات القرارات">');
+      landscape.forEach(function (row) {
+        if (!row || typeof row !== "object") return;
+        var healthy = !!row.no_action_required;
+        html.push(
+          '<div class="cw-landscape__item' +
+            (healthy ? " cw-landscape__item--healthy" : "") +
+            '">' +
+            '<span class="cw-landscape__cat">' +
+            esc(row.category_ar || row.category || "") +
+            "</span>" +
+            '<span class="cw-landscape__status">' +
+            esc(row.status_ar || row.summary_ar || "") +
+            "</span></div>"
+        );
+      });
+      html.push("</section>");
+    }
 
     html.push('<div class="cw-grid cw-grid--decisions">');
 

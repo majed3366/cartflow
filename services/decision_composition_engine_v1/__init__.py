@@ -7,8 +7,13 @@ from services.decision_composition_engine_v1.flag_v1 import (
     ENV_DECISION_COMPOSITION_ENGINE_V1,
     decision_composition_engine_v1_enabled,
 )
+from services.decision_composition_engine_v1.portfolio_v1 import build_portfolio_v1
 from services.decision_composition_engine_v1.project_workspace_v1 import (
     decisions_to_workspace_cards_v1,
+)
+from services.decision_composition_engine_v1.snapshot_cache_v1 import (
+    cache_clear,
+    get_or_compose_package_v1,
 )
 from services.decision_composition_engine_v1.teaser_v1 import (
     count_composed_decisions_for_teaser_v1,
@@ -16,8 +21,11 @@ from services.decision_composition_engine_v1.teaser_v1 import (
 
 __all__ = [
     "ENV_DECISION_COMPOSITION_ENGINE_V1",
+    "build_portfolio_v1",
+    "cache_clear",
     "compose_decisions_v1",
     "count_composed_decisions_for_teaser_v1",
     "decision_composition_engine_v1_enabled",
     "decisions_to_workspace_cards_v1",
+    "get_or_compose_package_v1",
 ]

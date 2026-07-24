@@ -16,6 +16,33 @@ def _as_int(v: Any) -> int:
         return 0
 
 
+def counters_from_summary_payload_v1(
+    summary: Mapping[str, Any] | None,
+    *,
+    store_slug: str = "",
+) -> dict[str, Any] | None:
+    """
+    Prefer light counters already on Home summary — avoid second DB scan.
+    """
+    if not isinstance(summary, Mapping):
+        return None
+    store = summary.get("merchant_store_cart_counts")
+    if not isinstance(store, Mapping):
+        return None
+    if "no_phone_total" not in store and "waiting_total" not in store:
+        return None
+    slug = _norm(store_slug) or _norm(summary.get("store_slug"))
+    return {
+        "store_slug": slug,
+        "no_phone_total": _as_int(store.get("no_phone_total")),
+        "waiting_total": _as_int(store.get("waiting_total")),
+        "active_total": _as_int(store.get("active_total")),
+        "engaged_total": _as_int(store.get("engaged_total")),
+        "available": True,
+        "source_truth_types": ["merchant_store_cart_counts", "summary_payload"],
+    }
+
+
 def load_store_counter_inputs_v1(store_slug: str) -> dict[str, Any]:
     slug = _norm(store_slug)
     out: dict[str, Any] = {
@@ -110,6 +137,7 @@ def extract_product_identity_v1(contract: Mapping[str, Any]) -> tuple[str, str]:
 
 
 __all__ = [
+    "counters_from_summary_payload_v1",
     "extract_product_identity_v1",
     "load_bound_finding_inputs_v1",
     "load_store_counter_inputs_v1",

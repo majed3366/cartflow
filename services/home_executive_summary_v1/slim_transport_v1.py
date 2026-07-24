@@ -169,7 +169,8 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
             wa_sent = max(wa_sent, _as_int((cops or {}).get("mock_whatsapp_sent")))
             schedules = _as_int((cops or {}).get("recovery_schedules"))
 
-    # Gate 2 — Home teaser from FDE without fat MEIF (canonical Decision Owner = Workspace).
+    # Gate 2C — Home teaser from Decision Portfolio snapshot (never fat MEIF).
+    portfolio_landscape: list[dict[str, Any]] = []
     if decisions_evidence == "none":
         slug = str(
             src.get("store_slug")
@@ -182,10 +183,13 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
                     count_fde_decisions_for_teaser_v1,
                 )
 
-                teaser_dec = count_fde_decisions_for_teaser_v1(slug)
+                teaser_dec = count_fde_decisions_for_teaser_v1(slug, summary=src)
                 decisions_count = int(teaser_dec.get("count") or 0)
                 decisions_title = str(teaser_dec.get("top_title_ar") or "").strip()
                 decisions_evidence = str(teaser_dec.get("evidence") or "none")
+                raw_land = teaser_dec.get("category_landscape")
+                if isinstance(raw_land, list):
+                    portfolio_landscape = [x for x in raw_land if isinstance(x, dict)]
             except Exception:  # noqa: BLE001
                 pass
 
@@ -225,6 +229,8 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
             "count": decisions_count,
             "top_title_ar": decisions_title,
             "evidence": decisions_evidence,
+            "category_landscape": portfolio_landscape,
+            "portfolio": True,
         },
         "observations": {
             "count": obs_count,

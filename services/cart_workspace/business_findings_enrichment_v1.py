@@ -235,8 +235,9 @@ def _enrich_via_composition_engine_v1(
         decisions_to_workspace_cards_v1,
     )
 
-    pkg = compose_decisions_v1(slug)
-    composed_cards = decisions_to_workspace_cards_v1(list(pkg.get("decisions") or []))
+    pkg = compose_decisions_v1(slug, use_cache=True, allow_sync_miss=True)
+    portfolio = list(pkg.get("portfolio") or pkg.get("decisions") or [])
+    composed_cards = decisions_to_workspace_cards_v1(portfolio)
 
     zone_a = list(projection.get("zone_a") or [])
     zone_b_existing = list(projection.get("zone_b") or [])
@@ -270,6 +271,7 @@ def _enrich_via_composition_engine_v1(
     projection["gate_2_single_decision_owner"] = True
     projection["gate_2a_decision_workspace_completion"] = True
     projection["gate_2b_decision_composition_engine"] = True
+    projection["gate_2c_decision_portfolio"] = True
     projection["decisions_only"] = True
     projection["decision_composition_v1"] = {
         "version": pkg.get("composition_version"),
@@ -278,6 +280,15 @@ def _enrich_via_composition_engine_v1(
         "no_decision_supported": pkg.get("no_decision_supported"),
         "needs_action_now": len(pkg.get("needs_action_now") or []),
         "monitor": len(pkg.get("monitor") or []),
+        "category_landscape": pkg.get("category_landscape"),
+        "portfolio_version": pkg.get("portfolio_version"),
+        "cache": pkg.get("_cache"),
+        "timing_ms": pkg.get("timing_ms"),
+    }
+    projection["decision_portfolio_v1"] = {
+        "portfolio": portfolio,
+        "category_landscape": pkg.get("category_landscape"),
+        "overflow": pkg.get("overflow"),
     }
     projection["business_finding_count"] = int(
         (pkg.get("counts") or {}).get("candidates_total") or 0
@@ -357,8 +368,12 @@ def _enrich_legacy_gate_2a_v1(
     return projection
 
 
-def count_fde_decisions_for_teaser_v1(store_slug: str) -> dict[str, Any]:
-    """Home teaser — composed Decisions when DCE ON; else FDE-only legacy."""
+def count_fde_decisions_for_teaser_v1(
+    store_slug: str,
+    *,
+    summary: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Home teaser — composed portfolio when DCE ON; else FDE-only legacy."""
     try:
         from services.decision_composition_engine_v1.flag_v1 import (  # noqa: PLC0415
             decision_composition_engine_v1_enabled,
@@ -368,7 +383,9 @@ def count_fde_decisions_for_teaser_v1(store_slug: str) -> dict[str, Any]:
         )
 
         if decision_composition_engine_v1_enabled():
-            return count_composed_decisions_for_teaser_v1(store_slug)
+            return count_composed_decisions_for_teaser_v1(
+                store_slug, summary=summary
+            )
     except Exception:  # noqa: BLE001
         pass
 
