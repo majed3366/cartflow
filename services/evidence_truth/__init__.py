@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Evidence Truth Platform — WP-ET-00…10.
+Evidence Truth Platform — WP-ET-00…10.6.
 
 WP-ET-10: C-18 Knowledge Composer shadow foundation
 (CARTFLOW_EVIDENCE_KNOWLEDGE_COMPOSER_SHADOW default OFF).
+WP-ET-10.6: demo Evidence→Knowledge materialization bridge (flags default OFF).
 No Home / Findings consumer cutover. Knowledge INPUT unwired.
 """
 from __future__ import annotations
@@ -100,6 +101,16 @@ from services.evidence_truth.executive_knowledge_preview_v1 import (
     FLAG_EXECUTIVE_KNOWLEDGE_PREVIEW,
     build_executive_knowledge_preview_v1,
     executive_knowledge_preview_enabled,
+)
+from services.evidence_truth.materialization_flags_v1 import (
+    FLAG_KNOWLEDGE_MATERIALIZATION_EXECUTE,
+    FLAG_KNOWLEDGE_MATERIALIZATION_V1,
+    knowledge_materialization_execute_enabled,
+    knowledge_materialization_v1_enabled,
+)
+from services.evidence_truth.materialization_orchestrator_v1 import (
+    EvidenceKnowledgeMaterializationOrchestratorV1,
+    run_evidence_knowledge_materialization_v1,
 )
 from services.evidence_truth.evidence_model_v1 import (
     EvidenceTruthRecordV1,
@@ -228,8 +239,11 @@ __all__ = [
     "FLAG_FINDINGS_COMPOSER_INPUT",
     "FLAG_KNOWLEDGE_COMPOSER_INPUT",
     "FLAG_KNOWLEDGE_COMPOSER_SHADOW",
+    "FLAG_KNOWLEDGE_MATERIALIZATION_EXECUTE",
+    "FLAG_KNOWLEDGE_MATERIALIZATION_V1",
     "FLAG_OBSERVATION_DUAL_WRITE",
     "FLAG_VISITOR_BUNDLE_FIELDS",
+    "EvidenceKnowledgeMaterializationOrchestratorV1",
     "KNOWLEDGE_SCHEMA_VERSION_V1",
     "PIPELINE_STAGES_V1",
     "READINESS_STATES_V1",
@@ -291,7 +305,10 @@ __all__ = [
     "is_known_contract_rule_id",
     "knowledge_composer_shadow_enabled",
     "knowledge_consume_wired_v1",
+    "knowledge_materialization_execute_enabled",
+    "knowledge_materialization_v1_enabled",
     "list_consumer_eligibility_v1",
+    "run_evidence_knowledge_materialization_v1",
     "list_evidence_families",
     "list_evidence_ownership",
     "list_evidence_schemas",
