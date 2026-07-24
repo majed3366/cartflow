@@ -99,6 +99,9 @@ Merchant                  (Decision Workspace UI only)
 | R-02 | Commercial Guidance | `commercial_guidance_*` stack | Guidance eligibility / observe_only | Mostly non-Home | Decision / future | **Keep** infra; **no** Carts/Home decision paint |
 | R-03 | Reason recommendations | `merchant_reason_recommendations_ar` on summary | Suggested reason actions | Summary / reasons UI | Not Decision Workspace | **Strip** from executive Home; keep analytics owner TBD |
 | R-04 | ORV recommended_action_ar | `observation_foundation_v1/merchant_findings_v1.py` | Action + confidence on findings | Was Home expand; Gate 1 removed | Decision Workspace / future PI | **Keep** in package for Decision; **never** Home |
+| R-05 | Merchant Value Stories | `merchant_value_composition_v1.py` + MI carts JS | Stories with `recommendation_ar` | **Carts** | DW or retire | **Remove** from Carts paint |
+| R-06 | Home Commercial Intelligence | `home_commercial_intelligence_v1.py` → legacy home composition | Commercial insights + actions | Legacy Home (fat path) | DW | **Remove** from Home (slim already stubs) |
+| R-07 | Guidance Eligibility / Routing | `guidance_eligibility_foundation_v1.py`, `guidance_routing_foundation_v1.py` | Eligibility / surface route | Infra | Keep infra; destinations → DW | **Keep** |
 
 ### 3.3 Evidence evaluators & confidence
 
@@ -135,6 +138,28 @@ Merchant                  (Decision Workspace UI only)
 | G-02 | Merchant Pulse / Commerce Signals | pulse + signals | Home (gated) | **Keep** off Home (Gate 1 strip) |
 | G-03 | Adaptive Cognition | ACF home bridge | Home (stripped) | **Remove** from Home path |
 | G-04 | HES decisions teaser | `home_executive_summary_v1` | Home | **Keep** teaser only — title/count — no explanation |
+| G-05 | Legacy PeV2 Home Attention / todays_priority | `merchant_home_composition_v1.py`, `merchant_dashboard_home_v1.js` | Home (fat / gated) | **Remove** from Home path |
+| G-06 | MEIF Home «ماذا تفعل اليوم؟» | `merchant_experience_integration_v1.js` `applyHome` | Home (fat / when MEIF applies) | **Remove** / **Move** → Workspace only |
+| G-07 | MEIF Carts / Communication findings blocks | MEIF `applyCarts` / `applyCommunication` | Carts / Comms | **Move** / **Remove** — business findings → Workspace |
+
+### 3.7 Explicit non-Decision (keep — do not migrate into DW)
+
+| ID | Name | Why keep out of Decision Workspace |
+|----|------|-------------------------------------|
+| X-01 | Recovery automation `decide_recovery_action` | Customer recovery ops automation — not merchant business Decision UI |
+| X-02 | Recovery offer decision | Cart/recovery ops strategy |
+| X-03 | Admin / pilot `recommended_action_ar` | Admin surfaces only |
+| X-04 | Executive Knowledge Preview | Explicitly no recommendations; preview-only |
+| X-05 | Evidence Confidence Foundation (raw eval) | Infra input to ORV/FDE — not a merchant Decision surface |
+
+### 3.8 Duplicate paths (single-owner violations)
+
+1. Cart Workspace `#cw-merchant-host` **vs** MEIF `#meif-decision-root` (same `#workspace` page)  
+2. FDE business decisions **vs** CW admitted ops decisions (two engines, one nav label)  
+3. `merchant_decisions_v1` **vs** FDE (same word “decision,” different domains; both merchant-visible via MI/Brief/MEIF)  
+4. Carts MI + value stories **vs** Decision Workspace  
+5. Legacy Home stack (MEIF Home · Pulse · PeV2 Attention · ORV action · HCI) — slim transport mitigates attach; assets remain  
+6. BFL findings multi-bound to Home + Decision + Carts + Communication via MEBF  
 
 ---
 
@@ -311,5 +336,7 @@ Until Closure DoD is complete, Gate 2 remains **OPEN** and Gate 3 remains **LOCK
 | Begin implementation M1–M8 | **Authorized after acceptance of this report** (or immediately if CEO treats this task as full Gate 2) |
 | CLOSE Gate 2 | **Not yet** |
 | Start Gate 3 / Product Intelligence | **Forbidden** |
+
+**Appendix:** Inventory cross-checked against deep codebase exploration (three parallel stacks: CW admission · FDE/MEIF/BFL · `merchant_decisions_v1`/MI/Pulse/legacy Home). Conclusion unchanged: CW = sole UI; FDE/BFL = data; strip MI/Home/Comms decision paint.
 
 **STOP — await CEO acceptance of canonical owner + inventory; then implement Gate 2 moves only. No Product Intelligence. No Gate 3.**
