@@ -167,13 +167,19 @@ class HomeExecutiveSummaryV1Tests(unittest.TestCase):
         obs = next(s for s in hes["sections"] if s["id"] == "observations")
         self.assertEqual(obs["count"], 1)
         self.assertIn("زيت الورد", obs["summary_ar"])
+        self.assertEqual(obs["view_details_href"], "#workspace")
+        self.assertEqual(obs.get("findings_preview"), [])
         carts = next(s for s in hes["sections"] if s["id"] == "carts")
         self.assertEqual(carts["count"], 3)
         comm = next(s for s in hes["sections"] if s["id"] == "communication")
         self.assertEqual(comm["count"], 3)
+        teasers = out["home_teaser_inputs_v1"]
+        self.assertEqual(teasers["schema"], "home_teaser_inputs_v1")
+        self.assertEqual(teasers["observations"]["count"], 1)
+        # Gate 1 — ORV detail must not ride Home transport (stub only).
         slim = out["observation_reality_validation_v1"]
-        self.assertNotIn("evidence_details", slim["findings"][0])
-        self.assertNotIn("diagnostics", slim["findings"][0])
+        self.assertEqual(slim["findings"], [])
+        self.assertTrue(slim.get("stripped_for_home_slim_transport"))
         self.assertEqual(hes["governance"]["sprint"], "home_stabilization_v1")
 
     def test_observation_empty_summary_copy(self) -> None:

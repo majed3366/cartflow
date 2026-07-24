@@ -318,19 +318,55 @@ def finalize_dashboard_summary_payload(
         )
         _attach_commerce_signals_then_pulse(body, store_slug=store_slug)
         return body
+    from services.dashboard_summary_query_profiler import (  # noqa: PLC0415
+        dashboard_summary_profile_span,
+    )
+    from services.home_executive_summary_v1.slim_transport_v1 import (  # noqa: PLC0415
+        extract_home_teaser_inputs_v1,
+        home_slim_transport_v1_enabled,
+        minimal_home_experience_stub_v1,
+        strip_heavy_home_summary_payload_v1,
+    )
+
+    slim = home_slim_transport_v1_enabled()
+
+    if slim:
+        # Gate 1: do not compose legacy home experience on the Home critical path.
+        if not merchant_home_experience_attached(body):
+            body["merchant_home_experience_v1"] = minimal_home_experience_stub_v1(
+                store_slug
+            )
+        stamp_summary_contract_fields(body)
+        body["_merchant_home_transport"] = build_merchant_home_transport_diagnostics(
+            body,
+            summary_source=summary_source,
+            home_attach_mode="slim_transport_stub",
+            cache_hit=cache_hit,
+        )
+        # Extract teasers from any fat packages already present (e.g. cache), then strip.
+        with dashboard_summary_profile_span("home_stage_teaser_extract"):
+            body["home_teaser_inputs_v1"] = extract_home_teaser_inputs_v1(body)
+        # Skip MEIF / ACF / ORV / Pulse attach — never load page-owned payloads for Home.
+        try:
+            from services.home_executive_summary_v1 import (  # noqa: PLC0415
+                attach_home_executive_summary_to_summary_v1,
+            )
+
+            with dashboard_summary_profile_span("home_stage_hes_attach"):
+                attach_home_executive_summary_to_summary_v1(body)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("home_executive_summary_v1 attach: %s", exc)
+        strip_heavy_home_summary_payload_v1(body)
+        return body
+
     body = ensure_merchant_home_experience_on_summary(
         body,
         summary_source=summary_source,
         store_slug=store_slug,
         cache_hit=cache_hit,
     )
-    # Home Stabilization V1 — profile every attach stage on the summary critical path.
-    from services.dashboard_summary_query_profiler import (  # noqa: PLC0415
-        dashboard_summary_profile_span,
-    )
 
-    # Decision Experience V1 — attach MEIF on every summary exit (live + snapshot).
-    # Snapshot mode previously skipped MEIF, so Home kept Daily Brief instead.
+    # Fat path (slim flag OFF) — legacy attach chain for rollback only.
     try:
         from services.product_data.merchant_experience_integration_foundation_v1 import (  # noqa: PLC0415
             attach_merchant_experience_to_summary_v1,
@@ -352,7 +388,6 @@ def finalize_dashboard_summary_payload(
             attach_adaptive_cognition_to_summary_v1(body)
     except Exception as exc:  # noqa: BLE001
         log.warning("adaptive cognition summary attach: %s", exc)
-    # Observation Reality Validation — entity-bound findings (then slimmed for Home)
     try:
         from services.observation_foundation_v1.merchant_findings_v1 import (  # noqa: PLC0415
             attach_observation_reality_validation_to_summary_v1,
@@ -364,7 +399,6 @@ def finalize_dashboard_summary_payload(
             attach_observation_reality_validation_to_summary_v1(body, _slug)
     except Exception as exc:  # noqa: BLE001
         log.warning("observation_reality_validation_v1 attach: %s", exc)
-    # Home Executive Summary V1 — slim Home payload (summaries + counts + View Details)
     try:
         from services.home_executive_summary_v1 import (  # noqa: PLC0415
             attach_home_executive_summary_to_summary_v1,

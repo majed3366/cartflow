@@ -1,0 +1,76 @@
+{
+  "label": "before",
+  "email": "cf.g1.a66a5b6268@smartreplyai.net",
+  "generated_at_utc": "2026-07-24T20:13:59.591661+00:00",
+  "production_url": "https://smartreplyai.net/dashboard#home",
+  "gate": "gate_1_home_slim_transport",
+  "probe": {
+    "http": 200,
+    "fetch_ms": 1126,
+    "body_bytes": 56314,
+    "key_count": 25,
+    "keys_sample": [
+      "_merchant_home_transport",
+      "_snapshot",
+      "commerce_signals_v1",
+      "home_executive_summary_v1",
+      "home_surface_mode",
+      "kpis",
+      "merchant_activation",
+      "merchant_experience_integration_v1",
+      "merchant_home_experience_v1",
+      "merchant_nav_badge_abandoned",
+      "merchant_pulse_v1",
+      "merchant_reason_rows",
+      "merchant_reason_rows_month",
+      "merchant_setup_experience",
+      "merchant_table_rows",
+      "month_window",
+      "normal_carts_stats",
+      "observation_reality_validation_v1",
+      "ok",
+      "snapshot_degraded",
+      "snapshot_mode",
+      "snapshot_reason",
+      "store_connection_status",
+      "summary_contract_schema_version",
+      "whatsapp_readiness_card"
+    ],
+    "present_heavy": [
+      "merchant_experience_integration_v1",
+      "observation_reality_validation_v1",
+      "merchant_pulse_v1",
+      "commerce_signals_v1"
+    ],
+    "heavy_count": 4,
+    "home_slim_transport_v1": false,
+    "surface_mode": "executive_summary_v1",
+    "has_teasers": false,
+    "hes_ok": true,
+    "section_ids": [
+      "health",
+      "decisions",
+      "observations",
+      "carts",
+      "communication"
+    ],
+    "has_five_sections": true,
+    "meif_bytes": 19665,
+    "orv_bytes": 306,
+    "orv_findings": 0,
+    "orv_stripped": false,
+    "has_recommended_action_on_home": false,
+    "has_hes_title": true,
+    "has_view_details": true
+  },
+  "boot_network": {
+    "summary_calls": 2,
+    "normal_carts_calls": 9,
+    "messages_calls": 1
+  },
+  "screenshots": {
+    "desktop": "docs/product/gate_1_home_slim_transport_v1/before_desktop_home.png",
+    "mobile": "docs/product/gate_1_home_slim_transport_v1/before_mobile_home.png"
+  },
+  "ok": true
+}

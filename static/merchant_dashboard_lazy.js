@@ -7186,31 +7186,79 @@
     }
     if (!byId("ma-kpi-abandoned")) return;
 
-    /* Stale-while-revalidate: paint cached rows immediately, then refresh. */
+    /* Gate 1 — Home Slim Transport: summary first; page-owned APIs only by hash. */
     hydrateNormalCartsCache();
     hydrateVipCartsCache();
     fetchSection("/api/dashboard/summary", applySummary, "summary");
     bootSetupReadinessHydration();
     var bootHash = (location.hash || "").split("?")[0].toLowerCase();
-    fetchVipCarts(bootHash === "#vip" ? "boot_vip_hash" : "boot_parallel");
-    normalCartsBootInFlight = true;
-    fetchNormalCarts("boot_priority").finally(function () {
-      normalCartsBootInFlight = false;
-      if (window.__maNormalCartsTokenRefetchAfterBoot) {
-        var bootLbl = window.__maNormalCartsTokenRefetchAfterBoot;
-        window.__maNormalCartsTokenRefetchAfterBoot = "";
-        fetchNormalCarts(bootLbl);
-      }
-      ensureNormalCartsPageReady("boot_done");
+    var needsCarts =
+      bootHash === "#carts" ||
+      bootHash === "#vip" ||
+      bootHash.indexOf("#carts") === 0;
+    var needsMessages =
+      bootHash === "#messages" ||
+      bootHash === "#communication" ||
+      bootHash.indexOf("#messages") === 0 ||
+      bootHash.indexOf("#communication") === 0;
+
+    if (bootHash === "#vip") {
+      fetchVipCarts("boot_vip_hash");
+    }
+    if (needsCarts) {
+      normalCartsBootInFlight = true;
+      fetchNormalCarts("boot_hash_carts").finally(function () {
+        normalCartsBootInFlight = false;
+        if (window.__maNormalCartsTokenRefetchAfterBoot) {
+          var bootLbl = window.__maNormalCartsTokenRefetchAfterBoot;
+          window.__maNormalCartsTokenRefetchAfterBoot = "";
+          fetchNormalCarts(bootLbl);
+        }
+        ensureNormalCartsPageReady("boot_done");
+        startPendingNewCartWatcher();
+      });
+    } else {
+      /* Defer carts list until Carts/VIP navigation; keep watcher light. */
       startPendingNewCartWatcher();
-      var jobs = [
-        fetchSection("/api/dashboard/followups", applyFollowups, "followups"),
-        fetchSection("/api/dashboard/widget-panel", applyWidgetPanel, "widget_panel"),
-        fetchSection("/api/dashboard/messages", applyMessages, "messages"),
-      ];
-      Promise.allSettled(jobs);
-      startRefreshWatcher();
-    });
+    }
+
+    var jobs = [
+      fetchSection("/api/dashboard/followups", applyFollowups, "followups"),
+      fetchSection("/api/dashboard/widget-panel", applyWidgetPanel, "widget_panel"),
+    ];
+    if (needsMessages) {
+      jobs.push(
+        fetchSection("/api/dashboard/messages", applyMessages, "messages")
+      );
+    }
+    Promise.allSettled(jobs);
+    startRefreshWatcher();
+
+    /* Lazy page-owned fetches when merchant navigates away from Home. */
+    if (!window.__maGate1HashLazyBound) {
+      window.__maGate1HashLazyBound = true;
+      window.addEventListener("hashchange", function () {
+        var h = (location.hash || "").split("?")[0].toLowerCase();
+        if (
+          (h === "#carts" || h.indexOf("#carts") === 0 || h === "#vip") &&
+          typeof fetchNormalCarts === "function"
+        ) {
+          ensureNormalCartsPageReady("hash_carts");
+        }
+        if (h === "#vip" && typeof fetchVipCarts === "function") {
+          fetchVipCarts("hash_vip");
+        }
+        if (
+          (h === "#messages" ||
+            h === "#communication" ||
+            h.indexOf("#messages") === 0 ||
+            h.indexOf("#communication") === 0) &&
+          typeof fetchSection === "function"
+        ) {
+          fetchSection("/api/dashboard/messages", applyMessages, "messages");
+        }
+      });
+    }
   }
 
   window.maApplyVipCartsPayload = applyVipCarts;
