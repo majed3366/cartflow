@@ -1,39 +1,44 @@
 # Observation Reality Validation V1
 
-**Date (UTC):** 2026-07-24
-**Simulation:** `srs_1ee1738405b94821be7d390161df12c4`
+**Status:** Completed & Released  
+**Date (UTC):** 2026-07-24  
+**Production URL:** https://smartreplyai.net/dashboard#home  
+**Release:** `RELEASE_CONFIRMATION.md`  
+**Tag:** `observation-reality-validation-v1-released` — *Observation Reality Validation V1 — Released*
 
-## Required findings
+## Required findings (merchant language)
 
 ### اهتمام مرتفع وتحويل منخفض
 
-- EN: The product has high interest but low conversion.
-- AR: هذا المنتج يحظى باهتمام واضح، لكن التحويل إلى شراء لا يزال منخفضاً.
-- Evidence: `cart_add=2; purchase=0; evidence_refs=6; product=DEMO-PERFUME`
+- Statement: هذا المنتج يحظى باهتمام واضح، لكن التحويل إلى شراء لا يزال منخفضاً.  
+- Action: راجع صفحة المنتج وعرض الشحن قبل أي توسعة.  
+- Confidence: from evidence engine (مرتفع / متوسط / منخفض)
 
 ### أدلة الشحن أقوى من السعر
 
-- EN: Shipping evidence is stronger than price evidence.
-- AR: أدلة التردد بسبب الشحن/التوصيل أقوى حالياً من أدلة السعر.
-- Evidence: `shipping=1 price=0; evidence_refs=6; product=DEMO-PERFUME`
+- Statement: أدلة التردد بسبب الشحن/التوصيل أقوى حالياً من أدلة السعر.  
+- Action: اختبر شحنًا مجانيًا أو خفّض تكلفة الشحن.  
+- Confidence: from evidence engine
 
 ### عودة متكررة بلا شراء
 
-- EN: Customers repeatedly return without purchasing.
-- AR: عملاء عادوا مراراً إلى المتجر دون إتمام شراء مرتبط بهذا المنتج.
-- Evidence: `return=2; purchase=0; evidence_refs=6; product=DEMO-PERFUME`
+- Statement: عملاء عادوا مراراً إلى المتجر دون إتمام شراء مرتبط بهذا المنتج.  
+- Action: راقب رحلة العميل بعد العودة واختبر تحسين صفحة المنتج.  
+- Confidence: from evidence engine
 
 ### لا دليل على مشكلة جودة
 
-- EN: No evidence currently supports a quality issue.
-- AR: لا توجد أدلة حالية تدعم وجود مشكلة جودة في المنتج.
-- Evidence: `reasons=shipping:1,thinking:1; absent=quality; evidence_refs=6; product=DEMO-PERFUME`
+- Statement: لا توجد أدلة حالية تدعم وجود مشكلة جودة في المنتج.  
+- Action: لا حاجة لاتخاذ إجراء حالياً — استمر في جمع الأدلة.  
+- Confidence: from evidence engine
 
-**Missing:** []
-**Painted cards:** 4
-**Screenshots:** ['01_desktop_home_observation_findings.png', '02_mobile_home_observation_findings.png']
-**Acceptance:** `True`
+**Acceptance:** all four capabilities evidence-backed; technical fields not rendered on Home.
 
-## STOP
+## Screenshots
 
-Do not start Product Intelligence V1 until production review approves this package.
+- Desktop: `05_production_desktop_orv_ui_polish.png`  
+- Mobile: `06_production_mobile_orv_ui_polish.png`
+
+## Gate
+
+Do not begin Product Intelligence V1 until a separate authorization opens that package.

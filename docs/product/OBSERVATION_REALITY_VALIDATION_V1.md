@@ -1,39 +1,37 @@
 # Observation Reality Validation V1
 
-**Date (UTC):** 2026-07-24
-**Simulation:** `srs_1ee1738405b94821be7d390161df12c4`
+**Status:** Completed & Released  
+**Date (UTC):** 2026-07-24  
+**Production URL:** https://smartreplyai.net/dashboard#home  
+**Release:** `docs/product/observation_reality_validation_v1/RELEASE_CONFIRMATION.md`  
+**Tag:** `observation-reality-validation-v1-released` — *Observation Reality Validation V1 — Released*
 
-## Required findings
+## Merchant surface (Home)
 
-### اهتمام مرتفع وتحويل منخفض
+Temporary section «ماذا نلاحظ في منتجاتك الآن؟» paints evidence-backed observations only:
 
-- EN: The product has high interest but low conversion.
-- AR: هذا المنتج يحظى باهتمام واضح، لكن التحويل إلى شراء لا يزال منخفضاً.
-- Evidence: `cart_add=2; purchase=0; evidence_refs=6; product=DEMO-PERFUME`
+1. اهتمام مرتفع وتحويل منخفض  
+2. أدلة الشحن أقوى من السعر  
+3. عودة متكررة بلا شراء  
+4. لا دليل على مشكلة جودة  
 
-### أدلة الشحن أقوى من السعر
+Each card includes:
 
-- EN: Shipping evidence is stronger than price evidence.
-- AR: أدلة التردد بسبب الشحن/التوصيل أقوى حالياً من أدلة السعر.
-- Evidence: `shipping=1 price=0; evidence_refs=6; product=DEMO-PERFUME`
+- Business statement  
+- Recommended action  
+- Confidence (`مرتفع` / `متوسط` / `منخفض`) from the evidence engine  
 
-### عودة متكررة بلا شراء
+Technical counters and product IDs are confined to `evidence_details` / diagnostics — never on Home.
 
-- EN: Customers repeatedly return without purchasing.
-- AR: عملاء عادوا مراراً إلى المتجر دون إتمام شراء مرتبط بهذا المنتج.
-- Evidence: `return=2; purchase=0; evidence_refs=6; product=DEMO-PERFUME`
+## Proof
 
-### لا دليل على مشكلة جودة
+| Item | Ref |
+|------|-----|
+| Lab | `docs/product/observation_reality_validation_v1/` |
+| Desktop | `05_production_desktop_orv_ui_polish.png` |
+| Mobile | `06_production_mobile_orv_ui_polish.png` |
+| Flags | `CARTFLOW_OBSERVATION_FOUNDATION_V1`, `CARTFLOW_OBSERVATION_REALITY_VALIDATION_V1` (default on) |
 
-- EN: No evidence currently supports a quality issue.
-- AR: لا توجد أدلة حالية تدعم وجود مشكلة جودة في المنتج.
-- Evidence: `reasons=shipping:1,thinking:1; absent=quality; evidence_refs=6; product=DEMO-PERFUME`
+## Gate
 
-**Missing:** []
-**Painted cards:** 4
-**Screenshots:** ['01_desktop_home_observation_findings.png', '02_mobile_home_observation_findings.png']
-**Acceptance:** `True`
-
-## STOP
-
-Do not start Product Intelligence V1 until production review approves this package.
+Product Intelligence V1 is **not** opened by this release. Start PI only under a separate authorized work package.
