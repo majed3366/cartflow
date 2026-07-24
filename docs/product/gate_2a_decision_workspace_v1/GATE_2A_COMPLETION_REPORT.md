@@ -15,7 +15,7 @@
 | **CLOSE Gate 2 / 2A** | Eligible after CEO visual approval |
 | **Keep OPEN** | **YES** until CEO records approval |
 
-Engineering: Decision Workspace is **decisions-only** with constitution card fields. No Product Intelligence. No prediction. Gates 3–7 remain LOCKED.
+Engineering: **DEPLOYED + VALIDATED** on production (`39d47eb`, Railway Success). Decision Workspace is decisions-only with constitution card fields. No PI. Gates 3–7 remain LOCKED.
 
 ---
 
@@ -60,9 +60,9 @@ Each decision card shows:
 | # | Requirement | Status |
 |---|-------------|--------|
 | C-1 | Constitution structure implemented | **DONE** |
-| C-2 | Production deployment | **PENDING** |
-| C-3 | Desktop/Mobile screenshots | **PENDING** |
-| C-4 | CEO visual review | **OPEN** |
+| C-2 | Production deployment | **DONE** — PR [#86](https://github.com/majed3366/cartflow/pull/86) → **`39d47eb`** |
+| C-3 | Desktop/Mobile screenshots | **DONE** — `after_*_workspace.png` + `after_verification.json` (`ok=true`) |
+| C-4 | CEO visual review | **OPEN** — evidence ready |
 | C-5 | Gate 2 formally CLOSED | **OPEN** |
 
 **STOP — deploy + CEO visual approval. Do not begin Gate 3.**
