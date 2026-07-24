@@ -1,9 +1,11 @@
 /**
- * Cart Workspace Decision Card — Wireframe Contract V1.
- * Independent action tiles. No section chrome. Details gated.
+ * Cart Workspace Decision Card — Gate 2A Constitution.
+ * Decision · Why · Evidence · Confidence · Action · View Details.
  */
 (function (global) {
   "use strict";
+
+  var INSUFFICIENT_EVIDENCE_AR = "لا توجد أدلة كافية لإصدار قرار.";
 
   function esc(s) {
     return String(s == null ? "" : s)
@@ -21,6 +23,13 @@
     return ex;
   }
 
+  function isConstitutionCard(card) {
+    if (!card) return false;
+    if (card.constitution_v1) return true;
+    var kind = String(card.card_kind || "");
+    return kind === "business_finding" || kind === "operational_truth";
+  }
+
   function presentCard(card) {
     var action = String((card && card.required_action) || "");
     var klass = String((card && card.decision_class) || "");
@@ -28,48 +37,35 @@
       klass === "override" ||
       String((card && card.override_mode) || "") === "active";
 
-    /* Gate 2 — business finding / FDE cards */
-    if (
-      String((card && card.card_kind) || "") === "business_finding" ||
-      klass === "business_finding"
-    ) {
-      var hasDec = !!(card && card.has_decision);
+    if (isConstitutionCard(card)) {
+      var hasDec = card.has_decision !== false;
       return {
         icon: hasDec ? "◎" : "○",
-        title: String((card && card.title_ar) || (hasDec ? "قرار تجاري" : "لا قرار بعد")),
-        sentence: hasDec
-          ? String(
-              (card.explanation && card.explanation.why_here) ||
-                card.required_merchant_action ||
-                "قرار يحتاج مراجعتك"
-            )
-          : String(
-              (card && card.missing_evidence) ||
-                "أدلة غير كافية لإصدار قرار"
-            ),
-        actionLabel: String(
-          (card && card.action_label_ar) || (hasDec ? "راجع القرار" : "مراجعة الأدلة")
+        title: String(
+          card.decision_ar || card.title_ar || (hasDec ? "قرار" : "لا قرار بعد")
         ),
         isVip: false,
         isBusiness: true,
         hasDecision: hasDec,
+        isConstitution: true,
       };
     }
 
     if (isVip || action === "override_decision_action") {
       return {
         icon: "🔴",
-        title: "VIP",
-        sentence: "عميل عالي القيمة",
+        title: "VIP — ابدأ المتابعة اليدوية",
+        sentence: "عميل عالي القيمة يحتاج قرارك",
         actionLabel: "بدء المتابعة اليدوية",
         isVip: true,
+        isConstitution: false,
       };
     }
     if (action === "take_over_conversation") {
       return {
         icon: "💬",
-        title: "رد العميل",
-        sentence: "يحتاج متابعة",
+        title: "تابع المحادثة",
+        sentence: "العميل يحتاج متابعة",
         actionLabel: "متابعة المحادثة",
         isVip: false,
       };
@@ -77,7 +73,7 @@
     if (action === "approve_discount" || action === "approve_or_deny_discount") {
       return {
         icon: "💰",
-        title: "طلب خصم",
+        title: "راجع طلب الخصم",
         sentence: "العميل ينتظر عرضاً",
         actionLabel: "عرض خصم",
         isVip: false,
@@ -86,8 +82,8 @@
     if (action === "fix_channel_configuration") {
       return {
         icon: "⚙",
-        title: "يحتاج إعداد",
-        sentence: "أكمل إعداد واتساب",
+        title: "أكمل إعداد واتساب",
+        sentence: "القناة غير جاهزة",
         actionLabel: "إكمال الإعداد",
         isVip: false,
       };
@@ -95,8 +91,8 @@
     if (action === "provide_information" || action === "provide_confirm_phone") {
       return {
         icon: "📱",
-        title: "بانتظار رقم العميل",
-        sentence: "بيانات ناقصة",
+        title: "أكد بيانات العميل",
+        sentence: "بيانات ناقصة تمنع المتابعة",
         actionLabel:
           action === "provide_confirm_phone" ? "تأكيد الرقم" : "إكمال البيانات",
         isVip: false,
@@ -114,51 +110,103 @@
     if (action === "dismiss_with_reason") {
       return {
         icon: "✓",
-        title: "يحتاج قرارك",
-        sentence: "أغلق إن انتهت الحاجة",
+        title: "أغلق الحالة إن انتهت الحاجة",
+        sentence: "يحتاج قرار إغلاق",
         actionLabel: "إغلاق الحالة",
         isVip: false,
       };
     }
     return {
       icon: "●",
-      title: "يحتاج قرارك",
-      sentence: "قرار مطلوب",
-      actionLabel: "تنفيذ القرار",
+      title: String((card && card.title_ar) || "يحتاج قرارك"),
+      sentence: String((card && (card.why_ar || explanationOf(card).why_here)) || "قرار مطلوب"),
+      actionLabel: String((card && card.action_label_ar) || "تنفيذ القرار"),
       isVip: false,
     };
+  }
+
+  function constitutionFaceHtml(card) {
+    var ex = explanationOf(card);
+    var decision = String(
+      card.decision_ar || card.title_ar || "قرار يحتاج مراجعتك"
+    );
+    var why = String(card.why_ar || ex.why_here || "");
+    var evidence = String(card.evidence_summary || "");
+    if (!evidence && card.has_decision === false) {
+      evidence = INSUFFICIENT_EVIDENCE_AR;
+    }
+    var conf = String(card.decision_confidence_ar || "").trim();
+    var confRaw = String(card.decision_confidence || "").trim().toLowerCase();
+    if (!conf && confRaw && confRaw !== "none" && confRaw !== "unknown") {
+      if (confRaw === "high") conf = "مرتفع";
+      else if (confRaw === "medium") conf = "متوسط";
+      else if (confRaw === "low") conf = "منخفض";
+    }
+    var action = String(
+      card.required_merchant_action ||
+        card.action_label_ar ||
+        "لا إجراء مطلوب حالياً"
+    );
+    var href = String(card.view_details_href || "").trim();
+    var detailsLabel = String(card.view_details_ar || "عرض التفاصيل");
+
+    var rows = [];
+    rows.push(
+      '<div class="cw-card__field"><span class="cw-card__field-label">القرار</span>' +
+        '<p class="cw-card__field-value cw-card__field-value--decision">' +
+        esc(decision) +
+        "</p></div>"
+    );
+    if (why) {
+      rows.push(
+        '<div class="cw-card__field"><span class="cw-card__field-label">لماذا</span>' +
+          '<p class="cw-card__field-value">' +
+          esc(why) +
+          "</p></div>"
+      );
+    }
+    rows.push(
+      '<div class="cw-card__field"><span class="cw-card__field-label">الأدلة</span>' +
+        '<p class="cw-card__field-value">' +
+        esc(evidence || INSUFFICIENT_EVIDENCE_AR) +
+        "</p></div>"
+    );
+    if (conf) {
+      rows.push(
+        '<div class="cw-card__field"><span class="cw-card__field-label">الثقة</span>' +
+          '<p class="cw-card__field-value">' +
+          esc(conf) +
+          "</p></div>"
+      );
+    }
+    rows.push(
+      '<div class="cw-card__field"><span class="cw-card__field-label">الإجراء الموصى به</span>' +
+        '<p class="cw-card__field-value">' +
+        esc(action) +
+        "</p></div>"
+    );
+
+    var dest = "";
+    if (href) {
+      dest =
+        '<p class="cw-card__dest"><a class="cw-card__dest-link" href="' +
+        esc(href) +
+        '">' +
+        esc(detailsLabel) +
+        "</a></p>";
+    }
+
+    return rows.join("") + dest;
   }
 
   function detailsHtml(card, id, extraRows) {
     var ex = explanationOf(card);
     var rows = [];
-    if (card && card.card_kind === "business_finding") {
-      if (card.evidence_summary) {
-        rows.push(
-          "<dt>الأدلة</dt><dd>" + esc(card.evidence_summary) + "</dd>"
-        );
-      }
-      if (card.decision_confidence_ar || card.decision_confidence) {
-        rows.push(
-          "<dt>الثقة</dt><dd>" +
-            esc(card.decision_confidence_ar || card.decision_confidence) +
-            "</dd>"
-        );
-      }
-      if (ex.why_here) {
-        rows.push("<dt>لماذا؟</dt><dd>" + esc(ex.why_here) + "</dd>");
-      }
+    if (isConstitutionCard(card)) {
       if (card.expected_business_impact || ex.expected_after) {
         rows.push(
           "<dt>الأثر المتوقع</dt><dd>" +
             esc(card.expected_business_impact || ex.expected_after) +
-            "</dd>"
-        );
-      }
-      if (card.required_merchant_action) {
-        rows.push(
-          "<dt>الإجراء الموصى به</dt><dd>" +
-            esc(card.required_merchant_action) +
             "</dd>"
         );
       }
@@ -172,15 +220,15 @@
       }
       if (!rows.length) return "";
       return (
-        '<details class="cw-card__details" open>' +
-        "<summary>عرض التفاصيل</summary>" +
+        '<details class="cw-card__details">' +
+        "<summary>مزيد</summary>" +
         '<dl class="cw-card__detail-list">' +
         rows.join("") +
         "</dl></details>"
       );
     }
     if (ex.why_here) {
-      rows.push("<dt>لماذا ظهرت؟</dt><dd>" + esc(ex.why_here) + "</dd>");
+      rows.push("<dt>لماذا؟</dt><dd>" + esc(ex.why_here) + "</dd>");
     }
     if (ex.cartflow_did) {
       rows.push("<dt>ماذا فعل CartFlow؟</dt><dd>" + esc(ex.cartflow_did) + "</dd>");
@@ -214,10 +262,6 @@
     );
   }
 
-  /**
-   * @param {object} card
-   * @param {{ mode?: string }} opts decision | following | status | quiet
-   */
   function renderDecisionCardHtml(card, opts) {
     if (!card || typeof card !== "object") return "";
     opts = opts || {};
@@ -227,59 +271,15 @@
       return (
         '<article class="cw-card cw-card--quiet" data-cw-quiet="1">' +
         '<div class="cw-card__head">' +
-        '<span class="cw-card__icon" aria-hidden="true">✅</span>' +
-        '<h3 class="cw-card__title">لا يوجد ما يحتاج قرارك الآن</h3></div>' +
-        '<p class="cw-card__line">CartFlow يتابع متجرك تلقائياً</p>' +
+        '<h3 class="cw-card__title">لا توجد أدلة كافية لإصدار قرار.</h3></div>' +
+        '<p class="cw-card__line">لا يوجد قرار يحتاج مراجعتك الآن.</p>' +
         "</article>"
       );
     }
 
+    /* Gate 2A — status chrome removed from Workspace; keep renderer no-op. */
     if (mode === "status") {
-      var statusFoot = "";
-      if (card.actionLabel) {
-        if (card.actionAsDetails) {
-          statusFoot =
-            '<div class="cw-card__foot">' +
-            '<details class="cw-card__details">' +
-            "<summary>" +
-            esc(card.actionLabel) +
-            "</summary>" +
-            (card.detailsBody
-              ? '<div class="cw-card__detail-list"><p>' +
-                esc(card.detailsBody) +
-                "</p></div>"
-              : "") +
-            "</details></div>";
-        } else {
-          statusFoot =
-            '<div class="cw-card__foot">' +
-            '<button type="button" class="cw-card__action" data-cw-command="' +
-            esc(card.actionCommand || "") +
-            '">' +
-            esc(card.actionLabel) +
-            "</button></div>";
-        }
-      }
-      return (
-        '<article class="cw-card cw-card--status' +
-        (card.kind ? " cw-card--" + esc(card.kind) : "") +
-        '">' +
-        '<div class="cw-card__head">' +
-        '<span class="cw-card__icon" aria-hidden="true">' +
-        esc(card.icon || "") +
-        "</span>" +
-        '<h3 class="cw-card__title">' +
-        esc(card.title || "") +
-        "</h3></div>" +
-        '<p class="cw-card__line">' +
-        esc(card.sentence || "") +
-        "</p>" +
-        (card.subline
-          ? '<p class="cw-card__sub">' + esc(card.subline) + "</p>"
-          : "") +
-        statusFoot +
-        "</article>"
-      );
+      return "";
     }
 
     var id = esc(card.decision_id || "");
@@ -293,6 +293,7 @@
         sentence: "متابعة يدوية نشطة",
         actionLabel: "فتح المحادثة",
         isVip: !!p.isVip,
+        isConstitution: false,
       };
       extraDetails.push(
         '<dt></dt><dd><button type="button" class="cw-card__ghost" data-cw-command="return_to_cartflow" data-decision-id="' +
@@ -304,15 +305,30 @@
     var mods = ["cw-card"];
     if (p.isVip && mode !== "following") mods.push("cw-card--vip");
     if (mode === "following") mods.push("cw-card--following");
-    if (p.isBusiness) mods.push("cw-card--business");
+    if (p.isBusiness || p.isConstitution) mods.push("cw-card--business");
+    if (p.isConstitution || isConstitutionCard(card)) mods.push("cw-card--constitution");
+
+    if (p.isConstitution || isConstitutionCard(card)) {
+      return (
+        '<article class="' +
+        mods.join(" ") +
+        '" data-decision-id="' +
+        id +
+        '" data-decision-class="' +
+        esc(card.decision_class || "") +
+        '" data-card-kind="' +
+        esc(card.card_kind || "ops") +
+        '" data-decision-status="' +
+        esc(card.decision_status || "") +
+        '" data-constitution="1">' +
+        constitutionFaceHtml(card) +
+        detailsHtml(card, id, extraDetails) +
+        "</article>"
+      );
+    }
 
     var actionBtn = "";
-    if (p.isBusiness) {
-      actionBtn =
-        '<span class="cw-card__action cw-card__action--label" data-cw-business="1">' +
-        esc(p.actionLabel) +
-        "</span>";
-    } else if (mode === "following") {
+    if (mode === "following") {
       actionBtn =
         '<button type="button" class="cw-card__action" data-cw-command="take_over_conversation" data-decision-id="' +
         id +
@@ -330,6 +346,10 @@
         "</button>";
     }
 
+    var whyLine = String(
+      (card && card.why_ar) || explanationOf(card).why_here || p.sentence || ""
+    );
+
     return (
       '<article class="' +
       mods.join(" ") +
@@ -341,8 +361,6 @@
       action +
       '" data-card-kind="' +
       esc(card.card_kind || "ops") +
-      '" data-decision-status="' +
-      esc(card.decision_status || "") +
       '">' +
       '<div class="cw-card__head">' +
       '<span class="cw-card__icon" aria-hidden="true">' +
@@ -351,9 +369,9 @@
       '<h3 class="cw-card__title">' +
       esc(p.title) +
       "</h3></div>" +
-      '<p class="cw-card__line">' +
-      esc(p.sentence) +
-      "</p>" +
+      (whyLine
+        ? '<p class="cw-card__line">' + esc(whyLine) + "</p>"
+        : "") +
       '<div class="cw-card__foot">' +
       actionBtn +
       detailsHtml(card, id, extraDetails) +

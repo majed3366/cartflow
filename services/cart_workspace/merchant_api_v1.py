@@ -84,6 +84,7 @@ def api_cart_workspace_projection(request: Request):
             "merchant_surface_active": True,
             "silent_success_mode": cart_workspace_silent_success_enabled(),
             "gate_2_single_decision_owner": True,
+            "gate_2a_decision_workspace_completion": True,
         }
     )
 

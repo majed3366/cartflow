@@ -3,7 +3,7 @@
 **Document type:** Mandatory governance workflow — **Execution Gates**  
 **Date (UTC):** 2026-07-24  
 **Amendment:** Constitutional Execution Gates V1 (2026-07-24)  
-**Status:** Gate 1 OPEN (deployed); **Gate 2 DEPLOYED / VALIDATED / CEO_REVIEW** (`76b9728`) — Gates 3–7 LOCKED  
+**Status:** Gate 1 OPEN (deployed); **Gate 2 + 2A IN_PROGRESS** (ownership `76b9728`; Workspace completion pending deploy/CEO) — Gates 3–7 LOCKED  
 
 
 
@@ -75,7 +75,7 @@ Only **CLOSED** unlocks the next gate’s **AUTHORIZED** state.
 | Gate | Package | Status | Deploy SHA | CEO approval | Closed (UTC) |
 |------|---------|--------|------------|--------------|--------------|
 | **Gate 1** | P1 Home Slim Transport + 1-B Composition | **OPEN** — 1-A+1-B deployed; awaiting CEO CLOSE | `f556a5d` / `db1d6aa` | — pending CEO | — |
-| **Gate 2** | P2 Single Decision Owner | **CEO_REVIEW** — DEPLOYED `76b9728`; awaiting CEO CLOSE | — | — | — |
+| **Gate 2** | P2 Single Decision Owner + 2A Workspace Completion | **IN_PROGRESS** — 2A decisions-only UI; awaiting deploy + CEO CLOSE | — | — | — |
 | **Gate 3** | P3 Carts Operations Only | LOCKED | — | — | — |
 | **Gate 4** | P4 Communication Consolidation | LOCKED | — | — | — |
 | **Gate 5** | P5 Legacy Home Retirement | LOCKED | — | — | — |
