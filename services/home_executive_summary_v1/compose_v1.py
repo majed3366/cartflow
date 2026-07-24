@@ -1,18 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-Compose slim Home Executive Summary V1 payload (Home Stabilization Sprint V1).
+Compose slim Home Executive Summary V1 payload (Gate 1 — Home Slim Transport).
 
 Home answers: "What should the merchant know now?"
-Detailed Observation / Decision / Operational / Product data stays off
-the initial Home payload — only short summary + status + count + View Details.
-
-Single owner / single data source / single render path when enabled.
+Prefers ``home_teaser_inputs_v1`` (lightweight). Never ships PI action/confidence
+previews on Home — View Details routes to owning pages.
 """
 from __future__ import annotations
 
 from typing import Any, Mapping
 
 from services.home_executive_summary_v1.flag_v1 import home_executive_summary_v1_enabled
+from services.home_executive_summary_v1.slim_transport_v1 import (
+    extract_home_teaser_inputs_v1,
+    home_slim_transport_v1_enabled,
+)
 
 OWNERSHIP_V1 = {
     "home": "executive_summary",
@@ -35,86 +37,63 @@ OBS_EMPTY_AR = "لا توجد أدلة كافية لإصدار ملاحظة مر
 
 GOVERNANCE_V1 = {
     "sprint": "home_stabilization_v1",
+    "gate": "gate_1_home_slim_transport",
     "single_owner": "home_executive_summary_v1",
-    "single_data_source": "finalize_dashboard_summary_payload",
+    "single_data_source": "home_teaser_inputs_v1",
     "single_render_path": "maApplyHomeExecutiveSummaryV1",
     "sections": list(SECTION_IDS_V1),
     "product_intelligence": False,
 }
 
 
-def _meif_home(summary: Mapping[str, Any]) -> dict[str, Any]:
-    meif = summary.get("merchant_experience_integration_v1") or {}
-    pages = meif.get("pages") if isinstance(meif, Mapping) else {}
-    home = (pages or {}).get("home") if isinstance(pages, Mapping) else {}
-    return home if isinstance(home, Mapping) else {}
-
-
-def _meif_page(summary: Mapping[str, Any], page_id: str) -> dict[str, Any]:
-    meif = summary.get("merchant_experience_integration_v1") or {}
-    pages = meif.get("pages") if isinstance(meif, Mapping) else {}
-    page = (pages or {}).get(page_id) if isinstance(pages, Mapping) else {}
-    return page if isinstance(page, Mapping) else {}
-
-
-def _slim_observation_finding(f: Mapping[str, Any]) -> dict[str, Any]:
-    return {
-        "product_name_ar": str(f.get("product_name_ar") or "").strip(),
-        "statement_ar": str(f.get("statement_ar") or "").strip(),
-        "recommended_action_ar": str(f.get("recommended_action_ar") or "").strip(),
-        "confidence_ar": str(f.get("confidence_ar") or "").strip(),
-        "confidence_level": str(f.get("confidence_level") or "").strip(),
-        "capability_id": str(f.get("capability_id") or "").strip(),
-    }
+def _teasers(summary: Mapping[str, Any]) -> dict[str, Any]:
+    raw = summary.get("home_teaser_inputs_v1")
+    if isinstance(raw, Mapping) and raw.get("schema") == "home_teaser_inputs_v1":
+        return dict(raw)
+    return extract_home_teaser_inputs_v1(summary)
 
 
 def _observation_section(summary: Mapping[str, Any]) -> dict[str, Any]:
-    orv = summary.get("observation_reality_validation_v1") or {}
-    findings_in = [
-        f for f in list(orv.get("findings") or []) if isinstance(f, Mapping)
-    ]
-    # Entity-bound only — drop anything without a real product name
-    findings = [
-        _slim_observation_finding(f)
-        for f in findings_in
-        if str(f.get("product_name_ar") or "").strip()
-    ]
-    count = len(findings)
-    if count == 0:
+    t = _teasers(summary)
+    obs = t.get("observations") if isinstance(t.get("observations"), Mapping) else {}
+    count = int(obs.get("count") or 0)
+    top = obs.get("top") if isinstance(obs.get("top"), Mapping) else None
+    if count <= 0 or not top:
         return {
             "id": "observations",
             "title_ar": "ملاحظات المنتجات",
             "summary_ar": OBS_EMPTY_AR,
             "status_ar": "أدلة غير كافية",
             "count": 0,
-            "view_details_href": "#home-obs-details",
+            "view_details_href": "#workspace",
             "view_details_ar": "عرض التفاصيل",
             "empty": True,
             "empty_state_ar": OBS_EMPTY_AR,
             "findings_preview": [],
         }
-    top = findings[0]
-    summary_ar = f"{top['product_name_ar']}: {top['statement_ar']}"
+    name = str(top.get("product_name_ar") or "").strip()
+    statement = str(top.get("statement_ar") or "").strip()
+    summary_ar = f"{name}: {statement}" if name else statement
     return {
         "id": "observations",
         "title_ar": "ملاحظات المنتجات",
         "summary_ar": summary_ar,
         "status_ar": "متوفر",
         "count": count,
-        "view_details_href": "#home-obs-details",
+        "view_details_href": "#workspace",
         "view_details_ar": "عرض التفاصيل",
         "empty": False,
         "empty_state_ar": "",
-        # Cap preview — details expand on demand in UI
-        "findings_preview": findings[:2],
+        # Gate 1: no PI preview cards on Home
+        "findings_preview": [],
     }
 
 
 def _decisions_section(summary: Mapping[str, Any]) -> dict[str, Any]:
-    home = _meif_home(summary)
-    sections = home.get("sections") if isinstance(home.get("sections"), Mapping) else {}
-    decisions = list((sections or {}).get("merchant_decisions") or [])
-    count = len(decisions)
+    t = _teasers(summary)
+    dec = t.get("decisions") if isinstance(t.get("decisions"), Mapping) else {}
+    count = int(dec.get("count") or 0)
+    title = str(dec.get("top_title_ar") or "").strip()
     if count == 0:
         return {
             "id": "decisions",
@@ -126,17 +105,10 @@ def _decisions_section(summary: Mapping[str, Any]) -> dict[str, Any]:
             "view_details_ar": "عرض التفاصيل",
             "empty": True,
         }
-    first = decisions[0] if isinstance(decisions[0], Mapping) else {}
-    title = str(
-        first.get("title_ar")
-        or first.get("merchant_summary")
-        or first.get("title")
-        or "قرار جاهز للمراجعة"
-    ).strip()
     return {
         "id": "decisions",
         "title_ar": "قرارات اليوم",
-        "summary_ar": title,
+        "summary_ar": title or "قرار جاهز للمراجعة",
         "status_ar": "جاهز للمراجعة",
         "count": count,
         "view_details_href": "#workspace",
@@ -146,10 +118,9 @@ def _decisions_section(summary: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _health_section(summary: Mapping[str, Any]) -> dict[str, Any]:
-    home = _meif_home(summary)
-    ops = home.get("operational_truth") if isinstance(home.get("operational_truth"), Mapping) else {}
-    ops = ops if isinstance(ops, Mapping) else {}
-    watching = bool(ops.get("has_durable_carts")) or int(ops.get("abandoned_carts") or 0) > 0
+    t = _teasers(summary)
+    health = t.get("health") if isinstance(t.get("health"), Mapping) else {}
+    watching = bool(health.get("watching")) or int(health.get("abandoned_carts") or 0) > 0
     if watching:
         summary_ar = "CartFlow يراقب متجرك — ركّز على القرار الأهم اليوم."
         status_ar = "مراقبة"
@@ -168,24 +139,9 @@ def _health_section(summary: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _carts_section(summary: Mapping[str, Any]) -> dict[str, Any]:
-    carts = _meif_page(summary, "carts")
-    ops = (
-        carts.get("operational_truth")
-        if isinstance(carts.get("operational_truth"), Mapping)
-        else {}
-    )
-    home = _meif_home(summary)
-    home_ops = (
-        home.get("operational_truth")
-        if isinstance(home.get("operational_truth"), Mapping)
-        else {}
-    )
-    count = int(
-        carts.get("durable_cart_count")
-        or ops.get("abandoned_carts")
-        or home_ops.get("abandoned_carts")
-        or 0
-    )
+    t = _teasers(summary)
+    carts = t.get("carts") if isinstance(t.get("carts"), Mapping) else {}
+    count = int(carts.get("count") or 0)
     if count > 0:
         summary_ar = f"{count} سلة مسجّلة — التفاصيل في صفحة السلال."
         status_ar = "نشط"
@@ -207,16 +163,12 @@ def _carts_section(summary: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _communication_section(summary: Mapping[str, Any]) -> dict[str, Any]:
-    comm = _meif_page(summary, "communication")
-    ops = (
-        comm.get("operational_truth")
-        if isinstance(comm.get("operational_truth"), Mapping)
-        else {}
-    )
-    sent = int(ops.get("mock_whatsapp_sent") or 0)
-    schedules = int(ops.get("recovery_schedules") or 0)
+    t = _teasers(summary)
+    comm = t.get("communication") if isinstance(t.get("communication"), Mapping) else {}
+    sent = int(comm.get("sent") or 0)
+    schedules = int(comm.get("schedules") or 0)
     count = sent + schedules
-    activity = bool(ops.get("has_communication_activity")) or count > 0
+    activity = bool(comm.get("activity")) or count > 0
     if activity:
         summary_ar = f"نشاط تواصل: {sent} إرسال و{schedules} جدولة."
         status_ar = "نشط"
@@ -269,52 +221,23 @@ def build_home_executive_summary_v1(
         "governance": dict(GOVERNANCE_V1),
         "sections": sections,
         "product_intelligence": False,
+        "slim_transport": home_slim_transport_v1_enabled(environ=environ),
         "ui": True,
     }
 
 
 def slim_observation_package_for_home_v1(pkg: Mapping[str, Any] | None) -> dict[str, Any]:
-    """Strip technical/detail fields from ORV before Home summary transport."""
-    if not isinstance(pkg, Mapping):
-        return {
-            "ok": False,
-            "enabled": False,
-            "findings": [],
-            "empty_state_ar": OBS_EMPTY_AR,
-        }
-    findings = []
-    for f in list(pkg.get("findings") or []):
-        if not isinstance(f, Mapping):
-            continue
-        name = str(f.get("product_name_ar") or "").strip()
-        if not name:
-            continue
-        findings.append(
-            {
-                "product_name_ar": name,
-                "statement_ar": str(f.get("statement_ar") or "").strip(),
-                "recommended_action_ar": str(
-                    f.get("recommended_action_ar") or ""
-                ).strip(),
-                "confidence_ar": str(f.get("confidence_ar") or "").strip(),
-                "confidence_level": str(f.get("confidence_level") or "").strip(),
-                "capability_id": str(f.get("capability_id") or "").strip(),
-            }
-        )
-    out = {
-        "ok": bool(pkg.get("ok")),
-        "enabled": bool(pkg.get("enabled")),
-        "schema": "observation_reality_validation_v1_home_slim",
-        "store_slug": pkg.get("store_slug"),
-        "findings": findings,
-        "count": len(findings),
-        "empty_state_ar": OBS_EMPTY_AR if not findings else "",
-        "title_ar": "ملاحظات المنتجات",
-        "temporary": True,
-        "ui": True,
-        "product_intelligence": False,
+    """Gate 1: Home must not transport ORV detail — return empty stub only."""
+    del pkg  # unused — never forward findings on Home
+    return {
+        "ok": True,
+        "enabled": True,
+        "findings": [],
+        "count": 0,
+        "empty_state_ar": OBS_EMPTY_AR,
+        "schema": "observation_reality_validation_v1_home_stripped",
+        "stripped_for_home_slim_transport": True,
     }
-    return out
 
 
 def attach_home_executive_summary_to_summary_v1(
@@ -326,15 +249,13 @@ def attach_home_executive_summary_to_summary_v1(
         return summary
     if not home_executive_summary_v1_enabled(environ=environ):
         return summary
-    # Always claim Home surface mode when flag is on — blocks legacy painters.
     summary["home_surface_mode"] = "executive_summary_v1"
     try:
-        # Slim ORV for Home transport (drop evidence_details / diagnostics)
-        if isinstance(summary.get("observation_reality_validation_v1"), dict):
+        if "home_teaser_inputs_v1" not in summary:
+            summary["home_teaser_inputs_v1"] = extract_home_teaser_inputs_v1(summary)
+        if home_slim_transport_v1_enabled(environ=environ):
             summary["observation_reality_validation_v1"] = (
-                slim_observation_package_for_home_v1(
-                    summary["observation_reality_validation_v1"]
-                )
+                slim_observation_package_for_home_v1(None)
             )
         pkg = build_home_executive_summary_v1(summary, environ=environ)
         summary["home_executive_summary_v1"] = pkg

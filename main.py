@@ -20175,51 +20175,59 @@ def _api_json_dashboard_summary(
 
         slug = (getattr(dash_store, "zid_store_id", None) or "").strip()
         if slug:
-            from services.merchant_home_composition_v1 import (  # noqa: PLC0415
-                build_merchant_home_experience_api_payload,
+            from services.home_executive_summary_v1.slim_transport_v1 import (  # noqa: PLC0415
+                home_slim_transport_v1_enabled,
+                minimal_home_experience_stub_v1,
             )
 
-            with dashboard_summary_profile_span("build_merchant_home_experience_api_payload"):
-                # INV-002 WP-5: composition wiring only — Home binds MQIC from session.
-                _store_counts = dict(mstats.get("merchant_store_cart_counts") or {})
-                _nav_meta = {
-                    "active_carts": int(mstats.get("normal_cart_count") or 0),
-                    "waiting_send": int(out.get("merchant_nav_badge_abandoned") or 0),
-                }
-                if "no_phone_total" in _store_counts:
-                    try:
-                        _nav_meta["canonical_no_phone_total"] = max(
-                            0, int(_store_counts.get("no_phone_total") or 0)
-                        )
-                    except (TypeError, ValueError):
-                        pass
-                home_payload = build_merchant_home_experience_api_payload(
-                    db.session,
-                    slug,
-                    dash_store,
-                    date_ar=str(out.get("merchant_ar_date_header") or ""),
-                    nav_metadata=_nav_meta,
-                    cookies=cookies,
-                )
-                out["merchant_home_experience_v1"] = home_payload
-                brief_embed = home_payload.get("daily_brief_v1")
-                if isinstance(brief_embed, Mapping):
-                    out["merchant_daily_brief_v1"] = brief_embed
-            stamp_summary_contract_fields(out)
-            try:
-                from services.product_data.merchant_experience_integration_foundation_v1 import (  # noqa: PLC0415
-                    attach_merchant_experience_to_summary_v1,
+            # Gate 1 — Home Slim Transport: skip fat home composition + MEIF on live summary.
+            if home_slim_transport_v1_enabled():
+                out["merchant_home_experience_v1"] = minimal_home_experience_stub_v1(slug)
+                stamp_summary_contract_fields(out)
+            else:
+                from services.merchant_home_composition_v1 import (  # noqa: PLC0415
+                    build_merchant_home_experience_api_payload,
                 )
 
-                # MEBF V1: MEIF + BFL bind must use the same MQIC-resolved slug as
-                # Home composition (lab/demo attach), not signup primary alone.
-                _home = out.get("merchant_home_experience_v1") or {}
-                _meif_slug = (
-                    str(_home.get("store_slug") or "").strip() or slug
-                )
-                attach_merchant_experience_to_summary_v1(out, _meif_slug)
-            except Exception as meif_exc:  # noqa: BLE001
-                log.warning("summary merchant_experience_integration_v1: %s", meif_exc)
+                with dashboard_summary_profile_span("build_merchant_home_experience_api_payload"):
+                    # INV-002 WP-5: composition wiring only — Home binds MQIC from session.
+                    _store_counts = dict(mstats.get("merchant_store_cart_counts") or {})
+                    _nav_meta = {
+                        "active_carts": int(mstats.get("normal_cart_count") or 0),
+                        "waiting_send": int(out.get("merchant_nav_badge_abandoned") or 0),
+                    }
+                    if "no_phone_total" in _store_counts:
+                        try:
+                            _nav_meta["canonical_no_phone_total"] = max(
+                                0, int(_store_counts.get("no_phone_total") or 0)
+                            )
+                        except (TypeError, ValueError):
+                            pass
+                    home_payload = build_merchant_home_experience_api_payload(
+                        db.session,
+                        slug,
+                        dash_store,
+                        date_ar=str(out.get("merchant_ar_date_header") or ""),
+                        nav_metadata=_nav_meta,
+                        cookies=cookies,
+                    )
+                    out["merchant_home_experience_v1"] = home_payload
+                    brief_embed = home_payload.get("daily_brief_v1")
+                    if isinstance(brief_embed, Mapping):
+                        out["merchant_daily_brief_v1"] = brief_embed
+                stamp_summary_contract_fields(out)
+                try:
+                    from services.product_data.merchant_experience_integration_foundation_v1 import (  # noqa: PLC0415
+                        attach_merchant_experience_to_summary_v1,
+                    )
+
+                    _home = out.get("merchant_home_experience_v1") or {}
+                    _meif_slug = (
+                        str(_home.get("store_slug") or "").strip() or slug
+                    )
+                    attach_merchant_experience_to_summary_v1(out, _meif_slug)
+                except Exception as meif_exc:  # noqa: BLE001
+                    log.warning("summary merchant_experience_integration_v1: %s", meif_exc)
     except Exception as exc:  # noqa: BLE001
         log.warning("summary merchant_home_experience_v1: %s", exc)
         db.session.rollback()

@@ -22,42 +22,7 @@
     }
   }
 
-  function renderObsDetails(findings, emptyAr) {
-    if (!findings || !findings.length) {
-      return (
-        '<p class="hes-empty" data-hes-obs-empty="1">' +
-        esc(emptyAr || "لا توجد أدلة كافية لإصدار ملاحظة مرتبطة بمنتج محدد.") +
-        "</p>"
-      );
-    }
-    var html = '<div class="hes-obs-cards">';
-    for (var i = 0; i < findings.length; i++) {
-      var f = findings[i] || {};
-      if (!f.product_name_ar) continue;
-      html +=
-        '<article class="hes-obs-card" data-hes-obs-card="1">' +
-        '<p class="hes-obs-product" data-hes-product="1">' +
-        esc(f.product_name_ar || "") +
-        "</p>" +
-        '<p class="hes-obs-statement" data-hes-statement="1">' +
-        esc(f.statement_ar || "") +
-        "</p>" +
-        (f.confidence_ar
-          ? '<span class="hes-conf" data-hes-confidence="1">الثقة: ' +
-            esc(f.confidence_ar) +
-            "</span>"
-          : "") +
-        (f.recommended_action_ar
-          ? '<p class="hes-obs-action" data-hes-action="1"><strong>الخطوة المقترحة:</strong> ' +
-            esc(f.recommended_action_ar) +
-            "</p>"
-          : "") +
-        "</article>";
-    }
-    return html + "</div>";
-  }
-
-  function renderSection(sec, pkg) {
+  function renderSection(sec) {
     if (!sec) return "";
     var countHtml = "";
     if (sec.count !== null && sec.count !== undefined && sec.count !== "") {
@@ -71,18 +36,7 @@
         esc(sec.status_ar) +
         "</span>"
       : "";
-    var detailsId = "hes-details-" + esc(sec.id || "x");
-    var isObs = sec.id === "observations";
-    var detailsBody = "";
-    if (isObs) {
-      detailsBody = renderObsDetails(
-        sec.findings_preview || [],
-        sec.empty_state_ar || pkg.empty_state_ar
-      );
-    } else {
-      detailsBody =
-        '<p class="hes-details-note">التفاصيل الكاملة في الصفحة المختصة.</p>';
-    }
+    /* Gate 1: View Details navigates to owning page — no in-place PI expand. */
     return (
       '<section class="hes-section" data-hes-section="' +
       esc(sec.id || "") +
@@ -102,37 +56,11 @@
       esc(sec.view_details_href || "#") +
       '" data-hes-view-details="' +
       esc(sec.id || "") +
-      '" data-hes-details-target="' +
-      detailsId +
       '">' +
       esc(sec.view_details_ar || "عرض التفاصيل") +
       " ←</a></p>" +
-      '<div id="' +
-      detailsId +
-      '" class="hes-details" hidden data-hes-details="1">' +
-      detailsBody +
-      "</div>" +
       "</section>"
     );
-  }
-
-  function bindDetails(root) {
-    if (!root) return;
-    var links = root.querySelectorAll("[data-hes-view-details]");
-    for (var i = 0; i < links.length; i++) {
-      (function (a) {
-        a.addEventListener("click", function (ev) {
-          var id = a.getAttribute("data-hes-details-target");
-          var href = a.getAttribute("href") || "";
-          // Observation expands in-place; other sections navigate.
-          if (id && href.indexOf("#home-obs") === 0) {
-            ev.preventDefault();
-            var panel = document.getElementById(id);
-            if (panel) panel.hidden = !panel.hidden;
-          }
-        });
-      })(links[i]);
-    }
   }
 
   function paintShell(root, pkg) {
@@ -158,7 +86,7 @@
         "</p>";
     } else {
       for (var i = 0; i < sections.length; i++) {
-        html += renderSection(sections[i], pkg);
+        html += renderSection(sections[i]);
       }
     }
     html +=
@@ -172,7 +100,6 @@
     root.removeAttribute("aria-busy");
     var loading = document.getElementById("ma-home-experience-loading");
     if (loading) loading.hidden = true;
-    bindDetails(root);
     hideOrvSibling();
   }
 

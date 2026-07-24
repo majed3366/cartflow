@@ -14,6 +14,8 @@
 | [`HOME_EXECUTIVE_CONSTITUTION_V1.md`](../../HOME_EXECUTIVE_CONSTITUTION_V1.md) | Home executive altitude & disclosure — must not contradict page ownership here |
 | [`PRODUCT_CONSTITUTION_ADDENDUM_V1.md`](../../PRODUCT_CONSTITUTION_ADDENDUM_V1.md) | Home purpose / explainability — amended: Home **summarizes and routes**; Decision Workspace **owns decisions & Product Intelligence** |
 | [`docs/architecture/CARTFLOW_ARCHITECTURE_SURFACE_ALIGNMENT_AUDIT_V1.md`](../architecture/CARTFLOW_ARCHITECTURE_SURFACE_ALIGNMENT_AUDIT_V1.md) | Evidence of current misalignment vs this law |
+| [`docs/product/PRODUCT_CONSTITUTION_COMPLIANCE_V1.md`](PRODUCT_CONSTITUTION_COMPLIANCE_V1.md) | Compliance matrix + P1–P7 work packages to reach 100% constitutional compliance |
+| [`docs/product/CONSTITUTIONAL_MIGRATION_PLAN_V1.md`](CONSTITUTIONAL_MIGRATION_PLAN_V1.md) | Mandatory Execution Gates G1–G7 (no overlap; CEO closure; PI only after Gate 7) |
 | [`docs/product/HOME_STABILIZATION_SPRINT_V1.md`](HOME_STABILIZATION_SPRINT_V1.md) | Painted Home teasers — must stay within Home Allowed Sections |
 
 **Out of scope for this document:** Implementing Product Intelligence · UI redesign · new merchant features · code changes required for compliance (tracked separately after CEO approval)
