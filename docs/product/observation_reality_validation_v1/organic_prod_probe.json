@@ -1,0 +1,28 @@
+{
+  "email": "cf.orv.organic.fece11a787@smartreplyai.net",
+  "summary": {
+    "http": 200,
+    "store_slug": "orv-org-fece11-58a9b4",
+    "orv_ok": "True",
+    "orv_enabled": "True",
+    "findings_n": 0,
+    "titles": [],
+    "has_action": true,
+    "has_conf": true,
+    "resolved": null,
+    "missing": [
+      "high_interest_low_conversion",
+      "shipping_stronger_than_price",
+      "repeated_return_without_purchase",
+      "no_quality_issue_evidence"
+    ],
+    "meif_home": true
+  },
+  "dom": {
+    "exists": true,
+    "hidden": false,
+    "cards": 0,
+    "text_sample": "معرفة من الملاحظة\n\nماذا نلاحظ في منتجاتك الآن؟\n\nلا ملاحظات مدعومة بأدلة بعد.",
+    "has_title": true
+  }
+}

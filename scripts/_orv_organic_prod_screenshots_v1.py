@@ -114,12 +114,8 @@ def main() -> int:
             "generated_at_utc": datetime.now(timezone.utc).isoformat(),
             "production_url": f"{BASE}/dashboard#home",
             "screenshots": {
-                "desktop": str(desktop.relative_to(OUT.parent.parent.parent)).replace(
-                    "\\", "/"
-                ),
-                "mobile": str(mobile.relative_to(OUT.parent.parent.parent)).replace(
-                    "\\", "/"
-                ),
+                "desktop": str(desktop.relative_to(ROOT)).replace("\\", "/"),
+                "mobile": str(mobile.relative_to(ROOT)).replace("\\", "/"),
             },
             "ok": ok,
         }
