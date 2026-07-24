@@ -12,10 +12,10 @@
 
 | Decision | Status |
 |----------|--------|
-| **CLOSE Gate 1** | **Not yet** — awaiting production deploy verification + CEO visual approval |
-| **Keep Gate 1 OPEN** | **YES** until C-2…C-6 complete |
+| **CLOSE Gate 1** | **Eligible after CEO visual approval** — engineering C-1…C-3 met on production |
+| **Keep Gate 1 OPEN** | **YES until CEO records C-4…C-6** |
 
-**Engineering recommendation after this report’s implementation + evidence pack:** keep Gate 1 **OPEN** until the CEO records explicit closure. Gates 2–7 remain **LOCKED**.
+**Engineering recommendation:** Gate 1 is **DEPLOYED + VALIDATED** on production (`f556a5d`, Railway Success). Keep Gate 1 **OPEN** until the CEO completes visual review and explicitly approves closure. Gates 2–7 remain **LOCKED**.
 
 ---
 
@@ -71,20 +71,20 @@ merchant_home_experience_v1: { ok, store_slug, slim_transport, version }  # stub
 
 Probe: organic signup → `#home` → `GET /api/dashboard/summary` (+ boot network sample).
 
-| Metric | Before (prod fat) | After (prod slim) |
-|--------|-------------------|-------------------|
-| Summary `body_bytes` | **56,314** | _pending deploy_ |
-| Heavy packages present | MEIF, ORV, Pulse, commerce_signals (**4**) | expect **0** |
-| `meif_bytes` | **19,665** | expect **0** |
-| `home_slim_transport_v1` | false | expect true |
-| `home_teaser_inputs_v1` | absent | expect present |
-| Summary `fetch_ms` (client) | **1,126** | _pending_ |
-| Boot `normal-carts` calls on `#home` | **9** | expect **0** |
-| Boot `messages` calls on `#home` | **1** | expect **0** |
-| Finalize stages | meif / ACF / orv / hes / pulse | teaser_extract + hes only |
+| Metric | Before (prod fat) | After (prod slim) | Δ |
+|--------|-------------------|-------------------|---|
+| Summary `body_bytes` | **56,314** | **4,001** | **−93%** |
+| Heavy packages present | MEIF, ORV, Pulse, commerce_signals (**4**) | **0** | cleared |
+| `meif_bytes` | **19,665** | **0** | −100% |
+| `home_slim_transport_v1` | false | **true** | — |
+| `home_teaser_inputs_v1` | absent | **present** | — |
+| Summary `fetch_ms` (client) | **1,126** | **161** | **−86%** |
+| Boot `normal-carts` calls on `#home` | **9** | **0** | deferred |
+| Boot `messages` calls on `#home` | **1** | **0** | deferred |
+| Finalize stages | meif / ACF / orv / hes / pulse | teaser_extract + hes only | slim path |
 
 **Before evidence:** `before_perf.json`, `before_desktop_home.png`, `before_mobile_home.png`  
-**After evidence:** `after_perf.json` (+ Desktop/Mobile) — fill after Railway Success.
+**After evidence:** `after_perf.json`, `after_desktop_home.png`, `after_mobile_home.png`
 
 ---
 
@@ -92,10 +92,10 @@ Probe: organic signup → `#home` → `GET /api/dashboard/summary` (+ boot netwo
 
 | Item | Status |
 |------|--------|
-| PR / merge SHA | _pending_ |
-| Railway Success | _pending_ |
-| After Desktop/Mobile shots | _pending_ |
-| After probe (`after_perf.json`) | _pending_ |
+| PR / merge SHA | [PR #77](https://github.com/majed3366/cartflow/pull/77) → **`f556a5d`** |
+| Railway Success | **Success** (`cartflow` + `smartreplyai.net`) |
+| After Desktop/Mobile shots | `after_desktop_home.png` / `after_mobile_home.png` |
+| After probe (`after_perf.json`) | **ok=true** — five sections, slim flag, no heavy keys |
 
 ---
 
@@ -103,12 +103,12 @@ Probe: organic signup → `#home` → `GET /api/dashboard/summary` (+ boot netwo
 
 | # | Requirement | Status |
 |---|-------------|--------|
-| C-1 | Implementation complete (slim transport DoD) | **DONE** (local; tests green) |
-| C-2 | Production deployment complete | **OPEN** |
-| C-3 | Validation (no action on Home; pages own APIs; rollback flag) | **PARTIAL** — unit tests; prod after deploy |
-| C-4 | Visual CEO review (Desktop/Mobile) | **OPEN** |
+| C-1 | Implementation complete (slim transport DoD) | **DONE** |
+| C-2 | Production deployment complete | **DONE** (`f556a5d`) |
+| C-3 | Validation (no action on Home; pages own APIs; rollback flag) | **DONE** (unit + prod probe) |
+| C-4 | Visual CEO review (Desktop/Mobile) | **OPEN** — evidence ready |
 | C-5 | Explicit CEO approval recorded | **OPEN** |
-| C-6 | Gate Register → CLOSED | **OPEN** — remains IN_PROGRESS / DEPLOYED until CEO |
+| C-6 | Gate Register → CLOSED | **OPEN** — status DEPLOYED / VALIDATED |
 
 ### Implementation DoD
 
@@ -118,7 +118,7 @@ Probe: organic signup → `#home` → `GET /api/dashboard/summary` (+ boot netwo
 - [x] No eager carts/messages on `#home`  
 - [x] Obs → `#workspace`  
 - [x] Before baseline captured  
-- [ ] After baseline captured on production  
+- [x] After baseline captured on production  
 - [ ] CEO approval  
 
 ---
