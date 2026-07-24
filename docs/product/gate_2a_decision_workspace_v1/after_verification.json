@@ -1,0 +1,25 @@
+{
+  "email": "cf.g2a.95261128e2@smartreplyai.net",
+  "probe": {
+    "http": 200,
+    "ok": true,
+    "gate_2a": true,
+    "decisions_only": true,
+    "mission": "ماذا يجب أن أقرر الآن، ولماذا؟",
+    "has_mission_ui": true,
+    "has_working_chrome": false,
+    "has_results_chrome": false,
+    "has_achieve_chrome": false,
+    "has_insufficient": false,
+    "text_sample": "مساحة القرار\n\nماذا يجب أن أقرر الآن، ولماذا؟\n\nيحتاج قرارك: 1\n\nالقرار\n\nراجع سلال بلا رقم تواصل\n\nلماذا\n\n2 سلة لا يمكن متابعتها لأن رقم العميل غير متوفر.\n\nالأدلة\n\n2 سلة نشطة بلا رقم تواصل صالح (عدّاد السلال المعتمد).\n\nالثقة\n\nمرتفع\n\nالإجراء الموصى به\n\nحسّن جمع رقم العميل وراجع السلال المتأثرة.\n\nعرض التفاصيل\n\nمزيد"
+  },
+  "generated_at_utc": "2026-07-24T22:41:29.262033+00:00",
+  "production_url": "https://smartreplyai.net/dashboard#workspace",
+  "sprint": "gate_2a_decision_workspace_completion",
+  "screenshots": {
+    "desktop": "docs/product/gate_2a_decision_workspace_v1/after_desktop_workspace.png",
+    "mobile": "docs/product/gate_2a_decision_workspace_v1/after_mobile_workspace.png"
+  },
+  "ok": true,
+  "status": "AWAITING_CEO_REVIEW_BEFORE_GATE_2_CLOSE"
+}
