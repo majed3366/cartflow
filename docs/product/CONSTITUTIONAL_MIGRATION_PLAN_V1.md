@@ -3,7 +3,8 @@
 **Document type:** Mandatory governance workflow — **Execution Gates**  
 **Date (UTC):** 2026-07-24  
 **Amendment:** Constitutional Execution Gates V1 (2026-07-24)  
-**Status:** Gate 1 AUTHORIZED + IN_PROGRESS (Home Slim Transport) — Gates 2–7 LOCKED  
+**Status:** Gate 1 DEPLOYED + VALIDATED — awaiting CEO visual approval / CLOSE — Gates 2–7 LOCKED  
+
 
 **Law:** [`PRODUCT_CONSTITUTION_V1.md`](PRODUCT_CONSTITUTION_V1.md)  
 **Compliance evidence:** [`PRODUCT_CONSTITUTION_COMPLIANCE_V1.md`](PRODUCT_CONSTITUTION_COMPLIANCE_V1.md)  
@@ -70,7 +71,7 @@ Only **CLOSED** unlocks the next gate’s **AUTHORIZED** state.
 
 | Gate | Package | Status | Deploy SHA | CEO approval | Closed (UTC) |
 |------|---------|--------|------------|--------------|--------------|
-| **Gate 1** | P1 Home Slim Transport | **IN_PROGRESS** (CEO authorized 2026-07-24) | — pending deploy | — | — |
+| **Gate 1** | P1 Home Slim Transport | **VALIDATED** — awaiting CEO CLOSE | `f556a5d` | — pending CEO | — |
 | **Gate 2** | P2 Single Decision Owner | LOCKED | — | — | — |
 | **Gate 3** | P3 Carts Operations Only | LOCKED | — | — | — |
 | **Gate 4** | P4 Communication Consolidation | LOCKED | — | — | — |
@@ -78,7 +79,7 @@ Only **CLOSED** unlocks the next gate’s **AUTHORIZED** state.
 | **Gate 6** | P6 Ownership Declarations | LOCKED | — | — | — |
 | **Gate 7** | P7 Product Intelligence Readiness | LOCKED | — | — | — |
 
-**Current gate:** Gate 1 only. Evidence: `docs/product/gate_1_home_slim_transport_v1/`. Gates 2–7 LOCKED until Gate 1 CLOSED.
+**Current gate:** Gate 1 VALIDATED on prod (`f556a5d`). Evidence: `docs/product/gate_1_home_slim_transport_v1/`. Awaiting CEO CLOSE. Gates 2–7 LOCKED.
 
 ---
 

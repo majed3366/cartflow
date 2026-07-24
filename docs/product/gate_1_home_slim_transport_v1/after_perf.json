@@ -1,0 +1,69 @@
+{
+  "label": "after",
+  "email": "cf.g1.5c7f726404@smartreplyai.net",
+  "generated_at_utc": "2026-07-24T20:25:16.010287+00:00",
+  "production_url": "https://smartreplyai.net/dashboard#home",
+  "gate": "gate_1_home_slim_transport",
+  "probe": {
+    "http": 200,
+    "fetch_ms": 161,
+    "body_bytes": 4001,
+    "key_count": 23,
+    "keys_sample": [
+      "_merchant_home_transport",
+      "_snapshot",
+      "home_executive_summary_v1",
+      "home_slim_transport_v1",
+      "home_surface_mode",
+      "home_teaser_inputs_v1",
+      "kpis",
+      "merchant_activation",
+      "merchant_home_experience_v1",
+      "merchant_nav_badge_abandoned",
+      "merchant_reason_rows",
+      "merchant_reason_rows_month",
+      "merchant_setup_experience",
+      "merchant_table_rows",
+      "month_window",
+      "normal_carts_stats",
+      "ok",
+      "snapshot_degraded",
+      "snapshot_mode",
+      "snapshot_reason",
+      "store_connection_status",
+      "summary_contract_schema_version",
+      "whatsapp_readiness_card"
+    ],
+    "present_heavy": [],
+    "heavy_count": 0,
+    "home_slim_transport_v1": true,
+    "surface_mode": "executive_summary_v1",
+    "has_teasers": true,
+    "hes_ok": true,
+    "section_ids": [
+      "health",
+      "decisions",
+      "observations",
+      "carts",
+      "communication"
+    ],
+    "has_five_sections": true,
+    "meif_bytes": 0,
+    "orv_bytes": 0,
+    "orv_findings": null,
+    "orv_stripped": false,
+    "has_recommended_action_on_home": false,
+    "has_hes_title": true,
+    "has_view_details": true
+  },
+  "boot_network": {
+    "summary_calls": 2,
+    "normal_carts_calls": 0,
+    "messages_calls": 0
+  },
+  "screenshots": {
+    "desktop": "docs/product/gate_1_home_slim_transport_v1/after_desktop_home.png",
+    "mobile": "docs/product/gate_1_home_slim_transport_v1/after_mobile_home.png"
+  },
+  "ok": true
+}
