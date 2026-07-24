@@ -92,7 +92,7 @@ def project_finding_render_contract_v1(finding: dict[str, Any]) -> Optional[dict
     if auth and auth not in destinations:
         destinations.append(auth)
 
-    return {
+    contract = {
         "finding_id": fid,
         "finding_type": ftype,
         "title": title,
@@ -101,7 +101,7 @@ def project_finding_render_contract_v1(finding: dict[str, Any]) -> Optional[dict
         "confidence": confidence or "unknown",
         "recommended_action": action
         or "راجع هذا الاستنتاج في مساحة القرار قبل أي إجراء.",
-        "severity": _norm(finding.get("severity")),
+        "opportunity": _norm(finding.get("opportunity")),
         "eligible_surfaces": destinations,
         "lifecycle_state": _norm(finding.get("lifecycle_state")),
         # MEIF card compatibility (still BFL-sourced; not SCF inference)
@@ -128,6 +128,15 @@ def project_finding_render_contract_v1(finding: dict[str, Any]) -> Optional[dict
         },
         "priority": 10,
     }
+    try:
+        from services.finding_decision_engine_v1 import (  # noqa: PLC0415
+            attach_decision_to_finding_contract_v1,
+        )
+
+        contract = attach_decision_to_finding_contract_v1(contract)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("finding decision attach skipped: %s", exc)
+    return contract
 
 
 def _surface_for_destinations(destinations: list[str]) -> list[str]:
@@ -292,6 +301,23 @@ def apply_business_findings_binding_to_meif_v1(
     home_sections = dict(home.get("sections") or {})
     home_findings = list((bound.get("by_surface") or {}).get(PAGE_HOME) or [])
     home_sections["business_findings"] = home_findings[:6]
+    # Decision Engine V1 — actionable decisions first (from findings only)
+    home_decisions = [
+        f
+        for f in home_findings
+        if isinstance(f, dict)
+        and isinstance(f.get("merchant_decision_v1"), dict)
+        and f["merchant_decision_v1"].get("has_decision")
+    ]
+    home_no_decisions = [
+        f
+        for f in home_findings
+        if isinstance(f, dict)
+        and isinstance(f.get("merchant_decision_v1"), dict)
+        and not f["merchant_decision_v1"].get("has_decision")
+    ]
+    home_sections["merchant_decisions"] = home_decisions[:5]
+    home_sections["merchant_no_decisions"] = home_no_decisions[:5]
     # Commercial insight bands: BFL only (no SCF guidance without finding_id)
     home_sections["commercial_guidance_highlights"] = home_findings[:3]
     home_sections["executive_summary"] = _strip_non_finding_insights(
