@@ -1,7 +1,9 @@
 # Home Stabilization Sprint V1
 
-**Status:** Implemented — awaiting CEO / production review before Product Intelligence V1  
+**Status:** Production verified — awaiting CEO visual approval before Product Intelligence V1  
 **Date (UTC):** 2026-07-24  
+**Deploy:** PR #74 → `839dd13` (Railway Success)  
+**Evidence:** `docs/product/home_executive_summary_v1/` (Desktop/Mobile + `verification.json`)  
 **Flag:** `CARTFLOW_HOME_EXECUTIVE_SUMMARY_V1` (default ON)
 
 ## Mission
