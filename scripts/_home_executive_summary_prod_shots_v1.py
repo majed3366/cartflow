@@ -75,12 +75,13 @@ def main() -> int:
         page.screenshot(path=str(mobile), full_page=False)
         browser.close()
 
+    obs_empty = probe.get("obs_empty")
     ok = (
-        probe.get("hes_ok")
-        and probe.get("has_hes_title")
-        and probe.get("has_view_details")
+        bool(probe.get("hes_ok"))
+        and bool(probe.get("has_hes_title"))
+        and bool(probe.get("has_view_details"))
         and not probe.get("has_demo_perfume")
-        and probe.get("obs_empty") is True
+        and obs_empty in (True, "True", "true", 1)
     )
     report.update(
         {
