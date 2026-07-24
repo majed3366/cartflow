@@ -60,10 +60,14 @@
     );
 
     var html = [];
+    var comp = projection.decision_composition_v1 || {};
+    var needsN = Number(comp.needs_action_now || 0);
+    var monitorN = Number(comp.monitor || 0);
+
     html.push(
       '<div class="cw-ops cw-ops--decisions-only" dir="rtl" data-open-count="' +
         esc(openCount) +
-        '" data-gate2a="1">'
+        '" data-gate2a="1" data-gate2b="1">'
     );
 
     html.push(
@@ -73,6 +77,16 @@
         '<h2 class="cw-ops__mission">' +
         esc(mission) +
         "</h2>" +
+        (hasDecisions
+          ? '<p class="cw-ops__bands">' +
+            "يحتاج إجراء الآن: <strong>" +
+            esc(needsN || openCount) +
+            "</strong>" +
+            (monitorN
+              ? " · راقب: <strong>" + esc(monitorN) + "</strong>"
+              : "") +
+            "</p>"
+          : '<p class="cw-ops__bands">لا قرار مدعوم حالياً</p>') +
         "</div>" +
         '<p class="cw-ops__count" role="status" aria-live="polite">' +
         "يحتاج قرارك: <strong class=\"cw-ops__count-n\">" +

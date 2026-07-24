@@ -25,9 +25,13 @@
 
   function isConstitutionCard(card) {
     if (!card) return false;
-    if (card.constitution_v1) return true;
+    if (card.constitution_v1 || card.gate_2b_composition) return true;
     var kind = String(card.card_kind || "");
-    return kind === "business_finding" || kind === "operational_truth";
+    return (
+      kind === "business_finding" ||
+      kind === "operational_truth" ||
+      kind === "composed_decision"
+    );
   }
 
   function presentCard(card) {
@@ -125,16 +129,32 @@
     };
   }
 
+  function fieldRow(label, value, extraClass) {
+    if (!value) return "";
+    return (
+      '<div class="cw-card__field"><span class="cw-card__field-label">' +
+      esc(label) +
+      "</span>" +
+      '<p class="cw-card__field-value' +
+      (extraClass ? " " + extraClass : "") +
+      '">' +
+      esc(value) +
+      "</p></div>"
+    );
+  }
+
   function constitutionFaceHtml(card) {
     var ex = explanationOf(card);
     var decision = String(
       card.decision_ar || card.title_ar || "قرار يحتاج مراجعتك"
     );
     var why = String(card.why_ar || ex.why_here || "");
+    var whyNow = String(card.why_now_ar || "");
     var evidence = String(card.evidence_summary || "");
     if (!evidence && card.has_decision === false) {
       evidence = INSUFFICIENT_EVIDENCE_AR;
     }
+    var ignore = String(card.ignore_consequence_ar || "");
     var conf = String(card.decision_confidence_ar || "").trim();
     var confRaw = String(card.decision_confidence || "").trim().toLowerCase();
     if (!conf && confRaw && confRaw !== "none" && confRaw !== "unknown") {
@@ -147,44 +167,36 @@
         card.action_label_ar ||
         "لا إجراء مطلوب حالياً"
     );
+    var firstStep = String(card.first_step_ar || "");
+    var outcome = String(
+      card.expected_outcome_ar || card.expected_business_impact || ex.expected_after || ""
+    );
     var href = String(card.view_details_href || "").trim();
     var detailsLabel = String(card.view_details_ar || "عرض التفاصيل");
+    var band = String(card.priority_band || "");
+    var bandLabel = "";
+    if (band === "needs_action_now") bandLabel = "يحتاج إجراء الآن";
+    else if (band === "monitor") bandLabel = "راقب";
 
     var rows = [];
-    rows.push(
-      '<div class="cw-card__field"><span class="cw-card__field-label">القرار</span>' +
-        '<p class="cw-card__field-value cw-card__field-value--decision">' +
-        esc(decision) +
-        "</p></div>"
-    );
-    if (why) {
+    if (bandLabel) {
       rows.push(
-        '<div class="cw-card__field"><span class="cw-card__field-label">لماذا</span>' +
-          '<p class="cw-card__field-value">' +
-          esc(why) +
-          "</p></div>"
+        '<p class="cw-card__band cw-card__band--' +
+          esc(band) +
+          '">' +
+          esc(bandLabel) +
+          "</p>"
       );
     }
-    rows.push(
-      '<div class="cw-card__field"><span class="cw-card__field-label">الأدلة</span>' +
-        '<p class="cw-card__field-value">' +
-        esc(evidence || INSUFFICIENT_EVIDENCE_AR) +
-        "</p></div>"
-    );
-    if (conf) {
-      rows.push(
-        '<div class="cw-card__field"><span class="cw-card__field-label">الثقة</span>' +
-          '<p class="cw-card__field-value">' +
-          esc(conf) +
-          "</p></div>"
-      );
-    }
-    rows.push(
-      '<div class="cw-card__field"><span class="cw-card__field-label">الإجراء الموصى به</span>' +
-        '<p class="cw-card__field-value">' +
-        esc(action) +
-        "</p></div>"
-    );
+    rows.push(fieldRow("القرار", decision, "cw-card__field-value--decision"));
+    rows.push(fieldRow("لماذا؟", why));
+    rows.push(fieldRow("لماذا الآن؟", whyNow));
+    rows.push(fieldRow("الأدلة", evidence || INSUFFICIENT_EVIDENCE_AR));
+    rows.push(fieldRow("ماذا يحدث إذا تجاهلته؟", ignore));
+    rows.push(fieldRow("الإجراء الموصى به", action));
+    rows.push(fieldRow("ابدأ بهذه الخطوة", firstStep));
+    rows.push(fieldRow("الأثر المتوقع", outcome));
+    rows.push(fieldRow("الثقة", conf));
 
     var dest = "";
     if (href) {
@@ -269,7 +281,8 @@
 
     if (mode === "quiet") {
       return (
-        '<article class="cw-card cw-card--quiet" data-cw-quiet="1">' +
+        '<article class="cw-card cw-card--quiet" data-cw-quiet="1" data-band="no_decision_supported">' +
+        '<p class="cw-card__band cw-card__band--none">لا قرار مدعوم حالياً</p>' +
         '<div class="cw-card__head">' +
         '<h3 class="cw-card__title">لا توجد أدلة كافية لإصدار قرار.</h3></div>' +
         '<p class="cw-card__line">لا يوجد قرار يحتاج مراجعتك الآن.</p>' +

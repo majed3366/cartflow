@@ -1,0 +1,23 @@
+# -*- coding: utf-8 -*-
+"""Gate 2B — Decision Composition Engine V1."""
+from __future__ import annotations
+
+from services.decision_composition_engine_v1.compose_v1 import compose_decisions_v1
+from services.decision_composition_engine_v1.flag_v1 import (
+    ENV_DECISION_COMPOSITION_ENGINE_V1,
+    decision_composition_engine_v1_enabled,
+)
+from services.decision_composition_engine_v1.project_workspace_v1 import (
+    decisions_to_workspace_cards_v1,
+)
+from services.decision_composition_engine_v1.teaser_v1 import (
+    count_composed_decisions_for_teaser_v1,
+)
+
+__all__ = [
+    "ENV_DECISION_COMPOSITION_ENGINE_V1",
+    "compose_decisions_v1",
+    "count_composed_decisions_for_teaser_v1",
+    "decision_composition_engine_v1_enabled",
+    "decisions_to_workspace_cards_v1",
+]

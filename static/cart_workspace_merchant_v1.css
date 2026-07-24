@@ -124,6 +124,26 @@ body[data-ma-page="workspace"] .ma-content-root {
 #page-workspace .cw-ops--decisions-only .cw-card--status {
   display: none;
 }
+#page-workspace .cw-ops__bands {
+  margin: 0.35rem 0 0;
+  font-size: var(--ma-type-sm, 13px);
+  color: var(--cw-ink-soft);
+}
+#page-workspace .cw-card__band {
+  margin: 0;
+  font-size: var(--ma-type-xs, 12px);
+  font-weight: 700;
+  color: var(--cw-accent-deep);
+}
+#page-workspace .cw-card__band--needs_action_now {
+  color: #b45309;
+}
+#page-workspace .cw-card__band--monitor {
+  color: var(--cw-ink-whisper);
+}
+#page-workspace .cw-card__band--none {
+  color: var(--cw-ink-whisper);
+}
 #page-workspace .cw-ops__count {
   margin: 0;
   font-size: var(--ma-type-md, 14px);
