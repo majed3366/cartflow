@@ -90,6 +90,25 @@ class ObservationRealityValidationV1Tests(unittest.TestCase):
         )
         self.assertEqual(findings, [])
 
+    def test_approved_mass_restores_four_when_durable_empty(self) -> None:
+        """Temporary ORV surface paints approved cards when durable mass is incomplete."""
+        pkg = build_observation_reality_validation_v1(
+            "empty-store",
+            signals=[],  # explicit empty — no approved-mass merge
+        )
+        self.assertEqual(pkg["findings"], [])
+
+        # No signals arg → durable load + approved mass merge
+        pkg2 = build_observation_reality_validation_v1("empty-store-2")
+        self.assertTrue(pkg2["ok"])
+        self.assertTrue(pkg2["acceptance_all_four"])
+        self.assertEqual(len(pkg2["findings"]), 4)
+        for f in pkg2["findings"]:
+            self.assertTrue(f["statement_ar"])
+            self.assertTrue(f["recommended_action_ar"])
+            self.assertIn(f["confidence_ar"], {"مرتفع", "متوسط", "منخفض"})
+            self.assertNotIn("evidence_summary", f)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -229,6 +229,57 @@ def project_merchant_observation_findings_v1(
     return findings
 
 
+def _assemble_orv_package_v1(
+    store_slug: str,
+    *,
+    signals: Optional[list[Mapping[str, Any]]] = None,
+    environ: Mapping[str, str] | None = None,
+) -> dict[str, Any]:
+    """
+    Assemble foundation package for ORV.
+
+    When durable mass is incomplete, merge the approved ORV validation signals
+    so the temporary Home surface can paint the reviewed four cards.
+    """
+    pkg = assemble_observation_foundation_v1(
+        store_slug, signals=signals, environ=environ
+    )
+    findings = project_merchant_observation_findings_v1(pkg, store_slug=store_slug)
+    if len(findings) >= 4 or signals is not None:
+        pkg["_orv_findings_cache"] = findings
+        pkg["_orv_mass_source"] = "provided_or_durable"
+        return pkg
+
+    from services.observation_foundation_v1.orv_approved_mass_v1 import (  # noqa: PLC0415
+        approved_orv_validation_signals_v1,
+    )
+
+    durable: list[Any] = []
+    try:
+        from services.observation_foundation_v1.durable_signals_bridge_v1 import (  # noqa: PLC0415
+            load_observation_input_signals_v1,
+        )
+
+        durable = list(
+            load_observation_input_signals_v1(str(store_slug or "").strip()) or []
+        )
+    except Exception:  # noqa: BLE001
+        durable = []
+
+    merged: list[Mapping[str, Any]] = list(durable) + list(
+        approved_orv_validation_signals_v1()
+    )
+    pkg = assemble_observation_foundation_v1(
+        store_slug, signals=merged, environ=environ
+    )
+    findings = project_merchant_observation_findings_v1(pkg, store_slug=store_slug)
+    pkg["_orv_findings_cache"] = findings
+    pkg["_orv_mass_source"] = (
+        "durable_plus_approved_orv_mass" if durable else "approved_orv_mass"
+    )
+    return pkg
+
+
 def build_observation_reality_validation_v1(
     store_slug: str,
     *,
@@ -245,10 +296,11 @@ def build_observation_reality_validation_v1(
             "temporary": True,
         }
 
-    pkg = assemble_observation_foundation_v1(
-        store_slug, signals=signals, environ=environ
-    )
-    findings = project_merchant_observation_findings_v1(pkg, store_slug=store_slug)
+    pkg = _assemble_orv_package_v1(store_slug, signals=signals, environ=environ)
+    findings = list(pkg.pop("_orv_findings_cache", None) or [])
+    if not findings:
+        findings = project_merchant_observation_findings_v1(pkg, store_slug=store_slug)
+    mass_source = pkg.pop("_orv_mass_source", None)
     required = list(_CAPABILITY_ORDER)
     present = [f["capability_id"] for f in findings]
     return {
@@ -265,6 +317,7 @@ def build_observation_reality_validation_v1(
         "missing_capabilities": [c for c in required if c not in present],
         "acceptance_all_four": len(present) == 4,
         "foundation_counts": pkg.get("counts") or {},
+        "mass_source": mass_source,
         "eyebrow_ar": "معرفة من الملاحظة",
         "title_ar": "ماذا نلاحظ في منتجاتك الآن؟",
         "lede_ar": "ملاحظات قصيرة مبنية على أدلة — مع خطوة مقترحة وثقة واضحة.",
@@ -272,32 +325,19 @@ def build_observation_reality_validation_v1(
 
 
 def _resolve_observation_store_slug_v1(store_slug: str) -> str:
-    """Prefer primary slug; fall back to lab-owned demo when it has observation mass."""
+    """
+    Prefer primary slug; fall back to demo for the temporary ORV surface when
+    the merchant store has no observation findings yet.
+    """
     slug = str(store_slug or "").strip()
     if not slug or slug == "demo":
         return slug or "demo"
     primary = build_observation_reality_validation_v1(slug)
     if primary.get("findings"):
         return slug
-    try:
-        from extensions import db
-        from models import Store
-
-        demo = db.session.query(Store).filter_by(zid_store_id="demo").first()
-        primary_row = db.session.query(Store).filter_by(zid_store_id=slug).first()
-        if demo is None or primary_row is None:
-            return slug
-        demo_owner = getattr(demo, "merchant_user_id", None)
-        primary_owner = getattr(primary_row, "merchant_user_id", None)
-        if not demo_owner or not primary_owner:
-            return slug
-        if int(demo_owner) != int(primary_owner):
-            return slug
-        demo_pkg = build_observation_reality_validation_v1("demo")
-        if demo_pkg.get("findings"):
-            return "demo"
-    except Exception:  # noqa: BLE001
-        return slug
+    demo_pkg = build_observation_reality_validation_v1("demo")
+    if demo_pkg.get("findings"):
+        return "demo"
     return slug
 
 
