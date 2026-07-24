@@ -54,6 +54,7 @@ def _bootstrap_env() -> Path:
     os.environ.setdefault("CARTFLOW_ALLOW_TESTCLIENT", "1")
     os.environ.setdefault("CARTFLOW_BUSINESS_FINDINGS_LIFECYCLE_V1", "1")
     os.environ.setdefault("CARTFLOW_MERCHANT_EXPERIENCE_BINDING_V1", "1")
+    os.environ.setdefault("CARTFLOW_FINDING_DECISION_ENGINE_V1", "1")
     os.environ.setdefault("CARTFLOW_MERCHANT_EXPERIENCE_INTEGRATION_V1", "1")
     os.environ.setdefault("CARTFLOW_SURFACE_COMPOSITION_V1", "1")
     os.environ.setdefault("CARTFLOW_OPERATIONAL_TRUTH_V1", "1")
@@ -242,19 +243,34 @@ def _capture_home(base_url: str, cookies: dict, cookie_name: str) -> dict:
         shots.append(fname)
         painted = page.locator("[data-mebf='1'][data-finding-id]").count()
         titles = page.locator("[data-mebf-title]").all_text_contents()
+        decision_texts = page.locator("[data-decision-text]").all_text_contents()
+        decision_cards = page.locator("[data-decision='1'][data-decision-status='DECISION']").count()
+        no_decision_cards = page.locator(
+            "[data-decision='1'][data-decision-status='NO_DECISION']"
+        ).count()
         diag = page.evaluate("() => window.__mebfRenderDiagnostics || {}")
+        # Decision Engine surface shot (same Home, decision-first composition)
+        dname = "03_desktop_home_decisions.png"
+        page.screenshot(path=str(OUT / dname), full_page=True)
+        shots.append(dname)
         # mobile
         page.set_viewport_size({"width": 390, "height": 844})
         page.wait_for_timeout(500)
         mname = "02_mobile_home_business_finding.png"
         page.screenshot(path=str(OUT / mname), full_page=True)
         shots.append(mname)
+        mdec = "04_mobile_home_decisions.png"
+        page.screenshot(path=str(OUT / mdec), full_page=True)
+        shots.append(mdec)
         ctx.close()
         browser.close()
     return {
         "shots": shots,
         "painted_finding_cards": painted,
         "titles": titles,
+        "decision_texts": decision_texts,
+        "painted_decisions": decision_cards,
+        "painted_no_decisions": no_decision_cards,
         "render_diagnostics": diag,
     }
 
@@ -294,9 +310,12 @@ def main() -> int:
 
     meif = generate_merchant_experience_integration_v1("demo")
     binding = meif.get("business_findings_binding_v1") or {}
-    home_findings = (
+    home_sections = (
         ((meif.get("pages") or {}).get("home") or {}).get("sections") or {}
-    ).get("business_findings") or []
+    )
+    home_findings = home_sections.get("business_findings") or []
+    home_decisions = home_sections.get("merchant_decisions") or []
+    home_no_decisions = home_sections.get("merchant_no_decisions") or []
 
     shots_info: dict = {"shots": [], "error": ""}
     try:
@@ -343,9 +362,22 @@ def main() -> int:
         },
         "meif_binding": binding,
         "home_business_findings": home_findings,
+        "home_merchant_decisions": home_decisions,
+        "home_merchant_no_decisions": home_no_decisions,
         "screenshots": shots_info,
         "acceptance_home_painted": acceptance,
     }
+    # Decision Engine product proof copy
+    de_out = ROOT / "docs" / "product" / "decision_engine_v1"
+    de_out.mkdir(parents=True, exist_ok=True)
+    for shot in shots_info.get("shots") or []:
+        src = OUT / shot
+        if src.is_file():
+            (de_out / shot).write_bytes(src.read_bytes())
+    (de_out / "lab_evidence.json").write_text(
+        json.dumps(evidence, ensure_ascii=False, indent=2, default=str),
+        encoding="utf-8",
+    )
     (OUT / "lab_evidence.json").write_text(
         json.dumps(evidence, ensure_ascii=False, indent=2, default=str),
         encoding="utf-8",

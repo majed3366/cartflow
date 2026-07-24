@@ -1,0 +1,44 @@
+[
+  {
+    "kind": "DECISION",
+    "finding_id": "finding:recovery_channel_effectiveness_v1:whatsapp",
+    "finding_type": "recovery_channel_effectiveness_v1",
+    "decision": "لا توسّع حجم رسائل واتساب للاسترجاع هذا الأسبوع.",
+    "why": "أُرسلت 13 رسالة دون عودة أو شراء موثّق (returned=0, purchased=0). توسيع الحجم قبل ظهور أثر يُعد تخميناً لا قراراً مبنياً على أثر.",
+    "impact": "تجنّب تكلفة/ضجيج إضافي بلا عائد ظاهر؛ الحفاظ على الثقة بالقناة.",
+    "action": "ثبّت الحجم الحالي، راقب العودة بعد الرسالة، ولا ترفع معدل الإرسال حتى يظهر returned≥1 أو purchased≥1 في نفس نافذة القياس.",
+    "metric": "returned≥1 أو purchased≥1 على دفعات واتساب الجديدة خلال النافذة.",
+    "review": "7 أيام",
+    "confidence": "medium",
+    "evidence": "sent=13 returned=0 purchased=0 failed=0 suppressed=0"
+  },
+  {
+    "kind": "DECISION",
+    "finding_id": "finding:recovery_channel_effectiveness_v1:widget",
+    "finding_type": "recovery_channel_effectiveness_v1",
+    "decision": "فعّل/حسّن طلب بيانات التواصل مباشرة بعد التقاط سبب التردد.",
+    "why": "الأدلة تُظهر التقاط أسباب (18) دون جهات اتصال قابلة للاسترجاع (contacts=0). الاستنتاج لا يدعم قراراً آخر قبل إصلاح التواصل.",
+    "impact": "فتح مسار استرجاع لسلات كانت خارج التواصل.",
+    "action": "اليوم: راجع إعداد الودجت بحيث يُطلب رقم/تواصل صالح بعد اختيار السبب، ثم راقب ظهور contacts>0.",
+    "metric": "contacts > 0 مع استمرار reasons≥1 خلال نافذة المراجعة.",
+    "review": "7 أيام",
+    "confidence": "medium",
+    "evidence": "reasons=18 contacts=0"
+  },
+  {
+    "kind": "NO_DECISION",
+    "finding_id": "finding:traffic_versus_conversion_v1",
+    "finding_type": "traffic_versus_conversion_v1",
+    "missing": "ثقة الاستنتاج غير كافية لاتخاذ قرار تجاري (confidence=insufficient). مطلوب أدلة أقوى على نفس النمط.",
+    "evidence": "visitor_total=unavailable; carts_not_used_as_traffic_proxy",
+    "finding_confidence": "insufficient"
+  },
+  {
+    "kind": "NO_DECISION",
+    "finding_id": "finding:dominant_hesitation_reason_v1:not_dominant",
+    "finding_type": "dominant_hesitation_reason_v1",
+    "missing": "سبب تردد مهيمن بحصة كافية عبر أيام إضافية من التقاط الأسباب (الحصة الحالية غير كافية لقرار تغيير العرض).",
+    "evidence": "top=delivery:4/18 share=22%",
+    "finding_confidence": "low"
+  }
+]
