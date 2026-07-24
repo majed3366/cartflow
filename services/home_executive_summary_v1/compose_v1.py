@@ -184,18 +184,22 @@ def _health_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         empty = True
         needs = False
 
-    return {
+    out = {
         "id": "health",
         "title_ar": "حالة المتجر",
         "summary_ar": summary_ar,
         "status_ar": status_ar,
-        "count": waiting if waiting else (active if active else None),
         "view_details_href": href,
         "view_details_ar": "عرض التفاصيل",
         "empty": empty,
         "needs_attention": needs,
         "owner_page": "carts" if href == "#carts" else "settings",
     }
+    if waiting > 0:
+        out["count"] = waiting
+    elif active > 0:
+        out["count"] = active
+    return out
 
 
 def _carts_section(summary: Mapping[str, Any]) -> dict[str, Any]:

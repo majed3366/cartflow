@@ -29,6 +29,16 @@ class HomeExecutiveCompositionV1Tests(unittest.TestCase):
         self.assertNotEqual(health["title_ar"], "صحة العمل")
         self.assertIn("مستقرة", health["summary_ar"])
         self.assertEqual(health["view_details_href"], "#carts")
+        self.assertEqual(health.get("count"), 5)
+
+    def test_quiet_store_omits_count(self) -> None:
+        hes = build_home_executive_summary_v1(
+            {},
+            environ={"CARTFLOW_HOME_EXECUTIVE_SUMMARY_V1": "1"},
+        )
+        health = next(s for s in hes["sections"] if s["id"] == "health")
+        self.assertNotIn("count", health)
+        self.assertEqual(health["title_ar"], "حالة المتجر")
 
     def test_carts_and_communication_operational_conditions(self) -> None:
         hes = build_home_executive_summary_v1(
