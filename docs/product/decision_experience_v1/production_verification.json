@@ -1,0 +1,66 @@
+{
+  "task": "Decision Experience V1 — Production Rollout",
+  "generated_at_utc": "2026-07-24T12:33:17.898087+00:00",
+  "production_url": "https://smartreplyai.net/dashboard#home",
+  "commit": "adff0b60cef09469e93614414550fe77c0230405",
+  "deploy": {
+    "host": "https://smartreplyai.net",
+    "ping_ok": true,
+    "meif_js_markers": [
+      "merchant_decision_v1",
+      "data-decision-home",
+      "renderDecisionBlock",
+      "NO DECISION"
+    ],
+    "railway_commit_status": "Success (authentic-motivation - cartflow)"
+  },
+  "probe": {
+    "meif_ok": true,
+    "meif_foundation_enabled": true,
+    "bfl_ok": true,
+    "bfl_persisted": 4,
+    "bfl_surface_eligible": 2,
+    "sample_merchant_decisions": 1,
+    "sample_merchant_no_decisions": 1,
+    "sample_business_findings": 2
+  },
+  "paint": {
+    "apply": {
+      "flag": true,
+      "has_fn": true,
+      "applied": true,
+      "err": null,
+      "root_present": true
+    },
+    "home_decision_section": true,
+    "painted_decisions": 3,
+    "painted_no_decisions": 3,
+    "painted_finding_cards": 6,
+    "evidence_blocks": 12,
+    "confidence_labels": 6,
+    "decision_texts": [
+      "أزل حاجز التواصل الذي يمنع الاسترجاع.",
+      "أزل حاجز التواصل الذي يمنع الاسترجاع.",
+      "أزل حاجز التواصل الذي يمنع الاسترجاع."
+    ],
+    "has_meif_js": true,
+    "body_has_decision_heading": true
+  },
+  "console_errors": [],
+  "page_errors": [],
+  "screenshots": {
+    "desktop": "docs\\product\\decision_experience_v1\\01_desktop_home_decision_experience.png",
+    "mobile": "docs\\product\\decision_experience_v1\\02_mobile_home_decision_experience.png"
+  },
+  "checks": {
+    "decision_cards_render": true,
+    "findings_appear": true,
+    "evidence_renders": true,
+    "confidence_renders": true,
+    "home_decision_section": true,
+    "no_console_errors": true,
+    "no_page_errors": true,
+    "no_server_probe_errors": true
+  },
+  "ok": true
+}

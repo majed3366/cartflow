@@ -150,6 +150,23 @@ class MerchantHomeExperienceActivationTests(unittest.TestCase):
             TRANSPORT_SNAPSHOT,
         )
 
+    def test_finalize_attaches_decision_experience_meif(self) -> None:
+        """Snapshot/live finalize must carry MEIF so Home Decision Experience can paint."""
+        out = finalize_dashboard_summary_payload(
+            {"ok": True, "merchant_kpi_abandoned_fmt": "0"},
+            summary_source=TRANSPORT_SNAPSHOT,
+            store_slug="demo",
+        )
+        meif = out.get("merchant_experience_integration_v1") or {}
+        self.assertTrue(meif.get("enabled"))
+        self.assertIn("pages", meif)
+        home = (meif.get("pages") or {}).get("home") or {}
+        self.assertIsInstance(home.get("sections"), dict)
+        # Decision Engine fields are projected when findings bind (may be empty).
+        sections = home.get("sections") or {}
+        self.assertIn("merchant_decisions", sections)
+        self.assertIn("merchant_no_decisions", sections)
+
     def test_snapshot_write_forces_upgrade_for_stale_contract(self) -> None:
         os.environ["CARTFLOW_DASHBOARD_SNAPSHOT_CHANGE_GATE"] = "1"
         try:
