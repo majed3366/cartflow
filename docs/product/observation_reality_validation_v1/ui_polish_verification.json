@@ -1,0 +1,25 @@
+{
+  "task": "Observation Reality Validation V1 — Final UI Polish",
+  "generated_at_utc": "2026-07-24T15:49:44.873763+00:00",
+  "production_url": "https://smartreplyai.net/dashboard#home",
+  "screenshots": {
+    "desktop": "docs\\product\\observation_reality_validation_v1\\03_desktop_orv_ui_polish.png",
+    "mobile": "docs\\product\\observation_reality_validation_v1\\04_mobile_orv_ui_polish.png"
+  },
+  "probe": {
+    "cards": 4,
+    "actions": 4,
+    "conf": 4,
+    "banned_visible": [],
+    "titles": [
+      "اهتمام مرتفع وتحويل منخفض",
+      "أدلة الشحن أقوى من السعر",
+      "عودة متكررة بلا شراء",
+      "لا دليل على مشكلة جودة"
+    ]
+  },
+  "technical_fields_hidden": true,
+  "every_card_has_statement_action_confidence": true,
+  "ok": true,
+  "status": "AWAITING_PRODUCTION_REVIEW_APPROVAL"
+}

@@ -2,8 +2,8 @@
 """
 Observation Reality Validation V1 — merchant-readable findings from correlations.
 
-Only emits statements when a correlation carries statement_capability + evidence.
-Temporary presentation contract — not Product Intelligence V1.
+Merchant surface: statement + recommended action + confidence (from Evidence Confidence).
+Technical counters live only under evidence_details / diagnostics — never on Home.
 """
 from __future__ import annotations
 
@@ -12,6 +12,13 @@ from typing import Any, Mapping, Optional
 from services.observation_foundation_v1.assemble_v1 import assemble_observation_foundation_v1
 from services.observation_foundation_v1.catalog_v1 import FOUNDATION_VERSION
 from services.observation_foundation_v1.flag_v1 import observation_foundation_v1_enabled
+from services.product_data.evidence_confidence_types_v1 import (
+    LEVEL_HIGH,
+    LEVEL_LOW,
+    LEVEL_MEDIUM,
+    LEVEL_VERY_HIGH,
+    confidence_level_for_score,
+)
 
 ENV_OBSERVATION_REALITY_VALIDATION_V1 = "CARTFLOW_OBSERVATION_REALITY_VALIDATION_V1"
 
@@ -20,21 +27,25 @@ _STATEMENT_AR: dict[str, dict[str, str]] = {
         "title_ar": "اهتمام مرتفع وتحويل منخفض",
         "statement_ar": "هذا المنتج يحظى باهتمام واضح، لكن التحويل إلى شراء لا يزال منخفضاً.",
         "statement_en": "The product has high interest but low conversion.",
+        "recommended_action_ar": "راجع صفحة المنتج وعرض الشحن قبل أي توسعة.",
     },
     "shipping_stronger_than_price": {
         "title_ar": "أدلة الشحن أقوى من السعر",
         "statement_ar": "أدلة التردد بسبب الشحن/التوصيل أقوى حالياً من أدلة السعر.",
         "statement_en": "Shipping evidence is stronger than price evidence.",
+        "recommended_action_ar": "اختبر شحنًا مجانيًا أو خفّض تكلفة الشحن.",
     },
     "repeated_return_without_purchase": {
         "title_ar": "عودة متكررة بلا شراء",
         "statement_ar": "عملاء عادوا مراراً إلى المتجر دون إتمام شراء مرتبط بهذا المنتج.",
         "statement_en": "Customers repeatedly return without purchasing.",
+        "recommended_action_ar": "راقب رحلة العميل بعد العودة واختبر تحسين صفحة المنتج.",
     },
     "no_quality_issue_evidence": {
         "title_ar": "لا دليل على مشكلة جودة",
         "statement_ar": "لا توجد أدلة حالية تدعم وجود مشكلة جودة في المنتج.",
         "statement_en": "No evidence currently supports a quality issue.",
+        "recommended_action_ar": "لا حاجة لاتخاذ إجراء حالياً — استمر في جمع الأدلة.",
     },
 }
 
@@ -45,6 +56,13 @@ _CAPABILITY_ORDER = (
     "no_quality_issue_evidence",
 )
 
+_CONFIDENCE_AR = {
+    LEVEL_VERY_HIGH: "مرتفع",
+    LEVEL_HIGH: "مرتفع",
+    LEVEL_MEDIUM: "متوسط",
+    LEVEL_LOW: "منخفض",
+}
+
 
 def observation_reality_validation_v1_enabled(
     *, environ: Mapping[str, str] | None = None
@@ -52,42 +70,113 @@ def observation_reality_validation_v1_enabled(
     import os
 
     env = environ if environ is not None else os.environ
-    # Default ON for Reality Validation package; requires Observation Foundation.
     if not observation_foundation_v1_enabled(environ=env):
         return False
     raw = str(env.get(ENV_OBSERVATION_REALITY_VALIDATION_V1, "1") or "1").strip().lower()
     return raw not in {"0", "false", "off", "no"}
 
 
-def _evidence_line(corr: Mapping[str, Any]) -> str:
-    parts: list[str] = []
+def _evidence_details(corr: Mapping[str, Any]) -> dict[str, Any]:
+    """Technical payload for Evidence Details / Developer View only — not Home."""
     counts = corr.get("counts") if isinstance(corr.get("counts"), Mapping) else {}
-    if counts:
-        for k in ("cart_add", "return", "purchase"):
-            if k in counts:
-                parts.append(f"{k}={counts[k]}")
     compare = corr.get("compare") if isinstance(corr.get("compare"), Mapping) else {}
-    if compare:
-        parts.append(
-            f"shipping={compare.get('shipping', 0)} price={compare.get('price', 0)}"
+    reasons = (
+        corr.get("reason_counts") if isinstance(corr.get("reason_counts"), Mapping) else {}
+    )
+    refs = corr.get("evidence_refs") if isinstance(corr.get("evidence_refs"), list) else []
+    return {
+        "correlation_kind": str(corr.get("correlation_kind") or ""),
+        "product_key": str(corr.get("product_key") or ""),
+        "counts": dict(counts),
+        "compare": dict(compare),
+        "reason_counts": dict(reasons),
+        "absent_family": corr.get("absent_family"),
+        "evidence_ref_count": len(refs),
+        "evidence_refs": refs[:20],
+    }
+
+
+def _confidence_from_evidence_engine_v1(
+    store_slug: str,
+    product_key: str,
+    corr: Mapping[str, Any],
+) -> dict[str, Any]:
+    """
+    Resolve confidence via Evidence Confidence Foundation.
+
+    Prefer product-scoped evaluation; else store-level evaluation;
+    else score from evidence-ref mass using engine thresholds.
+    """
+    level = ""
+    score: Optional[int] = None
+    source = "evidence_confidence_foundation_v1"
+    try:
+        from services.product_data.evidence_confidence_foundation_v1 import (  # noqa: PLC0415
+            evaluate_evidence_confidence_v1,
         )
-    reasons = corr.get("reason_counts") if isinstance(corr.get("reason_counts"), Mapping) else {}
-    if reasons and not compare:
-        top = sorted(reasons.items(), key=lambda x: (-int(x[1]), str(x[0])))[:3]
-        parts.append("reasons=" + ",".join(f"{a}:{b}" for a, b in top))
-    if corr.get("absent_family"):
-        parts.append(f"absent={corr.get('absent_family')}")
-    refs = corr.get("evidence_refs") or []
-    if isinstance(refs, list) and refs:
-        parts.append(f"evidence_refs={len(refs)}")
-    pk = str(corr.get("product_key") or "").strip()
-    if pk:
-        parts.append(f"product={pk[:48]}")
-    return "; ".join(parts) if parts else "correlation_evidence_present"
+
+        report = evaluate_evidence_confidence_v1(store_slug, assembly_window="d7")
+        evaluations = list(report.get("evaluations") or [])
+        pk = str(product_key or "").strip()
+        matched = None
+        if pk:
+            for ev in evaluations:
+                if not isinstance(ev, Mapping):
+                    continue
+                if str(ev.get("subject_id") or "").strip() == pk:
+                    matched = ev
+                    break
+        if matched is None and evaluations:
+            # Store-level / first evaluation from engine
+            matched = next((e for e in evaluations if isinstance(e, Mapping)), None)
+        if isinstance(matched, Mapping) and matched.get("confidence_level"):
+            level = str(matched.get("confidence_level") or "").strip().lower()
+            try:
+                score = int(matched.get("confidence_score"))
+            except (TypeError, ValueError):
+                score = None
+            source = "evidence_confidence_evaluation"
+    except Exception:  # noqa: BLE001
+        level = ""
+
+    if level not in _CONFIDENCE_AR:
+        # Engine threshold function — not a merchant hardcode
+        refs = corr.get("evidence_refs") if isinstance(corr.get("evidence_refs"), list) else []
+        counts = corr.get("counts") if isinstance(corr.get("counts"), Mapping) else {}
+        sample = 0
+        for k in ("cart_add", "return", "purchase"):
+            try:
+                sample += int(counts.get(k) or 0)
+            except (TypeError, ValueError):
+                pass
+        reasons = (
+            corr.get("reason_counts")
+            if isinstance(corr.get("reason_counts"), Mapping)
+            else {}
+        )
+        sample += sum(int(v or 0) for v in reasons.values()) if reasons else 0
+        # Map mass → 0..100 then engine bands
+        score = max(0, min(100, 25 + min(40, len(refs) * 5) + min(35, sample * 5)))
+        level = confidence_level_for_score(score)
+        source = "evidence_confidence_thresholds_from_correlation_mass"
+
+    if level not in _CONFIDENCE_AR:
+        level = LEVEL_LOW
+        score = score if score is not None else 0
+        source = "evidence_confidence_fallback_low"
+
+    return {
+        "confidence_level": level,
+        "confidence_score": score,
+        "confidence_ar": _CONFIDENCE_AR[level],
+        "confidence_source": source,
+    }
 
 
 def project_merchant_observation_findings_v1(
     package: Mapping[str, Any] | None,
+    *,
+    store_slug: str = "",
 ) -> list[dict[str, Any]]:
     """Project evidence-backed statement capabilities into merchant findings."""
     if not isinstance(package, Mapping):
@@ -100,16 +189,20 @@ def project_merchant_observation_findings_v1(
         cap = str(c.get("statement_capability") or "").strip()
         if not cap or cap not in _STATEMENT_AR:
             continue
-        # Keep first (strongest product row) per capability
         if cap not in by_cap:
             by_cap[cap] = c
 
+    slug = str(store_slug or package.get("store_slug") or "").strip()
     findings: list[dict[str, Any]] = []
     for cap in _CAPABILITY_ORDER:
         corr = by_cap.get(cap)
         if not corr:
             continue
         copy = _STATEMENT_AR[cap]
+        conf = _confidence_from_evidence_engine_v1(
+            slug, str(corr.get("product_key") or ""), corr
+        )
+        details = _evidence_details(corr)
         findings.append(
             {
                 "finding_id": f"observation_reality:{cap}",
@@ -117,9 +210,18 @@ def project_merchant_observation_findings_v1(
                 "title_ar": copy["title_ar"],
                 "statement_ar": copy["statement_ar"],
                 "statement_en": copy["statement_en"],
-                "evidence_summary": _evidence_line(corr),
-                "product_key": str(corr.get("product_key") or ""),
-                "correlation_kind": str(corr.get("correlation_kind") or ""),
+                "recommended_action_ar": copy["recommended_action_ar"],
+                "confidence_level": conf["confidence_level"],
+                "confidence_ar": conf["confidence_ar"],
+                "confidence_score": conf["confidence_score"],
+                "confidence_source": conf["confidence_source"],
+                # Merchant Home must not render these:
+                "evidence_details": details,
+                "diagnostics": {
+                    "product_key": details["product_key"],
+                    "correlation_kind": details["correlation_kind"],
+                    "evidence_ref_count": details["evidence_ref_count"],
+                },
                 "source": FOUNDATION_VERSION,
                 "temporary_surface": True,
             }
@@ -146,7 +248,7 @@ def build_observation_reality_validation_v1(
     pkg = assemble_observation_foundation_v1(
         store_slug, signals=signals, environ=environ
     )
-    findings = project_merchant_observation_findings_v1(pkg)
+    findings = project_merchant_observation_findings_v1(pkg, store_slug=store_slug)
     required = list(_CAPABILITY_ORDER)
     present = [f["capability_id"] for f in findings]
     return {
@@ -163,9 +265,9 @@ def build_observation_reality_validation_v1(
         "missing_capabilities": [c for c in required if c not in present],
         "acceptance_all_four": len(present) == 4,
         "foundation_counts": pkg.get("counts") or {},
-        "eyebrow_ar": "معرفة من الملاحظة (تجريبي)",
+        "eyebrow_ar": "معرفة من الملاحظة",
         "title_ar": "ماذا نلاحظ في منتجاتك الآن؟",
-        "lede_ar": "استنتاجات مبنية على ارتباطات مثبتة فقط — بلا تخمين.",
+        "lede_ar": "ملاحظات قصيرة مبنية على أدلة — مع خطوة مقترحة وثقة واضحة.",
     }
 
 

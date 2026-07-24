@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Observation Reality Validation V1 — merchant findings from correlations."""
+"""Observation Reality Validation V1 — merchant findings (polished surface)."""
 from __future__ import annotations
 
 import unittest
@@ -65,21 +65,16 @@ class ObservationRealityValidationV1Tests(unittest.TestCase):
         ]
         pkg = build_observation_reality_validation_v1("demo", signals=signals)
         self.assertTrue(pkg["ok"])
-        self.assertTrue(pkg["temporary"])
         self.assertTrue(pkg["acceptance_all_four"])
-        caps = {f["capability_id"] for f in pkg["findings"]}
-        self.assertEqual(
-            caps,
-            {
-                "high_interest_low_conversion",
-                "shipping_stronger_than_price",
-                "repeated_return_without_purchase",
-                "no_quality_issue_evidence",
-            },
-        )
         for f in pkg["findings"]:
             self.assertTrue(f["statement_ar"])
-            self.assertTrue(f["evidence_summary"])
+            self.assertTrue(f["recommended_action_ar"])
+            self.assertIn(f["confidence_ar"], {"مرتفع", "متوسط", "منخفض"})
+            self.assertIn(f["confidence_level"], {"low", "medium", "high", "very_high"})
+            # Technical fields must not be merchant-facing keys
+            self.assertNotIn("evidence_summary", f)
+            self.assertIn("evidence_details", f)
+            self.assertIn("counts", f["evidence_details"])
 
     def test_no_finding_without_capability(self) -> None:
         findings = project_merchant_observation_findings_v1(
