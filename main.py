@@ -1062,6 +1062,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/merchant-experience",
         "/dev/time-authority",
         "/dev/business-findings-lifecycle",
+        "/dev/observation-reality-validation",
         "/dev/commerce-intelligence-synthesis",
         "/dev/commerce-intelligence-knowledge",
         "/dev/data-growth-measurement",
@@ -12236,6 +12237,50 @@ def dev_business_findings_lifecycle(
     )
     status = 403 if "store_not_allowlisted" in (report.get("errors") or []) else 200
     return j(report, status)
+
+
+@app.get("/dev/observation-reality-validation")
+def dev_observation_reality_validation(
+    store: Optional[str] = None,
+    store_slug: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Observation Reality Validation V1 probe.
+
+    Returns merchant findings package (count, capabilities, mass_source).
+    Default store=demo. No Product Intelligence.
+    """
+    from services.observation_foundation_v1.merchant_findings_v1 import (  # noqa: PLC0415
+        build_observation_reality_validation_v1,
+    )
+
+    slug = (store or store_slug or "demo").strip() or "demo"
+    pkg = build_observation_reality_validation_v1(slug)
+    findings = list(pkg.get("findings") or [])
+    report = {
+        "ok": bool(pkg.get("ok")),
+        "enabled": bool(pkg.get("enabled")),
+        "store_slug": slug,
+        "findings_count": len(findings),
+        "acceptance_all_four": bool(pkg.get("acceptance_all_four")),
+        "present_capabilities": pkg.get("present_capabilities") or [],
+        "missing_capabilities": pkg.get("missing_capabilities") or [],
+        "mass_source": pkg.get("mass_source"),
+        "titles_ar": [f.get("title_ar") for f in findings],
+        "has_statement_action_confidence": all(
+            bool(f.get("statement_ar"))
+            and bool(f.get("recommended_action_ar"))
+            and bool(f.get("confidence_ar"))
+            for f in findings
+        )
+        if findings
+        else False,
+        "technical_fields_on_findings": any(
+            "evidence_summary" in f or "cart_add=" in str(f.get("statement_ar") or "")
+            for f in findings
+        ),
+    }
+    return j(report, 200)
 
 
 @app.get("/dev/commerce-intelligence-synthesis")
