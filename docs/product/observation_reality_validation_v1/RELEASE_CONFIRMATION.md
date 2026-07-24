@@ -12,6 +12,7 @@
 |------|--------|
 | Implementation merge | PR #65 → `3d2aac2` |
 | Final UI Polish merge | PR #66 → `07e9a780ac715ae98130b5fe74b60d5ce1fb951f` |
+| Release docs merge | PR #67 → `5386e50e61ff89e436e45d68f252bc5f0fd47291` |
 | Railway | Success (`smart-reply-ai` / smartreplyai.net) |
 
 ## Production UI contract (approved)
