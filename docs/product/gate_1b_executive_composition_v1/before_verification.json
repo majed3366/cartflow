@@ -1,0 +1,72 @@
+{
+  "label": "before",
+  "email": "cf.g1b.c49093fb57@smartreplyai.net",
+  "generated_at_utc": "2026-07-24T20:53:12.514676+00:00",
+  "production_url": "https://smartreplyai.net/dashboard#home",
+  "gate": "gate_1b_executive_composition",
+  "probe": {
+    "http": 200,
+    "surface_mode": "executive_summary_v1",
+    "slim": true,
+    "gate": "gate_1_home_slim_transport",
+    "hes_ok": true,
+    "sections": [
+      {
+        "id": "health",
+        "title_ar": "صحة العمل",
+        "summary_ar": "لا نشاط كافٍ بعد لملخص تشغيلي — استمر في جمع الأدلة.",
+        "status_ar": "بانتظار أدلة",
+        "href": "#carts",
+        "empty": true,
+        "owner_page": null
+      },
+      {
+        "id": "decisions",
+        "title_ar": "قرارات اليوم",
+        "summary_ar": "لا قرار قابل للتنفيذ اليوم — راجع مساحة القرار عند توفر أدلة.",
+        "status_ar": "لا قرار",
+        "href": "#workspace",
+        "empty": true,
+        "owner_page": null
+      },
+      {
+        "id": "observations",
+        "title_ar": "ملاحظات المنتجات",
+        "summary_ar": "لا توجد أدلة كافية لإصدار ملاحظة مرتبطة بمنتج محدد.",
+        "status_ar": "أدلة غير كافية",
+        "href": "#workspace",
+        "empty": true,
+        "owner_page": null
+      },
+      {
+        "id": "carts",
+        "title_ar": "السلال",
+        "summary_ar": "لا سلات مسجّلة بعد — راقب عند توفر نشاط.",
+        "status_ar": "فارغ",
+        "href": "#carts",
+        "empty": true,
+        "owner_page": null
+      },
+      {
+        "id": "communication",
+        "title_ar": "التواصل",
+        "summary_ar": "لا نشاط تواصل تشغيلي مسجّل بعد.",
+        "status_ar": "بانتظار",
+        "href": "#communication",
+        "empty": true,
+        "owner_page": null
+      }
+    ],
+    "has_store_status_title": false,
+    "has_old_health_title": true,
+    "has_view_details": true,
+    "has_hes_title": true,
+    "ownership_href": null,
+    "text_sample": "ملخص تنفيذي\n\nماذا يجب أن تعرف الآن؟\n\nملخص سريع فقط — التفاصيل في صفحاتها.\n\nصحة العمل\nبانتظار أدلة\n\nلا نشاط كافٍ بعد لملخص تشغيلي — استمر في جمع الأدلة.\n\nعرض التفاصيل ←\n\nقرارات اليوم\nلا قرار\n0\n\nلا قرار قابل للتنفيذ اليوم — راجع مساحة القرار عند توفر أدلة.\n\nعرض التفاصيل ←\n\nملاحظات المنتجات\nأدلة غير كافية\n0\n\nلا توجد أدلة كافية لإصدار ملاحظة مرتبطة بمنتج محدد.\n\nعرض التفاصيل ←\n\nالسلال\nفارغ\n0\n\nلا سلات مسجّلة بعد — راقب عند توفر نشاط.\n\nعرض التفاصيل ←\n\nالتواصل\nبانتظار\n0\n\nلا نشاط تواصل تشغيلي مسجّل بعد.\n\nعرض التفاصيل ←\n\nالصفحة الرئيسية = ملخص تنفيذي · القرارات في مساحة القرار · السلال للتشغيل · التواصل للمتابعة · الإعدادات للضبط."
+  },
+  "screenshots": {
+    "desktop": "docs/product/gate_1b_executive_composition_v1/before_desktop_home.png",
+    "mobile": "docs/product/gate_1b_executive_composition_v1/before_mobile_home.png"
+  },
+  "ok": true
+}

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Compose slim Home Executive Summary V1 payload (Gate 1 — Home Slim Transport).
+Compose Home Executive Summary V1 (Gate 1-B — Executive Summary Composition).
 
 Home answers: "What should the merchant know now?"
 Prefers ``home_teaser_inputs_v1`` (lightweight). Never ships PI action/confidence
@@ -25,6 +25,7 @@ OWNERSHIP_V1 = {
     "settings": "configuration",
 }
 
+# Stable section ids (transport/UI). Titles are merchant-facing Arabic.
 SECTION_IDS_V1 = (
     "health",
     "decisions",
@@ -34,15 +35,25 @@ SECTION_IDS_V1 = (
 )
 
 OBS_EMPTY_AR = "لا توجد أدلة كافية لإصدار ملاحظة مرتبطة بمنتج محدد."
+DECISIONS_EMPTY_AR = "لا تتوفر أدلة كافية لإصدار قرار اليوم."
 
 GOVERNANCE_V1 = {
     "sprint": "home_stabilization_v1",
-    "gate": "gate_1_home_slim_transport",
+    "gate": "gate_1b_executive_composition",
     "single_owner": "home_executive_summary_v1",
     "single_data_source": "home_teaser_inputs_v1",
     "single_render_path": "maApplyHomeExecutiveSummaryV1",
     "sections": list(SECTION_IDS_V1),
     "product_intelligence": False,
+}
+
+# Card → owning constitutional page (View Details).
+SECTION_OWNERSHIP_HREF_V1 = {
+    "health": "#carts",
+    "decisions": "#workspace",
+    "observations": "#workspace",
+    "carts": "#carts",
+    "communication": "#communication",
 }
 
 
@@ -53,10 +64,17 @@ def _teasers(summary: Mapping[str, Any]) -> dict[str, Any]:
     return extract_home_teaser_inputs_v1(summary)
 
 
+def _as_int(v: Any) -> int:
+    try:
+        return max(0, int(v))
+    except (TypeError, ValueError):
+        return 0
+
+
 def _observation_section(summary: Mapping[str, Any]) -> dict[str, Any]:
     t = _teasers(summary)
     obs = t.get("observations") if isinstance(t.get("observations"), Mapping) else {}
-    count = int(obs.get("count") or 0)
+    count = _as_int(obs.get("count"))
     top = obs.get("top") if isinstance(obs.get("top"), Mapping) else None
     if count <= 0 or not top:
         return {
@@ -65,127 +83,216 @@ def _observation_section(summary: Mapping[str, Any]) -> dict[str, Any]:
             "summary_ar": OBS_EMPTY_AR,
             "status_ar": "أدلة غير كافية",
             "count": 0,
-            "view_details_href": "#workspace",
+            "view_details_href": SECTION_OWNERSHIP_HREF_V1["observations"],
             "view_details_ar": "عرض التفاصيل",
             "empty": True,
             "empty_state_ar": OBS_EMPTY_AR,
             "findings_preview": [],
+            "owner_page": "decision_workspace",
         }
     name = str(top.get("product_name_ar") or "").strip()
     statement = str(top.get("statement_ar") or "").strip()
-    summary_ar = f"{name}: {statement}" if name else statement
+    # Merchant-oriented observation line — statement only (no action/confidence).
+    if name and statement:
+        summary_ar = f"المنتج {name}: {statement}"
+    elif name:
+        summary_ar = f"المنتج {name} يحتاج متابعة."
+    else:
+        summary_ar = statement
     return {
         "id": "observations",
         "title_ar": "ملاحظات المنتجات",
         "summary_ar": summary_ar,
-        "status_ar": "متوفر",
+        "status_ar": "يتطلب انتباهاً",
         "count": count,
-        "view_details_href": "#workspace",
+        "view_details_href": SECTION_OWNERSHIP_HREF_V1["observations"],
         "view_details_ar": "عرض التفاصيل",
         "empty": False,
         "empty_state_ar": "",
-        # Gate 1: no PI preview cards on Home
         "findings_preview": [],
+        "owner_page": "decision_workspace",
     }
 
 
 def _decisions_section(summary: Mapping[str, Any]) -> dict[str, Any]:
     t = _teasers(summary)
     dec = t.get("decisions") if isinstance(t.get("decisions"), Mapping) else {}
-    count = int(dec.get("count") or 0)
+    count = _as_int(dec.get("count"))
     title = str(dec.get("top_title_ar") or "").strip()
-    if count == 0:
+    # Only surface a decision when evidence-backed title exists — never invent.
+    if count <= 0 or not title:
         return {
             "id": "decisions",
             "title_ar": "قرارات اليوم",
-            "summary_ar": "لا قرار قابل للتنفيذ اليوم — راجع مساحة القرار عند توفر أدلة.",
-            "status_ar": "لا قرار",
+            "summary_ar": DECISIONS_EMPTY_AR,
+            "status_ar": "أدلة غير كافية",
             "count": 0,
-            "view_details_href": "#workspace",
+            "view_details_href": SECTION_OWNERSHIP_HREF_V1["decisions"],
             "view_details_ar": "عرض التفاصيل",
             "empty": True,
+            "owner_page": "decision_workspace",
         }
     return {
         "id": "decisions",
         "title_ar": "قرارات اليوم",
-        "summary_ar": title or "قرار جاهز للمراجعة",
-        "status_ar": "جاهز للمراجعة",
+        "summary_ar": title,
+        "status_ar": "أولوية اليوم" if count == 1 else f"{count} قرارات",
         "count": count,
-        "view_details_href": "#workspace",
+        "view_details_href": SECTION_OWNERSHIP_HREF_V1["decisions"],
         "view_details_ar": "عرض التفاصيل",
         "empty": False,
+        "owner_page": "decision_workspace",
     }
 
 
 def _health_section(summary: Mapping[str, Any]) -> dict[str, Any]:
     t = _teasers(summary)
     health = t.get("health") if isinstance(t.get("health"), Mapping) else {}
-    watching = bool(health.get("watching")) or int(health.get("abandoned_carts") or 0) > 0
-    if watching:
-        summary_ar = "CartFlow يراقب متجرك — ركّز على القرار الأهم اليوم."
-        status_ar = "مراقبة"
+    waiting = _as_int(health.get("abandoned_carts"))
+    active = _as_int(health.get("active_carts"))
+    recovered = _as_int(health.get("recovered_today"))
+    no_phone = _as_int(health.get("no_phone"))
+    store_ok = health.get("store_connected")
+    needs = bool(health.get("needs_attention")) or waiting > 0 or no_phone > 0
+
+    href = SECTION_OWNERSHIP_HREF_V1["health"]
+    if store_ok is False:
+        summary_ar = "ربط المتجر يحتاج متابعة قبل الاعتماد على الملخص التشغيلي."
+        status_ar = "يتطلب متابعة"
+        href = "#home-setup"
+        empty = False
+    elif waiting > 0 and no_phone > 0:
+        summary_ar = "توجد عناصر تحتاج متابعة — سلال بانتظار الإجراء وأخرى بلا رقم تواصل."
+        status_ar = "يتطلب متابعة"
+        empty = False
+    elif waiting > 0:
+        summary_ar = "توجد عناصر تحتاج متابعة في تشغيل المتجر."
+        status_ar = "يتطلب متابعة"
+        empty = False
+    elif no_phone > 0:
+        summary_ar = "توجد سلال بلا رقم تواصل — قد يتأثر مسار المتابعة."
+        status_ar = "يتطلب متابعة"
+        empty = False
+    elif active > 0 or recovered > 0:
+        summary_ar = "حركة المتجر مستقرة — لا توجد مشكلات تشغيلية مؤثرة ظاهرة الآن."
+        status_ar = "مستقر"
+        empty = False
+        needs = False
     else:
-        summary_ar = "لا نشاط كافٍ بعد لملخص تشغيلي — استمر في جمع الأدلة."
-        status_ar = "بانتظار أدلة"
+        summary_ar = "لا توجد مشكلات تشغيلية مؤثرة ظاهرة — بانتظار نشاط كافٍ لملخص أدق."
+        status_ar = "هادئ"
+        empty = True
+        needs = False
+
     return {
         "id": "health",
-        "title_ar": "صحة العمل",
+        "title_ar": "حالة المتجر",
         "summary_ar": summary_ar,
         "status_ar": status_ar,
-        "view_details_href": "#carts",
+        "count": waiting if waiting else (active if active else None),
+        "view_details_href": href,
         "view_details_ar": "عرض التفاصيل",
-        "empty": not watching,
+        "empty": empty,
+        "needs_attention": needs,
+        "owner_page": "carts" if href == "#carts" else "settings",
     }
 
 
 def _carts_section(summary: Mapping[str, Any]) -> dict[str, Any]:
     t = _teasers(summary)
     carts = t.get("carts") if isinstance(t.get("carts"), Mapping) else {}
-    count = int(carts.get("count") or 0)
-    if count > 0:
-        summary_ar = f"{count} سلة مسجّلة — التفاصيل في صفحة السلال."
+    waiting = _as_int(carts.get("waiting") if carts.get("waiting") is not None else carts.get("count"))
+    active = _as_int(carts.get("active"))
+    no_phone = _as_int(carts.get("no_phone"))
+    count = waiting
+
+    if waiting > 0 and no_phone > 0:
+        summary_ar = (
+            f"يوجد {waiting} سلة بانتظار المتابعة، و{no_phone} بلا رقم تواصل."
+        )
+        status_ar = "يتطلب متابعة"
+        empty = False
+    elif waiting > 0:
+        summary_ar = f"يوجد {waiting} سلة بانتظار المتابعة."
+        status_ar = "بانتظار متابعة"
+        empty = False
+    elif no_phone > 0:
+        summary_ar = f"توجد {no_phone} سلة بلا رقم تواصل."
+        status_ar = "بلا تواصل"
+        empty = False
+        count = no_phone
+    elif active > 0:
+        summary_ar = f"حركة سلال نشطة ({active}) — لا طوابير متابعة ظاهرة الآن."
         status_ar = "نشط"
         empty = False
+        count = active
     else:
-        summary_ar = "لا سلات مسجّلة بعد — راقب عند توفر نشاط."
-        status_ar = "فارغ"
+        summary_ar = "لا توجد سلال تحتاج متابعة حالياً."
+        status_ar = "لا مهام"
         empty = True
+
     return {
         "id": "carts",
         "title_ar": "السلال",
         "summary_ar": summary_ar,
         "status_ar": status_ar,
         "count": count,
-        "view_details_href": "#carts",
+        "view_details_href": SECTION_OWNERSHIP_HREF_V1["carts"],
         "view_details_ar": "عرض التفاصيل",
         "empty": empty,
+        "owner_page": "carts",
     }
 
 
 def _communication_section(summary: Mapping[str, Any]) -> dict[str, Any]:
     t = _teasers(summary)
     comm = t.get("communication") if isinstance(t.get("communication"), Mapping) else {}
-    sent = int(comm.get("sent") or 0)
-    schedules = int(comm.get("schedules") or 0)
+    sent = _as_int(comm.get("sent"))
+    schedules = _as_int(comm.get("schedules"))
+    no_phone = _as_int(comm.get("no_phone"))
+    waiting = _as_int(comm.get("waiting"))
+    wa_state = str(comm.get("wa_state_key") or "").strip().lower()
     count = sent + schedules
-    activity = bool(comm.get("activity")) or count > 0
-    if activity:
-        summary_ar = f"نشاط تواصل: {sent} إرسال و{schedules} جدولة."
-        status_ar = "نشط"
+
+    if no_phone > 0 and waiting > 0:
+        summary_ar = "يوجد عملاء بانتظار المتابعة، وتوجد سلال بلا رقم تواصل."
+        status_ar = "يتطلب متابعة"
         empty = False
+        count = max(count, waiting, no_phone)
+    elif waiting > 0 or schedules > 0:
+        summary_ar = "يوجد عملاء بانتظار المتابعة."
+        status_ar = "بانتظار متابعة"
+        empty = False
+        count = max(count, waiting, schedules)
+    elif no_phone > 0:
+        summary_ar = "توجد سلال بلا رقم تواصل."
+        status_ar = "بلا تواصل"
+        empty = False
+        count = no_phone
+    elif sent > 0:
+        summary_ar = f"تم تسجيل {sent} إرسال تواصل اليوم — لا مهام معلّقة ظاهرة."
+        status_ar = "مكتمل اليوم"
+        empty = False
+    elif wa_state and wa_state not in {"ready", "connected", ""}:
+        summary_ar = "مسار التواصل يحتاج ضبطاً قبل الاعتماد على المتابعة الآلية."
+        status_ar = "يحتاج ضبطاً"
+        empty = False
+        # Settings/WhatsApp owns readiness — still route Communication for status history.
     else:
-        summary_ar = "لا نشاط تواصل تشغيلي مسجّل بعد."
-        status_ar = "بانتظار"
+        summary_ar = "لا توجد مهام تواصل حالية."
+        status_ar = "لا مهام"
         empty = True
+
     return {
         "id": "communication",
         "title_ar": "التواصل",
         "summary_ar": summary_ar,
         "status_ar": status_ar,
         "count": count,
-        "view_details_href": "#communication",
+        "view_details_href": SECTION_OWNERSHIP_HREF_V1["communication"],
         "view_details_ar": "عرض التفاصيل",
         "empty": empty,
+        "owner_page": "communication",
     }
 
 
@@ -218,6 +325,7 @@ def build_home_executive_summary_v1(
         "title_ar": "ماذا يجب أن تعرف الآن؟",
         "lede_ar": "ملخص سريع فقط — التفاصيل في صفحاتها.",
         "ownership": dict(OWNERSHIP_V1),
+        "section_ownership_href": dict(SECTION_OWNERSHIP_HREF_V1),
         "governance": dict(GOVERNANCE_V1),
         "sections": sections,
         "product_intelligence": False,
@@ -274,10 +382,12 @@ def attach_home_executive_summary_to_summary_v1(
 
 
 __all__ = [
+    "DECISIONS_EMPTY_AR",
     "GOVERNANCE_V1",
     "OBS_EMPTY_AR",
     "OWNERSHIP_V1",
     "SECTION_IDS_V1",
+    "SECTION_OWNERSHIP_HREF_V1",
     "attach_home_executive_summary_to_summary_v1",
     "build_home_executive_summary_v1",
     "slim_observation_package_for_home_v1",
