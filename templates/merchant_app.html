@@ -90,9 +90,31 @@
   .orv-conf--high{background:rgba(47,111,78,.12);color:#1f3d2f}
   .orv-conf--medium{background:rgba(140,100,60,.12);color:#5a3d1a}
   .orv-conf--low{background:rgba(0,0,0,.06);color:#444}
+  .orv-card__product{margin:0 0 4px;font-size:13px;font-weight:700;color:#1f3d2f}
   .orv-card__title{margin:0 0 6px;font-size:15px;line-height:1.4;font-weight:700}
   .orv-card__statement{margin:0;font-size:14px;line-height:1.5}
   .orv-card__action{margin:10px 0 0;padding-top:8px;border-top:1px dashed rgba(0,0,0,.08);font-size:13px;line-height:1.5}
+  .hes-surface{padding:16px 18px;border-radius:14px;background:linear-gradient(180deg,#f6f9f7 0%,#fff 50%);border:1px solid rgba(31,61,47,.14)}
+  .hes-eyebrow{margin:0 0 4px;font-size:11px;font-weight:700;opacity:.7}
+  .hes-header h2{margin:0 0 6px;font-size:22px;line-height:1.35;color:#1f3d2f}
+  .hes-lede{margin:0 0 14px;font-size:13px;line-height:1.5;opacity:.8}
+  .hes-sections{display:grid;gap:12px}
+  .hes-section{padding:12px 14px;border-radius:10px;background:#fff;border:1px solid rgba(53,92,125,.14)}
+  .hes-section__head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+  .hes-section__head h3{margin:0;font-size:15px}
+  .hes-count{display:inline-block;min-width:1.5em;text-align:center;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(47,111,78,.12);color:#1f3d2f}
+  .hes-section__summary{margin:0;font-size:14px;line-height:1.5}
+  .hes-section__cta{margin:8px 0 0;font-size:13px}
+  .hes-section__cta a{color:#2f6f4e;font-weight:700;text-decoration:none}
+  .hes-details{margin-top:10px;padding-top:10px;border-top:1px dashed rgba(0,0,0,.08)}
+  .hes-obs-cards{display:grid;gap:8px}
+  .hes-obs-card{padding:10px 12px;border-radius:8px;background:#f8faf9;border-inline-start:3px solid #2f6f4e}
+  .hes-obs-product{margin:0 0 4px;font-weight:700;font-size:13px}
+  .hes-obs-statement{margin:0 0 6px;font-size:13px;line-height:1.45}
+  .hes-obs-action{margin:8px 0 0;font-size:12px;line-height:1.45}
+  .hes-conf{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(0,0,0,.06)}
+  .hes-empty,.hes-details-note{margin:0;font-size:13px;opacity:.85}
+  .hes-ownership{margin:14px 0 0;font-size:12px;opacity:.7}
   .meif-item{margin:0 0 10px;padding:0}
   .meif-item__title{font-size:14px;line-height:1.45}
   .meif-item__meta{font-size:12px;opacity:.7;margin-top:2px}
@@ -1118,7 +1140,8 @@
 <script defer src="/static/merchant_vip_automation_ui.js"></script>
 <script defer src="/static/merchant_home_experience.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_experience_integration_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-msr1"></script>
-<script defer src="/static/observation_reality_validation_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-orv1p"></script>
+<script defer src="/static/observation_reality_validation_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-orv1hes"></script>
+<script defer src="/static/home_executive_summary_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-hes1"></script>
 <script defer src="/static/merchant_dashboard_home_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_pulse_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_intelligence_carts_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
