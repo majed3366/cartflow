@@ -1,0 +1,138 @@
+{
+  "lab": "observation_reality_validation_v1",
+  "generated_at_utc": "2026-07-24T15:25:32.380036+00:00",
+  "database_path": "C:\\Users\\Toshiba\\AppData\\Local\\Temp\\cartflow_orv_v1_20260724.db",
+  "simulation": {
+    "simulation_run_id": "srs_1ee1738405b94821be7d390161df12c4",
+    "reality_score": {
+      "overall": 80.0,
+      "dimensions": {
+        "customer_diversity": 100.0,
+        "traffic_realism": 80.0,
+        "purchase_realism": 90.0,
+        "product_realism": 100.0,
+        "recovery_realism": 90.0,
+        "knowledge_realism": 80.0,
+        "timeline_realism": 50.0,
+        "session_realism": 55.0,
+        "behaviour_realism": 85.0,
+        "execution_fidelity": 70.0
+      },
+      "internal_only": true,
+      "merchant_facing": false,
+      "sample": {
+        "events": 418,
+        "customers": 48,
+        "sessions": 48,
+        "products": 8
+      }
+    }
+  },
+  "summary_attach": {
+    "http_status": 200,
+    "findings_count": 4,
+    "present": [
+      "high_interest_low_conversion",
+      "shipping_stronger_than_price",
+      "repeated_return_without_purchase",
+      "no_quality_issue_evidence"
+    ],
+    "resolved": "demo"
+  },
+  "observation_reality_validation": {
+    "present_capabilities": [
+      "high_interest_low_conversion",
+      "shipping_stronger_than_price",
+      "repeated_return_without_purchase",
+      "no_quality_issue_evidence"
+    ],
+    "missing_capabilities": [],
+    "acceptance_all_four": true,
+    "findings": [
+      {
+        "finding_id": "observation_reality:high_interest_low_conversion",
+        "capability_id": "high_interest_low_conversion",
+        "title_ar": "اهتمام مرتفع وتحويل منخفض",
+        "statement_ar": "هذا المنتج يحظى باهتمام واضح، لكن التحويل إلى شراء لا يزال منخفضاً.",
+        "statement_en": "The product has high interest but low conversion.",
+        "evidence_summary": "cart_add=2; purchase=0; evidence_refs=6; product=DEMO-PERFUME",
+        "product_key": "DEMO-PERFUME",
+        "correlation_kind": "product_interest_conversion_v1",
+        "source": "observation_foundation_v1",
+        "temporary_surface": true
+      },
+      {
+        "finding_id": "observation_reality:shipping_stronger_than_price",
+        "capability_id": "shipping_stronger_than_price",
+        "title_ar": "أدلة الشحن أقوى من السعر",
+        "statement_ar": "أدلة التردد بسبب الشحن/التوصيل أقوى حالياً من أدلة السعر.",
+        "statement_en": "Shipping evidence is stronger than price evidence.",
+        "evidence_summary": "shipping=1 price=0; evidence_refs=6; product=DEMO-PERFUME",
+        "product_key": "DEMO-PERFUME",
+        "correlation_kind": "reason_strength_compare_v1",
+        "source": "observation_foundation_v1",
+        "temporary_surface": true
+      },
+      {
+        "finding_id": "observation_reality:repeated_return_without_purchase",
+        "capability_id": "repeated_return_without_purchase",
+        "title_ar": "عودة متكررة بلا شراء",
+        "statement_ar": "عملاء عادوا مراراً إلى المتجر دون إتمام شراء مرتبط بهذا المنتج.",
+        "statement_en": "Customers repeatedly return without purchasing.",
+        "evidence_summary": "return=2; purchase=0; evidence_refs=6; product=DEMO-PERFUME",
+        "product_key": "DEMO-PERFUME",
+        "correlation_kind": "repeat_return_without_purchase_v1",
+        "source": "observation_foundation_v1",
+        "temporary_surface": true
+      },
+      {
+        "finding_id": "observation_reality:no_quality_issue_evidence",
+        "capability_id": "no_quality_issue_evidence",
+        "title_ar": "لا دليل على مشكلة جودة",
+        "statement_ar": "لا توجد أدلة حالية تدعم وجود مشكلة جودة في المنتج.",
+        "statement_en": "No evidence currently supports a quality issue.",
+        "evidence_summary": "reasons=shipping:1,thinking:1; absent=quality; evidence_refs=6; product=DEMO-PERFUME",
+        "product_key": "DEMO-PERFUME",
+        "correlation_kind": "absent_reason_evidence_v1",
+        "source": "observation_foundation_v1",
+        "temporary_surface": true
+      }
+    ],
+    "foundation_counts": {
+      "signals_in": 207,
+      "observations": 189,
+      "correlations": 46,
+      "statement_capabilities_ready": 4
+    }
+  },
+  "screenshots": {
+    "shots": [
+      "01_desktop_home_observation_findings.png",
+      "02_mobile_home_observation_findings.png"
+    ],
+    "paint": {
+      "painted_cards": 4,
+      "titles": [
+        "اهتمام مرتفع وتحويل منخفض",
+        "أدلة الشحن أقوى من السعر",
+        "عودة متكررة بلا شراء",
+        "لا دليل على مشكلة جودة"
+      ],
+      "statements": [
+        "هذا المنتج يحظى باهتمام واضح، لكن التحويل إلى شراء لا يزال منخفضاً.",
+        "أدلة التردد بسبب الشحن/التوصيل أقوى حالياً من أدلة السعر.",
+        "عملاء عادوا مراراً إلى المتجر دون إتمام شراء مرتبط بهذا المنتج.",
+        "لا توجد أدلة حالية تدعم وجود مشكلة جودة في المنتج."
+      ],
+      "capabilities": [
+        "high_interest_low_conversion",
+        "shipping_stronger_than_price",
+        "repeated_return_without_purchase",
+        "no_quality_issue_evidence"
+      ],
+      "surface": true
+    }
+  },
+  "acceptance": true,
+  "product_intelligence_v1": "NOT STARTED — await production review approval"
+}

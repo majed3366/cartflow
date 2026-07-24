@@ -77,6 +77,17 @@
   .meif-banner__q{display:block;margin-top:6px;font-size:12px;opacity:.7}
   .meif-carts-focus{margin:0 0 16px}
   .meif-decision-root{margin:0 0 18px}
+  .orv-root{margin:0 0 18px}
+  .orv-surface{padding:14px 16px;border-radius:12px;background:linear-gradient(180deg,#f7faf8 0%,#fff 55%);border:1px solid rgba(31,61,47,.14)}
+  .orv-eyebrow{margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.02em;opacity:.7}
+  .orv-surface h3{margin:0 0 6px;font-size:18px;line-height:1.35;color:#1f3d2f}
+  .orv-lede,.orv-empty{margin:0 0 12px;font-size:13px;line-height:1.5;opacity:.8}
+  .orv-cards{display:grid;gap:10px}
+  .orv-card{padding:12px 14px;border-radius:10px;background:#fff;border:1px solid rgba(53,92,125,.16);border-inline-start:3px solid #2f6f4e}
+  .orv-card__eyebrow{margin:0 0 4px;font-size:11px;font-weight:700;opacity:.7}
+  .orv-card__title{margin:0 0 6px;font-size:15px;line-height:1.4;font-weight:700}
+  .orv-card__statement{margin:0;font-size:14px;line-height:1.5}
+  .orv-card__evidence{margin:8px 0 0;font-size:12px;line-height:1.45;opacity:.8}
   .meif-item{margin:0 0 10px;padding:0}
   .meif-item__title{font-size:14px;line-height:1.45}
   .meif-item__meta{font-size:12px;opacity:.7;margin-top:2px}
@@ -167,6 +178,14 @@
 
   <div class="page active ma-page-home ma-pe-v2" id="page-home">
     <div id="ma-home-alerts-root" class="ma-home-alerts-band ma-home-section" hidden aria-live="polite"></div>
+
+    <!-- Observation Reality Validation V1 — temporary merchant surface -->
+    <div
+      id="observation-reality-validation-root"
+      class="orv-root ma-home-section"
+      aria-live="polite"
+      hidden
+    ></div>
 
     <section
       id="ma-home-experience-root"
@@ -1094,6 +1113,7 @@
 <script defer src="/static/merchant_vip_automation_ui.js"></script>
 <script defer src="/static/merchant_home_experience.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_experience_integration_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-msr1"></script>
+<script defer src="/static/observation_reality_validation_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-orv1"></script>
 <script defer src="/static/merchant_dashboard_home_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_pulse_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_intelligence_carts_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>

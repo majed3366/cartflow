@@ -345,6 +345,18 @@ def finalize_dashboard_summary_payload(
         attach_adaptive_cognition_to_summary_v1(body)
     except Exception as exc:  # noqa: BLE001
         log.warning("adaptive cognition summary attach: %s", exc)
+    # Observation Reality Validation V1 — temporary merchant-visible findings
+    try:
+        from services.observation_foundation_v1.merchant_findings_v1 import (  # noqa: PLC0415
+            attach_observation_reality_validation_to_summary_v1,
+        )
+
+        _home = body.get("merchant_home_experience_v1") or {}
+        _slug = str(_home.get("store_slug") or "").strip() or store_slug
+        if _slug:
+            attach_observation_reality_validation_to_summary_v1(body, _slug)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("observation_reality_validation_v1 attach: %s", exc)
     _attach_commerce_signals_then_pulse(body, store_slug=store_slug)
     return body
 
