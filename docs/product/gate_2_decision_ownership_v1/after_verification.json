@@ -1,0 +1,36 @@
+{
+  "email": "cf.g2.a692ac7895@smartreplyai.net",
+  "workspace_probe": {
+    "http": 200,
+    "ok": true,
+    "gate_2": true,
+    "business_finding_count": 0,
+    "mission": "ماذا يجب أن أقرر الآن، ولماذا؟",
+    "dual_stack": false,
+    "meif_hidden": true,
+    "meif_empty": true,
+    "has_mission_copy": true,
+    "workspace_text_sample": "مساحة القرار\n\nتشغيل متجرك عندما يحتاج قراراً بشرياً.\n\nيحتاج قرارك: 0\n\n✅\nلا يوجد ما يحتاج قرارك الآن\n\nCartFlow يتابع متجرك تلقائياً\n\n🤖\nCartFlow يعمل\n\nيتابع السلال تلقائياً\n\nعرض التفاصيل\n✅\nالنتائج\n\nتم استرداد 0 سلال\n\nآخر 24 ساعة\n\n📊\nآخر الإنجازات\n\n—\n\nاليوم"
+  },
+  "home_probe": {
+    "http": 200,
+    "surface_mode": "executive_summary_v1",
+    "hes_ok": true,
+    "decisions_href": "#workspace",
+    "decisions_cta": "عرض التفاصيل ← مساحة القرار",
+    "has_workspace_cta": true,
+    "meif_present": false
+  },
+  "generated_at_utc": "2026-07-24T22:06:17.477465+00:00",
+  "production_url_workspace": "https://smartreplyai.net/dashboard#workspace",
+  "production_url_home": "https://smartreplyai.net/dashboard#home",
+  "sprint": "gate_2_single_decision_owner",
+  "screenshots": {
+    "desktop_workspace": "docs/product/gate_2_decision_ownership_v1/after_desktop_workspace.png",
+    "mobile_workspace": "docs/product/gate_2_decision_ownership_v1/after_mobile_workspace.png",
+    "desktop_home": "docs/product/gate_2_decision_ownership_v1/after_desktop_home.png",
+    "mobile_home": "docs/product/gate_2_decision_ownership_v1/after_mobile_home.png"
+  },
+  "ok": true,
+  "status": "AWAITING_CEO_REVIEW_BEFORE_GATE_2_CLOSE"
+}
