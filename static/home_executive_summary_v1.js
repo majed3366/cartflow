@@ -25,10 +25,17 @@
   function renderSection(sec) {
     if (!sec) return "";
     var countHtml = "";
-    if (sec.count !== null && sec.count !== undefined && sec.count !== "") {
+    var countRaw = sec.count;
+    var countOk =
+      countRaw !== null &&
+      countRaw !== undefined &&
+      countRaw !== "" &&
+      String(countRaw).toLowerCase() !== "none" &&
+      String(countRaw).toLowerCase() !== "null";
+    if (countOk) {
       countHtml =
         '<span class="hes-count" data-hes-count="1">' +
-        esc(String(sec.count)) +
+        esc(String(countRaw)) +
         "</span>";
     }
     var statusHtml = sec.status_ar

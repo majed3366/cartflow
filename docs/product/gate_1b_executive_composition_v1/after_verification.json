@@ -1,0 +1,78 @@
+{
+  "label": "after",
+  "email": "cf.g1b.d6393e1efc@smartreplyai.net",
+  "generated_at_utc": "2026-07-24T21:01:26.506203+00:00",
+  "production_url": "https://smartreplyai.net/dashboard#home",
+  "gate": "gate_1b_executive_composition",
+  "probe": {
+    "http": 200,
+    "surface_mode": "executive_summary_v1",
+    "slim": true,
+    "gate": "gate_1b_executive_composition",
+    "hes_ok": true,
+    "sections": [
+      {
+        "id": "health",
+        "title_ar": "حالة المتجر",
+        "summary_ar": "لا توجد مشكلات تشغيلية مؤثرة ظاهرة — بانتظار نشاط كافٍ لملخص أدق.",
+        "status_ar": "هادئ",
+        "href": "#carts",
+        "empty": true,
+        "owner_page": "carts"
+      },
+      {
+        "id": "decisions",
+        "title_ar": "قرارات اليوم",
+        "summary_ar": "لا تتوفر أدلة كافية لإصدار قرار اليوم.",
+        "status_ar": "أدلة غير كافية",
+        "href": "#workspace",
+        "empty": true,
+        "owner_page": "decision_workspace"
+      },
+      {
+        "id": "observations",
+        "title_ar": "ملاحظات المنتجات",
+        "summary_ar": "لا توجد أدلة كافية لإصدار ملاحظة مرتبطة بمنتج محدد.",
+        "status_ar": "أدلة غير كافية",
+        "href": "#workspace",
+        "empty": true,
+        "owner_page": "decision_workspace"
+      },
+      {
+        "id": "carts",
+        "title_ar": "السلال",
+        "summary_ar": "لا توجد سلال تحتاج متابعة حالياً.",
+        "status_ar": "لا مهام",
+        "href": "#carts",
+        "empty": true,
+        "owner_page": "carts"
+      },
+      {
+        "id": "communication",
+        "title_ar": "التواصل",
+        "summary_ar": "لا توجد مهام تواصل حالية.",
+        "status_ar": "لا مهام",
+        "href": "#communication",
+        "empty": true,
+        "owner_page": "communication"
+      }
+    ],
+    "has_store_status_title": true,
+    "has_old_health_title": false,
+    "has_view_details": true,
+    "has_hes_title": true,
+    "ownership_href": {
+      "health": "#carts",
+      "decisions": "#workspace",
+      "observations": "#workspace",
+      "carts": "#carts",
+      "communication": "#communication"
+    },
+    "text_sample": "ملخص تنفيذي\n\nماذا يجب أن تعرف الآن؟\n\nملخص سريع فقط — التفاصيل في صفحاتها.\n\nحالة المتجر\nهادئ\nNone\n\nلا توجد مشكلات تشغيلية مؤثرة ظاهرة — بانتظار نشاط كافٍ لملخص أدق.\n\nعرض التفاصيل ←\n\nقرارات اليوم\nأدلة غير كافية\n0\n\nلا تتوفر أدلة كافية لإصدار قرار اليوم.\n\nعرض التفاصيل ←\n\nملاحظات المنتجات\nأدلة غير كافية\n0\n\nلا توجد أدلة كافية لإصدار ملاحظة مرتبطة بمنتج محدد.\n\nعرض التفاصيل ←\n\nالسلال\nلا مهام\n0\n\nلا توجد سلال تحتاج متابعة حالياً.\n\nعرض التفاصيل ←\n\nالتواصل\nلا مهام\n0\n\nلا توجد مهام تواصل حالية.\n\nعرض التفاصيل ←\n\nالصفحة الرئيسية = ملخص تنفيذي · القرارات في مساحة القرار · السلال للتشغيل · التواصل للمتابعة · الإعدادات للضبط."
+  },
+  "screenshots": {
+    "desktop": "docs/product/gate_1b_executive_composition_v1/after_desktop_home.png",
+    "mobile": "docs/product/gate_1b_executive_composition_v1/after_mobile_home.png"
+  },
+  "ok": true
+}

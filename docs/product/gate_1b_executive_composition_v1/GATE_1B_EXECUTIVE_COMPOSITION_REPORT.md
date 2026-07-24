@@ -45,10 +45,14 @@ Payload field: `home_executive_summary_v1.section_ownership_href`.
 | Empty store tone | Generic “انتظر أدلة / فارغ / بانتظار” | Executive: لا مشكلات ظاهرة / لا مهام / أدلة غير كافية للقرار |
 | Transport | Slim (unchanged) | Slim (unchanged) |
 
+**Deploy:** [PR #79](https://github.com/majed3366/cartflow/pull/79) → **`db1d6aa`** (Railway Success)
+
 Evidence files:
 
 - `before_verification.json` + `before_desktop_home.png` / `before_mobile_home.png`
-- `after_verification.json` + `after_desktop_home.png` / `after_mobile_home.png` _(after deploy)_
+- `after_verification.json` + `after_desktop_home.png` / `after_mobile_home.png`
+
+Prod after probe: `has_store_status_title=true`, `has_old_health_title=false`, five sections, View Details present.
 
 ## 5. Validation checklist
 
@@ -59,9 +63,9 @@ Evidence files:
 - [x] Carts/communication describe conditions when counts exist  
 - [x] Each card has View Details → owning page  
 - [x] Slim heavy packages still stripped  
-- [ ] Production after screenshots  
+- [x] Production after screenshots  
 - [ ] CEO visual review  
 
 ## 6. Recommendation
 
-Keep **Gate 1 OPEN** until CEO approves 1-B visually. Gates 2–7 remain **LOCKED**.
+**Keep Gate 1 OPEN** until CEO visual approval of 1-B. Engineering 1-A + 1-B are deployed. Gates 2–7 remain **LOCKED**.
