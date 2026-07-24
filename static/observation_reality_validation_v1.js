@@ -1,10 +1,11 @@
 /**
- * Observation Reality Validation V1 — temporary merchant surface (polished).
- * Shows statement + recommended action + confidence only.
- * Technical evidence_details are never rendered on Home.
+ * Observation Reality Validation — entity-bound findings only.
+ * Used when Home Executive Summary is off; otherwise HES owns Home paint.
  */
 (function () {
   "use strict";
+
+  var EMPTY_AR = "لا توجد أدلة كافية لإصدار ملاحظة مرتبطة بمنتج محدد.";
 
   function esc(s) {
     if (window.maEscHtml) return window.maEscHtml(s);
@@ -23,17 +24,20 @@
   }
 
   function renderFinding(f) {
-    if (!f || !f.statement_ar) return "";
+    if (!f || !f.product_name_ar || !f.statement_ar) return "";
     var confAr = String(f.confidence_ar || "").trim();
     var action = String(f.recommended_action_ar || "").trim();
     return (
-      '<article class="orv-card" data-orv-finding="1" data-capability="' +
-      esc(f.capability_id || "") +
-      '" data-confidence="' +
-      esc(f.confidence_level || "") +
-      '">' +
-      '<div class="orv-card__head">' +
-      '<p class="orv-card__eyebrow">ملاحظة مرتبطة بأدلة</p>' +
+      '<article class="orv-card" data-orv-finding="1">' +
+      '<p class="orv-card__product" data-orv-product="1">' +
+      esc(f.product_name_ar) +
+      "</p>" +
+      '<h4 class="orv-card__title" data-orv-title="1">' +
+      esc(f.title_ar || "") +
+      "</h4>" +
+      '<p class="orv-card__statement" data-orv-statement="1">' +
+      esc(f.statement_ar) +
+      "</p>" +
       (confAr
         ? '<span class="orv-conf ' +
           confClass(f.confidence_level) +
@@ -41,13 +45,6 @@
           esc(confAr) +
           "</span>"
         : "") +
-      "</div>" +
-      '<h4 class="orv-card__title" data-orv-title="1">' +
-      esc(f.title_ar || "") +
-      "</h4>" +
-      '<p class="orv-card__statement" data-orv-statement="1">' +
-      esc(f.statement_ar || "") +
-      "</p>" +
       (action
         ? '<p class="orv-card__action" data-orv-action="1"><strong>الخطوة المقترحة:</strong> ' +
           esc(action) +
@@ -58,6 +55,21 @@
   }
 
   window.maApplyObservationRealityValidationV1 = function (summary) {
+    // Executive Summary owns Home — do not double-paint ORV.
+    if (
+      summary &&
+      summary.home_surface_mode === "executive_summary_v1" &&
+      summary.home_executive_summary_v1 &&
+      summary.home_executive_summary_v1.ok
+    ) {
+      var skip = document.getElementById("observation-reality-validation-root");
+      if (skip) {
+        skip.innerHTML = "";
+        skip.hidden = true;
+      }
+      return false;
+    }
+
     var root = document.getElementById("observation-reality-validation-root");
     if (!root) return false;
     var pkg =
@@ -68,6 +80,9 @@
       return false;
     }
     var findings = Array.isArray(pkg.findings) ? pkg.findings : [];
+    findings = findings.filter(function (f) {
+      return f && f.product_name_ar && f.statement_ar;
+    });
     if (!findings.length) {
       root.innerHTML =
         '<section class="orv-surface" data-orv="1">' +
@@ -75,9 +90,11 @@
         esc(pkg.eyebrow_ar || "معرفة من الملاحظة") +
         "</p>" +
         "<h3>" +
-        esc(pkg.title_ar || "ماذا نلاحظ؟") +
+        esc(pkg.title_ar || "ملاحظات المنتجات") +
         "</h3>" +
-        '<p class="orv-empty">لا ملاحظات مدعومة بأدلة بعد.</p></section>';
+        '<p class="orv-empty" data-orv-empty="1">' +
+        esc(pkg.empty_state_ar || EMPTY_AR) +
+        "</p></section>";
       root.hidden = false;
       return true;
     }
@@ -91,7 +108,7 @@
       esc(pkg.eyebrow_ar || "معرفة من الملاحظة") +
       "</p>" +
       "<h3>" +
-      esc(pkg.title_ar || "ماذا نلاحظ في منتجاتك الآن؟") +
+      esc(pkg.title_ar || "ملاحظات المنتجات") +
       "</h3>" +
       '<p class="orv-lede">' +
       esc(pkg.lede_ar || "") +

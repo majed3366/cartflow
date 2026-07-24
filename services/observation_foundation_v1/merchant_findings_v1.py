@@ -1,17 +1,22 @@
 # -*- coding: utf-8 -*-
 """
-Observation Reality Validation V1 — merchant-readable findings from correlations.
+Observation Reality Validation — merchant findings (entity-bound).
 
-Merchant surface: statement + recommended action + confidence (from Evidence Confidence).
-Technical counters live only under evidence_details / diagnostics — never on Home.
+Every finding must reference a real product display name.
+If none can be identified: no finding — honest empty state.
 """
 from __future__ import annotations
 
 from typing import Any, Mapping, Optional
 
+from services.home_executive_summary_v1.compose_v1 import OBS_EMPTY_AR
 from services.observation_foundation_v1.assemble_v1 import assemble_observation_foundation_v1
 from services.observation_foundation_v1.catalog_v1 import FOUNDATION_VERSION
 from services.observation_foundation_v1.flag_v1 import observation_foundation_v1_enabled
+from services.observation_foundation_v1.product_entity_resolve_v1 import (
+    is_banned_product_key_v1,
+    resolve_real_product_display_name_v1,
+)
 from services.product_data.evidence_confidence_types_v1 import (
     LEVEL_HIGH,
     LEVEL_LOW,
@@ -21,12 +26,14 @@ from services.product_data.evidence_confidence_types_v1 import (
 )
 
 ENV_OBSERVATION_REALITY_VALIDATION_V1 = "CARTFLOW_OBSERVATION_REALITY_VALIDATION_V1"
+# Lab-only: never default on in production Home.
+ENV_ORV_APPROVED_MASS_V1 = "CARTFLOW_ORV_APPROVED_MASS_V1"
 
 _STATEMENT_AR: dict[str, dict[str, str]] = {
     "high_interest_low_conversion": {
         "title_ar": "اهتمام مرتفع وتحويل منخفض",
-        "statement_ar": "هذا المنتج يحظى باهتمام واضح، لكن التحويل إلى شراء لا يزال منخفضاً.",
-        "statement_en": "The product has high interest but low conversion.",
+        "statement_ar": "يحظى باهتمام واضح، لكن التحويل إلى شراء لا يزال منخفضاً.",
+        "statement_en": "High interest but low conversion.",
         "recommended_action_ar": "راجع صفحة المنتج وعرض الشحن قبل أي توسعة.",
     },
     "shipping_stronger_than_price": {
@@ -37,13 +44,13 @@ _STATEMENT_AR: dict[str, dict[str, str]] = {
     },
     "repeated_return_without_purchase": {
         "title_ar": "عودة متكررة بلا شراء",
-        "statement_ar": "عملاء عادوا مراراً إلى المتجر دون إتمام شراء مرتبط بهذا المنتج.",
+        "statement_ar": "عملاء عادوا مراراً دون إتمام شراء مرتبط بهذا المنتج.",
         "statement_en": "Customers repeatedly return without purchasing.",
         "recommended_action_ar": "راقب رحلة العميل بعد العودة واختبر تحسين صفحة المنتج.",
     },
     "no_quality_issue_evidence": {
         "title_ar": "لا دليل على مشكلة جودة",
-        "statement_ar": "لا توجد أدلة حالية تدعم وجود مشكلة جودة في المنتج.",
+        "statement_ar": "لا توجد أدلة حالية تدعم وجود مشكلة جودة.",
         "statement_en": "No evidence currently supports a quality issue.",
         "recommended_action_ar": "لا حاجة لاتخاذ إجراء حالياً — استمر في جمع الأدلة.",
     },
@@ -76,8 +83,15 @@ def observation_reality_validation_v1_enabled(
     return raw not in {"0", "false", "off", "no"}
 
 
+def _approved_mass_enabled(*, environ: Mapping[str, str] | None = None) -> bool:
+    import os
+
+    env = environ if environ is not None else os.environ
+    raw = str(env.get(ENV_ORV_APPROVED_MASS_V1, "0") or "0").strip().lower()
+    return raw in {"1", "true", "on", "yes"}
+
+
 def _evidence_details(corr: Mapping[str, Any]) -> dict[str, Any]:
-    """Technical payload for Evidence Details / Developer View only — not Home."""
     counts = corr.get("counts") if isinstance(corr.get("counts"), Mapping) else {}
     compare = corr.get("compare") if isinstance(corr.get("compare"), Mapping) else {}
     reasons = (
@@ -101,12 +115,6 @@ def _confidence_from_evidence_engine_v1(
     product_key: str,
     corr: Mapping[str, Any],
 ) -> dict[str, Any]:
-    """
-    Resolve confidence via Evidence Confidence Foundation.
-
-    Prefer product-scoped evaluation; else store-level evaluation;
-    else score from evidence-ref mass using engine thresholds.
-    """
     level = ""
     score: Optional[int] = None
     source = "evidence_confidence_foundation_v1"
@@ -127,7 +135,6 @@ def _confidence_from_evidence_engine_v1(
                     matched = ev
                     break
         if matched is None and evaluations:
-            # Store-level / first evaluation from engine
             matched = next((e for e in evaluations if isinstance(e, Mapping)), None)
         if isinstance(matched, Mapping) and matched.get("confidence_level"):
             level = str(matched.get("confidence_level") or "").strip().lower()
@@ -140,7 +147,6 @@ def _confidence_from_evidence_engine_v1(
         level = ""
 
     if level not in _CONFIDENCE_AR:
-        # Engine threshold function — not a merchant hardcode
         refs = corr.get("evidence_refs") if isinstance(corr.get("evidence_refs"), list) else []
         counts = corr.get("counts") if isinstance(corr.get("counts"), Mapping) else {}
         sample = 0
@@ -155,7 +161,6 @@ def _confidence_from_evidence_engine_v1(
             else {}
         )
         sample += sum(int(v or 0) for v in reasons.values()) if reasons else 0
-        # Map mass → 0..100 then engine bands
         score = max(0, min(100, 25 + min(40, len(refs) * 5) + min(35, sample * 5)))
         level = confidence_level_for_score(score)
         source = "evidence_confidence_thresholds_from_correlation_mass"
@@ -177,8 +182,13 @@ def project_merchant_observation_findings_v1(
     package: Mapping[str, Any] | None,
     *,
     store_slug: str = "",
+    product_name_resolver: Any = None,
 ) -> list[dict[str, Any]]:
-    """Project evidence-backed statement capabilities into merchant findings."""
+    """
+    Project evidence-backed capabilities into entity-bound merchant findings.
+
+    Skips any correlation whose product_key cannot resolve to a real display name.
+    """
     if not isinstance(package, Mapping):
         return []
     corrs = package.get("correlations") or []
@@ -193,20 +203,29 @@ def project_merchant_observation_findings_v1(
             by_cap[cap] = c
 
     slug = str(store_slug or package.get("store_slug") or "").strip()
+    resolver = product_name_resolver or resolve_real_product_display_name_v1
     findings: list[dict[str, Any]] = []
     for cap in _CAPABILITY_ORDER:
         corr = by_cap.get(cap)
         if not corr:
             continue
+        product_key = str(corr.get("product_key") or "").strip()
+        if is_banned_product_key_v1(product_key):
+            continue
+        try:
+            product_name = resolver(slug, product_key)
+        except Exception:  # noqa: BLE001
+            product_name = None
+        if not product_name:
+            continue
         copy = _STATEMENT_AR[cap]
-        conf = _confidence_from_evidence_engine_v1(
-            slug, str(corr.get("product_key") or ""), corr
-        )
+        conf = _confidence_from_evidence_engine_v1(slug, product_key, corr)
         details = _evidence_details(corr)
         findings.append(
             {
                 "finding_id": f"observation_reality:{cap}",
                 "capability_id": cap,
+                "product_name_ar": product_name,
                 "title_ar": copy["title_ar"],
                 "statement_ar": copy["statement_ar"],
                 "statement_en": copy["statement_en"],
@@ -215,7 +234,6 @@ def project_merchant_observation_findings_v1(
                 "confidence_ar": conf["confidence_ar"],
                 "confidence_score": conf["confidence_score"],
                 "confidence_source": conf["confidence_source"],
-                # Merchant Home must not render these:
                 "evidence_details": details,
                 "diagnostics": {
                     "product_key": details["product_key"],
@@ -235,21 +253,17 @@ def _assemble_orv_package_v1(
     signals: Optional[list[Mapping[str, Any]]] = None,
     environ: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
-    """
-    Assemble foundation package for ORV.
-
-    When durable mass is incomplete, merge the approved ORV validation signals
-    so the temporary Home surface can paint the reviewed four cards.
-    """
+    """Assemble durable foundation only — approved mass off unless lab flag."""
     pkg = assemble_observation_foundation_v1(
         store_slug, signals=signals, environ=environ
     )
     findings = project_merchant_observation_findings_v1(pkg, store_slug=store_slug)
-    if len(findings) >= 4 or signals is not None:
+    if findings or signals is not None or not _approved_mass_enabled(environ=environ):
         pkg["_orv_findings_cache"] = findings
-        pkg["_orv_mass_source"] = "provided_or_durable"
+        pkg["_orv_mass_source"] = "durable_or_provided"
         return pkg
 
+    # Explicit lab flag only
     from services.observation_foundation_v1.orv_approved_mass_v1 import (  # noqa: PLC0415
         approved_orv_validation_signals_v1,
     )
@@ -265,7 +279,6 @@ def _assemble_orv_package_v1(
         )
     except Exception:  # noqa: BLE001
         durable = []
-
     merged: list[Mapping[str, Any]] = list(durable) + list(
         approved_orv_validation_signals_v1()
     )
@@ -274,9 +287,7 @@ def _assemble_orv_package_v1(
     )
     findings = project_merchant_observation_findings_v1(pkg, store_slug=store_slug)
     pkg["_orv_findings_cache"] = findings
-    pkg["_orv_mass_source"] = (
-        "durable_plus_approved_orv_mass" if durable else "approved_orv_mass"
-    )
+    pkg["_orv_mass_source"] = "lab_approved_mass"
     return pkg
 
 
@@ -292,6 +303,7 @@ def build_observation_reality_validation_v1(
             "enabled": False,
             "schema": "observation_reality_validation_v1",
             "findings": [],
+            "empty_state_ar": OBS_EMPTY_AR,
             "ui": True,
             "temporary": True,
         }
@@ -312,6 +324,8 @@ def build_observation_reality_validation_v1(
         "ui": True,
         "product_intelligence": False,
         "findings": findings,
+        "count": len(findings),
+        "empty_state_ar": OBS_EMPTY_AR if not findings else "",
         "required_capabilities": required,
         "present_capabilities": present,
         "missing_capabilities": [c for c in required if c not in present],
@@ -319,26 +333,15 @@ def build_observation_reality_validation_v1(
         "foundation_counts": pkg.get("counts") or {},
         "mass_source": mass_source,
         "eyebrow_ar": "معرفة من الملاحظة",
-        "title_ar": "ماذا نلاحظ في منتجاتك الآن؟",
-        "lede_ar": "ملاحظات قصيرة مبنية على أدلة — مع خطوة مقترحة وثقة واضحة.",
+        "title_ar": "ملاحظات المنتجات",
+        "lede_ar": "ملاحظات مرتبطة بمنتجات حقيقية فقط.",
     }
 
 
 def _resolve_observation_store_slug_v1(store_slug: str) -> str:
-    """
-    Prefer primary slug; fall back to demo for the temporary ORV surface when
-    the merchant store has no observation findings yet.
-    """
+    """Use the merchant's own store only — no demo fallback on Home."""
     slug = str(store_slug or "").strip()
-    if not slug or slug == "demo":
-        return slug or "demo"
-    primary = build_observation_reality_validation_v1(slug)
-    if primary.get("findings"):
-        return slug
-    demo_pkg = build_observation_reality_validation_v1("demo")
-    if demo_pkg.get("findings"):
-        return "demo"
-    return slug
+    return slug or "demo"
 
 
 def attach_observation_reality_validation_to_summary_v1(
@@ -352,16 +355,13 @@ def attach_observation_reality_validation_to_summary_v1(
     try:
         slug = _resolve_observation_store_slug_v1(str(store_slug or "").strip())
         pkg = build_observation_reality_validation_v1(slug, environ=environ)
-        if slug != str(store_slug or "").strip():
-            pkg = dict(pkg)
-            pkg["store_slug_resolved"] = slug
-            pkg["store_slug_requested"] = store_slug
         summary["observation_reality_validation_v1"] = pkg
     except Exception:  # noqa: BLE001
         summary["observation_reality_validation_v1"] = {
             "ok": False,
             "enabled": True,
             "findings": [],
+            "empty_state_ar": OBS_EMPTY_AR,
             "error": "attach_failed",
         }
     return summary
@@ -369,6 +369,8 @@ def attach_observation_reality_validation_to_summary_v1(
 
 __all__ = [
     "ENV_OBSERVATION_REALITY_VALIDATION_V1",
+    "ENV_ORV_APPROVED_MASS_V1",
+    "OBS_EMPTY_AR",
     "attach_observation_reality_validation_to_summary_v1",
     "build_observation_reality_validation_v1",
     "observation_reality_validation_v1_enabled",

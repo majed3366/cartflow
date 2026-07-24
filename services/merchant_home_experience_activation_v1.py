@@ -345,7 +345,7 @@ def finalize_dashboard_summary_payload(
         attach_adaptive_cognition_to_summary_v1(body)
     except Exception as exc:  # noqa: BLE001
         log.warning("adaptive cognition summary attach: %s", exc)
-    # Observation Reality Validation V1 — temporary merchant-visible findings
+    # Observation Reality Validation — entity-bound findings (then slimmed for Home)
     try:
         from services.observation_foundation_v1.merchant_findings_v1 import (  # noqa: PLC0415
             attach_observation_reality_validation_to_summary_v1,
@@ -357,6 +357,15 @@ def finalize_dashboard_summary_payload(
             attach_observation_reality_validation_to_summary_v1(body, _slug)
     except Exception as exc:  # noqa: BLE001
         log.warning("observation_reality_validation_v1 attach: %s", exc)
+    # Home Executive Summary V1 — slim Home payload (summaries + counts + View Details)
+    try:
+        from services.home_executive_summary_v1 import (  # noqa: PLC0415
+            attach_home_executive_summary_to_summary_v1,
+        )
+
+        attach_home_executive_summary_to_summary_v1(body)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("home_executive_summary_v1 attach: %s", exc)
     _attach_commerce_signals_then_pulse(body, store_slug=store_slug)
     return body
 

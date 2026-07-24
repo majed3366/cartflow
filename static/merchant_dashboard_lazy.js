@@ -2278,15 +2278,23 @@
 
     var pulseRendered = false;
     var homeV1Rendered = false;
+    /* Home Executive Summary V1 — prefer slim executive Home. */
+    if (window.maApplyHomeExecutiveSummaryV1) {
+      try {
+        homeV1Rendered = !!window.maApplyHomeExecutiveSummaryV1(d);
+      } catch (hesErr) {
+        homeV1Rendered = false;
+      }
+    }
     /* MEIF/MEH: prefer governed integration package over legacy Home composer. */
-    if (window.maApplyMerchantExperienceIntegrationV1) {
+    if (!homeV1Rendered && window.maApplyMerchantExperienceIntegrationV1) {
       try {
         homeV1Rendered = !!window.maApplyMerchantExperienceIntegrationV1(d);
       } catch (meifErr) {
         homeV1Rendered = false;
       }
     }
-    /* Observation Reality Validation V1 — temporary Home knowledge surface */
+    /* Observation Reality Validation — only when executive summary did not paint. */
     if (window.maApplyObservationRealityValidationV1) {
       try {
         window.maApplyObservationRealityValidationV1(d);
