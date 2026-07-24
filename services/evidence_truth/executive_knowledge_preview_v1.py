@@ -2,9 +2,10 @@
 """
 Executive Knowledge Preview — WP-ET-10.5 validation surface (READ ONLY).
 
-Consumes Shadow Knowledge Records only.
+Consumes Shadow Knowledge Records only (in-process + durable WP-ET-10.6).
 Never reads Raw / Observation / Evidence Truth / Bundle stores.
 Never writes. Never activates Home / Findings / Guidance.
+Never triggers materialization (preview flag is display-only).
 """
 from __future__ import annotations
 
@@ -197,7 +198,37 @@ def build_executive_knowledge_preview_v1(
         }
 
     kstore = store or get_knowledge_record_store_v1()
-    records = kstore.list_recent(limit=max(1, int(limit)), store_slug=store_slug or "")
+    lim = max(1, int(limit))
+    memory_records = kstore.list_recent(limit=lim, store_slug=store_slug or "")
+    # WP-ET-10.6: merge durable Knowledge (shared across workers / restarts).
+    # Preview remains read-only — never composes or materializes.
+    durable_records: list[KnowledgeRecordV1] = []
+    durable_slugs: list[str] = []
+    try:
+        from services.evidence_truth.durable_shadow_store_v1 import (  # noqa: PLC0415
+            list_durable_knowledge_records_v1,
+            list_durable_knowledge_store_slugs_v1,
+        )
+
+        durable_records = list_durable_knowledge_records_v1(
+            store_slug=store_slug or "",
+            limit=lim,
+        )
+        durable_slugs = list_durable_knowledge_store_slugs_v1()
+    except Exception:  # noqa: BLE001
+        durable_records = []
+        durable_slugs = []
+
+    by_id: dict[str, KnowledgeRecordV1] = {}
+    # Durable first (authoritative across processes), then in-process overlay
+    for rec in durable_records:
+        by_id[rec.knowledge_id] = rec
+    for rec in memory_records:
+        by_id.setdefault(rec.knowledge_id, rec)
+    records = list(by_id.values())
+    # Newest-first by as_of when available
+    records.sort(key=lambda r: str(r.as_of or ""), reverse=True)
+    records = records[:lim]
     projected = [_project_record_for_preview(r) for r in records]
 
     stable = [p for p in projected if p.get("stable")]
@@ -220,8 +251,15 @@ def build_executive_knowledge_preview_v1(
         "reason": "ok",
         "empty": empty,
         "store_filter": (store_slug or "").strip().lower() or None,
-        "stores": kstore.list_store_slugs(),
+        "stores": sorted(
+            set(kstore.list_store_slugs()) | set(durable_slugs)
+        ),
         "record_count": len(projected),
+        "knowledge_sources": {
+            "in_process": len(memory_records),
+            "durable": len(durable_records),
+            "merged": len(projected),
+        },
         "records": projected,
         "sections": {
             "what_cartflow_currently_knows": {

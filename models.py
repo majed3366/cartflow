@@ -1795,3 +1795,55 @@ class SimulationRowIndex(Base):
             "table_name",
         ),
     )
+
+
+class EvidenceTruthMaterializationRun(Base):
+    """WP-ET-10.6 materialization run ledger (demo Knowledge bridge)."""
+
+    __tablename__ = "evidence_truth_materialization_runs"
+
+    id = Column(Integer, primary_key=True)
+    materialization_run_id = Column(String(64), nullable=False, unique=True, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    mode = Column(String(16), nullable=False, default="dry_run")  # dry_run | execute
+    status = Column(String(32), nullable=False, default="started", index=True)
+    batch_limit = Column(Integer, nullable=False, default=50)
+    composer_version = Column(String(64), nullable=False, default="wp_et_10_6_v1")
+    accounting_json = Column(Text, nullable=False, default="{}")
+    error_json = Column(Text, nullable=False, default="")
+    created_at = Column(DateTime, nullable=False, index=True)
+    completed_at = Column(DateTime, nullable=True)
+
+
+class EvidenceTruthShadowArtifact(Base):
+    """
+    Durable Evidence Truth shadow artifact (Observation/Evidence/Bundle/Knowledge).
+
+    Shared across workers; store_slug isolated; idempotent by idempotency_key.
+    """
+
+    __tablename__ = "evidence_truth_shadow_artifacts"
+    __table_args__ = (
+        UniqueConstraint(
+            "idempotency_key",
+            name="uq_et_shadow_artifact_idempotency",
+        ),
+        Index(
+            "ix_et_shadow_artifacts_store_kind",
+            "store_slug",
+            "artifact_kind",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    artifact_kind = Column(String(32), nullable=False, index=True)
+    artifact_id = Column(String(128), nullable=False, index=True)
+    artifact_version = Column(Integer, nullable=False, default=1)
+    store_slug = Column(String(255), nullable=False, index=True)
+    materialization_run_id = Column(String(64), nullable=False, index=True)
+    idempotency_key = Column(String(192), nullable=False)
+    source_ref = Column(String(256), nullable=False, default="")
+    lineage_json = Column(Text, nullable=False, default="{}")
+    payload_json = Column(Text, nullable=False, default="{}")
+    composer_version = Column(String(64), nullable=False, default="wp_et_10_6_v1")
+    created_at = Column(DateTime, nullable=False, index=True)
