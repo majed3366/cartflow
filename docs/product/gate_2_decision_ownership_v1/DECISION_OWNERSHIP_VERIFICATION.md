@@ -76,14 +76,14 @@ No alternate merchant path paints the same Decision.
 
 ---
 
-## 6. Production verification (post-deploy)
+## 6. Production verification (live)
 
-| Check | Expected |
-|-------|----------|
-| `GET /api/cart-workspace/v1/projection` | `gate_2_single_decision_owner=true`; optional `business_finding_count` |
-| `#meif-decision-root` | `hidden` in DOM when dual-stack off |
-| Home decisions CTA | Contains «مساحة القرار» and navigates to `#workspace` |
-| Carts | No recommendation / «يلزم إجراء» decision rows |
-| Comms | No findings / Decision blocks |
+| Check | Result (`76b9728`) |
+|-------|--------------------|
+| `GET /api/cart-workspace/v1/projection` | `ok=true`, `gate_2_single_decision_owner=true`, mission constitutional |
+| `#meif-decision-root` | `meif_hidden=true`, empty; `dual_stack=false` |
+| Home decisions CTA | `view_details_href=#workspace`; CTA «عرض التفاصيل ← مساحة القرار»; MEIF absent on slim summary |
+| Organic Workspace | Quiet state OK for new store (`business_finding_count=0`) |
+| Screenshots | `after_desktop_workspace.png` · `after_mobile_workspace.png` · Home sanity pair |
 
-Fill after Railway Success + screenshot script.
+Probe: `after_verification.json` (`ok=true`, status `AWAITING_CEO_REVIEW_BEFORE_GATE_2_CLOSE`).

@@ -13,10 +13,10 @@
 
 | Decision | Status |
 |----------|--------|
-| **CLOSE Gate 2** | **Eligible after CEO visual approval** — engineering DoD met once production SHA + screenshots land |
+| **CLOSE Gate 2** | **Eligible after CEO visual approval** — engineering DoD + production evidence met |
 | **Keep Gate 2 OPEN** | **YES until CEO records C-4…C-6** |
 
-**Engineering recommendation:** Gate 2 is **IMPLEMENTED** and ready for production deploy + CEO visual review. Keep Gate 2 **OPEN** until CEO approves. **Do not begin Gate 3** until Gate Register → **CLOSED**.
+**Engineering recommendation:** Gate 2 is **DEPLOYED + VALIDATED** on production (`76b9728`, Railway Success). Keep Gate 2 **OPEN** until CEO visual approval. **Do not begin Gate 3** until Gate Register → **CLOSED**.
 
 ---
 
@@ -77,12 +77,12 @@
 
 | # | Requirement | Status |
 |---|-------------|--------|
-| C-1 | Implementation complete (single Decision Owner DoD) | **DONE** (code + unit tests) |
-| C-2 | Production deployment complete | **PENDING** — merge + Railway Success |
-| C-3 | Validation (one engine paint path; no duplicate UI) | **DONE** unit; **PENDING** prod probe |
-| C-4 | Visual CEO review (Desktop/Mobile `#workspace`) | **OPEN** |
+| C-1 | Implementation complete (single Decision Owner DoD) | **DONE** |
+| C-2 | Production deployment complete | **DONE** — PR [#84](https://github.com/majed3366/cartflow/pull/84) → **`76b9728`** (Railway Success) |
+| C-3 | Validation (one engine paint path; no duplicate UI) | **DONE** — unit + `after_verification.json` (`ok=true`) |
+| C-4 | Visual CEO review (Desktop/Mobile `#workspace`) | **OPEN** — evidence ready |
 | C-5 | Explicit CEO approval recorded | **OPEN** |
-| C-6 | Gate Register → CLOSED | **OPEN** — status → IN_PROGRESS / DEPLOYED after merge |
+| C-6 | Gate Register → CLOSED | **OPEN** — status **DEPLOYED / VALIDATED / CEO_REVIEW** |
 
 ### Implementation DoD
 
@@ -93,7 +93,7 @@
 - [x] Home decisions → `#workspace` with explicit CTA  
 - [x] Carts/Comms no business decision paint  
 - [x] Dual-stack rollback flag  
-- [ ] Production SHA + screenshots  
+- [x] Production SHA + screenshots (`after_*_workspace.png` / `after_*_home.png`)  
 - [ ] CEO APPROVED → CLOSED  
 
 ---

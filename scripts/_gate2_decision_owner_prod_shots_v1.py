@@ -133,10 +133,12 @@ def main() -> int:
             ),
         }
     )
-    (OUT / "after_verification.json").write_text(
-        json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
-    print(json.dumps(report, ensure_ascii=False, indent=2))
+    payload = json.dumps(report, ensure_ascii=False, indent=2)
+    (OUT / "after_verification.json").write_text(payload, encoding="utf-8")
+    try:
+        print(payload)
+    except UnicodeEncodeError:
+        print(payload.encode("ascii", "backslashreplace").decode("ascii"))
     return 0 if ok else 2
 
 
