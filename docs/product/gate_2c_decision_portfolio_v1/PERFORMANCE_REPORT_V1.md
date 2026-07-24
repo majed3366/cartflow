@@ -72,6 +72,18 @@ Rule: **Decision Composition must not block paint when a snapshot exists.**
 
 ---
 
-## 6. Production verification
+## 6. Production verification (live)
 
-See `after_verification.json` after deploy — assert `gate_2c`, cache hit on second projection, no status chrome, portfolio landscape present.
+**SHA:** `d20a06f` (PR [#90](https://github.com/majed3366/cartflow/pull/90))  
+**Probe:** `docs/product/gate_2c_decision_portfolio_v1/after_verification.json`  
+**Account:** `cf.g2c.48d0f81447@smartreplyai.net` · `2026-07-24T23:49:29Z`
+
+| Metric | Production after Gate 2C |
+|--------|--------------------------|
+| Home `/api/dashboard/summary` fetch | **234 ms** · **5,848** bytes · `executive_summary_v1` · no MEIF · `portfolio: true` |
+| Workspace projection (after Home) | **261 ms** · `cache.hit=true` · age ~11s · landscape **7** |
+| Second projection | **265 ms** · `cache.hit=true` (no re-compose) |
+| Snapshot compose cost (stored) | counters **1261 ms** (db_scan once) · findings **405 ms** · portfolio **0.03 ms** · total **1666 ms** |
+| UI | محفظة القرارات · الأولوية 1 · healthy «لا إجراء مطلوب.» · no CartFlow يعمل |
+
+**Interpretation:** Cold compose still costs ~1.7s once (AbandonedCart scan). Home→Workspace second paint does **not** re-scan — cache hit keeps projection ~260 ms. Gate 1 Home latency restored (~234 ms vs Gate 1 after ~161 ms; vs Gate 2B double-scan regression).

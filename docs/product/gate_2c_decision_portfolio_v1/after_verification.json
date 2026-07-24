@@ -1,0 +1,77 @@
+{
+  "email": "cf.g2c.48d0f81447@smartreplyai.net",
+  "home_probe": {
+    "http": 200,
+    "fetch_ms": 234,
+    "body_bytes": 5848,
+    "surface_mode": "executive_summary_v1",
+    "hes_ok": true,
+    "meif": false,
+    "decisions_count": "1",
+    "portfolio_flag": true
+  },
+  "workspace_probe": {
+    "first": {
+      "http": 200,
+      "fetch_ms": 261,
+      "gate_2c": true,
+      "cache": {
+        "hit": true,
+        "age_sec": 11.58,
+        "fresh": true,
+        "stale": false
+      },
+      "timing_ms": {
+        "counters_ms": 1260.95,
+        "counters_source": "db_scan",
+        "findings_ms": 404.84,
+        "findings_source": "db",
+        "compose_candidates_ms": 0.09,
+        "validate_ms": 0.02,
+        "portfolio_ms": 0.03,
+        "total_ms": 1665.94
+      },
+      "landscape": 7,
+      "has_portfolio_ui": true,
+      "has_healthy": true,
+      "has_working_chrome": false,
+      "text_sample": "مساحة القرار\n\nماذا يجب أن أقرر الآن، ولماذا؟\n\nمحفظة القرارات — أولوية مرتبة عبر فئات العمل\n\nيحتاج إجراء الآن: 1\n\nيحتاج قرارك: 1\n\nصحة المتجر\nلا إجراء مطلوب.\nالإيرادات\nلا إجراء مطلوب.\nالمنتجات\nلا إجراء مطلوب.\nالاسترجاع\nيوجد قرار\nالتواصل\nلا إجراء مطلوب.\nسلوك العملاء\nلا إجراء مطلوب.\nالتشغيل\nلا إجراء مطلوب.\n\nالأولوية 1\n\nالاسترجاع\n\nيحتاج إجراء الآن\n\nالقرار\n\nحسّن قدرة المتجر على جمع أرقام العملاء القابلين للاسترجاع.\n\nلماذا؟\n\n2 سلة نشطة لا يمكن بدء استرجاعها لأن رقم العميل غير متوفر، فيتوقف مسار التواصل قبل أن يبدأ.\n\nلماذا الآن؟\n\nكل يوم تبقى فيه هذه السلال بلا رقم يقلل فرصة استعادتها — يوجد الآن 2 سلة محظورة عن المتابعة.\n\nالأدلة\n\n2 سلة نشطة بلا رقم تواصل صالح وفق عدّاد السلال المعتمد للمتجر.\n\nماذا يحدث إذا تجاهلته؟\n\nإذا تُركت كما هي، ستظل هذه السلال خارج مسار الاسترجاع ولن تصلها رسائل متابعة.\n\nالإجراء الموصى به\n\nراجع كيف يُجمع رقم العميل قبل مغادرة المتجر، ثم عالج السلال المتأثرة.\n\nابدأ بهذه الخ"
+    },
+    "second": {
+      "http": 200,
+      "fetch_ms": 265,
+      "gate_2c": true,
+      "cache": {
+        "hit": true,
+        "age_sec": 11.838,
+        "fresh": true,
+        "stale": false
+      },
+      "timing_ms": {
+        "counters_ms": 1260.95,
+        "counters_source": "db_scan",
+        "findings_ms": 404.84,
+        "findings_source": "db",
+        "compose_candidates_ms": 0.09,
+        "validate_ms": 0.02,
+        "portfolio_ms": 0.03,
+        "total_ms": 1665.94
+      },
+      "landscape": 7,
+      "has_portfolio_ui": true,
+      "has_healthy": true,
+      "has_working_chrome": false,
+      "text_sample": "مساحة القرار\n\nماذا يجب أن أقرر الآن، ولماذا؟\n\nمحفظة القرارات — أولوية مرتبة عبر فئات العمل\n\nيحتاج إجراء الآن: 1\n\nيحتاج قرارك: 1\n\nصحة المتجر\nلا إجراء مطلوب.\nالإيرادات\nلا إجراء مطلوب.\nالمنتجات\nلا إجراء مطلوب.\nالاسترجاع\nيوجد قرار\nالتواصل\nلا إجراء مطلوب.\nسلوك العملاء\nلا إجراء مطلوب.\nالتشغيل\nلا إجراء مطلوب.\n\nالأولوية 1\n\nالاسترجاع\n\nيحتاج إجراء الآن\n\nالقرار\n\nحسّن قدرة المتجر على جمع أرقام العملاء القابلين للاسترجاع.\n\nلماذا؟\n\n2 سلة نشطة لا يمكن بدء استرجاعها لأن رقم العميل غير متوفر، فيتوقف مسار التواصل قبل أن يبدأ.\n\nلماذا الآن؟\n\nكل يوم تبقى فيه هذه السلال بلا رقم يقلل فرصة استعادتها — يوجد الآن 2 سلة محظورة عن المتابعة.\n\nالأدلة\n\n2 سلة نشطة بلا رقم تواصل صالح وفق عدّاد السلال المعتمد للمتجر.\n\nماذا يحدث إذا تجاهلته؟\n\nإذا تُركت كما هي، ستظل هذه السلال خارج مسار الاسترجاع ولن تصلها رسائل متابعة.\n\nالإجراء الموصى به\n\nراجع كيف يُجمع رقم العميل قبل مغادرة المتجر، ثم عالج السلال المتأثرة.\n\nابدأ بهذه الخ"
+    }
+  },
+  "generated_at_utc": "2026-07-24T23:49:29.015129+00:00",
+  "sprint": "gate_2c_decision_portfolio_perf",
+  "screenshots": {
+    "desktop_home": "docs/product/gate_2c_decision_portfolio_v1/after_desktop_home.png",
+    "desktop_workspace": "docs/product/gate_2c_decision_portfolio_v1/after_desktop_workspace.png",
+    "mobile_home": "docs/product/gate_2c_decision_portfolio_v1/after_mobile_home.png",
+    "mobile_workspace": "docs/product/gate_2c_decision_portfolio_v1/after_mobile_workspace.png"
+  },
+  "ok": true,
+  "status": "AWAITING_CEO_REVIEW_BEFORE_GATE_2_CLOSE"
+}

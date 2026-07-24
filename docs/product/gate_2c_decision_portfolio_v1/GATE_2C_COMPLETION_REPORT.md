@@ -45,6 +45,8 @@
 | Portfolio replaces top-1 bias | **DONE** |
 | Categories can surface | **DONE** |
 | Home remains Executive Summary | **DONE** |
-| Production + CEO visual | **PENDING / OPEN** |
+| Production deploy (`d20a06f` / PR #90) | **DONE** |
+| Production probe + Desktop/Mobile shots | **DONE** (`after_verification.json`) |
+| CEO visual | **OPEN** — awaiting **APPROVED — CLOSE Gate 2** |
 
-**STOP — deploy + CEO visual. Do not begin Gate 3.**
+**STOP — CEO visual. Do not begin Gate 3 or Product Intelligence.**
