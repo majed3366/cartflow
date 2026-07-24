@@ -3,7 +3,8 @@
 **Document type:** Mandatory governance workflow — **Execution Gates**  
 **Date (UTC):** 2026-07-24  
 **Amendment:** Constitutional Execution Gates V1 (2026-07-24)  
-**Status:** Gate 1 OPEN — 1-A + 1-B DEPLOYED (`db1d6aa`); awaiting CEO visual CLOSE — Gates 2–7 LOCKED  
+**Status:** Gate 1 OPEN (deployed); **Gate 2 AUTHORIZED** — Decision Ownership Report V1 (inventory) — Gates 3–7 LOCKED  
+
 
 
 
@@ -74,14 +75,14 @@ Only **CLOSED** unlocks the next gate’s **AUTHORIZED** state.
 | Gate | Package | Status | Deploy SHA | CEO approval | Closed (UTC) |
 |------|---------|--------|------------|--------------|--------------|
 | **Gate 1** | P1 Home Slim Transport + 1-B Composition | **OPEN** — 1-A+1-B deployed; awaiting CEO CLOSE | `f556a5d` / `db1d6aa` | — pending CEO | — |
-| **Gate 2** | P2 Single Decision Owner | LOCKED | — | — | — |
+| **Gate 2** | P2 Single Decision Owner | **AUTHORIZED** — inventory/report done; moves pending | — | — | — |
 | **Gate 3** | P3 Carts Operations Only | LOCKED | — | — | — |
 | **Gate 4** | P4 Communication Consolidation | LOCKED | — | — | — |
 | **Gate 5** | P5 Legacy Home Retirement | LOCKED | — | — | — |
 | **Gate 6** | P6 Ownership Declarations | LOCKED | — | — | — |
 | **Gate 7** | P7 Product Intelligence Readiness | LOCKED | — | — | — |
 
-**Current gate:** Gate 1 OPEN — 1-A (`f556a5d`) + 1-B (`db1d6aa`) deployed; awaiting CEO CLOSE. Evidence: `docs/product/gate_1_home_slim_transport_v1/` · `docs/product/gate_1b_executive_composition_v1/`. Gates 2–7 LOCKED.
+**Current gate:** Gate 2 AUTHORIZED (inventory). Canonical Decision Owner recorded: Cart Workspace `#workspace`. Report: `docs/product/DECISION_OWNERSHIP_REPORT_V1.md`. Gate 1 still OPEN for formal CLOSE. Gates 3–7 LOCKED.
 
 ---
 
@@ -722,4 +723,4 @@ Only then may Product Intelligence V1 implementation begin as a **separate** tas
 - Do **not** run parallel gates.  
 - Do **not** start Product Intelligence until Gate 7 is CLOSED with explicit CEO authorization.  
 
-**Next action:** Complete Gate 1 production deploy + CEO visual approval → CLOSED. Do **not** start Gate 2 until then.
+**Next action:** CEO accept [`DECISION_OWNERSHIP_REPORT_V1.md`](DECISION_OWNERSHIP_REPORT_V1.md) (canonical owner + inventory) → implement Gate 2 moves M1–M8 → CEO CLOSE. Formally CLOSE Gate 1 when reviewing. Gates 3–7 LOCKED. No Product Intelligence.
