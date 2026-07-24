@@ -88,6 +88,9 @@ def api_cart_workspace_projection(request: Request):
             "gate_2b_decision_composition_engine": bool(
                 (projection or {}).get("gate_2b_decision_composition_engine")
             ),
+            "gate_2c_decision_portfolio": bool(
+                (projection or {}).get("gate_2c_decision_portfolio")
+            ),
         }
     )
 

@@ -37,6 +37,9 @@ def decision_to_workspace_card_v1(decision: Mapping[str, Any]) -> dict[str, Any]
         "decision_confidence_ar": confidence_ar(conf),
         "priority": int(decision.get("priority") or 0),
         "priority_band": _norm(decision.get("priority_band")),
+        "portfolio_rank": int(decision.get("portfolio_rank") or 0) or None,
+        "decision_category": _norm(decision.get("decision_category")),
+        "decision_category_ar": _norm(decision.get("decision_category_ar")),
         "view_details_href": _norm(decision.get("view_details_href")),
         "view_details_ar": "عرض التفاصيل",
         "explanation": {

@@ -177,8 +177,18 @@
     var bandLabel = "";
     if (band === "needs_action_now") bandLabel = "يحتاج إجراء الآن";
     else if (band === "monitor") bandLabel = "راقب";
+    var rank = parseInt(card.portfolio_rank || 0, 10);
+    var cat = String(card.decision_category_ar || "").trim();
 
     var rows = [];
+    if (rank > 0) {
+      rows.push(
+        '<p class="cw-card__rank">الأولوية ' + esc(String(rank)) + "</p>"
+      );
+    }
+    if (cat) {
+      rows.push('<p class="cw-card__category">' + esc(cat) + "</p>");
+    }
     if (bandLabel) {
       rows.push(
         '<p class="cw-card__band cw-card__band--' +
