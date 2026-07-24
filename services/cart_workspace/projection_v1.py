@@ -27,7 +27,7 @@ ZONE_LABELS_AR = {
     "E": "الصحة التشغيلية",
 }
 
-MISSION_QUESTION_AR = "ما الذي يحتاج قرارك الآن؟"
+MISSION_QUESTION_AR = "ماذا يجب أن أقرر الآن، ولماذا؟"
 
 ACTION_LABELS_AR = {
     "approve_discount": "قبول الخصم",

@@ -238,15 +238,7 @@
     var meaning = esc(merchantFacingText(story.merchant_meaning_ar || ""));
     var did = esc(merchantFacingText(story.cartflow_action_ar || ""));
     var count = parseInt(story.affected_carts || rowsInStory.length || 0, 10);
-    var actionLine = esc(
-      merchantFacingText(
-        story.merchant_action_line_ar ||
-          story.recommendation_ar ||
-          (story.action_required ? "نعم — يلزم تدخلك" : "لا — CartFlow يتابع تلقائياً")
-      )
-    );
-    var actionClass = story.action_required ? "ma-mi-decision-row--action" : "";
-
+    /* Gate 2 — Carts ops only: no business recommendation / decision rows. */
     return (
       '<summary class="ma-mi-group-card" data-mi-story-id="' +
       esc(sid) +
@@ -261,9 +253,7 @@
       "</div>" +
       summaryPreviewBlock(
         decisionRowHtml("ماذا حدث؟", what, esc) +
-          decisionRowHtml("لماذا يهم؟", meaning, esc) +
-          decisionRowHtml("ماذا فعل CartFlow؟", did, esc) +
-          decisionRowHtml("هل تحتاج أن تتدخل؟", actionLine, esc, actionClass)
+          decisionRowHtml("الحالة التشغيلية", did || "CartFlow يتابع هذه السلال", esc)
       ) +
       '<span class="ma-mi-group-card__cta v2-btn" aria-hidden="true">عرض التفاصيل</span>' +
       "</summary>"
@@ -303,16 +293,7 @@
           "</p></section>"
       );
     }
-    var rec = merchantFacingText(story.recommendation_ar || "");
-    if (rec) {
-      parts.push(
-        '<section class="ma-mi-group-section ma-mi-group-section--rec">' +
-          '<h3 class="ma-mi-group-section__label">ما الذي يستحق النظر؟</h3>' +
-          '<p class="ma-mi-group-section__text">' +
-          esc(rec) +
-          "</p></section>"
-      );
-    }
+    /* Gate 2 — recommendations removed from Carts; decisions live in #workspace. */
     var repSplit = splitRepresentative(
       { representative_item: { recovery_key: (rowsInStory[0] && recoveryKey(rowsInStory[0], deps.cartRecoveryKey)) || "" } },
       rowsInStory,
@@ -552,14 +533,7 @@
       did = esc("CartFlow يتابع هذه السلال ويسجّل ما يحدث");
     }
     var value = parseFloat(group.total_cart_value || 0);
-    var recType = rec ? norm(rec.recommendation_type) : norm(group.recommended_action_type);
-    var recTypeLbl = esc(recTypeLabelAr(recType));
-    var recMsg = rec ? esc(merchantFacingText(rec.merchant_message_ar || "")) : "";
-    var actionLine =
-      recType === "required_action" || recType === "suggested_action"
-        ? recTypeLbl + (recMsg ? " — " + recMsg : "")
-        : recTypeLbl;
-
+    /* Gate 2 — Carts ops only: strip recommendation / «يلزم إجراء» decision rows. */
     return (
       '<summary class="ma-mi-group-card" data-mi-group-id="' +
       esc(gid) +
@@ -574,14 +548,7 @@
       "</div>" +
       summaryPreviewBlock(
         decisionRowHtml("ماذا يحدث؟", what, esc) +
-          decisionRowHtml("لماذا يهم؟", meaning, esc) +
           decisionRowHtml("ماذا فعل CartFlow؟", did, esc) +
-          decisionRowHtml(
-            "هل يلزم إجراء؟",
-            actionLine,
-            esc,
-            recType === "required_action" ? "ma-mi-decision-row--action" : ""
-          ) +
           (value > 0
             ? '<div class="ma-mi-group-card__meta">' +
               '<span class="ma-mi-group-card__value cf-currency-atom cftyp-currency" data-cf-currency="1" dir="ltr">' +
@@ -630,15 +597,7 @@
           "</p></section>"
       );
     }
-    if (rec && rec.merchant_message_ar) {
-      parts.push(
-        '<section class="ma-mi-group-section ma-mi-group-section--rec">' +
-          '<h3 class="ma-mi-group-section__label">التوصية</h3>' +
-          '<p class="ma-mi-group-section__text">' +
-          esc(merchantFacingText(rec.merchant_message_ar)) +
-          "</p></section>"
-      );
-    }
+    /* Gate 2 — no recommendation section on Carts. */
     if (repSplit.representative.length) {
       parts.push(
         '<section class="ma-mi-group-section">' +

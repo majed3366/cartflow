@@ -28,6 +28,34 @@
       klass === "override" ||
       String((card && card.override_mode) || "") === "active";
 
+    /* Gate 2 — business finding / FDE cards */
+    if (
+      String((card && card.card_kind) || "") === "business_finding" ||
+      klass === "business_finding"
+    ) {
+      var hasDec = !!(card && card.has_decision);
+      return {
+        icon: hasDec ? "◎" : "○",
+        title: String((card && card.title_ar) || (hasDec ? "قرار تجاري" : "لا قرار بعد")),
+        sentence: hasDec
+          ? String(
+              (card.explanation && card.explanation.why_here) ||
+                card.required_merchant_action ||
+                "قرار يحتاج مراجعتك"
+            )
+          : String(
+              (card && card.missing_evidence) ||
+                "أدلة غير كافية لإصدار قرار"
+            ),
+        actionLabel: String(
+          (card && card.action_label_ar) || (hasDec ? "راجع القرار" : "مراجعة الأدلة")
+        ),
+        isVip: false,
+        isBusiness: true,
+        hasDecision: hasDec,
+      };
+    }
+
     if (isVip || action === "override_decision_action") {
       return {
         icon: "🔴",
@@ -104,6 +132,53 @@
   function detailsHtml(card, id, extraRows) {
     var ex = explanationOf(card);
     var rows = [];
+    if (card && card.card_kind === "business_finding") {
+      if (card.evidence_summary) {
+        rows.push(
+          "<dt>الأدلة</dt><dd>" + esc(card.evidence_summary) + "</dd>"
+        );
+      }
+      if (card.decision_confidence_ar || card.decision_confidence) {
+        rows.push(
+          "<dt>الثقة</dt><dd>" +
+            esc(card.decision_confidence_ar || card.decision_confidence) +
+            "</dd>"
+        );
+      }
+      if (ex.why_here) {
+        rows.push("<dt>لماذا؟</dt><dd>" + esc(ex.why_here) + "</dd>");
+      }
+      if (card.expected_business_impact || ex.expected_after) {
+        rows.push(
+          "<dt>الأثر المتوقع</dt><dd>" +
+            esc(card.expected_business_impact || ex.expected_after) +
+            "</dd>"
+        );
+      }
+      if (card.required_merchant_action) {
+        rows.push(
+          "<dt>الإجراء الموصى به</dt><dd>" +
+            esc(card.required_merchant_action) +
+            "</dd>"
+        );
+      }
+      if (card.missing_evidence) {
+        rows.push(
+          "<dt>ما ينقص</dt><dd>" + esc(card.missing_evidence) + "</dd>"
+        );
+      }
+      if (Array.isArray(extraRows) && extraRows.length) {
+        rows = rows.concat(extraRows);
+      }
+      if (!rows.length) return "";
+      return (
+        '<details class="cw-card__details" open>' +
+        "<summary>عرض التفاصيل</summary>" +
+        '<dl class="cw-card__detail-list">' +
+        rows.join("") +
+        "</dl></details>"
+      );
+    }
     if (ex.why_here) {
       rows.push("<dt>لماذا ظهرت؟</dt><dd>" + esc(ex.why_here) + "</dd>");
     }
@@ -229,9 +304,15 @@
     var mods = ["cw-card"];
     if (p.isVip && mode !== "following") mods.push("cw-card--vip");
     if (mode === "following") mods.push("cw-card--following");
+    if (p.isBusiness) mods.push("cw-card--business");
 
-    var actionBtn;
-    if (mode === "following") {
+    var actionBtn = "";
+    if (p.isBusiness) {
+      actionBtn =
+        '<span class="cw-card__action cw-card__action--label" data-cw-business="1">' +
+        esc(p.actionLabel) +
+        "</span>";
+    } else if (mode === "following") {
       actionBtn =
         '<button type="button" class="cw-card__action" data-cw-command="take_over_conversation" data-decision-id="' +
         id +
@@ -258,6 +339,10 @@
       esc(card.decision_class || "") +
       '" data-required-action="' +
       action +
+      '" data-card-kind="' +
+      esc(card.card_kind || "ops") +
+      '" data-decision-status="' +
+      esc(card.decision_status || "") +
       '">' +
       '<div class="cw-card__head">' +
       '<span class="cw-card__icon" aria-hidden="true">' +

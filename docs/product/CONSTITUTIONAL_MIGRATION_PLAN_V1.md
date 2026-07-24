@@ -3,7 +3,7 @@
 **Document type:** Mandatory governance workflow — **Execution Gates**  
 **Date (UTC):** 2026-07-24  
 **Amendment:** Constitutional Execution Gates V1 (2026-07-24)  
-**Status:** Gate 1 OPEN (deployed); **Gate 2 AUTHORIZED** — Decision Ownership Report V1 (inventory) — Gates 3–7 LOCKED  
+**Status:** Gate 1 OPEN (deployed); **Gate 2 IN_PROGRESS** — Single Decision Owner implementation — Gates 3–7 LOCKED  
 
 
 
@@ -75,14 +75,14 @@ Only **CLOSED** unlocks the next gate’s **AUTHORIZED** state.
 | Gate | Package | Status | Deploy SHA | CEO approval | Closed (UTC) |
 |------|---------|--------|------------|--------------|--------------|
 | **Gate 1** | P1 Home Slim Transport + 1-B Composition | **OPEN** — 1-A+1-B deployed; awaiting CEO CLOSE | `f556a5d` / `db1d6aa` | — pending CEO | — |
-| **Gate 2** | P2 Single Decision Owner | **AUTHORIZED** — inventory/report done; moves pending | — | — | — |
+| **Gate 2** | P2 Single Decision Owner | **IN_PROGRESS** — CW sole owner; MEIF root retired; awaiting deploy + CEO | — | — | — |
 | **Gate 3** | P3 Carts Operations Only | LOCKED | — | — | — |
 | **Gate 4** | P4 Communication Consolidation | LOCKED | — | — | — |
 | **Gate 5** | P5 Legacy Home Retirement | LOCKED | — | — | — |
 | **Gate 6** | P6 Ownership Declarations | LOCKED | — | — | — |
 | **Gate 7** | P7 Product Intelligence Readiness | LOCKED | — | — | — |
 
-**Current gate:** Gate 2 AUTHORIZED (inventory). Canonical Decision Owner recorded: Cart Workspace `#workspace`. Report: `docs/product/DECISION_OWNERSHIP_REPORT_V1.md`. Gate 1 still OPEN for formal CLOSE. Gates 3–7 LOCKED.
+**Current gate:** Gate 2 IN_PROGRESS (implementation). Canonical Decision Owner: Cart Workspace `#workspace`. Pack: `docs/product/gate_2_decision_ownership_v1/`. Inventory: `docs/product/DECISION_OWNERSHIP_REPORT_V1.md`. Gate 1 still OPEN for formal CLOSE. Gates 3–7 LOCKED.
 
 ---
 
@@ -364,11 +364,12 @@ CEO confirms single Decision owner + reasoning quality → APPROVED → Gate 2 C
 
 #### Definition of Done (implementation)
 
-- [ ] Canonical UI written  
-- [ ] One visible Decision surface under HES  
-- [ ] Constitution fields present  
-- [ ] No business decision cards elsewhere  
-- [ ] §6 Decision block  
+- [x] Canonical UI written (Cart Workspace `#workspace`)  
+- [x] One visible Decision surface under HES (FDE enrich CW; MEIF root retired)  
+- [x] Constitution fields present (evidence / confidence / why / impact / action)  
+- [x] No business decision cards elsewhere (Home teaser / Carts strip / Comms status)  
+- [ ] Production deploy + CEO visual → Gate Register CLOSED  
+- [ ] §6 Decision block (post-CLOSE)  
 
 ---
 

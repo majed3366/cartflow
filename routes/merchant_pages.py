@@ -50,6 +50,9 @@ def dashboard(request: Request):
     from services.cart_workspace.silent_success_flag_v1 import (  # noqa: PLC0415
         cart_workspace_silent_success_enabled,
     )
+    from services.cart_workspace.business_findings_enrichment_v1 import (  # noqa: PLC0415
+        decision_dual_stack_v1_enabled,
+    )
     from services.product_data.merchant_experience_integration_flag_v1 import (  # noqa: PLC0415
         merchant_experience_integration_v1_enabled,
     )
@@ -57,6 +60,7 @@ def dashboard(request: Request):
     _meif_on = merchant_experience_integration_v1_enabled()
     # MEIF V1: Decision Workspace must be navigable (MEV1-D01).
     _cw_on = bool(cart_workspace_v1_enabled() or _meif_on)
+    _dual = decision_dual_stack_v1_enabled()
     resp = templates.TemplateResponse(
         request,
         "merchant_app.html",
@@ -69,6 +73,7 @@ def dashboard(request: Request):
             "merchant_pulse_ui_v1": merchant_pulse_ui_v1_enabled(),
             "merchant_experience_integration_v1": _meif_on,
             "merchant_cart_workspace_v1": _cw_on,
+            "decision_dual_stack_v1": _dual,
             "merchant_cart_workspace_silent_success": (
                 _cw_on and cart_workspace_silent_success_enabled()
             ),

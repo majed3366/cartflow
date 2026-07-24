@@ -128,6 +128,7 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
 
     decisions_count = 0
     decisions_title = ""
+    decisions_evidence = "none"
     schedules = 0
     meif = src.get("merchant_experience_integration_v1")
     if isinstance(meif, Mapping):
@@ -147,6 +148,8 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
                 or decisions[0].get("title")
                 or ""
             ).strip()
+            if decisions_count and decisions_title:
+                decisions_evidence = "decision_titles"
         carts_page = pages.get("carts") if isinstance(pages, Mapping) else {}
         if isinstance(carts_page, Mapping):
             waiting = max(waiting, _as_int(carts_page.get("durable_cart_count")))
@@ -165,6 +168,26 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
             )
             wa_sent = max(wa_sent, _as_int((cops or {}).get("mock_whatsapp_sent")))
             schedules = _as_int((cops or {}).get("recovery_schedules"))
+
+    # Gate 2 — Home teaser from FDE without fat MEIF (canonical Decision Owner = Workspace).
+    if decisions_evidence == "none":
+        slug = str(
+            src.get("store_slug")
+            or (src.get("merchant_home_experience_v1") or {}).get("store_slug")
+            or ""
+        ).strip()
+        if slug:
+            try:
+                from services.cart_workspace.business_findings_enrichment_v1 import (  # noqa: PLC0415
+                    count_fde_decisions_for_teaser_v1,
+                )
+
+                teaser_dec = count_fde_decisions_for_teaser_v1(slug)
+                decisions_count = int(teaser_dec.get("count") or 0)
+                decisions_title = str(teaser_dec.get("top_title_ar") or "").strip()
+                decisions_evidence = str(teaser_dec.get("evidence") or "none")
+            except Exception:  # noqa: BLE001
+                pass
 
     obs_count = 0
     obs_top: dict[str, str] | None = None
@@ -187,7 +210,7 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
     needs_attention = waiting > 0 or no_phone > 0 or store_ok is False
     return {
         "schema": "home_teaser_inputs_v1",
-        "version": "gate_1b_executive_composition",
+        "version": "gate_2_single_decision_owner",
         "health": {
             "watching": waiting > 0 or active > 0,
             "abandoned_carts": waiting,
@@ -201,7 +224,7 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
         "decisions": {
             "count": decisions_count,
             "top_title_ar": decisions_title,
-            "evidence": "decision_titles" if decisions_count and decisions_title else "none",
+            "evidence": decisions_evidence,
         },
         "observations": {
             "count": obs_count,

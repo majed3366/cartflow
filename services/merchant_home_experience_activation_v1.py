@@ -344,6 +344,9 @@ def finalize_dashboard_summary_payload(
             cache_hit=cache_hit,
         )
         # Extract teasers from any fat packages already present (e.g. cache), then strip.
+        # Gate 2: stamp slug so FDE teaser count can resolve without fat MEIF.
+        if store_slug and not str(body.get("store_slug") or "").strip():
+            body["store_slug"] = str(store_slug).strip()
         with dashboard_summary_profile_span("home_stage_teaser_extract"):
             body["home_teaser_inputs_v1"] = extract_home_teaser_inputs_v1(body)
         # Skip MEIF / ACF / ORV / Pulse attach — never load page-owned payloads for Home.
