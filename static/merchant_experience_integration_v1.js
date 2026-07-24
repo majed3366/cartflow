@@ -255,6 +255,56 @@
     });
   }
 
+  function renderDecisionBlock(dec) {
+    if (!dec || typeof dec !== "object") return "";
+    if (dec.has_decision) {
+      return (
+        '<div class="meif-decision" data-decision="1" data-decision-status="DECISION">' +
+        '<p class="meif-decision__eyebrow">قرار اليوم</p>' +
+        '<h4 class="meif-decision__title" data-decision-text="1">' +
+        esc(String(dec.decision || "")) +
+        "</h4>" +
+        '<p class="meif-card__row"><strong>لماذا:</strong> ' +
+        esc(String(dec.why || "")) +
+        "</p>" +
+        '<p class="meif-card__row"><strong>الأثر المتوقع:</strong> ' +
+        esc(String(dec.expected_business_impact || "")) +
+        "</p>" +
+        '<p class="meif-card__action" data-decision-action="1"><strong>المطلوب منك:</strong> ' +
+        esc(String(dec.required_merchant_action || "")) +
+        "</p>" +
+        '<p class="meif-card__row"><strong>مقياس النجاح:</strong> ' +
+        esc(String(dec.success_metric || "")) +
+        "</p>" +
+        '<p class="meif-card__row"><strong>نافذة المراجعة:</strong> ' +
+        esc(String(dec.review_window || "")) +
+        " · <strong>ثقة القرار:</strong> " +
+        esc(String(dec.decision_confidence || "")) +
+        "</p>" +
+        (dec.evidence_summary
+          ? '<p class="meif-card__row meif-card__evidence"><strong>الأدلة:</strong> ' +
+            esc(String(dec.evidence_summary)) +
+            "</p>"
+          : "") +
+        "</div>"
+      );
+    }
+    return (
+      '<div class="meif-decision meif-decision--none" data-decision="1" data-decision-status="NO_DECISION">' +
+      '<p class="meif-decision__eyebrow">لا قرار</p>' +
+      '<h4 class="meif-decision__title">NO DECISION</h4>' +
+      '<p class="meif-card__row"><strong>الدليل الناقص:</strong> ' +
+      esc(String(dec.missing_evidence || "أدلة غير كافية.")) +
+      "</p>" +
+      (dec.evidence_summary
+        ? '<p class="meif-card__row meif-card__evidence"><strong>ما يتوفر الآن:</strong> ' +
+          esc(String(dec.evidence_summary)) +
+          "</p>"
+        : "") +
+      "</div>"
+    );
+  }
+
   function renderFindingCard(it, surface) {
     var fid = String((it && it.finding_id) || "");
     var ftype = String((it && it.finding_type) || "");
@@ -276,6 +326,7 @@
     var confidence = String(it.confidence || "");
     var action = String(it.recommended_action || "");
     var confAr = confidenceLabel({ confidence: confidence }) || confidence;
+    var dec = (it && it.merchant_decision_v1) || null;
     pushRenderDiag({
       finding_id: fid,
       finding_type: ftype,
@@ -290,6 +341,8 @@
       esc(fid) +
       '" data-finding-type="' +
       esc(ftype) +
+      '" data-has-decision="' +
+      (dec && dec.has_decision ? "1" : "0") +
       '">' +
       '<div class="meif-card__head">' +
       '<span class="meif-trust meif-trust--observation">استنتاج تجاري</span>' +
@@ -297,6 +350,7 @@
         ? '<span class="meif-conf">' + esc(confAr) + "</span>"
         : "") +
       "</div>" +
+      renderDecisionBlock(dec) +
       '<h4 class="meif-card__title" data-mebf-title="1">' +
       esc(title) +
       "</h4>" +
@@ -310,7 +364,7 @@
           esc(evidence) +
           "</p>"
         : "") +
-      (action
+      (!dec && action
         ? '<p class="meif-card__action" data-mebf-action="1"><strong>الخطوة المقترحة:</strong> ' +
           esc(action) +
           "</p>"
@@ -442,7 +496,34 @@
       "</div>" +
       "</header>";
 
-    // MEBF V1 — Business Findings first (canonical commercial insights).
+    // Decision Engine V1 — what to do today (from findings only).
+    var decisions = sections.merchant_decisions || [];
+    var noDecisions = sections.merchant_no_decisions || [];
+    var decisionBlock = renderFindingsBlock(
+      decisions.length ? decisions : [],
+      "home",
+      "لا قرار قابل للتنفيذ اليوم — الأدلة غير كافية بعد."
+    );
+    html +=
+      '<section class="meif-block meif-block--decisions" aria-label="قرارات اليوم" data-decision-home="1">' +
+      "<h3>ماذا تفعل اليوم؟</h3>" +
+      '<p class="meif-lede">قرارات مبنية على استنتاجات وأدلة فقط — بدون تخمين.</p>' +
+      decisionBlock.html +
+      "</section>";
+    if (noDecisions.length) {
+      var noDecBlock = renderFindingsBlock(
+        noDecisions,
+        "home",
+        "لا حالات NO DECISION."
+      );
+      html +=
+        '<section class="meif-block meif-block--no-decision" aria-label="لا قرار">' +
+        "<h3>حيث لا يوجد قرار بعد</h3>" +
+        noDecBlock.html +
+        "</section>";
+    }
+
+    // MEBF V1 — Business Findings (context under decisions).
     var findingsBlock = renderFindingsBlock(
       findings,
       "home",
