@@ -1,0 +1,26 @@
+{
+  "auth_email": "cf.orv.polish.14f8c6e899@smartreplyai.net",
+  "url_after_auth": "https://smartreplyai.net/dashboard#workspace",
+  "has_root_initial": true,
+  "applied": true,
+  "probe": {
+    "cards": 4,
+    "actions": 4,
+    "conf": 4,
+    "has_statement": 4,
+    "banned_visible": [],
+    "sample": "معرفة من الملاحظة\n\nماذا نلاحظ في منتجاتك الآن؟\n\nملاحظات قصيرة مبنية على أدلة — مع خطوة مقترحة وثقة واضحة.\n\nملاحظة مرتبطة بأدلة\n\nالثقة: مرتفع\nاهتمام مرتفع وتحويل منخفض\n\nهذا المنتج يحظى باهتمام واضح، لكن التحويل إلى شراء لا يزال منخفضاً.\n\nالخطوة المقترحة: راجع صفحة المنتج وعرض الشحن قبل أي توسعة.\n\nملاحظة مرتبطة بأدلة\n\nالثقة: متوسط\nأدلة الشحن أقوى من السعر\n\nأدلة التردد بسبب الشحن/التوصيل أقوى حالياً من أدلة السعر.\n\nالخطوة المقترحة: اختبر شحنًا مجانيًا أو خفّض تكلفة الشحن.\n\nملاحظة مرتبطة بأدلة\n\nالثق"
+  },
+  "generated_at_utc": "2026-07-24T15:58:59.364556+00:00",
+  "production_url": "https://smartreplyai.net/dashboard#home",
+  "deploy_sha": "07e9a780ac715ae98130b5fe74b60d5ce1fb951f",
+  "railway": "success",
+  "screenshots": {
+    "desktop": "docs/product/observation_reality_validation_v1/05_production_desktop_orv_ui_polish.png",
+    "mobile": "docs/product/observation_reality_validation_v1/06_production_mobile_orv_ui_polish.png"
+  },
+  "technical_fields_hidden": true,
+  "every_card_has_statement_action_confidence": true,
+  "ok": true,
+  "status": "AWAITING_PRODUCTION_REVIEW_APPROVAL"
+}

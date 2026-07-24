@@ -19,7 +19,10 @@ Observation Foundation V1   ← THIS LAYER
   • Observation Model
   • Correlation Model (Product → Behavior → Reason → Return → Purchase)
         ↓
-Product Intelligence V1 (future consumer)
+Observation Reality Validation V1 (COMPLETED & RELEASED)
+  • Merchant-visible Home observations (statement + action + confidence)
+        ↓
+Product Intelligence V1 (not started — separate authorization required)
 ```
 
 ---
