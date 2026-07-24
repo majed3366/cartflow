@@ -1,0 +1,28 @@
+{
+  "email": "cf.hes.046da2859b@smartreplyai.net",
+  "probe": {
+    "http": 200,
+    "surface_mode": "executive_summary_v1",
+    "hes_ok": true,
+    "section_ids": [
+      "health",
+      "decisions",
+      "observations"
+    ],
+    "obs_empty": "True",
+    "obs_summary": "لا توجد أدلة كافية لإصدار ملاحظة مرتبطة بمنتج محدد.",
+    "orv_findings": 0,
+    "has_demo_perfume": false,
+    "has_hes_title": true,
+    "has_view_details": true,
+    "text_sample": "ملخص تنفيذي\n\nماذا يجب أن تعرف الآن؟\n\nملخص سريع فقط — التفاصيل في صفحاتها.\n\nصحة العمل\n\nلا نشاط كافٍ بعد لملخص تشغيلي — استمر في جمع الأدلة.\n\nعرض التفاصيل ←\n\nقرارات اليوم\n0\n\nلا قرار قابل للتنفيذ اليوم — راجع مساحة القرار عند توفر أدلة.\n\nعرض التفاصيل ←\n\nملاحظات المنتجات\n0\n\nلا توجد أدلة كافية لإصدار ملاحظة مرتبطة بمنتج محدد.\n\nعرض التفاصيل ←\n\nالصفحة الرئيسية = ملخص تنفيذي · القرارات في مساحة القرار · السلال للتشغيل · الإعدادات للضبط."
+  },
+  "generated_at_utc": "2026-07-24T17:46:56.578133+00:00",
+  "production_url": "https://smartreplyai.net/dashboard#home",
+  "screenshots": {
+    "desktop": "docs/product/home_executive_summary_v1/01_desktop_home_executive_summary.png",
+    "mobile": "docs/product/home_executive_summary_v1/02_mobile_home_executive_summary.png"
+  },
+  "ok": true,
+  "status": "AWAITING_PRODUCTION_REVIEW_APPROVAL"
+}
