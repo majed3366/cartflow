@@ -10,6 +10,7 @@ import os
 from typing import Any, Mapping
 
 ENV_DECISION_DUAL_STACK_V1 = "CARTFLOW_DECISION_DUAL_STACK_V1"
+INSUFFICIENT_EVIDENCE_AR = "لا توجد أدلة كافية لإصدار قرار."
 
 
 def decision_dual_stack_v1_enabled(
@@ -72,15 +73,20 @@ def fde_card_from_contract_v1(contract: Mapping[str, Any]) -> dict[str, Any] | N
         action_label = action or "راجع القرار"
         required_action = "review_business_decision"
 
+    decided = has_decision and status == "DECISION"
+    evidence_out = evidence if evidence else (INSUFFICIENT_EVIDENCE_AR if not decided else "")
     return {
         "decision_id": f"fde:{fid}",
         "card_kind": "business_finding",
         "finding_id": fid,
         "finding_type": _norm(contract.get("finding_type")),
         "decision_class": "business_finding",
+        "constitution_v1": True,
         "required_action": required_action,
         "action_label_ar": action_label,
         "title_ar": title or "قرار تجاري",
+        "decision_ar": title or "قرار تجاري",
+        "why_ar": why or (missing if not decided else ""),
         "governing_reason": "finding_decision_engine_v1",
         "admission_rule_id": "gate_2_fde_enrichment",
         "explanation": {
@@ -89,14 +95,16 @@ def fde_card_from_contract_v1(contract: Mapping[str, Any]) -> dict[str, Any] | N
             "why_stopped": missing if status == "NO_DECISION" else "",
             "expected_after": impact,
         },
-        "evidence_summary": evidence,
+        "evidence_summary": evidence_out,
         "evidence_refs": [],
-        "decision_confidence": conf,
-        "decision_confidence_ar": _confidence_ar(conf),
+        "decision_confidence": conf if decided else "",
+        "decision_confidence_ar": _confidence_ar(conf) if decided and conf else "",
         "expected_business_impact": impact,
-        "required_merchant_action": action,
+        "required_merchant_action": action or ("لا إجراء مطلوب حالياً" if not decided else action_label),
+        "view_details_href": "",
+        "view_details_ar": "عرض التفاصيل",
         "decision_status": status,
-        "has_decision": has_decision and status == "DECISION",
+        "has_decision": decided,
         "missing_evidence": missing,
         "merchant_decision_v1": dict(dec) if dec else {},
         "order_key": f"0-fde-{fid}",
@@ -152,25 +160,85 @@ def list_fde_workspace_cards_v1(
     return cards
 
 
+def _normalize_constitution_fields(card: dict[str, Any]) -> dict[str, Any]:
+    """Ensure Decision / Why / Evidence / Confidence / Action face fields."""
+    if not isinstance(card, dict):
+        return card
+    card["constitution_v1"] = True
+    if not _norm(card.get("decision_ar")):
+        card["decision_ar"] = _norm(card.get("title_ar") or card.get("action_label_ar"))
+    why = _norm(card.get("why_ar"))
+    ex = card.get("explanation")
+    if not why and isinstance(ex, Mapping):
+        why = _norm(ex.get("why_here"))
+    if why:
+        card["why_ar"] = why
+    if not _norm(card.get("evidence_summary")):
+        missing = _norm(card.get("missing_evidence"))
+        if missing or card.get("has_decision") is False:
+            card["evidence_summary"] = INSUFFICIENT_EVIDENCE_AR
+    conf = _norm(card.get("decision_confidence"))
+    if conf and conf.lower() not in {"none", "unknown"}:
+        card["decision_confidence_ar"] = _confidence_ar(conf)
+    else:
+        card.pop("decision_confidence_ar", None)
+    if not _norm(card.get("required_merchant_action")):
+        card["required_merchant_action"] = _norm(
+            card.get("action_label_ar") or "لا إجراء مطلوب حالياً"
+        )
+    if not _norm(card.get("view_details_href")):
+        # Default destination for business findings: stay on Workspace detail.
+        if card.get("card_kind") == "business_finding":
+            card["view_details_href"] = ""
+    if not _norm(card.get("view_details_ar")) and _norm(card.get("view_details_href")):
+        card["view_details_ar"] = "عرض التفاصيل"
+    return card
+
+
 def enrich_projection_with_fde_v1(
     projection: dict[str, Any] | None,
     store_slug: str,
 ) -> dict[str, Any]:
     """
-    Merge FDE business Decision cards into zone_b (ahead of ops cards).
-    Mutates and returns projection dict.
+    Merge FDE + operational-truth Decision cards into zone_b (ahead of ops cards).
+    Mutates and returns projection dict. Gate 2A: decisions only in merchant paint.
     """
     if not isinstance(projection, dict):
         return {}
     slug = _norm(store_slug) or _norm(projection.get("store_slug"))
     fde_cards = list_fde_workspace_cards_v1(slug, mark_displayed=False)
+    # Prefer actionable decisions; keep NO_DECISION only when nothing else exists.
+    fde_decided = [c for c in fde_cards if c.get("has_decision")]
+    fde_no = [c for c in fde_cards if not c.get("has_decision")]
+
     zone_a = list(projection.get("zone_a") or [])
     zone_b = list(projection.get("zone_b") or [])
-    # Keep ops cards; prepend business findings.
-    ops_b = [c for c in zone_b if isinstance(c, dict) and c.get("card_kind") != "business_finding"]
-    # Drop prior fde: ids if re-enriching
-    ops_b = [c for c in ops_b if not str(c.get("decision_id") or "").startswith("fde:")]
-    zone_b = fde_cards + ops_b
+    ops_b = [
+        c
+        for c in zone_b
+        if isinstance(c, dict)
+        and c.get("card_kind") not in {"business_finding", "operational_truth"}
+        and not str(c.get("decision_id") or "").startswith("fde:")
+        and not str(c.get("decision_id") or "").startswith("ops-truth:")
+    ]
+
+    try:
+        from services.cart_workspace.operational_truth_decision_cards_v1 import (  # noqa: PLC0415
+            list_operational_truth_decision_cards_v1,
+        )
+
+        ops_truth = list_operational_truth_decision_cards_v1(
+            slug, existing_cards=fde_decided + fde_no + ops_b
+        )
+    except Exception:  # noqa: BLE001
+        ops_truth = []
+
+    primary = fde_decided + ops_truth
+    if not primary and fde_no:
+        primary = fde_no
+    zone_b = [_normalize_constitution_fields(dict(c)) for c in (primary + ops_b)]
+    zone_a = [_normalize_constitution_fields(dict(c)) for c in zone_a if isinstance(c, dict)]
+
     projection["zone_b"] = zone_b
     projection["zone_a"] = zone_a
     quiet = not zone_a and not zone_b
@@ -183,10 +251,17 @@ def enrich_projection_with_fde_v1(
         projection["attention_focus_decision_id"] = None
     projection["mission_question"] = "ماذا يجب أن أقرر الآن، ولماذا؟"
     projection["gate_2_single_decision_owner"] = True
+    projection["gate_2a_decision_workspace_completion"] = True
+    projection["decisions_only"] = True
     projection["business_finding_count"] = len(fde_cards)
+    projection["operational_truth_count"] = len(ops_truth)
+    projection["decision_card_count"] = len(zone_a) + len(zone_b)
     labels = dict(projection.get("zone_labels") or {})
     labels["B"] = "ما يحتاج قرارك"
     projection["zone_labels"] = labels
+    # Hide operational status zones from merchant constitution surface.
+    projection["zone_c"] = {"visible": False, "summary": ""}
+    projection["zone_d"] = {"visible": False, "completed_count": 0}
     return projection
 
 
