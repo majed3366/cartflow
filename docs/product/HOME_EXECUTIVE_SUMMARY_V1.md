@@ -1,6 +1,6 @@
 # Home Executive Summary Refactoring V1
 
-**Status:** Implemented — awaiting production review approval  
+**Status:** Superseded in scope by Home Stabilization Sprint V1 — awaiting CEO review  
 **Date (UTC):** 2026-07-24  
 **Flag:** `CARTFLOW_HOME_EXECUTIVE_SUMMARY_V1` (default ON)
 
@@ -25,11 +25,13 @@ Home is **not** Product Intelligence, Observation page, Decision Workspace, oper
 
 ## Home payload
 
-`home_executive_summary_v1` sections (summary + count + View Details):
+`home_executive_summary_v1` sections (summary + status + count + View Details):
 
 1. صحة العمل  
 2. قرارات اليوم → `#workspace`  
-3. ملاحظات المنتجات → in-place details (entity-bound preview only)
+3. ملاحظات المنتجات → in-place details (entity-bound preview only)  
+4. السلال → `#carts`  
+5. التواصل → `#communication`
 
 ORV on Home is slimmed: no `evidence_details` / diagnostics in the summary transport.
 
@@ -46,8 +48,10 @@ If no real product can be identified:
 
 > لا توجد أدلة كافية لإصدار ملاحظة مرتبطة بمنتج محدد.
 
-No placeholders. No demo wording. No approved-mass injection on Home (`CARTFLOW_ORV_APPROVED_MASS_V1` default OFF). No demo store fallback.
+No placeholders. No «هذا المنتج». No demo wording. No approved-mass injection on Home (`CARTFLOW_ORV_APPROVED_MASS_V1` default OFF). No demo store fallback.
 
 ## STOP
 
-Do not begin Product Intelligence V1 until this refactoring is approved.
+Do not begin Product Intelligence V1 until **Home Stabilization Sprint V1** is CEO-approved.
+
+See: `docs/product/HOME_STABILIZATION_SPRINT_V1.md`

@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Compose slim Home Executive Summary V1 payload.
+Compose slim Home Executive Summary V1 payload (Home Stabilization Sprint V1).
 
 Home answers: "What should the merchant know now?"
 Detailed Observation / Decision / Operational / Product data stays off
-the initial Home payload — only short summary + count + View Details.
+the initial Home payload — only short summary + status + count + View Details.
+
+Single owner / single data source / single render path when enabled.
 """
 from __future__ import annotations
 
@@ -21,7 +23,38 @@ OWNERSHIP_V1 = {
     "settings": "configuration",
 }
 
+SECTION_IDS_V1 = (
+    "health",
+    "decisions",
+    "observations",
+    "carts",
+    "communication",
+)
+
 OBS_EMPTY_AR = "لا توجد أدلة كافية لإصدار ملاحظة مرتبطة بمنتج محدد."
+
+GOVERNANCE_V1 = {
+    "sprint": "home_stabilization_v1",
+    "single_owner": "home_executive_summary_v1",
+    "single_data_source": "finalize_dashboard_summary_payload",
+    "single_render_path": "maApplyHomeExecutiveSummaryV1",
+    "sections": list(SECTION_IDS_V1),
+    "product_intelligence": False,
+}
+
+
+def _meif_home(summary: Mapping[str, Any]) -> dict[str, Any]:
+    meif = summary.get("merchant_experience_integration_v1") or {}
+    pages = meif.get("pages") if isinstance(meif, Mapping) else {}
+    home = (pages or {}).get("home") if isinstance(pages, Mapping) else {}
+    return home if isinstance(home, Mapping) else {}
+
+
+def _meif_page(summary: Mapping[str, Any], page_id: str) -> dict[str, Any]:
+    meif = summary.get("merchant_experience_integration_v1") or {}
+    pages = meif.get("pages") if isinstance(meif, Mapping) else {}
+    page = (pages or {}).get(page_id) if isinstance(pages, Mapping) else {}
+    return page if isinstance(page, Mapping) else {}
 
 
 def _slim_observation_finding(f: Mapping[str, Any]) -> dict[str, Any]:
@@ -52,6 +85,7 @@ def _observation_section(summary: Mapping[str, Any]) -> dict[str, Any]:
             "id": "observations",
             "title_ar": "ملاحظات المنتجات",
             "summary_ar": OBS_EMPTY_AR,
+            "status_ar": "أدلة غير كافية",
             "count": 0,
             "view_details_href": "#home-obs-details",
             "view_details_ar": "عرض التفاصيل",
@@ -65,6 +99,7 @@ def _observation_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         "id": "observations",
         "title_ar": "ملاحظات المنتجات",
         "summary_ar": summary_ar,
+        "status_ar": "متوفر",
         "count": count,
         "view_details_href": "#home-obs-details",
         "view_details_ar": "عرض التفاصيل",
@@ -76,10 +111,8 @@ def _observation_section(summary: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _decisions_section(summary: Mapping[str, Any]) -> dict[str, Any]:
-    meif = summary.get("merchant_experience_integration_v1") or {}
-    pages = meif.get("pages") if isinstance(meif, Mapping) else {}
-    home = (pages or {}).get("home") if isinstance(pages, Mapping) else {}
-    sections = (home or {}).get("sections") if isinstance(home, Mapping) else {}
+    home = _meif_home(summary)
+    sections = home.get("sections") if isinstance(home.get("sections"), Mapping) else {}
     decisions = list((sections or {}).get("merchant_decisions") or [])
     count = len(decisions)
     if count == 0:
@@ -87,6 +120,7 @@ def _decisions_section(summary: Mapping[str, Any]) -> dict[str, Any]:
             "id": "decisions",
             "title_ar": "قرارات اليوم",
             "summary_ar": "لا قرار قابل للتنفيذ اليوم — راجع مساحة القرار عند توفر أدلة.",
+            "status_ar": "لا قرار",
             "count": 0,
             "view_details_href": "#workspace",
             "view_details_ar": "عرض التفاصيل",
@@ -103,6 +137,7 @@ def _decisions_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         "id": "decisions",
         "title_ar": "قرارات اليوم",
         "summary_ar": title,
+        "status_ar": "جاهز للمراجعة",
         "count": count,
         "view_details_href": "#workspace",
         "view_details_ar": "عرض التفاصيل",
@@ -111,23 +146,94 @@ def _decisions_section(summary: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _health_section(summary: Mapping[str, Any]) -> dict[str, Any]:
-    meif = summary.get("merchant_experience_integration_v1") or {}
-    pages = meif.get("pages") if isinstance(meif, Mapping) else {}
-    home = (pages or {}).get("home") if isinstance(pages, Mapping) else {}
-    ops = (home or {}).get("operational_truth") if isinstance(home, Mapping) else {}
+    home = _meif_home(summary)
+    ops = home.get("operational_truth") if isinstance(home.get("operational_truth"), Mapping) else {}
     ops = ops if isinstance(ops, Mapping) else {}
     watching = bool(ops.get("has_durable_carts")) or int(ops.get("abandoned_carts") or 0) > 0
     if watching:
         summary_ar = "CartFlow يراقب متجرك — ركّز على القرار الأهم اليوم."
+        status_ar = "مراقبة"
     else:
         summary_ar = "لا نشاط كافٍ بعد لملخص تشغيلي — استمر في جمع الأدلة."
+        status_ar = "بانتظار أدلة"
     return {
         "id": "health",
         "title_ar": "صحة العمل",
         "summary_ar": summary_ar,
+        "status_ar": status_ar,
         "view_details_href": "#carts",
         "view_details_ar": "عرض التفاصيل",
         "empty": not watching,
+    }
+
+
+def _carts_section(summary: Mapping[str, Any]) -> dict[str, Any]:
+    carts = _meif_page(summary, "carts")
+    ops = (
+        carts.get("operational_truth")
+        if isinstance(carts.get("operational_truth"), Mapping)
+        else {}
+    )
+    home = _meif_home(summary)
+    home_ops = (
+        home.get("operational_truth")
+        if isinstance(home.get("operational_truth"), Mapping)
+        else {}
+    )
+    count = int(
+        carts.get("durable_cart_count")
+        or ops.get("abandoned_carts")
+        or home_ops.get("abandoned_carts")
+        or 0
+    )
+    if count > 0:
+        summary_ar = f"{count} سلة مسجّلة — التفاصيل في صفحة السلال."
+        status_ar = "نشط"
+        empty = False
+    else:
+        summary_ar = "لا سلات مسجّلة بعد — راقب عند توفر نشاط."
+        status_ar = "فارغ"
+        empty = True
+    return {
+        "id": "carts",
+        "title_ar": "السلال",
+        "summary_ar": summary_ar,
+        "status_ar": status_ar,
+        "count": count,
+        "view_details_href": "#carts",
+        "view_details_ar": "عرض التفاصيل",
+        "empty": empty,
+    }
+
+
+def _communication_section(summary: Mapping[str, Any]) -> dict[str, Any]:
+    comm = _meif_page(summary, "communication")
+    ops = (
+        comm.get("operational_truth")
+        if isinstance(comm.get("operational_truth"), Mapping)
+        else {}
+    )
+    sent = int(ops.get("mock_whatsapp_sent") or 0)
+    schedules = int(ops.get("recovery_schedules") or 0)
+    count = sent + schedules
+    activity = bool(ops.get("has_communication_activity")) or count > 0
+    if activity:
+        summary_ar = f"نشاط تواصل: {sent} إرسال و{schedules} جدولة."
+        status_ar = "نشط"
+        empty = False
+    else:
+        summary_ar = "لا نشاط تواصل تشغيلي مسجّل بعد."
+        status_ar = "بانتظار"
+        empty = True
+    return {
+        "id": "communication",
+        "title_ar": "التواصل",
+        "summary_ar": summary_ar,
+        "status_ar": status_ar,
+        "count": count,
+        "view_details_href": "#communication",
+        "view_details_ar": "عرض التفاصيل",
+        "empty": empty,
     }
 
 
@@ -142,12 +248,15 @@ def build_home_executive_summary_v1(
             "enabled": False,
             "schema": "home_executive_summary_v1",
             "sections": [],
+            "governance": dict(GOVERNANCE_V1),
         }
     src = summary if isinstance(summary, Mapping) else {}
     sections = [
         _health_section(src),
         _decisions_section(src),
         _observation_section(src),
+        _carts_section(src),
+        _communication_section(src),
     ]
     return {
         "ok": True,
@@ -157,6 +266,7 @@ def build_home_executive_summary_v1(
         "title_ar": "ماذا يجب أن تعرف الآن؟",
         "lede_ar": "ملخص سريع فقط — التفاصيل في صفحاتها.",
         "ownership": dict(OWNERSHIP_V1),
+        "governance": dict(GOVERNANCE_V1),
         "sections": sections,
         "product_intelligence": False,
         "ui": True,
@@ -216,6 +326,8 @@ def attach_home_executive_summary_to_summary_v1(
         return summary
     if not home_executive_summary_v1_enabled(environ=environ):
         return summary
+    # Always claim Home surface mode when flag is on — blocks legacy painters.
+    summary["home_surface_mode"] = "executive_summary_v1"
     try:
         # Slim ORV for Home transport (drop evidence_details / diagnostics)
         if isinstance(summary.get("observation_reality_validation_v1"), dict):
@@ -226,21 +338,25 @@ def attach_home_executive_summary_to_summary_v1(
             )
         pkg = build_home_executive_summary_v1(summary, environ=environ)
         summary["home_executive_summary_v1"] = pkg
-        # Signal client to prefer executive summary painter
-        summary["home_surface_mode"] = "executive_summary_v1"
     except Exception:  # noqa: BLE001
         summary["home_executive_summary_v1"] = {
             "ok": False,
             "enabled": True,
             "error": "attach_failed",
             "sections": [],
+            "governance": dict(GOVERNANCE_V1),
+            "eyebrow_ar": "ملخص تنفيذي",
+            "title_ar": "ماذا يجب أن تعرف الآن؟",
+            "lede_ar": "تعذّر تحميل الملخص — أعد المحاولة.",
         }
     return summary
 
 
 __all__ = [
+    "GOVERNANCE_V1",
     "OBS_EMPTY_AR",
     "OWNERSHIP_V1",
+    "SECTION_IDS_V1",
     "attach_home_executive_summary_to_summary_v1",
     "build_home_executive_summary_v1",
     "slim_observation_package_for_home_v1",

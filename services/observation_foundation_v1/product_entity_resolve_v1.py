@@ -54,11 +54,28 @@ def is_banned_product_key_v1(product_key: Any) -> bool:
     return False
 
 
+_BANNED_DISPLAY_NAMES = frozenset(
+    {
+        "هذا المنتج",
+        "هذاالمنتج",
+        "المنتج",
+        "منتج",
+        "product",
+        "this product",
+        "unknown product",
+    }
+)
+
+
 def is_real_product_display_name_v1(name: Any) -> bool:
     raw = _norm(name)
     if not raw:
         return False
     if raw == unresolved_product_identity_ar():
+        return False
+    if raw in _BANNED_DISPLAY_NAMES or raw.lower() in _BANNED_DISPLAY_NAMES:
+        return False
+    if "هذا المنتج" in raw:
         return False
     if text_has_forbidden_product_placeholder(raw):
         return False

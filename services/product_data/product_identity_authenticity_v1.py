@@ -14,10 +14,12 @@ ENGINE_MARK = "product_identity_authenticity_v1"
 # Merchant-forbidden placeholder labels (AR-2).
 _FORBIDDEN_NAME_RE = re.compile(
     r"(?:"
-    r"منتج\s*[XABCأابب]"
+    r"هذا\s*المنتج"
+    r"|منتج\s*[XABCأابب]"
     r"|Product\s*[XABC]"
     r"|منتج\s*مقارن"
     r"|prod_[xabc]\b"
+    r"|this\s+product"
     r")",
     re.IGNORECASE,
 )
