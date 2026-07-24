@@ -368,11 +368,11 @@ def assemble_observation_foundation_v1(
     loaded = list(signals) if signals is not None else []
     if signals is None and slug:
         try:
-            from services.product_data.product_signal_collection_v1 import (  # noqa: PLC0415
-                signals_for_store,
+            from services.observation_foundation_v1.durable_signals_bridge_v1 import (  # noqa: PLC0415
+                load_observation_input_signals_v1,
             )
 
-            loaded = signals_for_store(slug, limit=limit)
+            loaded = load_observation_input_signals_v1(slug, limit=limit)
         except Exception:  # noqa: BLE001
             loaded = []
 

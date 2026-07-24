@@ -2286,6 +2286,12 @@
         homeV1Rendered = false;
       }
     }
+    /* Observation Reality Validation V1 — temporary Home knowledge surface */
+    if (window.maApplyObservationRealityValidationV1) {
+      try {
+        window.maApplyObservationRealityValidationV1(d);
+      } catch (orvErr) {}
+    }
     if (!homeV1Rendered && window.maApplyDashboardHomeV1) {
       try {
         homeV1Rendered = !!window.maApplyDashboardHomeV1(d);
