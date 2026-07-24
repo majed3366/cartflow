@@ -2278,15 +2278,15 @@
 
     var pulseRendered = false;
     var homeV1Rendered = false;
-    /* Home Executive Summary V1 — prefer slim executive Home. */
+    /* Home Stabilization V1 — single paint path when executive surface claimed. */
     if (window.maApplyHomeExecutiveSummaryV1) {
       try {
         homeV1Rendered = !!window.maApplyHomeExecutiveSummaryV1(d);
       } catch (hesErr) {
-        homeV1Rendered = false;
+        homeV1Rendered = d && d.home_surface_mode === "executive_summary_v1";
       }
     }
-    /* MEIF/MEH: prefer governed integration package over legacy Home composer. */
+    /* Legacy Home painters — blocked while executive_summary_v1 owns Home. */
     if (!homeV1Rendered && window.maApplyMerchantExperienceIntegrationV1) {
       try {
         homeV1Rendered = !!window.maApplyMerchantExperienceIntegrationV1(d);
@@ -2294,8 +2294,8 @@
         homeV1Rendered = false;
       }
     }
-    /* Observation Reality Validation — only when executive summary did not paint. */
-    if (window.maApplyObservationRealityValidationV1) {
+    /* ORV sibling — only when executive summary did not claim Home. */
+    if (!homeV1Rendered && window.maApplyObservationRealityValidationV1) {
       try {
         window.maApplyObservationRealityValidationV1(d);
       } catch (orvErr) {}

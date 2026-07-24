@@ -324,6 +324,11 @@ def finalize_dashboard_summary_payload(
         store_slug=store_slug,
         cache_hit=cache_hit,
     )
+    # Home Stabilization V1 — profile every attach stage on the summary critical path.
+    from services.dashboard_summary_query_profiler import (  # noqa: PLC0415
+        dashboard_summary_profile_span,
+    )
+
     # Decision Experience V1 — attach MEIF on every summary exit (live + snapshot).
     # Snapshot mode previously skipped MEIF, so Home kept Daily Brief instead.
     try:
@@ -334,7 +339,8 @@ def finalize_dashboard_summary_payload(
         _home = body.get("merchant_home_experience_v1") or {}
         _meif_slug = str(_home.get("store_slug") or "").strip() or store_slug
         if _meif_slug:
-            attach_merchant_experience_to_summary_v1(body, _meif_slug)
+            with dashboard_summary_profile_span("home_stage_meif_attach"):
+                attach_merchant_experience_to_summary_v1(body, _meif_slug)
     except Exception as exc:  # noqa: BLE001
         log.warning("summary merchant_experience_integration_v1 (finalize): %s", exc)
     try:
@@ -342,7 +348,8 @@ def finalize_dashboard_summary_payload(
             attach_adaptive_cognition_to_summary_v1,
         )
 
-        attach_adaptive_cognition_to_summary_v1(body)
+        with dashboard_summary_profile_span("home_stage_adaptive_cognition"):
+            attach_adaptive_cognition_to_summary_v1(body)
     except Exception as exc:  # noqa: BLE001
         log.warning("adaptive cognition summary attach: %s", exc)
     # Observation Reality Validation — entity-bound findings (then slimmed for Home)
@@ -353,7 +360,7 @@ def finalize_dashboard_summary_payload(
 
         _home = body.get("merchant_home_experience_v1") or {}
         _slug = str(_home.get("store_slug") or "").strip() or store_slug
-        if _slug:
+        with dashboard_summary_profile_span("home_stage_orv_attach"):
             attach_observation_reality_validation_to_summary_v1(body, _slug)
     except Exception as exc:  # noqa: BLE001
         log.warning("observation_reality_validation_v1 attach: %s", exc)
@@ -363,10 +370,12 @@ def finalize_dashboard_summary_payload(
             attach_home_executive_summary_to_summary_v1,
         )
 
-        attach_home_executive_summary_to_summary_v1(body)
+        with dashboard_summary_profile_span("home_stage_hes_attach"):
+            attach_home_executive_summary_to_summary_v1(body)
     except Exception as exc:  # noqa: BLE001
         log.warning("home_executive_summary_v1 attach: %s", exc)
-    _attach_commerce_signals_then_pulse(body, store_slug=store_slug)
+    with dashboard_summary_profile_span("home_stage_commerce_pulse"):
+        _attach_commerce_signals_then_pulse(body, store_slug=store_slug)
     return body
 
 

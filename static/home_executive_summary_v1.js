@@ -1,6 +1,6 @@
 /**
- * Home Executive Summary V1 — Home answers "what should I know now?"
- * Summaries + counts + View Details only. No product/ops dump.
+ * Home Executive Summary V1 — Home Stabilization Sprint V1.
+ * Summaries + status + counts + View Details only. Single Home paint path.
  */
 (function () {
   "use strict";
@@ -14,6 +14,14 @@
       .replace(/"/g, "&quot;");
   }
 
+  function hideOrvSibling() {
+    var orv = document.getElementById("observation-reality-validation-root");
+    if (orv) {
+      orv.innerHTML = "";
+      orv.hidden = true;
+    }
+  }
+
   function renderObsDetails(findings, emptyAr) {
     if (!findings || !findings.length) {
       return (
@@ -25,6 +33,7 @@
     var html = '<div class="hes-obs-cards">';
     for (var i = 0; i < findings.length; i++) {
       var f = findings[i] || {};
+      if (!f.product_name_ar) continue;
       html +=
         '<article class="hes-obs-card" data-hes-obs-card="1">' +
         '<p class="hes-obs-product" data-hes-product="1">' +
@@ -57,6 +66,11 @@
         esc(String(sec.count)) +
         "</span>";
     }
+    var statusHtml = sec.status_ar
+      ? '<span class="hes-status" data-hes-status="1">' +
+        esc(sec.status_ar) +
+        "</span>"
+      : "";
     var detailsId = "hes-details-" + esc(sec.id || "x");
     var isObs = sec.id === "observations";
     var detailsBody = "";
@@ -77,8 +91,10 @@
       "<h3>" +
       esc(sec.title_ar || "") +
       "</h3>" +
+      '<div class="hes-section__meta">' +
+      statusHtml +
       countHtml +
-      "</div>" +
+      "</div></div>" +
       '<p class="hes-section__summary" data-hes-summary="1">' +
       esc(sec.summary_ar || "") +
       "</p>" +
@@ -119,16 +135,10 @@
     }
   }
 
-  window.maApplyHomeExecutiveSummaryV1 = function (summary) {
-    var pkg =
-      (summary && summary.home_executive_summary_v1) || null;
-    if (!pkg || !pkg.enabled || !pkg.ok) return false;
-    var root = document.getElementById("ma-home-experience-root");
-    if (!root) return false;
-
+  function paintShell(root, pkg) {
     var sections = Array.isArray(pkg.sections) ? pkg.sections : [];
     var html =
-      '<section class="hes-surface" data-hes="1" aria-label="ملخص تنفيذي">' +
+      '<section class="hes-surface" data-hes="1" data-hes-stabilization="1" aria-label="ملخص تنفيذي">' +
       '<header class="hes-header">' +
       '<p class="hes-eyebrow">' +
       esc(pkg.eyebrow_ar || "ملخص تنفيذي") +
@@ -137,17 +147,24 @@
       esc(pkg.title_ar || "ماذا يجب أن تعرف الآن؟") +
       "</h2>" +
       '<p class="hes-lede">' +
-      esc(pkg.lede_ar || "") +
+      esc(pkg.lede_ar || "ملخص سريع فقط — التفاصيل في صفحاتها.") +
       "</p>" +
       "</header>" +
       '<div class="hes-sections">';
-    for (var i = 0; i < sections.length; i++) {
-      html += renderSection(sections[i], pkg);
+    if (!sections.length) {
+      html +=
+        '<p class="hes-empty" data-hes-attach-empty="1">' +
+        esc(pkg.lede_ar || "تعذّر تحميل الملخص — أعد المحاولة.") +
+        "</p>";
+    } else {
+      for (var i = 0; i < sections.length; i++) {
+        html += renderSection(sections[i], pkg);
+      }
     }
     html +=
       "</div>" +
       '<footer class="hes-ownership">' +
-      "<p>الصفحة الرئيسية = ملخص تنفيذي · القرارات في مساحة القرار · السلال للتشغيل · الإعدادات للضبط.</p>" +
+      "<p>الصفحة الرئيسية = ملخص تنفيذي · القرارات في مساحة القرار · السلال للتشغيل · التواصل للمتابعة · الإعدادات للضبط.</p>" +
       "</footer></section>";
 
     root.className = "ma-home-experience hes-home-root";
@@ -156,13 +173,37 @@
     var loading = document.getElementById("ma-home-experience-loading");
     if (loading) loading.hidden = true;
     bindDetails(root);
+    hideOrvSibling();
+  }
 
-    // Hide legacy full ORV sibling — executive summary owns the teaser.
-    var orv = document.getElementById("observation-reality-validation-root");
-    if (orv) {
-      orv.innerHTML = "";
-      orv.hidden = true;
-    }
+  /**
+   * Owns Home whenever executive surface mode is claimed.
+   * Returns true when this painter claimed the root (blocks legacy painters).
+   */
+  window.maApplyHomeExecutiveSummaryV1 = function (summary) {
+    var mode = summary && summary.home_surface_mode;
+    var pkg = (summary && summary.home_executive_summary_v1) || null;
+    var claimed =
+      mode === "executive_summary_v1" ||
+      (pkg && pkg.enabled);
+    if (!claimed) return false;
+
+    var root = document.getElementById("ma-home-experience-root");
+    if (!root) return false;
+
+    paintShell(
+      root,
+      pkg && typeof pkg === "object"
+        ? pkg
+        : {
+            ok: false,
+            enabled: true,
+            sections: [],
+            eyebrow_ar: "ملخص تنفيذي",
+            title_ar: "ماذا يجب أن تعرف الآن؟",
+            lede_ar: "تعذّر تحميل الملخص — أعد المحاولة.",
+          }
+    );
     return true;
   };
 })();

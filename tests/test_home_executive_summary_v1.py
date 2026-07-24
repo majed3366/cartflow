@@ -1,33 +1,33 @@
 # -*- coding: utf-8 -*-
-"""Home Executive Summary V1 + entity-bound observation findings."""
+"""Home Executive Summary V1 + Home Stabilization Sprint V1."""
 from __future__ import annotations
 
 import unittest
 
 from services.home_executive_summary_v1.compose_v1 import (
     OBS_EMPTY_AR,
+    SECTION_IDS_V1,
     attach_home_executive_summary_to_summary_v1,
     build_home_executive_summary_v1,
 )
 from services.observation_foundation_v1.merchant_findings_v1 import (
+    attach_observation_reality_validation_to_summary_v1,
     build_observation_reality_validation_v1,
     project_merchant_observation_findings_v1,
 )
 from services.observation_foundation_v1.product_entity_resolve_v1 import (
     is_banned_product_key_v1,
+    is_real_product_display_name_v1,
 )
-from services.product_data.product_signal_types_v1 import (
-    SIGNAL_PRODUCT_CART_ADDED,
-    SIGNAL_PRODUCT_CUSTOMER_RETURNED,
-    SIGNAL_PRODUCT_INTEREST_HESITATION,
-)
-
-
 class HomeExecutiveSummaryV1Tests(unittest.TestCase):
     def test_bans_demo_product_keys(self) -> None:
         self.assertTrue(is_banned_product_key_v1("DEMO-PERFUME"))
         self.assertTrue(is_banned_product_key_v1("orv-s1"))
         self.assertTrue(is_banned_product_key_v1("demo"))
+
+    def test_bans_placeholder_product_display_name(self) -> None:
+        self.assertFalse(is_real_product_display_name_v1("هذا المنتج"))
+        self.assertFalse(is_real_product_display_name_v1("this product"))
 
     def test_skips_findings_without_real_product_name(self) -> None:
         findings = project_merchant_observation_findings_v1(
@@ -68,6 +68,7 @@ class HomeExecutiveSummaryV1Tests(unittest.TestCase):
         self.assertEqual(len(findings), 1)
         self.assertEqual(findings[0]["product_name_ar"], "زيت الورد")
         self.assertTrue(findings[0]["statement_ar"])
+        self.assertNotIn("هذا المنتج", findings[0]["statement_ar"])
         self.assertTrue(findings[0]["recommended_action_ar"])
         self.assertIn(findings[0]["confidence_ar"], {"مرتفع", "متوسط", "منخفض"})
 
@@ -84,7 +85,24 @@ class HomeExecutiveSummaryV1Tests(unittest.TestCase):
         self.assertEqual(pkg["findings"], [])
         self.assertEqual(pkg["empty_state_ar"], OBS_EMPTY_AR)
 
-    def test_executive_summary_sections_and_slim_orv(self) -> None:
+    def test_empty_store_slug_never_falls_back_to_demo(self) -> None:
+        out: dict = {}
+        attach_observation_reality_validation_to_summary_v1(
+            out,
+            "",
+            environ={
+                "CARTFLOW_OBSERVATION_FOUNDATION_V1": "1",
+                "CARTFLOW_OBSERVATION_REALITY_VALIDATION_V1": "1",
+                "CARTFLOW_ORV_APPROVED_MASS_V1": "0",
+            },
+        )
+        pkg = out["observation_reality_validation_v1"]
+        self.assertEqual(pkg["store_slug"], "")
+        self.assertEqual(pkg["findings"], [])
+        self.assertEqual(pkg["empty_state_ar"], OBS_EMPTY_AR)
+        self.assertNotEqual(pkg.get("mass_source"), "demo")
+
+    def test_executive_summary_five_sections_and_slim_orv(self) -> None:
         summary = {
             "observation_reality_validation_v1": {
                 "ok": True,
@@ -115,7 +133,21 @@ class HomeExecutiveSummaryV1Tests(unittest.TestCase):
                                 {"title_ar": "راجع سلة عالية القيمة"}
                             ]
                         },
-                    }
+                    },
+                    "carts": {
+                        "durable_cart_count": 3,
+                        "operational_truth": {
+                            "abandoned_carts": 3,
+                            "has_durable_carts": True,
+                        },
+                    },
+                    "communication": {
+                        "operational_truth": {
+                            "mock_whatsapp_sent": 2,
+                            "recovery_schedules": 1,
+                            "has_communication_activity": True,
+                        },
+                    },
                 },
             },
         }
@@ -127,13 +159,22 @@ class HomeExecutiveSummaryV1Tests(unittest.TestCase):
         self.assertTrue(hes["ok"])
         self.assertEqual(out["home_surface_mode"], "executive_summary_v1")
         ids = [s["id"] for s in hes["sections"]]
-        self.assertEqual(ids, ["health", "decisions", "observations"])
+        self.assertEqual(ids, list(SECTION_IDS_V1))
+        for sec in hes["sections"]:
+            self.assertTrue(sec.get("status_ar"))
+            self.assertTrue(sec.get("summary_ar"))
+            self.assertTrue(sec.get("view_details_href"))
         obs = next(s for s in hes["sections"] if s["id"] == "observations")
         self.assertEqual(obs["count"], 1)
         self.assertIn("زيت الورد", obs["summary_ar"])
+        carts = next(s for s in hes["sections"] if s["id"] == "carts")
+        self.assertEqual(carts["count"], 3)
+        comm = next(s for s in hes["sections"] if s["id"] == "communication")
+        self.assertEqual(comm["count"], 3)
         slim = out["observation_reality_validation_v1"]
         self.assertNotIn("evidence_details", slim["findings"][0])
         self.assertNotIn("diagnostics", slim["findings"][0])
+        self.assertEqual(hes["governance"]["sprint"], "home_stabilization_v1")
 
     def test_observation_empty_summary_copy(self) -> None:
         hes = build_home_executive_summary_v1(
@@ -149,6 +190,14 @@ class HomeExecutiveSummaryV1Tests(unittest.TestCase):
         obs = next(s for s in hes["sections"] if s["id"] == "observations")
         self.assertTrue(obs["empty"])
         self.assertEqual(obs["summary_ar"], OBS_EMPTY_AR)
+
+    def test_surface_mode_set_even_when_attach_builds_empty_shell(self) -> None:
+        out = attach_home_executive_summary_to_summary_v1(
+            {},
+            environ={"CARTFLOW_HOME_EXECUTIVE_SUMMARY_V1": "1"},
+        )
+        self.assertEqual(out["home_surface_mode"], "executive_summary_v1")
+        self.assertTrue(out["home_executive_summary_v1"]["enabled"])
 
 
 if __name__ == "__main__":

@@ -44,18 +44,23 @@ def main() -> int:
               const hes = j.home_executive_summary_v1 || {};
               const orv = j.observation_reality_validation_v1 || {};
               const text = (document.getElementById('ma-home-experience-root')||{}).innerText || '';
+              const ids = (hes.sections || []).map(s => s.id);
               return {
                 http: r.status,
                 surface_mode: j.home_surface_mode || null,
                 hes_ok: !!hes.ok,
-                section_ids: (hes.sections || []).map(s => s.id),
+                section_ids: ids,
+                has_five_sections: ids.join(',') === 'health,decisions,observations,carts,communication',
+                has_status: (hes.sections || []).every(s => !!(s && s.status_ar)),
                 obs_empty: ((hes.sections||[]).find(s => s.id==='observations')||{}).empty,
                 obs_summary: ((hes.sections||[]).find(s => s.id==='observations')||{}).summary_ar,
                 orv_findings: (orv.findings || []).length,
-                has_demo_perfume: text.includes('DEMO-PERFUME') || text.includes('هذا المنتج يحظى'),
+                has_demo_perfume: text.includes('DEMO-PERFUME') || text.includes('هذا المنتج'),
                 has_hes_title: text.includes('ماذا يجب أن تعرف الآن؟'),
                 has_view_details: text.includes('عرض التفاصيل'),
-                text_sample: text.slice(0, 700),
+                has_carts_section: text.includes('السلال'),
+                has_communication_section: text.includes('التواصل'),
+                text_sample: text.slice(0, 900),
               };
             }"""
         )
@@ -78,8 +83,13 @@ def main() -> int:
     obs_empty = probe.get("obs_empty")
     ok = (
         bool(probe.get("hes_ok"))
+        and probe.get("surface_mode") == "executive_summary_v1"
+        and bool(probe.get("has_five_sections"))
+        and bool(probe.get("has_status"))
         and bool(probe.get("has_hes_title"))
         and bool(probe.get("has_view_details"))
+        and bool(probe.get("has_carts_section"))
+        and bool(probe.get("has_communication_section"))
         and not probe.get("has_demo_perfume")
         and obs_empty in (True, "True", "true", 1)
     )
@@ -87,12 +97,17 @@ def main() -> int:
         {
             "generated_at_utc": datetime.now(timezone.utc).isoformat(),
             "production_url": f"{BASE}/dashboard#home",
+            "sprint": "home_stabilization_v1",
             "screenshots": {
                 "desktop": str(desktop.relative_to(ROOT)).replace("\\", "/"),
                 "mobile": str(mobile.relative_to(ROOT)).replace("\\", "/"),
             },
             "ok": ok,
-            "status": "AWAITING_PRODUCTION_REVIEW_APPROVAL",
+            "status": (
+                "AWAITING_CEO_REVIEW_BEFORE_PRODUCT_INTELLIGENCE_V1"
+                if ok
+                else "NEEDS_DEPLOY_OR_FIX"
+            ),
         }
     )
     (OUT / "verification.json").write_text(

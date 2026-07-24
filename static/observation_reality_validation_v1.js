@@ -55,13 +55,8 @@
   }
 
   window.maApplyObservationRealityValidationV1 = function (summary) {
-    // Executive Summary owns Home — do not double-paint ORV.
-    if (
-      summary &&
-      summary.home_surface_mode === "executive_summary_v1" &&
-      summary.home_executive_summary_v1 &&
-      summary.home_executive_summary_v1.ok
-    ) {
+    // Home Stabilization — executive surface owns Home; never stack ORV.
+    if (summary && summary.home_surface_mode === "executive_summary_v1") {
       var skip = document.getElementById("observation-reality-validation-root");
       if (skip) {
         skip.innerHTML = "";

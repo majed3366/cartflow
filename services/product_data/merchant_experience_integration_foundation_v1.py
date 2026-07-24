@@ -689,7 +689,18 @@ def attach_merchant_experience_to_summary_v1(
             "ok": False,
         }
         return summary
-    resolved = _lab_demo_bfl_fallback_slug(store_slug)
+    # Home Stabilization V1: never swap production merchants onto demo BFL.
+    try:
+        from services.home_executive_summary_v1.flag_v1 import (  # noqa: PLC0415
+            home_executive_summary_v1_enabled,
+        )
+
+        if home_executive_summary_v1_enabled():
+            resolved = (store_slug or "").strip()
+        else:
+            resolved = _lab_demo_bfl_fallback_slug(store_slug)
+    except Exception:  # noqa: BLE001
+        resolved = (store_slug or "").strip()
     report = generate_merchant_experience_integration_v1(
         resolved, as_of=as_of
     )

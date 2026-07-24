@@ -44,7 +44,7 @@ _STATEMENT_AR: dict[str, dict[str, str]] = {
     },
     "repeated_return_without_purchase": {
         "title_ar": "عودة متكررة بلا شراء",
-        "statement_ar": "عملاء عادوا مراراً دون إتمام شراء مرتبط بهذا المنتج.",
+        "statement_ar": "عملاء عادوا مراراً دون إتمام شراء.",
         "statement_en": "Customers repeatedly return without purchasing.",
         "recommended_action_ar": "راقب رحلة العميل بعد العودة واختبر تحسين صفحة المنتج.",
     },
@@ -339,9 +339,8 @@ def build_observation_reality_validation_v1(
 
 
 def _resolve_observation_store_slug_v1(store_slug: str) -> str:
-    """Use the merchant's own store only — no demo fallback on Home."""
-    slug = str(store_slug or "").strip()
-    return slug or "demo"
+    """Use the merchant's own store only — never fall back to demo."""
+    return str(store_slug or "").strip()
 
 
 def attach_observation_reality_validation_to_summary_v1(
@@ -354,6 +353,20 @@ def attach_observation_reality_validation_to_summary_v1(
         return summary
     try:
         slug = _resolve_observation_store_slug_v1(str(store_slug or "").strip())
+        if not slug:
+            summary["observation_reality_validation_v1"] = {
+                "ok": True,
+                "enabled": True,
+                "schema": "observation_reality_validation_v1",
+                "store_slug": "",
+                "findings": [],
+                "count": 0,
+                "empty_state_ar": OBS_EMPTY_AR,
+                "ui": True,
+                "product_intelligence": False,
+                "mass_source": "none_empty_store_slug",
+            }
+            return summary
         pkg = build_observation_reality_validation_v1(slug, environ=environ)
         summary["observation_reality_validation_v1"] = pkg
     except Exception:  # noqa: BLE001
