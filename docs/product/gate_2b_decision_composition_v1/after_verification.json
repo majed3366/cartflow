@@ -1,0 +1,27 @@
+{
+  "email": "cf.g2b.1c0a8f9868@smartreplyai.net",
+  "probe": {
+    "http": 200,
+    "ok": true,
+    "gate_2b": true,
+    "has_composition": true,
+    "has_mission": true,
+    "has_why_now": true,
+    "has_ignore": true,
+    "has_first_step": true,
+    "raw_counter_title": false,
+    "business_meaning": true,
+    "has_working_chrome": false,
+    "text_sample": "مساحة القرار\n\nماذا يجب أن أقرر الآن، ولماذا؟\n\nيحتاج إجراء الآن: 1\n\nيحتاج قرارك: 1\n\nيحتاج إجراء الآن\n\nالقرار\n\nحسّن قدرة المتجر على جمع أرقام العملاء القابلين للاسترجاع.\n\nلماذا؟\n\n2 سلة نشطة لا يمكن بدء استرجاعها لأن رقم العميل غير متوفر، فيتوقف مسار التواصل قبل أن يبدأ.\n\nلماذا الآن؟\n\nكل يوم تبقى فيه هذه السلال بلا رقم يقلل فرصة استعادتها — يوجد الآن 2 سلة محظورة عن المتابعة.\n\nالأدلة\n\n2 سلة نشطة بلا رقم تواصل صالح وفق عدّاد السلال المعتمد للمتجر.\n\nماذا يحدث إذا تجاهلته؟\n\nإذا تُركت كما هي، ستظل هذه السلال خارج مسار الاسترجاع ولن تصلها رسائل متابعة.\n\nالإجراء الموصى به\n\nراجع كيف يُجمع رقم العميل قبل مغادرة المتجر، ثم عالج السلال المتأثرة.\n\nابدأ بهذه الخطوة\n\nافتح سلال بلا رقم تواصل وحدد أين ينقطع التقاط الرقم في مسار الشراء.\n\nالأثر المتوقع\n\nزيادة عدد السلال القابلة للدخول في مسار الاسترجاع.\n\nالثقة\n\nمرتفع\n\nعرض التفاصيل\n\nمزيد",
+    "card_count": 1
+  },
+  "generated_at_utc": "2026-07-24T23:14:39.499954+00:00",
+  "production_url": "https://smartreplyai.net/dashboard#workspace",
+  "sprint": "gate_2b_decision_composition_engine",
+  "screenshots": {
+    "desktop": "docs/product/gate_2b_decision_composition_v1/after_desktop_workspace.png",
+    "mobile": "docs/product/gate_2b_decision_composition_v1/after_mobile_workspace.png"
+  },
+  "ok": true,
+  "status": "AWAITING_CEO_REVIEW_BEFORE_GATE_2_CLOSE"
+}

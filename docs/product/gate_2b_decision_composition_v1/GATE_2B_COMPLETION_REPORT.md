@@ -12,7 +12,7 @@
 
 | Decision | Status |
 |----------|--------|
-| Engineering complete | **YES** (code + tests) |
+| Engineering complete | **YES** — DEPLOYED `87aff25` + prod probe ok |
 | CLOSE Gate 2 | **Only after CEO visual approval** of 2B |
 
 ---
@@ -43,7 +43,7 @@
 | Unsupported decisions explicitly suppressed | **DONE** (registry) |
 | Deterministic priority order | **DONE** |
 | Home teaser-only | **DONE** |
-| Production deploy + screenshots | **PENDING** |
+| Production deploy + screenshots | **DONE** — PR [#88](https://github.com/majed3366/cartflow/pull/88) → **`87aff25`**; `after_verification.json` ok |
 | CEO visual approval | **OPEN** |
 
 ---
