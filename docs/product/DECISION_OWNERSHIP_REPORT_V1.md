@@ -22,7 +22,7 @@
 | Canonical Decision Owner (recorded) | **Decision Workspace** = Cart Workspace `#workspace` (`#cw-merchant-host`) |
 | Reasoning data sources (keep as infrastructure) | BFL → Finding Decision Engine (FDE); Merchant Decision Layer on carts (ops→decision admission — scope below) |
 | Retire from Decision paint | `#meif-decision-root` / MEIF `applyDecision` after parity |
-| May Gate 2 CLOSE now? | **No** — inventory + plan only; moves + deploy + CEO approval still required |
+| May Gate 2 CLOSE now? | **No** — implementation landed in code; production deploy + CEO visual approval still required (see `gate_2_decision_ownership_v1/`) |
 
 **Duplicate decision paths (violations):**
 

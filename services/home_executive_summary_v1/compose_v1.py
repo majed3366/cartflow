@@ -56,6 +56,9 @@ SECTION_OWNERSHIP_HREF_V1 = {
     "communication": "#communication",
 }
 
+# Gate 2 — Home decision teasers must route explicitly to Cart Workspace.
+DECISIONS_VIEW_DETAILS_AR = "عرض التفاصيل ← مساحة القرار"
+
 
 def _teasers(summary: Mapping[str, Any]) -> dict[str, Any]:
     raw = summary.get("home_teaser_inputs_v1")
@@ -128,7 +131,7 @@ def _decisions_section(summary: Mapping[str, Any]) -> dict[str, Any]:
             "status_ar": "أدلة غير كافية",
             "count": 0,
             "view_details_href": SECTION_OWNERSHIP_HREF_V1["decisions"],
-            "view_details_ar": "عرض التفاصيل",
+            "view_details_ar": DECISIONS_VIEW_DETAILS_AR,
             "empty": True,
             "owner_page": "decision_workspace",
         }
@@ -139,7 +142,7 @@ def _decisions_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         "status_ar": "أولوية اليوم" if count == 1 else f"{count} قرارات",
         "count": count,
         "view_details_href": SECTION_OWNERSHIP_HREF_V1["decisions"],
-        "view_details_ar": "عرض التفاصيل",
+        "view_details_ar": DECISIONS_VIEW_DETAILS_AR,
         "empty": False,
         "owner_page": "decision_workspace",
     }
@@ -387,6 +390,7 @@ def attach_home_executive_summary_to_summary_v1(
 
 __all__ = [
     "DECISIONS_EMPTY_AR",
+    "DECISIONS_VIEW_DETAILS_AR",
     "GOVERNANCE_V1",
     "OBS_EMPTY_AR",
     "OWNERSHIP_V1",

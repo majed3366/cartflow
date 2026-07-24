@@ -63,16 +63,27 @@ def api_cart_workspace_projection(request: Request):
     if not snap.get("projection"):
         proj = build_workspace_projection(auth, SHADOW_STORE)
         snap["projection"] = proj.to_dict()
+    projection = dict(snap.get("projection") or {})
+    try:
+        from services.cart_workspace.business_findings_enrichment_v1 import (  # noqa: PLC0415
+            enrich_projection_with_fde_v1,
+        )
+
+        projection = enrich_projection_with_fde_v1(projection, auth)
+        snap["projection"] = projection
+    except Exception:  # noqa: BLE001
+        pass
     return j(
         {
             "ok": True,
             "store_slug": auth,
-            "projection": snap["projection"],
+            "projection": projection,
             "zone_assignment": snap.get("zone_assignment"),
-            "projection_version": snap["projection"].get("projection_version"),
+            "projection_version": projection.get("projection_version"),
             "flag": cart_workspace_v1_flag_state(),
             "merchant_surface_active": True,
             "silent_success_mode": cart_workspace_silent_success_enabled(),
+            "gate_2_single_decision_owner": True,
         }
     )
 

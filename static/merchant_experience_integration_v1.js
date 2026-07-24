@@ -470,11 +470,6 @@
     var cue = home.chronology_cue || {};
     var verdict = healthVerdict(ops, home);
     var watching = ops.has_durable_carts || Number(ops.abandoned_carts || 0) > 0;
-    var findings =
-      sections.business_findings ||
-      sections.commercial_guidance_highlights ||
-      [];
-
     var html = "";
     html +=
       '<section class="meif-surface meif-home" data-meif="1" data-msr="1" data-mebf="1">' +
@@ -496,44 +491,19 @@
       "</div>" +
       "</header>";
 
-    // Decision Engine V1 — what to do today (from findings only).
+    /* Gate 2 — Home never explains decisions; route to Cart Workspace. */
     var decisions = sections.merchant_decisions || [];
-    var noDecisions = sections.merchant_no_decisions || [];
-    var decisionBlock = renderFindingsBlock(
-      decisions.length ? decisions : [],
-      "home",
-      "لا قرار قابل للتنفيذ اليوم — الأدلة غير كافية بعد."
-    );
     html +=
       '<section class="meif-block meif-block--decisions" aria-label="قرارات اليوم" data-decision-home="1">' +
-      "<h3>ماذا تفعل اليوم؟</h3>" +
-      '<p class="meif-lede">قرارات مبنية على استنتاجات وأدلة فقط — بدون تخمين.</p>' +
-      decisionBlock.html +
+      "<h3>قرارات اليوم</h3>" +
+      '<p class="meif-lede">' +
+      (decisions.length
+        ? "توجد قرارات تحتاج مراجعتك في مساحة القرار."
+        : "لا تتوفر أدلة كافية لإصدار قرار اليوم.") +
+      "</p>" +
+      '<p class="meif-next"><a href="#workspace">عرض التفاصيل ← مساحة القرار</a></p>' +
       "</section>";
-    if (noDecisions.length) {
-      var noDecBlock = renderFindingsBlock(
-        noDecisions,
-        "home",
-        "لا حالات NO DECISION."
-      );
-      html +=
-        '<section class="meif-block meif-block--no-decision" aria-label="لا قرار">' +
-        "<h3>حيث لا يوجد قرار بعد</h3>" +
-        noDecBlock.html +
-        "</section>";
-    }
-
-    // MEBF V1 — Business Findings (context under decisions).
-    var findingsBlock = renderFindingsBlock(
-      findings,
-      "home",
-      "لا استنتاجات تجارية مُلزمة من سجل المتجر بعد."
-    );
-    html +=
-      '<section class="meif-block meif-block--findings" aria-label="استنتاجات تجارية" data-mebf-home="1">' +
-      "<h3>ما الذي نعرفه عن عملك الآن؟</h3>" +
-      findingsBlock.html +
-      "</section>";
+    var findingsBlock = { painted: false, html: "" };
 
     html +=
       '<section class="meif-block meif-block--facts" aria-label="صحة المتجر">' +
@@ -632,21 +602,13 @@
     var banner = document.getElementById("meif-carts-truth-banner");
     var focus = document.getElementById("meif-carts-focus-root");
     var ops = carts.operational_truth || {};
-    var items = (carts.sections && carts.sections.composition_items) || [];
 
     if (banner) {
       banner.hidden = false;
       banner.className = "meif-carts-truth-banner meif-banner";
       banner.innerHTML =
         '<span class="meif-trust meif-trust--fact">حقيقة</span> ' +
-        esc(carts.status_message_ar || "") +
-        (carts.merchant_question
-          ? '<span class="meif-banner__q">' +
-            esc(
-              "أي سلات تهمّك الآن، ولماذا؟"
-            ) +
-            "</span>"
-          : "");
+        esc(carts.status_message_ar || "");
     }
     if (carts.forbid_please_wait && loading) {
       loading.hidden = true;
@@ -656,32 +618,16 @@
     var header = document.querySelector("#page-carts .page-h1");
     var sub = document.querySelector("#page-carts .page-sub");
     if (header && ops.has_durable_carts) {
-      header.textContent = "السلال التي تستحق الانتباه";
+      header.textContent = "السلال";
     }
     if (sub && ops.has_durable_carts) {
-      sub.textContent =
-        "رتّبنا الإشارات التشغيلية أولاً — القائمة التفصيلية تحتها مباشرة.";
+      sub.textContent = "تشغيل السلال فقط — القرارات في مساحة القرار.";
     }
 
+    /* Gate 2 — Carts ops only: never paint business findings / Decision blocks. */
     if (focus) {
-      focus.hidden = false;
-      var cFindings =
-        (carts.sections && carts.sections.business_findings) ||
-        items.filter(function (it) {
-          return it && (it.finding_id || it.bfl_binding);
-        });
-      var cBlock = renderFindingsBlock(
-        cFindings,
-        "carts",
-        ops.has_durable_carts
-          ? "السلات مسجّلة تشغيلياً — لا استنتاج تجاري مُلزم مرتبط بالسلال بعد."
-          : "لا استنتاجات سلال مُلزمة بعد."
-      );
-      focus.innerHTML =
-        '<section class="meif-surface meif-carts-focus" data-msr="1" data-mebf="1">' +
-        "<h3>لماذا تهمّ هذه السلال؟</h3>" +
-        cBlock.html +
-        "</section>";
+      focus.hidden = true;
+      focus.innerHTML = "";
     }
   }
 
@@ -721,19 +667,7 @@
       '<p class="meif-watch">' +
       esc(needs) +
       "</p>" +
-      '<section class="meif-block" data-mebf="1"><h3>استنتاجات التواصل</h3>' +
-      renderFindingsBlock(
-        (comm.sections && comm.sections.business_findings) ||
-          (
-            (comm.sections && comm.sections.composition_items) ||
-            []
-          ).filter(function (it) {
-            return it && (it.finding_id || it.bfl_binding);
-          }),
-        "communication",
-        "لا استنتاجات تواصل مُلزمة بعد — هذه ليست صفحة إعدادات واتساب."
-      ).html +
-      "</section>" +
+      /* Gate 2 — Communication status only; no business findings / Decision blocks. */
       '<p class="meif-next">' +
       '<a href="#messages">سجل الرسائل</a> · ' +
       '<a href="#whatsapp">إعدادات واتساب</a>' +
@@ -742,9 +676,16 @@
   }
 
   function applyDecision(summary) {
-    var pkg = meif(summary);
+    /* Gate 2 — Cart Workspace is sole Decision Owner. MEIF Decision retired. */
     var root = document.getElementById("meif-decision-root");
-    if (!root || !pkg || !pkg.pages || !pkg.pages.decision_workspace) {
+    if (!root) return false;
+    if (!window.CARTFLOW_DECISION_DUAL_STACK_V1) {
+      root.innerHTML = "";
+      root.hidden = true;
+      return false;
+    }
+    var pkg = meif(summary);
+    if (!pkg || !pkg.pages || !pkg.pages.decision_workspace) {
       return false;
     }
     var dw = pkg.pages.decision_workspace;
@@ -759,15 +700,16 @@
       "decision_workspace",
       "لا استنتاجات تجارية تحتاج قراراً بعد."
     );
+    root.hidden = false;
     root.innerHTML =
       '<section class="meif-surface meif-decision" data-meif="1" data-msr="1" data-mebf="1">' +
-      '<p class="meif-eyebrow">مساحة القرار</p>' +
+      '<p class="meif-eyebrow">مساحة القرار (مسار مزدوج — تراجع)</p>' +
       "<h2>لماذا يحدث هذا، وما القرار المطلوب؟</h2>" +
-      '<p class="meif-lede">كل استنتاج أدناه مربوط بـ Business Finding — دون اختراع توصيات.</p>' +
+      '<p class="meif-lede">مسار تراجع فقط — المالك الدستوري هو Cart Workspace.</p>' +
       '<section class="meif-block meif-block--findings"><h3>استنتاجات تحتاج قراراً</h3>' +
       dBlock.html +
       "</section>" +
-      '<p class="meif-next"><a href="#carts">انتقل للسلال ذات الأولوية ←</a></p>' +
+      '<p class="meif-next"><a href="#workspace">افتح مساحة القرار ←</a></p>' +
       "</section>";
     return true;
   }
