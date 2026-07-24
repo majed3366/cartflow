@@ -50,12 +50,13 @@
 
   function renderSection(sec, pkg) {
     if (!sec) return "";
-    var countHtml =
-      sec.count != null
-        ? '<span class="hes-count" data-hes-count="1">' +
-          esc(String(sec.count)) +
-          "</span>"
-        : "";
+    var countHtml = "";
+    if (sec.count !== null && sec.count !== undefined && sec.count !== "") {
+      countHtml =
+        '<span class="hes-count" data-hes-count="1">' +
+        esc(String(sec.count)) +
+        "</span>";
+    }
     var detailsId = "hes-details-" + esc(sec.id || "x");
     var isObs = sec.id === "observations";
     var detailsBody = "";

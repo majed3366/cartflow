@@ -125,7 +125,6 @@ def _health_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         "id": "health",
         "title_ar": "صحة العمل",
         "summary_ar": summary_ar,
-        "count": None,
         "view_details_href": "#carts",
         "view_details_ar": "عرض التفاصيل",
         "empty": not watching,
