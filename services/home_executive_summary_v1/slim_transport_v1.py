@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Gate 1 — Home Slim Transport V1.
+Gate 1 — Home Slim Transport V1 (+ Gate 1-B teaser enrichment).
 
 Home summary may carry only lightweight executive teaser inputs + HES package.
 Heavy MEIF / ORV / Daily Brief / Pulse / ACF payloads are stripped or never attached.
@@ -40,20 +40,70 @@ def _as_int(v: Any, default: int = 0) -> int:
         return default
 
 
-def _abandoned_count(summary: Mapping[str, Any]) -> int:
-    if _as_int(summary.get("merchant_nav_badge_abandoned")):
-        return _as_int(summary.get("merchant_nav_badge_abandoned"))
+def _fmt_int(summary: Mapping[str, Any], *keys: str) -> int:
+    for key in keys:
+        if key in summary and summary.get(key) is not None:
+            raw = summary.get(key)
+            if isinstance(raw, (int, float)):
+                return _as_int(raw)
+            return _as_int(str(raw or "0").replace(",", ""))
+    return 0
+
+
+def _store_counts(summary: Mapping[str, Any]) -> dict[str, int]:
     counts = summary.get("merchant_store_cart_counts")
-    if isinstance(counts, Mapping):
-        for key in ("active_total", "abandoned", "waiting_send"):
-            n = _as_int(counts.get(key))
-            if n:
-                return n
-    return _as_int(str(summary.get("merchant_kpi_abandoned_fmt") or "0").replace(",", ""))
+    if not isinstance(counts, Mapping):
+        stats = summary.get("normal_carts_stats")
+        if isinstance(stats, Mapping) and isinstance(
+            stats.get("merchant_store_cart_counts"), Mapping
+        ):
+            counts = stats.get("merchant_store_cart_counts")
+        else:
+            counts = {}
+    src = counts if isinstance(counts, Mapping) else {}
+    return {
+        "active": _as_int(src.get("active_total")),
+        "waiting": _as_int(
+            src.get("waiting_total")
+            or src.get("waiting_send")
+            or src.get("abandoned")
+        ),
+        "no_phone": _as_int(src.get("no_phone_total") or src.get("canonical_no_phone_total")),
+        "archived": _as_int(src.get("archived_total")),
+    }
 
 
-def _wa_sent_count(summary: Mapping[str, Any]) -> int:
-    return _as_int(str(summary.get("merchant_kpi_wa_sent_fmt") or "0").replace(",", ""))
+def _kpis(summary: Mapping[str, Any]) -> dict[str, int]:
+    kpis = summary.get("kpis") if isinstance(summary.get("kpis"), Mapping) else {}
+    return {
+        "abandoned_today": _as_int(kpis.get("abandoned_today"))
+        or _fmt_int(summary, "merchant_kpi_abandoned_fmt"),
+        "recovered_today": _as_int(kpis.get("recovered_today"))
+        or _fmt_int(summary, "merchant_kpi_recovered_fmt"),
+        "wa_sent_today": _as_int(kpis.get("whatsapp_sent_today"))
+        or _fmt_int(summary, "merchant_kpi_wa_sent_fmt"),
+    }
+
+
+def _store_connected(summary: Mapping[str, Any]) -> bool | None:
+    for key in ("store_connection", "store_connection_status"):
+        conn = summary.get(key)
+        if isinstance(conn, Mapping):
+            if "store_connected_ok" in conn:
+                return bool(conn.get("store_connected_ok"))
+            state = str(conn.get("state_key") or conn.get("connection_state") or "").lower()
+            if state in {"connected", "ready", "ok"}:
+                return True
+            if state in {"disconnected", "setup_required", "not_connected", "error"}:
+                return False
+    return None
+
+
+def _wa_state(summary: Mapping[str, Any]) -> str:
+    card = summary.get("whatsapp_readiness_card")
+    if isinstance(card, Mapping):
+        return str(card.get("state_key") or "").strip().lower()
+    return str(summary.get("wa_state_key") or "").strip().lower()
 
 
 def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str, Any]:
@@ -62,17 +112,31 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
     already-attached fat packages (which will be stripped after extract).
     """
     src = summary if isinstance(summary, Mapping) else {}
-    abandoned = _abandoned_count(src)
-    wa_sent = _wa_sent_count(src)
+    counts = _store_counts(src)
+    kpis = _kpis(src)
+    waiting = max(
+        counts["waiting"],
+        _as_int(src.get("merchant_nav_badge_abandoned")),
+        kpis["abandoned_today"],
+    )
+    active = counts["active"]
+    no_phone = counts["no_phone"]
+    wa_sent = kpis["wa_sent_today"]
+    recovered = kpis["recovered_today"]
+    wa_state = _wa_state(src)
+    store_ok = _store_connected(src)
 
     decisions_count = 0
     decisions_title = ""
+    schedules = 0
     meif = src.get("merchant_experience_integration_v1")
     if isinstance(meif, Mapping):
         pages = meif.get("pages") if isinstance(meif.get("pages"), Mapping) else {}
         home = pages.get("home") if isinstance(pages, Mapping) else {}
         sections = (
-            home.get("sections") if isinstance(home, Mapping) and isinstance(home.get("sections"), Mapping) else {}
+            home.get("sections")
+            if isinstance(home, Mapping) and isinstance(home.get("sections"), Mapping)
+            else {}
         )
         decisions = list((sections or {}).get("merchant_decisions") or [])
         decisions_count = len(decisions)
@@ -85,10 +149,13 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
             ).strip()
         carts_page = pages.get("carts") if isinstance(pages, Mapping) else {}
         if isinstance(carts_page, Mapping):
-            abandoned = max(
-                abandoned,
-                _as_int(carts_page.get("durable_cart_count")),
+            waiting = max(waiting, _as_int(carts_page.get("durable_cart_count")))
+            cops = (
+                carts_page.get("operational_truth")
+                if isinstance(carts_page.get("operational_truth"), Mapping)
+                else {}
             )
+            no_phone = max(no_phone, _as_int((cops or {}).get("no_phone_total")))
         comm = pages.get("communication") if isinstance(pages, Mapping) else {}
         if isinstance(comm, Mapping):
             cops = (
@@ -98,10 +165,6 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
             )
             wa_sent = max(wa_sent, _as_int((cops or {}).get("mock_whatsapp_sent")))
             schedules = _as_int((cops or {}).get("recovery_schedules"))
-        else:
-            schedules = 0
-    else:
-        schedules = 0
 
     obs_count = 0
     obs_top: dict[str, str] | None = None
@@ -121,25 +184,43 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
                 "statement_ar": str(named[0].get("statement_ar") or "").strip(),
             }
 
+    needs_attention = waiting > 0 or no_phone > 0 or store_ok is False
     return {
         "schema": "home_teaser_inputs_v1",
+        "version": "gate_1b_executive_composition",
         "health": {
-            "watching": abandoned > 0,
-            "abandoned_carts": abandoned,
+            "watching": waiting > 0 or active > 0,
+            "abandoned_carts": waiting,
+            "active_carts": active,
+            "recovered_today": recovered,
+            "no_phone": no_phone,
+            "store_connected": store_ok,
+            "wa_state_key": wa_state,
+            "needs_attention": needs_attention,
         },
         "decisions": {
             "count": decisions_count,
             "top_title_ar": decisions_title,
+            "evidence": "decision_titles" if decisions_count and decisions_title else "none",
         },
         "observations": {
             "count": obs_count,
             "top": obs_top,
+            "evidence": "product_findings" if obs_count and obs_top else "none",
         },
-        "carts": {"count": abandoned},
+        "carts": {
+            "count": waiting,
+            "waiting": waiting,
+            "active": active,
+            "no_phone": no_phone,
+        },
         "communication": {
             "sent": wa_sent,
             "schedules": schedules,
-            "activity": (wa_sent + schedules) > 0,
+            "no_phone": no_phone,
+            "waiting": waiting,
+            "wa_state_key": wa_state,
+            "activity": (wa_sent + schedules + waiting + no_phone) > 0,
         },
     }
 
@@ -150,7 +231,6 @@ def strip_heavy_home_summary_payload_v1(summary: dict[str, Any]) -> dict[str, An
         return summary
     for key in HEAVY_SUMMARY_KEYS_V1:
         summary.pop(key, None)
-    # Keep a minimal home experience stub (slug only) — drop Daily Brief embed.
     home = summary.get("merchant_home_experience_v1")
     if isinstance(home, dict):
         summary["merchant_home_experience_v1"] = {
