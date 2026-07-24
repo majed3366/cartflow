@@ -84,10 +84,15 @@
   .orv-lede,.orv-empty{margin:0 0 12px;font-size:13px;line-height:1.5;opacity:.8}
   .orv-cards{display:grid;gap:10px}
   .orv-card{padding:12px 14px;border-radius:10px;background:#fff;border:1px solid rgba(53,92,125,.16);border-inline-start:3px solid #2f6f4e}
-  .orv-card__eyebrow{margin:0 0 4px;font-size:11px;font-weight:700;opacity:.7}
+  .orv-card__head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+  .orv-card__eyebrow{margin:0;font-size:11px;font-weight:700;opacity:.7}
+  .orv-conf{display:inline-block;font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:rgba(0,0,0,.06)}
+  .orv-conf--high{background:rgba(47,111,78,.12);color:#1f3d2f}
+  .orv-conf--medium{background:rgba(140,100,60,.12);color:#5a3d1a}
+  .orv-conf--low{background:rgba(0,0,0,.06);color:#444}
   .orv-card__title{margin:0 0 6px;font-size:15px;line-height:1.4;font-weight:700}
   .orv-card__statement{margin:0;font-size:14px;line-height:1.5}
-  .orv-card__evidence{margin:8px 0 0;font-size:12px;line-height:1.45;opacity:.8}
+  .orv-card__action{margin:10px 0 0;padding-top:8px;border-top:1px dashed rgba(0,0,0,.08);font-size:13px;line-height:1.5}
   .meif-item{margin:0 0 10px;padding:0}
   .meif-item__title{font-size:14px;line-height:1.45}
   .meif-item__meta{font-size:12px;opacity:.7;margin-top:2px}
@@ -1113,7 +1118,7 @@
 <script defer src="/static/merchant_vip_automation_ui.js"></script>
 <script defer src="/static/merchant_home_experience.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_experience_integration_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-msr1"></script>
-<script defer src="/static/observation_reality_validation_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-orv1"></script>
+<script defer src="/static/observation_reality_validation_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-orv1p"></script>
 <script defer src="/static/merchant_dashboard_home_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_pulse_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_intelligence_carts_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
