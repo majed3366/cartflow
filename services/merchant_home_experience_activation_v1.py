@@ -324,6 +324,19 @@ def finalize_dashboard_summary_payload(
         store_slug=store_slug,
         cache_hit=cache_hit,
     )
+    # Decision Experience V1 — attach MEIF on every summary exit (live + snapshot).
+    # Snapshot mode previously skipped MEIF, so Home kept Daily Brief instead.
+    try:
+        from services.product_data.merchant_experience_integration_foundation_v1 import (  # noqa: PLC0415
+            attach_merchant_experience_to_summary_v1,
+        )
+
+        _home = body.get("merchant_home_experience_v1") or {}
+        _meif_slug = str(_home.get("store_slug") or "").strip() or store_slug
+        if _meif_slug:
+            attach_merchant_experience_to_summary_v1(body, _meif_slug)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("summary merchant_experience_integration_v1 (finalize): %s", exc)
     try:
         from services.home_adaptive_cognition_home_bridge_v1 import (  # noqa: PLC0415
             attach_adaptive_cognition_to_summary_v1,
