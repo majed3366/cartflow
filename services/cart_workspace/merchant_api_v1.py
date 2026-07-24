@@ -85,6 +85,9 @@ def api_cart_workspace_projection(request: Request):
             "silent_success_mode": cart_workspace_silent_success_enabled(),
             "gate_2_single_decision_owner": True,
             "gate_2a_decision_workspace_completion": True,
+            "gate_2b_decision_composition_engine": bool(
+                (projection or {}).get("gate_2b_decision_composition_engine")
+            ),
         }
     )
 

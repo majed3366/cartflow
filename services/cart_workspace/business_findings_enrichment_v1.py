@@ -200,14 +200,104 @@ def enrich_projection_with_fde_v1(
     store_slug: str,
 ) -> dict[str, Any]:
     """
-    Merge FDE + operational-truth Decision cards into zone_b (ahead of ops cards).
-    Mutates and returns projection dict. Gate 2A: decisions only in merchant paint.
+    Sole merchant Decision paint path.
+
+    Gate 2B: Decision Composition Engine composes validated Decisions.
+    Falls back to Gate 2A FDE+OT path when DCE flag is OFF.
     """
     if not isinstance(projection, dict):
         return {}
     slug = _norm(store_slug) or _norm(projection.get("store_slug"))
+
+    try:
+        from services.decision_composition_engine_v1.flag_v1 import (  # noqa: PLC0415
+            decision_composition_engine_v1_enabled,
+        )
+
+        dce_on = decision_composition_engine_v1_enabled()
+    except Exception:  # noqa: BLE001
+        dce_on = False
+
+    if dce_on:
+        return _enrich_via_composition_engine_v1(projection, slug)
+
+    return _enrich_legacy_gate_2a_v1(projection, slug)
+
+
+def _enrich_via_composition_engine_v1(
+    projection: dict[str, Any],
+    slug: str,
+) -> dict[str, Any]:
+    from services.decision_composition_engine_v1.compose_v1 import (  # noqa: PLC0415
+        compose_decisions_v1,
+    )
+    from services.decision_composition_engine_v1.project_workspace_v1 import (  # noqa: PLC0415
+        decisions_to_workspace_cards_v1,
+    )
+
+    pkg = compose_decisions_v1(slug)
+    composed_cards = decisions_to_workspace_cards_v1(list(pkg.get("decisions") or []))
+
+    zone_a = list(projection.get("zone_a") or [])
+    zone_b_existing = list(projection.get("zone_b") or [])
+    ops_b = [
+        c
+        for c in zone_b_existing
+        if isinstance(c, dict)
+        and c.get("card_kind")
+        not in {"business_finding", "operational_truth", "composed_decision"}
+        and not str(c.get("decision_id") or "").startswith("fde:")
+        and not str(c.get("decision_id") or "").startswith("ops-truth:")
+        and not str(c.get("decision_id") or "").startswith("dce:")
+    ]
+    # Shadow VIP ops remain secondary to composed business decisions.
+    zone_b = [_normalize_constitution_fields(dict(c)) for c in (composed_cards + ops_b)]
+    zone_a = [
+        _normalize_constitution_fields(dict(c)) for c in zone_a if isinstance(c, dict)
+    ]
+
+    projection["zone_b"] = zone_b
+    projection["zone_a"] = zone_a
+    quiet = not zone_a and not zone_b
+    projection["quiet"] = quiet
+    if zone_a:
+        projection["attention_focus_decision_id"] = zone_a[0].get("decision_id")
+    elif zone_b:
+        projection["attention_focus_decision_id"] = zone_b[0].get("decision_id")
+    else:
+        projection["attention_focus_decision_id"] = None
+    projection["mission_question"] = "ماذا يجب أن أقرر الآن، ولماذا؟"
+    projection["gate_2_single_decision_owner"] = True
+    projection["gate_2a_decision_workspace_completion"] = True
+    projection["gate_2b_decision_composition_engine"] = True
+    projection["decisions_only"] = True
+    projection["decision_composition_v1"] = {
+        "version": pkg.get("composition_version"),
+        "counts": pkg.get("counts"),
+        "suppression_registry": pkg.get("suppression_registry"),
+        "no_decision_supported": pkg.get("no_decision_supported"),
+        "needs_action_now": len(pkg.get("needs_action_now") or []),
+        "monitor": len(pkg.get("monitor") or []),
+    }
+    projection["business_finding_count"] = int(
+        (pkg.get("counts") or {}).get("candidates_total") or 0
+    )
+    projection["operational_truth_count"] = 0
+    projection["decision_card_count"] = len(zone_a) + len(zone_b)
+    labels = dict(projection.get("zone_labels") or {})
+    labels["B"] = "ما يحتاج قرارك"
+    projection["zone_labels"] = labels
+    projection["zone_c"] = {"visible": False, "summary": ""}
+    projection["zone_d"] = {"visible": False, "completed_count": 0}
+    return projection
+
+
+def _enrich_legacy_gate_2a_v1(
+    projection: dict[str, Any],
+    slug: str,
+) -> dict[str, Any]:
+    """Rollback path when CARTFLOW_DECISION_COMPOSITION_ENGINE_V1=0."""
     fde_cards = list_fde_workspace_cards_v1(slug, mark_displayed=False)
-    # Prefer actionable decisions; keep NO_DECISION only when nothing else exists.
     fde_decided = [c for c in fde_cards if c.get("has_decision")]
     fde_no = [c for c in fde_cards if not c.get("has_decision")]
 
@@ -237,7 +327,9 @@ def enrich_projection_with_fde_v1(
     if not primary and fde_no:
         primary = fde_no
     zone_b = [_normalize_constitution_fields(dict(c)) for c in (primary + ops_b)]
-    zone_a = [_normalize_constitution_fields(dict(c)) for c in zone_a if isinstance(c, dict)]
+    zone_a = [
+        _normalize_constitution_fields(dict(c)) for c in zone_a if isinstance(c, dict)
+    ]
 
     projection["zone_b"] = zone_b
     projection["zone_a"] = zone_a
@@ -252,6 +344,7 @@ def enrich_projection_with_fde_v1(
     projection["mission_question"] = "ماذا يجب أن أقرر الآن، ولماذا؟"
     projection["gate_2_single_decision_owner"] = True
     projection["gate_2a_decision_workspace_completion"] = True
+    projection["gate_2b_decision_composition_engine"] = False
     projection["decisions_only"] = True
     projection["business_finding_count"] = len(fde_cards)
     projection["operational_truth_count"] = len(ops_truth)
@@ -259,21 +352,33 @@ def enrich_projection_with_fde_v1(
     labels = dict(projection.get("zone_labels") or {})
     labels["B"] = "ما يحتاج قرارك"
     projection["zone_labels"] = labels
-    # Hide operational status zones from merchant constitution surface.
     projection["zone_c"] = {"visible": False, "summary": ""}
     projection["zone_d"] = {"visible": False, "completed_count": 0}
     return projection
 
 
 def count_fde_decisions_for_teaser_v1(store_slug: str) -> dict[str, Any]:
-    """Lightweight Home teaser inputs from FDE without fat MEIF."""
+    """Home teaser — composed Decisions when DCE ON; else FDE-only legacy."""
+    try:
+        from services.decision_composition_engine_v1.flag_v1 import (  # noqa: PLC0415
+            decision_composition_engine_v1_enabled,
+        )
+        from services.decision_composition_engine_v1.teaser_v1 import (  # noqa: PLC0415
+            count_composed_decisions_for_teaser_v1,
+        )
+
+        if decision_composition_engine_v1_enabled():
+            return count_composed_decisions_for_teaser_v1(store_slug)
+    except Exception:  # noqa: BLE001
+        pass
+
     cards = list_fde_workspace_cards_v1(store_slug, mark_displayed=False)
     decided = [c for c in cards if c.get("has_decision")]
     top_title = ""
     if decided:
-        top_title = _norm(decided[0].get("title_ar") or decided[0].get("required_merchant_action"))
-    elif cards:
-        top_title = ""
+        top_title = _norm(
+            decided[0].get("title_ar") or decided[0].get("required_merchant_action")
+        )
     return {
         "count": len(decided),
         "top_title_ar": top_title,
