@@ -1,0 +1,111 @@
+{
+  "generated_at_utc": "2026-07-25T16:39:25.920780+00:00",
+  "environment": "production",
+  "base": "https://smartreplyai.net",
+  "deploy_sha_expected": "675304e",
+  "store_slug": "demo",
+  "review_session": {
+    "ok": true,
+    "store_slug": "demo",
+    "email": "cf.living.store.review@smartreplyai.net"
+  },
+  "home": {
+    "http": 200,
+    "store_slug": "demo",
+    "governance": {
+      "sprint": "home_stabilization_v1",
+      "gate": "gate_2x_merchant_understanding",
+      "single_owner": "home_executive_summary_v1",
+      "single_data_source": "home_teaser_inputs_v1",
+      "single_render_path": "maApplyHomeExecutiveSummaryV1",
+      "sections": [
+        "health",
+        "decisions",
+        "observations",
+        "carts",
+        "communication"
+      ],
+      "product_intelligence": "False",
+      "home_creates_decisions": "False",
+      "executive_business_language": "True",
+      "store_executive_thinking": "True",
+      "merchant_understanding": "True",
+      "page_question": "What is happening in my business today?",
+      "executive_editorial_exclusivity": "True",
+      "morning_brief": "True"
+    },
+    "editorial_brief": {
+      "policy": "executive_editorial_exclusivity_v1",
+      "constitution": "principle_7",
+      "published_situations": [
+        "recovery_opportunity",
+        "purchase_completion",
+        "cart_operations"
+      ],
+      "unique_situation_count": "3",
+      "duplicate_situations": "False",
+      "suppressions": [
+        {
+          "section_id": "decisions",
+          "situation": "purchase_completion",
+          "kept_section_id": "observations"
+        }
+      ]
+    },
+    "sections": [
+      {
+        "id": "health",
+        "title_ar": "حالة المتجر",
+        "summary_ar": "فرص استعادة المبيعات محدودة اليوم.",
+        "empty": "False",
+        "commercial_situation": "recovery_opportunity",
+        "editorial_exclusivity": "published"
+      },
+      {
+        "id": "decisions",
+        "title_ar": "قرارات اليوم",
+        "summary_ar": "لا توجد أولوية قرار واضحة اليوم.",
+        "empty": "True",
+        "commercial_situation": "purchase_completion",
+        "editorial_exclusivity": "suppressed_duplicate_situation"
+      },
+      {
+        "id": "observations",
+        "title_ar": "ملاحظات المنتجات",
+        "summary_ar": "Raven — حزام جلد للساعة يحظى باهتمام واضح، لكن التحويل إلى شراء لا يزال ضعيفاً.",
+        "empty": "False",
+        "commercial_situation": "purchase_completion",
+        "editorial_exclusivity": "published"
+      },
+      {
+        "id": "carts",
+        "title_ar": "السلال",
+        "summary_ar": "سلال العملاء تحتاج متابعة نشطة.",
+        "empty": "False",
+        "commercial_situation": "cart_operations",
+        "editorial_exclusivity": "published"
+      },
+      {
+        "id": "communication",
+        "title_ar": "التواصل",
+        "summary_ar": "تواصل العملاء يسير بشكل طبيعي.",
+        "empty": "True",
+        "commercial_situation": "None",
+        "editorial_exclusivity": "pass_empty_or_unclassified"
+      }
+    ],
+    "text_sample": "ملخص تنفيذي\n\nماذا يجب أن تعرف الآن؟\n\nملخص سريع فقط — التفاصيل في صفحاتها.\n\nحالة المتجر\nيتطلب متابعة\n\nفرص استعادة المبيعات محدودة اليوم.\n\nعرض التفاصيل ←\n\nقرارات اليوم\nأدلة غير كافية\n0\n\nلا توجد أولوية قرار واضحة اليوم.\n\nعرض التفاصيل ← مساحة القرار ←\n\nملاحظات المنتجات\nيتطلب انتباهاً\n4\n\nRaven — حزام جلد للساعة يحظى باهتمام واضح، لكن التحويل إلى شراء لا يزال ضعيفاً.\n\nعرض التفاصيل ←\n\nالسلال\nلا مهام\n0\n\nسلال العملاء تحتاج متابعة نشطة.\n\nعرض التفاصيل ←\n\nالتواصل\nلا مهام\n0\n\nتواصل العملاء يسير بشكل طبيعي.\n\nعرض التفاصيل ←\n\nالصفحة الرئيسية = ملخص تنفيذي · القرارات في مساحة القرار · السلال للتشغيل · التواصل للمتابعة · الإعدادات للضبط."
+  },
+  "checks": {
+    "store_demo": true,
+    "editorial_flag": true,
+    "editorial_brief_present": true,
+    "no_duplicate_situations": true,
+    "not_both_checkout_and_raven_conversion": true,
+    "has_unique_health_or_obs": true,
+    "decisions_suppressed_duplicate": true,
+    "note": "empty fields arrive as strings from browser JSON; health+observations published with distinct situations"
+  },
+  "ok": true,
+  "mx_verdict": "Home publishes unique commercial situations under Principle 7 — KEEP"
+}
