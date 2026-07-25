@@ -1,0 +1,11 @@
+{
+  "http": 401,
+  "fail_ui": true,
+  "text_sample": "CartFlow\nالرئيسية\nمساحة القرار\nالسلال\nالتواصل\nالإعدادات\n🔔\n👤\nمتجرك\nالباقة\nخروج\n\nمساحة القرار\n\nما يحتاج قرارك\n\nلا توجد تصنيفات حالة هنا — فقط القرارات المعتمدة.\n\nتعذر التحميل",
+  "gate_business_themes_v1": false,
+  "zone_a": 0,
+  "zone_b": 0,
+  "theme_cards": 0,
+  "fact_cards": 0,
+  "top_titles": []
+}
