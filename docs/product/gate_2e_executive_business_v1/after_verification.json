@@ -1,0 +1,45 @@
+{
+  "email": "cf.g2e.e2aaa11777@smartreplyai.net",
+  "home_probe": {
+    "http": 200,
+    "fetch_ms": 188,
+    "body_bytes": 6311,
+    "hes_ok": true,
+    "meif": false,
+    "section_ids": [
+      "health",
+      "decisions",
+      "observations",
+      "carts",
+      "communication"
+    ],
+    "health_summary": "أداء الاسترجاع انخفض اليوم.",
+    "decisions_summary": "راجع مسار الاسترجاع.",
+    "health_equals_decision": false,
+    "decision_has_counter_phrase": false,
+    "executive_lang": true,
+    "obs": "لا توجد حالياً أدلة كافية لنشر ملاحظة منتج.",
+    "carts": "2 سلة خارج مسار المتابعة حالياً.",
+    "comm": "التواصل يعمل بشكل طبيعي — لا مهام معلّقة."
+  },
+  "workspace_probe": {
+    "http": 200,
+    "gate_2e": true,
+    "landscape": 9,
+    "has_exec_subtitle": true,
+    "top_decision": "راجع مسار الاسترجاع.",
+    "top_has_meaning": true,
+    "counter_as_title": false,
+    "cache_hit": true
+  },
+  "generated_at_utc": "2026-07-25T01:05:32.602655+00:00",
+  "sprint": "gate_2e_executive_business",
+  "screenshots": {
+    "desktop_home": "docs/product/gate_2e_executive_business_v1/after_desktop_home.png",
+    "desktop_workspace": "docs/product/gate_2e_executive_business_v1/after_desktop_workspace.png",
+    "mobile_home": "docs/product/gate_2e_executive_business_v1/after_mobile_home.png",
+    "mobile_workspace": "docs/product/gate_2e_executive_business_v1/after_mobile_workspace.png"
+  },
+  "ok": true,
+  "status": "AWAITING_CEO_REVIEW_BEFORE_GATE_2_CLOSE"
+}
