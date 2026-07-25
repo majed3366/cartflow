@@ -1,0 +1,774 @@
+{
+  "generated_at_utc": "2026-07-25T02:44:52.981544+00:00",
+  "seed": 20260725,
+  "start_date": "2026-05-01",
+  "duration_days": 30,
+  "sim_end": "2026-05-31T18:00:00+00:00",
+  "db_path": "C:\\Users\\Toshiba\\AppData\\Local\\Temp\\cartflow_living_store_v1_20260725.db",
+  "auth": {
+    "email": "living-ed166b740a@example.com",
+    "lab_session_bind": {
+      "ok": true,
+      "merchant_user_id": 1,
+      "store_slug": "demo",
+      "canonical_store_id": "2",
+      "simulation_store_id": 2,
+      "primary_store_id": 1,
+      "prior_demo_owner_id": null,
+      "source": "lab_session_bind_v1",
+      "membership_mode": "demo_owned_alongside_primary"
+    }
+  },
+  "simulation": {
+    "simulation_run_id": "srs_69c8d07e8b27418c87f79f40206fa66f",
+    "reality_score": {
+      "overall": 80.0,
+      "dimensions": {
+        "customer_diversity": 100.0,
+        "traffic_realism": 80.0,
+        "purchase_realism": 90.0,
+        "product_realism": 100.0,
+        "recovery_realism": 90.0,
+        "knowledge_realism": 80.0,
+        "timeline_realism": 50.0,
+        "session_realism": 55.0,
+        "behaviour_realism": 85.0,
+        "execution_fidelity": 70.0
+      },
+      "internal_only": true,
+      "merchant_facing": false,
+      "sample": {
+        "events": 2124,
+        "customers": 240,
+        "sessions": 240,
+        "products": 10
+      }
+    },
+    "execute": {
+      "status": "completed",
+      "events_executed": null,
+      "batches": null
+    },
+    "plan_event_count": 2124
+  },
+  "operational_mass": {
+    "abandoned_carts": 240,
+    "cart_status": {
+      "recovered": 92,
+      "detected": 23,
+      "abandoned": 125
+    },
+    "phone_gap_carts": 0,
+    "cart_line_snapshots": 240,
+    "top_products_by_lines": [
+      [
+        "Raven — حزام جلد للساعة",
+        87
+      ],
+      [
+        "Nano 20W — رأس شحن سريع USB‑PD",
+        64
+      ],
+      [
+        "TrueSound — سماعة لاسلكية",
+        21
+      ],
+      [
+        "TrueSound Air — سماعة خفيفة",
+        17
+      ],
+      [
+        "Horizon Steel — ساعة يد ستانلس",
+        17
+      ],
+      [
+        "TrueSound Pro — سماعة لاسلكية مع عزل ضوضاء",
+        8
+      ],
+      [
+        "Essentials — هودي قطني خفيف",
+        8
+      ],
+      [
+        "Velvet Musk — عطر يومي",
+        8
+      ],
+      [
+        "Luxe — هودي صوفي",
+        5
+      ],
+      [
+        "Amber Oud — عطر مركز",
+        5
+      ]
+    ],
+    "cart_recovery_reasons": 152,
+    "reason_distribution": {
+      "price": 37,
+      "thinking": 34,
+      "warranty": 5,
+      "shipping": 37,
+      "delivery": 10,
+      "quality": 18,
+      "other": 11
+    },
+    "abandonment_reason_logs": 152,
+    "recovery_schedules": 101,
+    "cart_recovery_logs": 101,
+    "purchase_truth_records": 184,
+    "movement_snapshots": 0,
+    "product_signal_events": 1408,
+    "product_hesitation_mappings": 152
+  },
+  "observation": {
+    "intended_product_personalities": {
+      "A_attention_low_conversion": {
+        "keys": [
+          "hoodie",
+          "hoodie_essentials"
+        ],
+        "intent": "high_traffic_many_atc_low_conversion_repeat_visits",
+        "scenarios": [
+          "S02_high_traffic_low_conversion",
+          "S04_product_high_atc_low_purchase",
+          "S08_repeated_product_interest"
+        ]
+      },
+      "B_quiet_high_conversion": {
+        "keys": [
+          "charger",
+          "watch_band"
+        ],
+        "intent": "lower_traffic_high_conversion",
+        "scenarios": [
+          "S01_normal_store_baseline",
+          "S13_organic_purchase"
+        ]
+      },
+      "C_seasonal_consideration": {
+        "keys": [
+          "watch_pro",
+          "watch_sport"
+        ],
+        "intent": "seasonal_high_consideration_bursts",
+        "scenarios": [
+          "S01_normal_store_baseline",
+          "S12_multi_return_customer",
+          "S15_vip_customer"
+        ]
+      },
+      "D_high_recovery": {
+        "keys": [
+          "earbuds",
+          "hp_air"
+        ],
+        "intent": "strong_whatsapp_recovery_path",
+        "scenarios": [
+          "S05_wa_return_without_purchase",
+          "S06_wa_success",
+          "S14_ambiguous_influence"
+        ]
+      },
+      "E_shipping_abandon": {
+        "keys": [
+          "perfume",
+          "perfume_velvet"
+        ],
+        "intent": "abandon_after_shipping_hesitation",
+        "scenarios": [
+          "S03_shipping_cost_hesitation",
+          "S10_widget_reason_capture"
+        ]
+      }
+    },
+    "observation_foundation": {
+      "ok": true,
+      "keys": [
+        "correlation_model",
+        "correlations",
+        "counts",
+        "enabled",
+        "intelligence",
+        "observation_model",
+        "observations",
+        "ok",
+        "schema",
+        "statement_capabilities_defined",
+        "statement_capabilities_ready",
+        "store_slug",
+        "ui"
+      ],
+      "capabilities_sample": [],
+      "correlation_count": 90,
+      "statement_capabilities_ready": [
+        "high_interest_low_conversion",
+        "no_quality_issue_evidence",
+        "repeated_return_without_purchase",
+        "shipping_stronger_than_price"
+      ],
+      "counts": {
+        "signals_in": 1298,
+        "observations": 955,
+        "correlations": 90,
+        "statement_capabilities_ready": 4
+      },
+      "correlations_sample": [
+        {
+          "product_key": "b|demo_watch_band|demo-watch-band",
+          "kind": "reason_strength_compare_v1",
+          "stronger": "price",
+          "compare": {
+            "shipping": 10,
+            "price": 11
+          }
+        },
+        {
+          "product_key": "b|demo_hp_air|demo-hp-air",
+          "kind": "reason_strength_compare_v1",
+          "stronger": "shipping",
+          "compare": {
+            "shipping": 6,
+            "price": 3
+          }
+        },
+        {
+          "product_key": "b|demo_earbuds|demo-earbuds",
+          "kind": "reason_strength_compare_v1",
+          "stronger": "shipping",
+          "compare": {
+            "shipping": 6,
+            "price": 4
+          }
+        },
+        {
+          "product_key": "b|demo_charger|demo-charger",
+          "kind": "reason_strength_compare_v1",
+          "stronger": "price",
+          "compare": {
+            "shipping": 6,
+            "price": 11
+          }
+        },
+        {
+          "product_key": "b|demo_perfume_velvet|demo-perfume-velvet",
+          "kind": "reason_strength_compare_v1",
+          "stronger": "shipping",
+          "compare": {
+            "shipping": 8,
+            "price": 0
+          }
+        },
+        {
+          "product_key": "b|demo_perfume_velvet|demo-perfume-velvet",
+          "kind": "absent_reason_evidence_v1",
+          "stronger": null,
+          "compare": null
+        },
+        {
+          "product_key": "b|demo_hp_pro|demo-hp-pro",
+          "kind": "reason_strength_compare_v1",
+          "stronger": "shipping",
+          "compare": {
+            "shipping": 3,
+            "price": 2
+          }
+        },
+        {
+          "product_key": "b|demo_hp_pro|demo-hp-pro",
+          "kind": "absent_reason_evidence_v1",
+          "stronger": null,
+          "compare": null
+        },
+        {
+          "product_key": "b|demo_watch_pro|demo-watch-pro",
+          "kind": "reason_strength_compare_v1",
+          "stronger": "price",
+          "compare": {
+            "shipping": 0,
+            "price": 4
+          }
+        },
+        {
+          "product_key": "b|demo_watch_pro|demo-watch-pro",
+          "kind": "absent_reason_evidence_v1",
+          "stronger": null,
+          "compare": null
+        },
+        {
+          "product_key": "b|demo_hoodie_essentials|demo-hoodie-essentials",
+          "kind": "reason_strength_compare_v1",
+          "stronger": "shipping",
+          "compare": {
+            "shipping": 4,
+            "price": 0
+          }
+        },
+        {
+          "product_key": "b|demo_perfume|demo-perfume",
+          "kind": "reason_strength_compare_v1",
+          "stronger": "shipping",
+          "compare": {
+            "shipping": 3,
+            "price": 0
+          }
+        },
+        {
+          "product_key": "b|demo_perfume|demo-perfume",
+          "kind": "absent_reason_evidence_v1",
+          "stronger": null,
+          "compare": null
+        },
+        {
+          "product_key": "b|demo_hoodie|demo-hoodie",
+          "kind": "reason_strength_compare_v1",
+          "stronger": "price",
+          "compare": {
+            "shipping": 1,
+            "price": 2
+          }
+        },
+        {
+          "product_key": "b|demo_hoodie|demo-hoodie",
+          "kind": "absent_reason_evidence_v1",
+          "stronger": null,
+          "compare": null
+        }
+      ]
+    },
+    "orv_findings": [
+      {
+        "capability": "high_interest_low_conversion",
+        "title_ar": "اهتمام مرتفع وتحويل منخفض",
+        "statement_ar": "يحظى باهتمام واضح، لكن التحويل إلى شراء لا يزال منخفضاً.",
+        "confidence": "مرتفع",
+        "product_name": "Raven — حزام جلد للساعة",
+        "home_teaser_ar": "Raven — حزام جلد للساعة: اهتمام قوي لكن التحويل إلى شراء ضعيف."
+      },
+      {
+        "capability": "shipping_stronger_than_price",
+        "title_ar": "تردد الشحن أقوى من السعر",
+        "statement_ar": "تردد الشحن/التوصيل أقوى حالياً من تردد السعر.",
+        "confidence": "مرتفع",
+        "product_name": "TrueSound Air — سماعة خفيفة",
+        "home_teaser_ar": "TrueSound Air — سماعة خفيفة: تردد الشحن أقوى من تردد السعر."
+      },
+      {
+        "capability": "repeated_return_without_purchase",
+        "title_ar": "عودة متكررة بلا شراء",
+        "statement_ar": "يجذب زيارات متكررة دون إتمام شراء.",
+        "confidence": "مرتفع",
+        "product_name": "Raven — حزام جلد للساعة",
+        "home_teaser_ar": "Raven — حزام جلد للساعة: يجذب زيارات متكررة دون شراء."
+      },
+      {
+        "capability": "no_quality_issue_evidence",
+        "title_ar": "لا دليل على مشكلة جودة",
+        "statement_ar": "لا توجد أدلة حالية تدعم وجود مشكلة جودة.",
+        "confidence": "مرتفع",
+        "product_name": "TrueSound Pro — سماعة لاسلكية مع عزل ضوضاء",
+        "home_teaser_ar": "TrueSound Pro — سماعة لاسلكية مع عزل ضوضاء: لا توجد أدلة حالية على مشكلة جودة."
+      }
+    ],
+    "orv_finding_count": 4,
+    "admission_reconciliation": {
+      "foundation_ready_count": 4,
+      "orv_admitted_count": 4,
+      "routed_count": 4,
+      "home_visible_count": 4,
+      "workspace_visible_count": 3,
+      "suppressed_count": 39,
+      "suppressed_by_reason": {
+        "capability_already_admitted_for_stronger_product": 26,
+        "banned_placeholder_product_key": 12,
+        "observation_valid_for_home_not_workspace": 1
+      },
+      "silent_drops": 0,
+      "note": "home_visible == orv_admitted; workspace_visible ⊆ admitted (actionable only); suppressed includes home-only and failed candidates"
+    },
+    "suppressed_by_reason": {
+      "capability_already_admitted_for_stronger_product": 26,
+      "banned_placeholder_product_key": 12,
+      "observation_valid_for_home_not_workspace": 1
+    },
+    "workspace_decision_count": 3,
+    "present_capabilities": [
+      "high_interest_low_conversion",
+      "shipping_stronger_than_price",
+      "repeated_return_without_purchase",
+      "no_quality_issue_evidence"
+    ],
+    "decision_composition": {
+      "ok": true,
+      "gate_2f": true,
+      "published_count": 0,
+      "portfolio_count": 1,
+      "decisions": [
+        {
+          "title": "راجع تجربة إتمام الشراء ومتابعة العملاء.",
+          "domain": "operations",
+          "why": "مسار الاسترجاع فيه حالات تحتاج تدخلاً بشرياً لإبقاء فرصة إتمام الشراء مفتوحة.",
+          "why_now": "التأخير في التدخل البشري يقلل فرصة تحويل الاهتمام الحالي إلى شراء.",
+          "evidence": null,
+          "confidence": "high",
+          "first_step": "ابدأ بحالات الانتباه (رد/تدخل) ثم راجع ما تبقّى.",
+          "business_meaning_ar": "مسار الاسترجاع يحتاج تدخلاً بشرياً لإبقاء فرص الإتمام مفتوحة.",
+          "business_impact_ar": "تأخر إتمام الشراء في الحالات التي تحتاج تدخلاً.",
+          "gate_2f": true
+        }
+      ],
+      "category_landscape": [
+        {
+          "category": "store_health",
+          "category_ar": "صحة المتجر",
+          "status": "healthy",
+          "status_ar": "لا إجراء مطلوب.",
+          "decision_id": null,
+          "summary_ar": "لا إجراء مطلوب.",
+          "no_action_required": true
+        },
+        {
+          "category": "revenue",
+          "category_ar": "الإيرادات",
+          "status": "healthy",
+          "status_ar": "لا إجراء مطلوب.",
+          "decision_id": null,
+          "summary_ar": "لا إجراء مطلوب.",
+          "no_action_required": true
+        },
+        {
+          "category": "products",
+          "category_ar": "المنتجات",
+          "status": "healthy",
+          "status_ar": "لا إجراء مطلوب.",
+          "decision_id": null,
+          "summary_ar": "لا إجراء مطلوب.",
+          "no_action_required": true
+        },
+        {
+          "category": "pricing",
+          "category_ar": "التسعير",
+          "status": "healthy",
+          "status_ar": "لا إجراء مطلوب.",
+          "decision_id": null,
+          "summary_ar": "لا إجراء مطلوب.",
+          "no_action_required": true
+        },
+        {
+          "category": "shipping",
+          "category_ar": "الشحن",
+          "status": "healthy",
+          "status_ar": "لا إجراء مطلوب.",
+          "decision_id": null,
+          "summary_ar": "لا إجراء مطلوب.",
+          "no_action_required": true
+        },
+        {
+          "category": "recovery",
+          "category_ar": "الاسترجاع",
+          "status": "healthy",
+          "status_ar": "لا إجراء مطلوب.",
+          "decision_id": null,
+          "summary_ar": "لا إجراء مطلوب.",
+          "no_action_required": true
+        },
+        {
+          "category": "communication",
+          "category_ar": "التواصل",
+          "status": "healthy",
+          "status_ar": "لا إجراء مطلوب.",
+          "decision_id": null,
+          "summary_ar": "لا إجراء مطلوب.",
+          "no_action_required": true
+        },
+        {
+          "category": "customer_behaviour",
+          "category_ar": "سلوك العملاء",
+          "status": "healthy",
+          "status_ar": "لا إجراء مطلوب.",
+          "decision_id": null,
+          "summary_ar": "لا إجراء مطلوب.",
+          "no_action_required": true
+        },
+        {
+          "category": "operations",
+          "category_ar": "التشغيل",
+          "status": "has_decision",
+          "status_ar": "يوجد قرار",
+          "decision_id": "dce:waiting_recovery",
+          "summary_ar": "راجع حالات الاسترجاع التي تحتاج تدخلك.",
+          "no_action_required": false
+        }
+      ],
+      "store_executive_briefing": {
+        "store_healthy": false,
+        "revenue_signal_ar": "إتمام الشراء أبطأ من المعتاد.",
+        "products_attention_ar": "لا يوجد منتج حالياً بأدلة كافية لملاحظة تجارية.",
+        "top_decision_ar": "راجع حالات الشراء التي تحتاج تدخلك.",
+        "recovery_healthy_ar": "مسار متابعة العملاء يعمل بشكل طبيعي.",
+        "communication_healthy_ar": "تواصل العملاء يحتاج انتباهاً."
+      }
+    },
+    "home_executive_summary": {
+      "ok": true,
+      "governance": {
+        "sprint": "home_stabilization_v1",
+        "gate": "gate_2f_store_executive_thinking",
+        "single_owner": "home_executive_summary_v1",
+        "single_data_source": "home_teaser_inputs_v1",
+        "single_render_path": "maApplyHomeExecutiveSummaryV1",
+        "sections": [
+          "health",
+          "decisions",
+          "observations",
+          "carts",
+          "communication"
+        ],
+        "product_intelligence": false,
+        "home_creates_decisions": false,
+        "executive_business_language": true,
+        "store_executive_thinking": true
+      },
+      "sections": [
+        {
+          "id": "health",
+          "title_ar": "حالة المتجر",
+          "summary_ar": "إتمام الشراء أبطأ من المعتاد.",
+          "status_ar": "يتطلب متابعة",
+          "count": null,
+          "empty": false
+        },
+        {
+          "id": "decisions",
+          "title_ar": "قرارات اليوم",
+          "summary_ar": "راجع تجربة إتمام الشراء ومتابعة العملاء.",
+          "status_ar": "2 قرارات عمل",
+          "count": 2,
+          "empty": false
+        },
+        {
+          "id": "observations",
+          "title_ar": "ملاحظات المنتجات",
+          "summary_ar": "المنتج Raven — حزام جلد للساعة: يحظى باهتمام واضح، لكن التحويل إلى شراء لا يزال منخفضاً.",
+          "status_ar": "يتطلب انتباهاً",
+          "count": 4,
+          "empty": false
+        },
+        {
+          "id": "carts",
+          "title_ar": "السلال",
+          "summary_ar": "135 سلة قيد المتابعة مع العملاء.",
+          "status_ar": "يتطلب متابعة",
+          "count": 135,
+          "empty": false
+        },
+        {
+          "id": "communication",
+          "title_ar": "التواصل",
+          "summary_ar": "135 عملاء بانتظار متابعة.",
+          "status_ar": "يتطلب متابعة",
+          "count": 135,
+          "empty": false
+        }
+      ]
+    },
+    "home_teasers": {
+      "schema": "home_teaser_inputs_v1",
+      "version": "gate_2d_business_domain_composition",
+      "health": {
+        "watching": true,
+        "abandoned_carts": 135,
+        "active_carts": 135,
+        "recovered_today": 0,
+        "no_phone": 0,
+        "store_connected": null,
+        "wa_state_key": "",
+        "needs_attention": true,
+        "domain_summary_ar": "إتمام الشراء أبطأ من المعتاد."
+      },
+      "decisions": {
+        "count": 2,
+        "top_title_ar": "راجع تجربة إتمام الشراء ومتابعة العملاء.",
+        "evidence": "store_executive_understanding",
+        "category_landscape": [
+          {
+            "category": "store_health",
+            "category_ar": "صحة المتجر",
+            "status": "healthy",
+            "status_ar": "لا إجراء مطلوب.",
+            "decision_id": null,
+            "summary_ar": "لا إجراء مطلوب.",
+            "no_action_required": true
+          },
+          {
+            "category": "revenue",
+            "category_ar": "الإيرادات",
+            "status": "healthy",
+            "status_ar": "لا إجراء مطلوب.",
+            "decision_id": null,
+            "summary_ar": "لا إجراء مطلوب.",
+            "no_action_required": true
+          },
+          {
+            "category": "products",
+            "category_ar": "المنتجات",
+            "status": "healthy",
+            "status_ar": "لا إجراء مطلوب.",
+            "decision_id": null,
+            "summary_ar": "لا إجراء مطلوب.",
+            "no_action_required": true
+          },
+          {
+            "category": "pricing",
+            "category_ar": "التسعير",
+            "status": "healthy",
+            "status_ar": "لا إجراء مطلوب.",
+            "decision_id": null,
+            "summary_ar": "لا إجراء مطلوب.",
+            "no_action_required": true
+          },
+          {
+            "category": "shipping",
+            "category_ar": "الشحن",
+            "status": "healthy",
+            "status_ar": "لا إجراء مطلوب.",
+            "decision_id": null,
+            "summary_ar": "لا إجراء مطلوب.",
+            "no_action_required": true
+          },
+          {
+            "category": "recovery",
+            "category_ar": "الاسترجاع",
+            "status": "healthy",
+            "status_ar": "لا إجراء مطلوب.",
+            "decision_id": null,
+            "summary_ar": "لا إجراء مطلوب.",
+            "no_action_required": true
+          },
+          {
+            "category": "communication",
+            "category_ar": "التواصل",
+            "status": "has_decision",
+            "status_ar": "يوجد قرار",
+            "decision_id": "dce:finding:finding:recovery_channel_effectiveness_v1:whatsapp",
+            "summary_ar": "لا توسّع حجم رسائل واتساب للاسترجاع هذا الأسبوع.",
+            "no_action_required": false
+          },
+          {
+            "category": "customer_behaviour",
+            "category_ar": "سلوك العملاء",
+            "status": "healthy",
+            "status_ar": "لا إجراء مطلوب.",
+            "decision_id": null,
+            "summary_ar": "لا إجراء مطلوب.",
+            "no_action_required": true
+          },
+          {
+            "category": "operations",
+            "category_ar": "التشغيل",
+            "status": "has_decision",
+            "status_ar": "يوجد قرار",
+            "decision_id": "dce:waiting_recovery",
+            "summary_ar": "راجع حالات الاسترجاع التي تحتاج تدخلك.",
+            "no_action_required": false
+          }
+        ],
+        "portfolio": true,
+        "gate_2d": true
+      },
+      "observations": {
+        "count": 4,
+        "top": {
+          "product_name_ar": "Raven — حزام جلد للساعة",
+          "statement_ar": "يحظى باهتمام واضح، لكن التحويل إلى شراء لا يزال منخفضاً."
+        },
+        "evidence": "product_findings"
+      },
+      "carts": {
+        "count": 135,
+        "waiting": 135,
+        "active": 135,
+        "no_phone": 0,
+        "domain_summary_ar": "135 سلة قيد المتابعة مع العملاء."
+      },
+      "communication": {
+        "sent": 0,
+        "schedules": 0,
+        "no_phone": 0,
+        "waiting": 135,
+        "wa_state_key": "",
+        "activity": true,
+        "domain_summary_ar": "135 عملاء بانتظار متابعة."
+      }
+    },
+    "bfl": {
+      "attempted": true,
+      "result": {
+        "ok": true,
+        "store_slug": "demo",
+        "bfl_version": "bfl_v1",
+        "enabled": true,
+        "detected": 7,
+        "validated": 6,
+        "persisted": 6,
+        "knowledge_routed": 6,
+        "ot_routed": 6,
+        "surface_eligible": 5,
+        "finding_ids": [
+          "…",
+          "…",
+          "…",
+          "…",
+          "…",
+          "…"
+        ],
+        "errors": [],
+        "stopped_stages": {
+          "finding:recovery_channel_effectiveness_v1:widget": "…",
+          "finding:recovery_channel_effectiveness_v1:whatsapp": "…",
+          "finding:dominant_hesitation_reason_v1:not_dominant": "…",
+          "finding:high_interest_low_purchase_product_v1:b|demo_hoodie_essentials|demo-hood": "…",
+          "finding:traffic_versus_conversion_v1": "…",
+          "finding:return_without_purchase_v1:insufficient": "…"
+        }
+      }
+    }
+  },
+  "dashboard_summary_probe": {
+    "http": 200,
+    "home_surface_mode": "executive_summary_v1",
+    "hes_sections": [
+      {
+        "id": "health",
+        "summary_ar": "جاهزية المتجر غير مكتملة — اضبط الربط أولاً.",
+        "status_ar": "يتطلب متابعة",
+        "empty": "False"
+      },
+      {
+        "id": "decisions",
+        "summary_ar": "لا توجد أولوية قرار واضحة اليوم.",
+        "status_ar": "أدلة غير كافية",
+        "empty": "True"
+      },
+      {
+        "id": "observations",
+        "summary_ar": "لا يوجد منتج حالياً بأدلة كافية لملاحظة تجارية.",
+        "status_ar": "أدلة غير كافية",
+        "empty": "True"
+      },
+      {
+        "id": "carts",
+        "summary_ar": "لا توجد سلال تحتاج متابعة حالياً.",
+        "status_ar": "لا مهام",
+        "empty": "False"
+      },
+      {
+        "id": "communication",
+        "summary_ar": "تواصل العملاء يحتاج ضبطاً بسيطاً.",
+        "status_ar": "يحتاج ضبطاً",
+        "empty": "False"
+      }
+    ],
+    "orv_findings_on_summary": 0,
+    "meif_present": false
+  }
+}

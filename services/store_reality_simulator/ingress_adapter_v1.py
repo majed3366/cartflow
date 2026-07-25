@@ -335,6 +335,27 @@ def _upsert_cart(
         log.debug("SRS product identity snapshot skipped", exc_info=True)
 
     db.session.commit()
+    # Hook parity with live cart-event — ProductSignal + catalog (no Home/PI).
+    try:
+        from services.product_data.product_signal_hook_v1 import (  # noqa: PLC0415
+            product_signal_try_from_cart_payload,
+        )
+
+        product_signal_try_from_cart_payload(
+            identity_payload, event_hint="cart_state_sync"
+        )
+    except Exception:  # noqa: BLE001
+        log.debug("SRS product signal cart hook skipped", exc_info=True)
+    try:
+        from services.product_data.product_catalog_hook_v1 import (  # noqa: PLC0415
+            product_data_try_catalog_normalize,
+        )
+
+        product_data_try_catalog_normalize(
+            identity_payload, event_hint="cart_state_sync"
+        )
+    except Exception:  # noqa: BLE001
+        log.debug("SRS catalog normalize hook skipped", exc_info=True)
     return {"ok": True, "bucket": "persisted", "abandoned_cart_id": ac.id}
 
 
@@ -427,6 +448,21 @@ def _capture_reason(
         row_pk=str(log_row.id),
     )
     db.session.commit()
+    # Live hesitation + signal hooks (mapping + PSC) — never invent findings.
+    try:
+        from services.product_data.product_hesitation_hook_v1 import (  # noqa: PLC0415
+            product_data_try_hesitation_mapping,
+        )
+
+        product_data_try_hesitation_mapping(
+            DEMO_STORE_SLUG,
+            ev.session_id,
+            cart_id=ev.cart_id,
+            recovery_key=ev.recovery_key,
+            reason=reason,
+        )
+    except Exception:  # noqa: BLE001
+        log.debug("SRS hesitation mapping hook skipped", exc_info=True)
     return {"ok": True, "bucket": "processed", "reason": reason}
 
 
@@ -493,6 +529,23 @@ def _movement_return(ev: PlannedEvent, *, run_id: str) -> dict[str, Any]:
         raise
     except Exception:  # noqa: BLE001
         db.session.rollback()
+    if ok:
+        try:
+            from services.product_data.product_signal_hook_v1 import (  # noqa: PLC0415
+                product_signal_try_from_customer_return,
+            )
+
+            product_signal_try_from_customer_return(
+                {
+                    "store_slug": DEMO_STORE_SLUG,
+                    "session_id": ev.session_id,
+                    "cart_id": ev.cart_id,
+                    "recovery_key": ev.recovery_key,
+                    "event": ev.event_type,
+                }
+            )
+        except Exception:  # noqa: BLE001
+            log.debug("SRS product signal return hook skipped", exc_info=True)
     return {"ok": bool(ok), "bucket": "processed" if ok else "failed", "event_type": et}
 
 
@@ -675,6 +728,21 @@ def _purchase(
         raise
     except Exception:  # noqa: BLE001
         db.session.rollback()
+    if written:
+        try:
+            from services.product_data.product_signal_hook_v1 import (  # noqa: PLC0415
+                product_signal_try_from_purchase,
+            )
+
+            product_signal_try_from_purchase(
+                DEMO_STORE_SLUG,
+                ev.session_id,
+                cart_id=ev.cart_id,
+                recovery_key=ev.recovery_key,
+                purchased_at=at,
+            )
+        except Exception:  # noqa: BLE001
+            log.debug("SRS product signal purchase hook skipped", exc_info=True)
     return {
         "ok": bool(written),
         "bucket": "processed" if written else "rejected",

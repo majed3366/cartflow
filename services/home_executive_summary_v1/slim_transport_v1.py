@@ -206,13 +206,21 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
             f
             for f in findings
             if str(f.get("product_name_ar") or "").strip()
-            and str(f.get("statement_ar") or "").strip()
+            and (
+                str(f.get("home_teaser_ar") or "").strip()
+                or str(f.get("statement_ar") or "").strip()
+            )
         ]
         obs_count = len(named)
         if named:
+            top_f = named[0]
+            # Prefer short Home teaser; never ship technical types / full evidence.
+            statement = str(
+                top_f.get("statement_ar") or top_f.get("home_teaser_ar") or ""
+            ).strip()
             obs_top = {
-                "product_name_ar": str(named[0].get("product_name_ar") or "").strip(),
-                "statement_ar": str(named[0].get("statement_ar") or "").strip(),
+                "product_name_ar": str(top_f.get("product_name_ar") or "").strip(),
+                "statement_ar": statement,
             }
 
     needs_attention = waiting > 0 or no_phone > 0 or store_ok is False

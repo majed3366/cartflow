@@ -66,6 +66,17 @@ _PROFILES: dict[str, ScaleProfile] = {
         pause_ms_between_batches=250,
         description="90+ day stress — never first",
     ),
+    # Living Store Reality V1 — denser 30-day merchant history for observation
+    # (not UI/PI). Injects operational evidence only.
+    "living_store": ScaleProfile(
+        profile_id="living_store",
+        duration_days=30,
+        journeys_per_day=8.0,
+        max_events_per_run=4000,
+        batch_size=50,
+        pause_ms_between_batches=10,
+        description="Living Store Reality V1 — 30-day observable merchant history",
+    ),
 }
 
 
@@ -97,5 +108,5 @@ def resolve_scale_profile(
 
 
 def list_scale_profiles() -> list[ScaleProfile]:
-    order = ("small", "medium", "large", "full", "stress")
+    order = ("small", "medium", "large", "living_store", "full", "stress")
     return [_PROFILES[k] for k in order]

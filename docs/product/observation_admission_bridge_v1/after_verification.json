@@ -1,0 +1,68 @@
+{
+  "generated_at_utc": "2026-07-25T02:51:11.360841+00:00",
+  "db": "C:\\Users\\Toshiba\\AppData\\Local\\Temp\\cartflow_living_store_v1_20260725.db",
+  "orv_count": 4,
+  "present_capabilities": [
+    "high_interest_low_conversion",
+    "shipping_stronger_than_price",
+    "repeated_return_without_purchase",
+    "no_quality_issue_evidence"
+  ],
+  "admission_reconciliation": {
+    "foundation_ready_count": 4,
+    "orv_admitted_count": 4,
+    "routed_count": 4,
+    "home_visible_count": 4,
+    "workspace_visible_count": 3,
+    "suppressed_count": 39,
+    "suppressed_by_reason": {
+      "capability_already_admitted_for_stronger_product": 32,
+      "banned_placeholder_product_key": 6,
+      "observation_valid_for_home_not_workspace": 1
+    },
+    "silent_drops": 0,
+    "note": "home_visible == orv_admitted; workspace_visible ⊆ admitted (actionable only); suppressed includes home-only and failed candidates"
+  },
+  "suppressed_by_reason": {
+    "capability_already_admitted_for_stronger_product": 32,
+    "banned_placeholder_product_key": 6,
+    "observation_valid_for_home_not_workspace": 1
+  },
+  "workspace_decision_count": 3,
+  "hes_observations": {
+    "summary_ar": "المنتج Raven — حزام جلد للساعة: يحظى باهتمام واضح، لكن التحويل إلى شراء لا يزال منخفضاً.",
+    "count": 4,
+    "empty": false
+  },
+  "findings": [
+    {
+      "product": "Raven — حزام جلد للساعة",
+      "capability": "high_interest_low_conversion",
+      "statement": "يحظى باهتمام واضح، لكن التحويل إلى شراء لا يزال منخفضاً."
+    },
+    {
+      "product": "TrueSound — سماعة لاسلكية",
+      "capability": "shipping_stronger_than_price",
+      "statement": "تردد الشحن/التوصيل أقوى حالياً من تردد السعر."
+    },
+    {
+      "product": "Raven — حزام جلد للساعة",
+      "capability": "repeated_return_without_purchase",
+      "statement": "يجذب زيارات متكررة دون إتمام شراء."
+    },
+    {
+      "product": "Horizon Steel — ساعة يد ستانلس",
+      "capability": "no_quality_issue_evidence",
+      "statement": "لا توجد أدلة حالية تدعم وجود مشكلة جودة."
+    }
+  ],
+  "screenshots": {
+    "desktop_home": "docs/product/observation_admission_bridge_v1/after_desktop_home.png",
+    "mobile_home": "docs/product/observation_admission_bridge_v1/after_mobile_home.png",
+    "desktop_workspace": "docs/product/observation_admission_bridge_v1/after_desktop_workspace.png",
+    "mobile_workspace": "docs/product/observation_admission_bridge_v1/after_mobile_workspace.png"
+  },
+  "ok": true,
+  "status": "AWAITING_CEO_REVIEW",
+  "note": "Rendered from live admission→teaser→HES compose against Living Store DB (not invented copy)."
+}
