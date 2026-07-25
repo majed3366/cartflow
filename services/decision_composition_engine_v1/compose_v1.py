@@ -187,6 +187,39 @@ def _compose_uncached_v1(
     portfolio = list(mu_pkg.get("decisions") or portfolio)
     published, _suppressed_pub = apply_merchant_understanding_to_decisions_v1(published)
     home_teasers = dict(mu_pkg.get("home_teasers") or exec_pkg.get("home_teasers") or {})
+    # Business Facts V1 — evidence layer for Business Understanding / Workspace.
+    bf_pkg: dict[str, Any] | None = None
+    try:
+        from services.business_facts_v1 import (  # noqa: PLC0415
+            build_business_facts_package_v1,
+            business_facts_v1_enabled,
+        )
+        from services.observation_foundation_v1.merchant_findings_v1 import (  # noqa: PLC0415
+            build_observation_reality_validation_v1,
+        )
+
+        if business_facts_v1_enabled():
+            orv = build_observation_reality_validation_v1(slug)
+            bf_pkg = build_business_facts_package_v1(
+                slug,
+                orv_package=orv if isinstance(orv, dict) else None,
+                domains_pkg=domains_pkg,
+                store_executive_pkg=exec_pkg,
+            )
+    except Exception:  # noqa: BLE001
+        bf_pkg = None
+    biz_u = dict(mu_pkg.get("business_understanding_v1") or {})
+    if bf_pkg and bf_pkg.get("ok"):
+        biz_u["business_facts_v1"] = {
+            "counts": bf_pkg.get("counts"),
+            "product_meanings_ar": [
+                f.get("business_meaning_ar")
+                for f in list(bf_pkg.get("facts") or [])
+                if isinstance(f, dict)
+                and (f.get("subject") or {}).get("kind") == "product"
+            ][:8],
+        }
+        biz_u["consumes"] = "business_facts_v1"
     timing["merchant_understanding_ms"] = round((time.perf_counter() - t_mu) * 1000.0, 2)
     timing["store_executive_ms"] = round((time.perf_counter() - t) * 1000.0, 2)
     timing["portfolio_ms"] = timing["store_executive_ms"]
@@ -209,6 +242,7 @@ def _compose_uncached_v1(
         "gate_2e_executive_business": True,
         "gate_2f_store_executive": True,
         "gate_2x_merchant_understanding": True,
+        "gate_business_facts_v1": bool(bf_pkg and bf_pkg.get("ok")),
         "business_domains_v1": {
             "domains": domains_pkg.get("domains"),
             "home_teasers": home_teasers,
@@ -216,7 +250,8 @@ def _compose_uncached_v1(
             "root_causes": domains_pkg.get("root_causes"),
         },
         "store_executive_understanding_v1": exec_pkg,
-        "business_understanding_v1": mu_pkg.get("business_understanding_v1"),
+        "business_understanding_v1": biz_u,
+        "business_facts_v1": bf_pkg,
         "merchant_understanding_v1": mu_pkg.get("merchant_understanding_v1"),
         "decisions": portfolio,
         "all_published": published,
