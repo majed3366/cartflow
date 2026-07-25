@@ -1,0 +1,29 @@
+{
+  "generated_at_utc": "2026-07-25T03:18:16.461320+00:00",
+  "environment": "production",
+  "url": "https://smartreplyai.net/dashboard#home",
+  "email": "cf.oab.probe.11756ff0c9@smartreplyai.net",
+  "probe": {
+    "http": 200,
+    "store_slug": "oab-11756f-e5b206",
+    "home_surface_mode": "executive_summary_v1",
+    "orv_key_present": false,
+    "orv_count": 0,
+    "orv_present_capabilities": [],
+    "orv_recon": null,
+    "orv_empty_state": null,
+    "obs_summary": "لا يوجد منتج حالياً بأدلة كافية لملاحظة تجارية.",
+    "obs_empty": "True",
+    "obs_count": "0",
+    "section_ids": [
+      "health",
+      "decisions",
+      "observations",
+      "carts",
+      "communication"
+    ],
+    "text_has_raven": false,
+    "text_sample": "ملخص تنفيذي\n\nماذا يجب أن تعرف الآن؟\n\nملخص سريع فقط — التفاصيل في صفحاتها.\n\nحالة المتجر\nيتطلب متابعة\n\nفرص استعادة المبيعات محدودة اليوم.\n\nعرض التفاصيل ←\n\nقرارات اليوم\nأولوية العمل اليوم\n1\n\nراجع تجربة إتمام الشراء ومتابعة العملاء.\n\nعرض التفاصيل ← مساحة القرار ←\n\nملاحظات المنتجات\nأدلة غير كافية\n0\n\nلا يوجد منتج حالياً بأدلة كافية لملاحظة تجارية.\n\nعرض التفاصيل ←\n\nالسلال\nلا مهام\n0\n\nمتابعة بعض العملاء مقيدة حالياً.\n\nعرض التفاصيل ←\n\nالتواصل\nلا مهام\n0\n\nتواصل العملاء يسير بشكل طبيعي.\n\nعرض التفاصيل ←\n\nالصفحة الرئيسية = ملخص تنفيذي · القرارات في مساحة القرار · السلال للتشغيل · التواصل للمتابعة · الإعدادات للضبط."
+  },
+  "interpretation": "Fresh merchant signup store — not living-store demo mass. Empty observations are expected unless session is bound to production store_slug=demo with Living Store history."
+}

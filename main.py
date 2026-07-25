@@ -1063,6 +1063,10 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/time-authority",
         "/dev/business-findings-lifecycle",
         "/dev/observation-reality-validation",
+        "/dev/living-store-reality-run",
+        "/dev/living-store-reality-status",
+        "/dev/living-store-home-review-session",
+        "/dev/living-store-home-review",
         "/dev/commerce-intelligence-synthesis",
         "/dev/commerce-intelligence-knowledge",
         "/dev/data-growth-measurement",
@@ -12267,6 +12271,12 @@ def dev_observation_reality_validation(
         "missing_capabilities": pkg.get("missing_capabilities") or [],
         "mass_source": pkg.get("mass_source"),
         "titles_ar": [f.get("title_ar") for f in findings],
+        "product_names": [
+            f.get("product_name_ar") or f.get("product_name") or f.get("entity_name")
+            for f in findings
+        ],
+        "statements_ar": [f.get("statement_ar") for f in findings],
+        "admission_reconciliation": pkg.get("admission_reconciliation") or {},
         "has_statement_action_confidence": all(
             bool(f.get("statement_ar"))
             and bool(f.get("recommended_action_ar"))
@@ -12281,6 +12291,73 @@ def dev_observation_reality_validation(
         ),
     }
     return j(report, 200)
+
+
+@app.post("/dev/living-store-reality-run")
+def dev_living_store_reality_run() -> Any:
+    """
+    Production-allowlisted: execute Living Store Reality on store_slug=demo
+    against the connected database (async). Wall-clock trailing calendar.
+    """
+    from services.living_store_reality_prod_v1 import (  # noqa: PLC0415
+        start_living_store_prod_run_v1,
+    )
+
+    return j(start_living_store_prod_run_v1(), 200)
+
+
+@app.get("/dev/living-store-reality-status")
+def dev_living_store_reality_status() -> Any:
+    """Poll Living Store production demo seed job."""
+    from services.living_store_reality_prod_v1 import (  # noqa: PLC0415
+        living_store_prod_job_status_v1,
+    )
+
+    return j({"ok": True, "job": living_store_prod_job_status_v1()}, 200)
+
+
+@app.post("/dev/living-store-home-review-session")
+def dev_living_store_home_review_session() -> Any:
+    """
+    Issue a review merchant session with primary_store_id=demo so Home API
+    reads the Living Store tenant (not a fresh signup store).
+    """
+    from services.living_store_reality_prod_v1 import (  # noqa: PLC0415
+        issue_demo_home_review_session_v1,
+    )
+
+    try:
+        payload = issue_demo_home_review_session_v1()
+    except Exception as exc:  # noqa: BLE001
+        return j({"ok": False, "error": f"{type(exc).__name__}:{exc}"[:400]}, 500)
+    return j(payload, 200)
+
+
+@app.get("/dev/living-store-home-review")
+def dev_living_store_home_review() -> Any:
+    """Set demo-primary review cookie and redirect to production Home."""
+    from fastapi.responses import RedirectResponse  # noqa: PLC0415
+
+    from services.living_store_reality_prod_v1 import (  # noqa: PLC0415
+        issue_demo_home_review_session_v1,
+    )
+    from services.merchant_auth_v1 import is_development_env  # noqa: PLC0415
+
+    try:
+        payload = issue_demo_home_review_session_v1()
+    except Exception as exc:  # noqa: BLE001
+        return j({"ok": False, "error": f"{type(exc).__name__}:{exc}"[:400]}, 500)
+    resp = RedirectResponse(url="/dashboard#home", status_code=302)
+    resp.set_cookie(
+        key=str(payload["cookie_name"]),
+        value=str(payload["cookie_value"]),
+        max_age=14 * 24 * 3600,
+        httponly=True,
+        samesite="lax",
+        secure=not is_development_env(),
+        path="/",
+    )
+    return resp
 
 
 @app.get("/dev/commerce-intelligence-synthesis")
