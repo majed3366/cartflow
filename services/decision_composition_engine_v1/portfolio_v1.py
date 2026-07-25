@@ -16,12 +16,18 @@ from services.decision_composition_engine_v1.category_v1 import (
     NO_ACTION_AR,
     attach_category_v1,
 )
+from services.decision_composition_engine_v1.business_impact_v1 import (
+    domain_rank_v1,
+)
 from services.decision_composition_engine_v1.contract_v1 import BAND_NEEDS_ACTION
 
 
 def _rank_key(d: Mapping[str, Any]) -> tuple:
+    # Gate 2E — business domain impact order, then score (never counter alone).
+    domain = str(d.get("business_domain") or d.get("decision_category") or "")
     return (
         0 if d.get("priority_band") == BAND_NEEDS_ACTION else 1,
+        int(d.get("business_impact_rank") if d.get("business_impact_rank") is not None else domain_rank_v1(domain)),
         -int(d.get("priority") or 0),
         str(d.get("decision_id") or ""),
     )

@@ -27,9 +27,14 @@ class HomeExecutiveCompositionV1Tests(unittest.TestCase):
         health = next(s for s in hes["sections"] if s["id"] == "health")
         self.assertEqual(health["title_ar"], "حالة المتجر")
         self.assertNotEqual(health["title_ar"], "صحة العمل")
-        self.assertIn("مستقرة", health["summary_ar"])
+        # Gate 2E — business condition language (not queue counters).
+        self.assertTrue(
+            "طبيعي" in health["summary_ar"]
+            or "مستقر" in health["summary_ar"]
+            or "يتحسّن" in health["summary_ar"]
+        )
         self.assertEqual(health["view_details_href"], "#carts")
-        self.assertEqual(health.get("count"), 5)
+        self.assertNotIn("count", health)
 
     def test_quiet_store_omits_count(self) -> None:
         hes = build_home_executive_summary_v1(
@@ -40,7 +45,7 @@ class HomeExecutiveCompositionV1Tests(unittest.TestCase):
         self.assertNotIn("count", health)
         self.assertEqual(health["title_ar"], "حالة المتجر")
 
-    def test_carts_and_communication_operational_conditions(self) -> None:
+    def test_carts_and_communication_executive_summaries(self) -> None:
         hes = build_home_executive_summary_v1(
             {
                 "merchant_nav_badge_abandoned": 3,
@@ -54,9 +59,15 @@ class HomeExecutiveCompositionV1Tests(unittest.TestCase):
         )
         carts = next(s for s in hes["sections"] if s["id"] == "carts")
         comm = next(s for s in hes["sections"] if s["id"] == "communication")
-        self.assertIn("بانتظار المتابعة", carts["summary_ar"])
-        self.assertIn("بلا رقم تواصل", carts["summary_ar"])
-        self.assertIn("بانتظار المتابعة", comm["summary_ar"])
+        health = next(s for s in hes["sections"] if s["id"] == "health")
+        # Gate 2E — executive summaries (counts OK on carts/comms; not on Store Health).
+        self.assertIn("تحتاج متابعة", carts["summary_ar"])
+        self.assertTrue(
+            "بانتظار المتابعة" in comm["summary_ar"]
+            or "بلا رقم" in comm["summary_ar"]
+        )
+        self.assertNotEqual(health["summary_ar"], carts["summary_ar"])
+        self.assertNotIn("عدّاد", health["summary_ar"])
         self.assertEqual(carts["view_details_href"], SECTION_OWNERSHIP_HREF_V1["carts"])
         self.assertEqual(
             comm["view_details_href"], SECTION_OWNERSHIP_HREF_V1["communication"]

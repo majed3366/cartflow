@@ -186,7 +186,7 @@ def normalize_business_domains_v1(
         )
         domains[DOMAIN_RECOVERY]["root_causes"].append(rc)
         domains[DOMAIN_RECOVERY]["executive_summary_ar"] = (
-            "قدرة الاسترجاع متأثرة — راجع قرارات اليوم."
+            "أداء الاسترجاع انخفض — فرص الإيراد المعلّقة تتأثر."
         )
         root_causes.append(
             {
@@ -215,7 +215,7 @@ def normalize_business_domains_v1(
         )
         domains[DOMAIN_OPERATIONS]["root_causes"].append(rc)
         domains[DOMAIN_OPERATIONS]["executive_summary_ar"] = (
-            "حالات استرجاع تحتاج تدخلاً — راجع قرارات اليوم."
+            "مسار الاسترجاع يحتاج تدخلاً لإبقاء فرص إتمام الشراء مفتوحة."
         )
         root_causes.append(
             {
@@ -226,29 +226,39 @@ def normalize_business_domains_v1(
             }
         )
 
-    # Store health executive — never restates a Recovery decision.
+    # Store health — business condition only; never restates Today's Decision.
+    recovered = _as_int(ctr.get("recovered_total") or ctr.get("recovered_today"))
     if not available:
         domains[DOMAIN_STORE_HEALTH]["executive_summary_ar"] = (
-            "ملخص التشغيل غير مكتمل بعد — بانتظار بيانات كافية."
+            "لا توجد أدلة كافية لتقييم صحة المتجر بعد."
         )
-    elif domains[DOMAIN_RECOVERY]["has_attention"] or domains[DOMAIN_OPERATIONS]["has_attention"]:
+    elif domains[DOMAIN_RECOVERY]["has_attention"]:
         domains[DOMAIN_STORE_HEALTH]["has_attention"] = True
         domains[DOMAIN_STORE_HEALTH]["executive_summary_ar"] = (
-            "المتجر يحتاج انتباهاً — التفاصيل في قرارات اليوم."
+            "أداء الاسترجاع انخفض اليوم."
         )
         domains[DOMAIN_STORE_HEALTH]["signals"].append(
             {"signal_id": "attention_via_domains", "kind": "store_attention"}
         )
+    elif domains[DOMAIN_OPERATIONS]["has_attention"]:
+        domains[DOMAIN_STORE_HEALTH]["has_attention"] = True
+        domains[DOMAIN_STORE_HEALTH]["executive_summary_ar"] = (
+            "نشاط الشراء يحتاج متابعة لإتمامه."
+        )
+    elif recovered > 0 and active > 0:
+        domains[DOMAIN_STORE_HEALTH]["executive_summary_ar"] = (
+            "نشاط الشراء مستقر — أداء الاسترجاع يتحسّن."
+        )
     elif active > 0:
         domains[DOMAIN_STORE_HEALTH]["executive_summary_ar"] = (
-            "حركة المتجر مستقرة — لا مشكلات مؤثرة ظاهرة الآن."
+            "المتجر يعمل بشكل طبيعي."
         )
     else:
         domains[DOMAIN_STORE_HEALTH]["executive_summary_ar"] = (
-            "لا مشكلات تشغيلية مؤثرة ظاهرة — بانتظار نشاط كافٍ."
+            "لا توجد مشكلات حرجة ظاهرة — بانتظار نشاط كافٍ."
         )
 
-    # Communication domain facts (status), not decisions.
+    # Communication — executive communication facts (not decisions).
     if available and (waiting > 0 or no_phone > 0):
         domains[DOMAIN_COMMUNICATION]["signals"].append(
             {
@@ -258,16 +268,20 @@ def normalize_business_domains_v1(
                 "no_phone": no_phone > 0,
             }
         )
-        if no_phone > 0 and waiting > 0:
+        if waiting > 0 and no_phone > 0:
             domains[DOMAIN_COMMUNICATION]["executive_summary_ar"] = (
-                "متابعة معلّقة، وتوجد حالات بلا رقم."
+                f"{waiting} عملاء بانتظار المتابعة · {no_phone} بلا رقم تواصل."
             )
             domains[DOMAIN_COMMUNICATION]["has_attention"] = True
         elif waiting > 0:
-            domains[DOMAIN_COMMUNICATION]["executive_summary_ar"] = "توجد متابعات معلّقة."
+            domains[DOMAIN_COMMUNICATION]["executive_summary_ar"] = (
+                f"{waiting} عملاء بانتظار المتابعة."
+            )
             domains[DOMAIN_COMMUNICATION]["has_attention"] = True
         elif no_phone > 0:
-            domains[DOMAIN_COMMUNICATION]["executive_summary_ar"] = "توجد حالات بلا رقم تواصل."
+            domains[DOMAIN_COMMUNICATION]["executive_summary_ar"] = (
+                f"{no_phone} سلة بلا رقم تواصل."
+            )
             domains[DOMAIN_COMMUNICATION]["has_attention"] = True
 
     for finding in finds:
@@ -309,16 +323,15 @@ def normalize_business_domains_v1(
             }
         )
 
-    # Recovery executive for carts teaser (ops state, not a decision).
-    if available and (waiting > 0 or no_phone > 0):
-        if waiting > 0 and no_phone > 0:
-            carts_summary = "توجد سلال بانتظار المتابعة، وحالات بلا رقم."
-        elif waiting > 0:
-            carts_summary = "توجد سلال بانتظار المتابعة."
-        else:
-            carts_summary = "توجد سلال بلا رقم تواصل."
+    # Carts — executive ops summary only (counts OK; no recommendations).
+    if available and waiting > 0:
+        carts_summary = f"{waiting} سلة تحتاج متابعة."
+    elif available and no_phone > 0:
+        carts_summary = f"{no_phone} سلة خارج مسار المتابعة حالياً."
+    elif available and recovered > 0:
+        carts_summary = f"{recovered} سلة استُعيدت — نشاط الاسترجاع مستقر."
     elif available and active > 0:
-        carts_summary = "حركة سلال نشطة — لا طوابير متابعة ظاهرة."
+        carts_summary = "نشاط الاسترجاع مستقر."
     else:
         carts_summary = "لا توجد سلال تحتاج متابعة حالياً."
 
@@ -327,6 +340,7 @@ def normalize_business_domains_v1(
         "store_slug": slug,
         "composition_version": DOMAIN_COMPOSITION_VERSION_V1,
         "gate_2d_business_domains": True,
+        "gate_2e_executive_business": True,
         "domains": domains,
         "domain_order": list(ALL_BUSINESS_DOMAINS_V1),
         "root_causes": root_causes,

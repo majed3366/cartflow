@@ -1,19 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-Deterministic priority for Decision Composition Engine V1.
+Gate 2E — Decision priority by business impact (not counter size alone).
 
-priority_score = scale(0-30) + impact(0-25) + urgency(0-20)
-               + actionability(0-15) + evidence(0-10) − automation_discount(0-20)
+priority_score = business_impact(0-40) + meaning_urgency(0-20) + actionability(0-15)
+               + evidence(0-10) + scale_cap(0-15) − automation_discount(0-20)
 
-Bands:
-  >= 55 → needs_action_now
-  30-54 → monitor
-  < 30  → no_decision_supported (still may publish if contract valid & band override)
+Scale is capped — volume informs, never dominates.
+Bands: >= 55 needs_action_now · 30-54 monitor · < 30 none
 """
 from __future__ import annotations
 
 from typing import Any, Mapping
 
+from services.decision_composition_engine_v1.business_impact_v1 import (
+    domain_impact_weight_v1,
+)
 from services.decision_composition_engine_v1.contract_v1 import (
     BAND_MONITOR,
     BAND_NEEDS_ACTION,
@@ -36,20 +37,21 @@ def _as_int(v: Any) -> int:
 
 
 def scale_points(affected: int) -> int:
+    """Capped volume signal — never the primary driver (Gate 2E)."""
     n = _as_int(affected)
     if n <= 0:
         return 0
     if n >= 40:
-        return 30
+        return 15
     if n >= 20:
-        return 24
-    if n >= 10:
-        return 18
-    if n >= 5:
         return 12
+    if n >= 10:
+        return 9
+    if n >= 5:
+        return 6
     if n >= 2:
-        return 8
-    return 4
+        return 4
+    return 2
 
 
 def confidence_points(level: str) -> int:
@@ -63,23 +65,18 @@ def confidence_points(level: str) -> int:
     return 0
 
 
-def impact_points(decision_type: str) -> int:
+def meaning_urgency_points(*, domain: str, decision_type: str, why_now: str) -> int:
+    """Urgency from business meaning — recovery can be urgent when it threatens revenue."""
+    d = _norm(domain)
     t = _norm(decision_type)
-    if t == DECISION_TYPE_RECOVERABILITY_GAP:
-        return 25
-    if t == DECISION_TYPE_VERIFIED_FINDING:
-        return 20
-    if t == DECISION_TYPE_WAITING_RECOVERY:
-        return 12
-    return 8
-
-
-def urgency_points(*, decision_type: str, why_now: str) -> int:
-    base = 8
-    t = _norm(decision_type)
-    if t == DECISION_TYPE_RECOVERABILITY_GAP:
+    base = 10
+    if d in {"revenue", "products", "pricing", "shipping"}:
         base = 18
-    elif t == DECISION_TYPE_WAITING_RECOVERY:
+    elif d == "customer_behaviour":
+        base = 16
+    elif d == "recovery" or t == DECISION_TYPE_RECOVERABILITY_GAP:
+        base = 16
+    elif t == DECISION_TYPE_WAITING_RECOVERY or d == "operations":
         base = 10
     elif t == DECISION_TYPE_VERIFIED_FINDING:
         base = 14
@@ -104,10 +101,29 @@ def calculate_priority_v1(
     affected_count: int = 0,
     automation_can_resolve: bool = False,
 ) -> tuple[int, str, dict[str, int]]:
+    domain = _norm(
+        candidate.get("business_domain")
+        or candidate.get("decision_category")
+        or ""
+    )
+    # Prefer stamped Gate 2E weight; else derive from domain / type.
+    impact = _as_int(candidate.get("business_impact_weight"))
+    if impact <= 0:
+        impact = domain_impact_weight_v1(domain) if domain else 10
+        # Type fallback when domain missing
+        t = _norm(candidate.get("decision_type"))
+        if t == DECISION_TYPE_RECOVERABILITY_GAP:
+            impact = max(impact, 26)
+        elif t == DECISION_TYPE_VERIFIED_FINDING:
+            impact = max(impact, 30)
+        elif t == DECISION_TYPE_WAITING_RECOVERY:
+            impact = max(impact, 14)
+
     factors = {
+        "business_impact": impact,
         "scale": scale_points(affected_count or _as_int(candidate.get("affected_count"))),
-        "impact": impact_points(_norm(candidate.get("decision_type"))),
-        "urgency": urgency_points(
+        "urgency": meaning_urgency_points(
+            domain=domain,
             decision_type=_norm(candidate.get("decision_type")),
             why_now=_norm(candidate.get("why_now")),
         ),
@@ -121,8 +137,8 @@ def calculate_priority_v1(
         ),
     }
     score = (
-        factors["scale"]
-        + factors["impact"]
+        factors["business_impact"]
+        + factors["scale"]
         + factors["urgency"]
         + factors["actionability"]
         + factors["evidence"]

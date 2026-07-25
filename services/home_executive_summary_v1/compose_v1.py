@@ -34,18 +34,19 @@ SECTION_IDS_V1 = (
     "communication",
 )
 
-OBS_EMPTY_AR = "لا توجد أدلة كافية لإصدار ملاحظة مرتبطة بمنتج محدد."
-DECISIONS_EMPTY_AR = "لا تتوفر أدلة كافية لإصدار قرار اليوم."
+OBS_EMPTY_AR = "لا توجد حالياً أدلة كافية لنشر ملاحظة منتج."
+DECISIONS_EMPTY_AR = "لا يوجد قرار تجاري عالي الأولوية اليوم."
 
 GOVERNANCE_V1 = {
     "sprint": "home_stabilization_v1",
-    "gate": "gate_2d_business_domain_composition",
+    "gate": "gate_2e_executive_business_composition",
     "single_owner": "home_executive_summary_v1",
     "single_data_source": "home_teaser_inputs_v1",
     "single_render_path": "maApplyHomeExecutiveSummaryV1",
     "sections": list(SECTION_IDS_V1),
     "product_intelligence": False,
     "home_creates_decisions": False,
+    "executive_business_language": True,
 }
 
 # Card → owning constitutional page (View Details).
@@ -140,7 +141,7 @@ def _decisions_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         "id": "decisions",
         "title_ar": "قرارات اليوم",
         "summary_ar": title,
-        "status_ar": "أولوية اليوم" if count == 1 else f"{count} قرارات",
+        "status_ar": "أولوية العمل اليوم" if count == 1 else f"{count} قرارات عمل",
         "count": count,
         "view_details_href": SECTION_OWNERSHIP_HREF_V1["decisions"],
         "view_details_ar": DECISIONS_VIEW_DETAILS_AR,
@@ -150,6 +151,7 @@ def _decisions_section(summary: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _health_section(summary: Mapping[str, Any]) -> dict[str, Any]:
+    """Gate 2E — business condition of the store; never Today's Decision; never raw counters."""
     t = _teasers(summary)
     health = t.get("health") if isinstance(t.get("health"), Mapping) else {}
     waiting = _as_int(health.get("abandoned_carts"))
@@ -158,31 +160,34 @@ def _health_section(summary: Mapping[str, Any]) -> dict[str, Any]:
     no_phone = _as_int(health.get("no_phone"))
     store_ok = health.get("store_connected")
     needs = bool(health.get("needs_attention")) or waiting > 0 or no_phone > 0
-    # Gate 2D — prefer domain executive summary; never restate Today's Decision.
     domain_summary = str(health.get("domain_summary_ar") or "").strip()
 
     href = SECTION_OWNERSHIP_HREF_V1["health"]
     if store_ok is False:
-        summary_ar = "ربط المتجر يحتاج متابعة قبل الاعتماد على الملخص التشغيلي."
+        summary_ar = "جاهزية المتجر غير مكتملة — اضبط الربط أولاً."
         status_ar = "يتطلب متابعة"
         href = "#home-setup"
         empty = False
     elif domain_summary:
         summary_ar = domain_summary
         status_ar = "يتطلب متابعة" if needs else "مستقر"
-        empty = not needs and "بانتظار" in domain_summary
+        empty = not needs and ("بانتظار" in domain_summary or "غير كافية" in domain_summary)
     elif waiting > 0 or no_phone > 0:
-        # Fallback without naming the same recoverability decision.
-        summary_ar = "المتجر يحتاج انتباهاً — التفاصيل في قرارات اليوم."
+        summary_ar = "أداء الاسترجاع انخفض اليوم."
         status_ar = "يتطلب متابعة"
         empty = False
-    elif active > 0 or recovered > 0:
-        summary_ar = "حركة المتجر مستقرة — لا توجد مشكلات تشغيلية مؤثرة ظاهرة الآن."
+    elif recovered > 0:
+        summary_ar = "نشاط الشراء مستقر — أداء الاسترجاع يتحسّن."
+        status_ar = "مستقر"
+        empty = False
+        needs = False
+    elif active > 0:
+        summary_ar = "المتجر يعمل بشكل طبيعي."
         status_ar = "مستقر"
         empty = False
         needs = False
     else:
-        summary_ar = "لا توجد مشكلات تشغيلية مؤثرة ظاهرة — بانتظار نشاط كافٍ لملخص أدق."
+        summary_ar = "لا توجد مشكلات حرجة ظاهرة."
         status_ar = "هادئ"
         empty = True
         needs = False
@@ -198,52 +203,49 @@ def _health_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         "needs_attention": needs,
         "owner_page": "carts" if href == "#carts" else "settings",
     }
-    if waiting > 0:
-        out["count"] = waiting
-    elif active > 0:
-        out["count"] = active
+    # Executive status — avoid surfacing operational queue counts on Store Health.
     return out
 
 
 def _carts_section(summary: Mapping[str, Any]) -> dict[str, Any]:
+    """Executive carts summary only — no reasoning / recommendations."""
     t = _teasers(summary)
     carts = t.get("carts") if isinstance(t.get("carts"), Mapping) else {}
     waiting = _as_int(carts.get("waiting") if carts.get("waiting") is not None else carts.get("count"))
     active = _as_int(carts.get("active"))
     no_phone = _as_int(carts.get("no_phone"))
+    recovered = _as_int(
+        (t.get("health") or {}).get("recovered_today")
+        if isinstance(t.get("health"), Mapping)
+        else 0
+    )
     count = waiting
-    # Gate 2D — short ops summary from domain layer (not a business decision).
     domain_summary = str(carts.get("domain_summary_ar") or "").strip()
 
     if domain_summary:
         summary_ar = domain_summary
-        if waiting > 0 or no_phone > 0:
-            status_ar = "يتطلب متابعة"
-            empty = False
-            if waiting <= 0 and no_phone > 0:
-                count = no_phone
-        elif active > 0:
-            status_ar = "نشط"
-            empty = False
+        empty = waiting <= 0 and no_phone <= 0 and "مستقر" in domain_summary
+        status_ar = "يتطلب متابعة" if (waiting > 0 or no_phone > 0) else ("نشط" if active > 0 else "لا مهام")
+        if waiting <= 0 and no_phone > 0:
+            count = no_phone
+        elif waiting <= 0 and active > 0:
             count = active
-        else:
-            status_ar = "لا مهام"
-            empty = True
-    elif waiting > 0 and no_phone > 0:
-        summary_ar = "توجد سلال بانتظار المتابعة، وحالات بلا رقم."
+    elif waiting > 0:
+        summary_ar = f"{waiting} سلة تحتاج متابعة."
         status_ar = "يتطلب متابعة"
         empty = False
-    elif waiting > 0:
-        summary_ar = "توجد سلال بانتظار المتابعة."
-        status_ar = "بانتظار متابعة"
-        empty = False
     elif no_phone > 0:
-        summary_ar = "توجد سلال بلا رقم تواصل."
-        status_ar = "بلا تواصل"
+        summary_ar = f"{no_phone} سلة خارج مسار المتابعة حالياً."
+        status_ar = "يتطلب متابعة"
         empty = False
         count = no_phone
+    elif recovered > 0:
+        summary_ar = f"{recovered} سلة استُعيدت — نشاط الاسترجاع مستقر."
+        status_ar = "مستقر"
+        empty = False
+        count = recovered
     elif active > 0:
-        summary_ar = "حركة سلال نشطة — لا طوابير متابعة ظاهرة الآن."
+        summary_ar = "نشاط الاسترجاع مستقر."
         status_ar = "نشط"
         empty = False
         count = active
@@ -266,6 +268,7 @@ def _carts_section(summary: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _communication_section(summary: Mapping[str, Any]) -> dict[str, Any]:
+    """Executive communication summary — reports communication only."""
     t = _teasers(summary)
     comm = t.get("communication") if isinstance(t.get("communication"), Mapping) else {}
     sent = _as_int(comm.get("sent"))
@@ -276,37 +279,38 @@ def _communication_section(summary: Mapping[str, Any]) -> dict[str, Any]:
     count = sent + schedules
     domain_summary = str(comm.get("domain_summary_ar") or "").strip()
 
-    if domain_summary and (no_phone > 0 or waiting > 0 or schedules > 0):
+    if domain_summary and (no_phone > 0 or waiting > 0 or schedules > 0 or sent > 0):
         summary_ar = domain_summary
         status_ar = "يتطلب متابعة" if (no_phone > 0 or waiting > 0) else "نشط"
         empty = False
-        count = max(count, waiting, no_phone)
-    elif no_phone > 0 and waiting > 0:
-        summary_ar = "متابعة معلّقة، وتوجد حالات بلا رقم."
+        count = max(count, waiting, no_phone, sent)
+    elif waiting > 0 and no_phone > 0:
+        summary_ar = f"{waiting} عملاء بانتظار المتابعة · {no_phone} بلا رقم تواصل."
         status_ar = "يتطلب متابعة"
         empty = False
         count = max(count, waiting, no_phone)
     elif waiting > 0 or schedules > 0:
-        summary_ar = "يوجد عملاء بانتظار المتابعة."
+        n = max(waiting, schedules)
+        summary_ar = f"{n} عملاء بانتظار المتابعة."
         status_ar = "بانتظار متابعة"
         empty = False
-        count = max(count, waiting, schedules)
+        count = n
     elif no_phone > 0:
-        summary_ar = "توجد سلال بلا رقم تواصل."
+        summary_ar = f"{no_phone} سلة بلا رقم تواصل."
         status_ar = "بلا تواصل"
         empty = False
         count = no_phone
     elif sent > 0:
-        summary_ar = f"تم تسجيل {sent} إرسال تواصل اليوم — لا مهام معلّقة ظاهرة."
+        summary_ar = f"{sent} رسالة أُرسلت اليوم."
         status_ar = "مكتمل اليوم"
         empty = False
+        count = sent
     elif wa_state and wa_state not in {"ready", "connected", ""}:
-        summary_ar = "مسار التواصل يحتاج ضبطاً قبل الاعتماد على المتابعة الآلية."
+        summary_ar = "مسار التواصل يحتاج ضبطاً."
         status_ar = "يحتاج ضبطاً"
         empty = False
-        # Settings/WhatsApp owns readiness — still route Communication for status history.
     else:
-        summary_ar = "لا توجد مهام تواصل حالية."
+        summary_ar = "التواصل يعمل بشكل طبيعي — لا مهام معلّقة."
         status_ar = "لا مهام"
         empty = True
 

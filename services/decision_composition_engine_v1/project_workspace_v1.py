@@ -43,8 +43,11 @@ def decision_to_workspace_card_v1(decision: Mapping[str, Any]) -> dict[str, Any]
         "business_domain": _norm(
             decision.get("business_domain") or decision.get("decision_category")
         ),
+        "business_meaning_ar": _norm(decision.get("business_meaning_ar")),
+        "business_impact_ar": _norm(decision.get("business_impact_ar")),
         "root_cause_key": _norm(decision.get("root_cause_key")),
         "gate_2d_deduped": True,
+        "gate_2e_business_impact": True,
         "view_details_href": _norm(decision.get("view_details_href")),
         "view_details_ar": "عرض التفاصيل",
         "explanation": {
