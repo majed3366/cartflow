@@ -347,9 +347,22 @@ def finalize_dashboard_summary_payload(
         # Gate 2: stamp slug so FDE teaser count can resolve without fat MEIF.
         if store_slug and not str(body.get("store_slug") or "").strip():
             body["store_slug"] = str(store_slug).strip()
+        # Observation Admission Bridge — lightweight ORV only (no MEIF/Pulse).
+        # Required so Product Observations teaser can admit foundation-ready findings.
+        try:
+            from services.observation_foundation_v1.merchant_findings_v1 import (  # noqa: PLC0415
+                attach_observation_reality_validation_to_summary_v1,
+            )
+
+            _slug = str(body.get("store_slug") or store_slug or "").strip()
+            if _slug:
+                with dashboard_summary_profile_span("home_stage_orv_admit"):
+                    attach_observation_reality_validation_to_summary_v1(body, _slug)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("observation_admission slim attach: %s", exc)
         with dashboard_summary_profile_span("home_stage_teaser_extract"):
             body["home_teaser_inputs_v1"] = extract_home_teaser_inputs_v1(body)
-        # Skip MEIF / ACF / ORV / Pulse attach — never load page-owned payloads for Home.
+        # Skip MEIF / ACF / Pulse attach — never load page-owned heavy payloads for Home.
         try:
             from services.home_executive_summary_v1 import (  # noqa: PLC0415
                 attach_home_executive_summary_to_summary_v1,

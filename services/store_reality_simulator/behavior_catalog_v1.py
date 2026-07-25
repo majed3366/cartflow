@@ -17,6 +17,36 @@ PRODUCT_ROLES: dict[str, dict[str, Any]] = {
     "vip": {"keys": ["hp_pro", "watch_pro"], "role": "vip"},
 }
 
+# Living Store Reality V1 — intended product personalities (operational evidence only).
+# Observation must discover these from evidence; never hardcode into Home/PI.
+LIVING_STORE_PRODUCT_PERSONALITIES_V1: dict[str, dict[str, Any]] = {
+    "A_attention_low_conversion": {
+        "keys": ["hoodie", "hoodie_essentials"],
+        "intent": "high_traffic_many_atc_low_conversion_repeat_visits",
+        "scenarios": ["S02_high_traffic_low_conversion", "S04_product_high_atc_low_purchase", "S08_repeated_product_interest"],
+    },
+    "B_quiet_high_conversion": {
+        "keys": ["charger", "watch_band"],
+        "intent": "lower_traffic_high_conversion",
+        "scenarios": ["S01_normal_store_baseline", "S13_organic_purchase"],
+    },
+    "C_seasonal_consideration": {
+        "keys": ["watch_pro", "watch_sport"],
+        "intent": "seasonal_high_consideration_bursts",
+        "scenarios": ["S01_normal_store_baseline", "S12_multi_return_customer", "S15_vip_customer"],
+    },
+    "D_high_recovery": {
+        "keys": ["earbuds", "hp_air"],
+        "intent": "strong_whatsapp_recovery_path",
+        "scenarios": ["S05_wa_return_without_purchase", "S06_wa_success", "S14_ambiguous_influence"],
+    },
+    "E_shipping_abandon": {
+        "keys": ["perfume", "perfume_velvet"],
+        "intent": "abandon_after_shipping_hesitation",
+        "scenarios": ["S03_shipping_cost_hesitation", "S10_widget_reason_capture"],
+    },
+}
+
 CUSTOMER_ARCHETYPES: tuple[str, ...] = (
     "fast_buyer",
     "price_sensitive",

@@ -239,6 +239,53 @@ def _enrich_via_composition_engine_v1(
     portfolio = list(pkg.get("portfolio") or pkg.get("decisions") or [])
     composed_cards = decisions_to_workspace_cards_v1(portfolio)
 
+    # Observation Admission Bridge — actionable admitted observations only.
+    obs_cards: list[dict[str, Any]] = []
+    obs_recon: dict[str, Any] = {}
+    try:
+        from services.decision_composition_engine_v1.project_workspace_v1 import (  # noqa: PLC0415
+            decision_to_workspace_card_v1,
+        )
+        from services.observation_foundation_v1.merchant_findings_v1 import (  # noqa: PLC0415
+            build_observation_reality_validation_v1,
+        )
+
+        orv = build_observation_reality_validation_v1(slug)
+        obs_recon = dict(orv.get("admission_reconciliation") or {})
+        for od in orv.get("workspace_decisions") or []:
+            if not isinstance(od, dict):
+                continue
+            card = decision_to_workspace_card_v1(
+                {
+                    "decision_id": od.get("decision_id"),
+                    "decision_type": "observation_admission",
+                    "title": od.get("title") or od.get("merchant_decision"),
+                    "merchant_decision": od.get("merchant_decision"),
+                    "why": od.get("why"),
+                    "why_now": od.get("why_now"),
+                    "evidence_summary": od.get("evidence"),
+                    "recommended_action": od.get("recommended_action"),
+                    "first_step": od.get("first_step"),
+                    "expected_outcome": od.get("business_impact_ar"),
+                    "ignore_consequence": od.get("business_impact_ar"),
+                    "confidence": od.get("confidence") or "medium",
+                    "priority": 55,
+                    "priority_band": "needs_action",
+                    "decision_category": "products",
+                    "decision_category_ar": "المنتجات",
+                    "business_domain": "products",
+                    "business_meaning_ar": od.get("business_meaning_ar"),
+                    "business_impact_ar": od.get("business_impact_ar"),
+                    "source_truth_types": ["observation_admission_bridge_v1"],
+                    "published": True,
+                }
+            )
+            card["gate_observation_admission"] = True
+            card["product_name_ar"] = od.get("product_name_ar")
+            obs_cards.append(card)
+    except Exception:  # noqa: BLE001
+        obs_cards = []
+
     zone_a = list(projection.get("zone_a") or [])
     zone_b_existing = list(projection.get("zone_b") or [])
     ops_b = [
@@ -252,7 +299,11 @@ def _enrich_via_composition_engine_v1(
         and not str(c.get("decision_id") or "").startswith("dce:")
     ]
     # Shadow VIP ops remain secondary to composed business decisions.
-    zone_b = [_normalize_constitution_fields(dict(c)) for c in (composed_cards + ops_b)]
+    # Observation product decisions sit with composed portfolio (not forced if empty).
+    zone_b = [
+        _normalize_constitution_fields(dict(c))
+        for c in (composed_cards + obs_cards + ops_b)
+    ]
     zone_a = [
         _normalize_constitution_fields(dict(c)) for c in zone_a if isinstance(c, dict)
     ]
@@ -276,6 +327,8 @@ def _enrich_via_composition_engine_v1(
     projection["gate_2d_decision_dedupe"] = True
     projection["gate_2e_executive_business"] = True
     projection["gate_2f_store_executive"] = True
+    projection["observation_admission_bridge_v1"] = True
+    projection["observation_admission_reconciliation"] = obs_recon
     projection["decisions_only"] = True
     projection["decision_composition_v1"] = {
         "version": pkg.get("composition_version"),
