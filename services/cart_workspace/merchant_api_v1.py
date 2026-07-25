@@ -26,11 +26,20 @@ router = APIRouter(prefix="/api/cart-workspace/v1", tags=["cart-workspace-mercha
 
 
 def _auth_slug(request: Request) -> Optional[str]:
-    from services.merchant_test_widget_store_v1 import (  # noqa: PLC0415
-        merchant_authenticated_store_slug,
+    """
+    Same merchant store identity as Home / Living Store review.
+
+    Do not use ``merchant_authenticated_store_slug`` here: it rejects demo via
+    ``is_widget_recovery_zid`` (widget sandbox guard). That made Decision
+    Workspace return 401 while Home read ``store_slug=demo`` — Reality
+    Validation FIRST divergence after Living Store bind.
+    """
+    from services.merchant_auth_v1 import (  # noqa: PLC0415
+        resolve_authenticated_store_slug,
     )
 
-    return merchant_authenticated_store_slug(cookies=dict(request.cookies))
+    slug = resolve_authenticated_store_slug(dict(request.cookies))
+    return (slug or "").strip()[:255] or None
 
 
 class CommandBody(BaseModel):
