@@ -75,14 +75,14 @@ Only **CLOSED** unlocks the next gate’s **AUTHORIZED** state.
 | Gate | Package | Status | Deploy SHA | CEO approval | Closed (UTC) |
 |------|---------|--------|------------|--------------|--------------|
 | **Gate 1** | P1 Home Slim Transport + 1-B Composition | **OPEN** — 1-A+1-B deployed; awaiting CEO CLOSE | `f556a5d` / `db1d6aa` | — pending CEO | — |
-| **Gate 2** | P2 Owner + 2A–2D Domain Dedup | **IN_PROGRESS** — 2D implementing; 2C deployed `d20a06f` | `d20a06f` (2C) / `87aff25` (2B) / `39d47eb` (2A) / `76b9728` (2) | — pending CEO | — |
+| **Gate 2** | P2 Owner + 2A–2D Domain Dedup | **CEO_REVIEW** — 2D deployed + validated; awaiting CEO CLOSE | `33cf3f8` (2D) / `d20a06f` (2C) / `87aff25` (2B) / `39d47eb` (2A) / `76b9728` (2) | — pending CEO | — |
 | **Gate 3** | P3 Carts Operations Only | LOCKED | — | — | — |
 | **Gate 4** | P4 Communication Consolidation | LOCKED | — | — | — |
 | **Gate 5** | P5 Legacy Home Retirement | LOCKED | — | — | — |
 | **Gate 6** | P6 Ownership Declarations | LOCKED | — | — | — |
 | **Gate 7** | P7 Product Intelligence Readiness | LOCKED | — | — | — |
 
-**Current gate:** Gate 2 **IN_PROGRESS** (2D Domain Dedup). Prior production SHA **`d20a06f`** (2C). Pipeline: OT → Domains → Dedup → Portfolio → Workspace. Pack: `docs/product/gate_2d_business_domain_dedupe_v1/`. Gate 1 still OPEN for formal CLOSE. Gates 3–7 LOCKED. No PI.
+**Current gate:** Gate 2 **CEO_REVIEW**. Production SHA **`33cf3f8`** (Gate 2D). Pipeline: OT → Domains → Dedup → Portfolio → Workspace. Pack: `docs/product/gate_2d_business_domain_dedupe_v1/`. Gate 1 still OPEN for formal CLOSE. Gates 3–7 LOCKED. No PI.
 
 ---
 
