@@ -1,0 +1,30 @@
+{
+  "generated_at_utc": "2026-07-25T13:31:25.002256+00:00",
+  "url": "https://smartreplyai.net/dev/business-facts?store=demo",
+  "facts_count": 6,
+  "fact_types": [
+    "communication",
+    "conversion",
+    "customer_behaviour",
+    "product_demand",
+    "store_health"
+  ],
+  "meanings_ar": [
+    "Raven — حزام جلد للساعة يحظى باهتمام واضح، لكن التحويل إلى شراء لا يزال ضعيفاً.",
+    "يبدو أن الشحن يضعف إتمام الشراء لـ TrueSound — سماعة لاسلكية.",
+    "العملاء يعودون مراراً إلى Raven — حزام جلد للساعة قبل إتمام الشراء.",
+    "لا توجد أدلة حالية على مشكلة جودة في Horizon Steel — ساعة يد ستانلس.",
+    "لا توجد مشكلات تجارية حرجة ظاهرة.",
+    "تواصل العملاء يسير بشكل طبيعي."
+  ],
+  "checks": {
+    "has_attention_or_conversion": true,
+    "has_shipping_effect": true,
+    "has_repeat_return": true,
+    "has_recovery_or_health": true,
+    "no_waiting_total": true,
+    "no_recommendation_key": true,
+    "facts_count_positive": true
+  },
+  "ok": true
+}
