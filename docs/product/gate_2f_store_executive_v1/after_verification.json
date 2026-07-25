@@ -1,0 +1,47 @@
+{
+  "email": "cf.g2f.2ee7595b55@smartreplyai.net",
+  "home_probe": {
+    "http": 200,
+    "fetch_ms": 150,
+    "body_bytes": 6433,
+    "hes_ok": true,
+    "meif": false,
+    "section_ids": [
+      "health",
+      "decisions",
+      "observations",
+      "carts",
+      "communication"
+    ],
+    "health_summary": "فرص استعادة المبيعات محدودة اليوم.",
+    "decisions_summary": "راجع تجربة إتمام الشراء ومتابعة العملاء.",
+    "health_equals_decision": false,
+    "decision_has_counter_phrase": false,
+    "store_executive": true,
+    "system_centric": false,
+    "obs": "لا يوجد منتج حالياً بأدلة كافية لملاحظة تجارية.",
+    "carts": "متابعة بعض العملاء مقيدة حالياً.",
+    "comm": "تواصل العملاء يسير بشكل طبيعي."
+  },
+  "workspace_probe": {
+    "http": 200,
+    "gate_2f": true,
+    "gate_2e": true,
+    "landscape": 9,
+    "has_exec_subtitle": true,
+    "top_decision": "راجع تجربة إتمام الشراء ومتابعة العملاء.",
+    "top_has_meaning": true,
+    "counter_as_title": false,
+    "cache_hit": true
+  },
+  "generated_at_utc": "2026-07-25T01:34:01.818456+00:00",
+  "sprint": "gate_2f_store_executive",
+  "screenshots": {
+    "desktop_home": "docs/product/gate_2f_store_executive_v1/after_desktop_home.png",
+    "desktop_workspace": "docs/product/gate_2f_store_executive_v1/after_desktop_workspace.png",
+    "mobile_home": "docs/product/gate_2f_store_executive_v1/after_mobile_home.png",
+    "mobile_workspace": "docs/product/gate_2f_store_executive_v1/after_mobile_workspace.png"
+  },
+  "ok": true,
+  "status": "AWAITING_CEO_REVIEW_BEFORE_GATE_2_CLOSE"
+}
