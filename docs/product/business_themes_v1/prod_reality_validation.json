@@ -1,0 +1,481 @@
+{
+  "generated_at_utc": "2026-07-25T14:31:09.332448+00:00",
+  "environment": "production",
+  "base": "https://smartreplyai.net",
+  "deploy_sha_expected": "d34b552",
+  "store_slug": "demo",
+  "flag": "CARTFLOW_BUSINESS_THEMES_V1",
+  "verification_chain": {
+    "orv": {
+      "http": 200,
+      "ok": true,
+      "store_slug": "demo",
+      "findings_count": 4,
+      "product_names": [
+        "Raven — حزام جلد للساعة",
+        "TrueSound — سماعة لاسلكية",
+        "Raven — حزام جلد للساعة",
+        "Horizon Steel — ساعة يد ستانلس"
+      ]
+    },
+    "facts": {
+      "http": 200,
+      "ok": true,
+      "store_slug": "demo",
+      "facts_count": 6,
+      "fact_types": [
+        "communication",
+        "conversion",
+        "customer_behaviour",
+        "product_demand",
+        "store_health"
+      ],
+      "meanings_ar": [
+        "Raven — حزام جلد للساعة يحظى باهتمام واضح، لكن التحويل إلى شراء لا يزال ضعيفاً.",
+        "يبدو أن الشحن يضعف إتمام الشراء لـ TrueSound — سماعة لاسلكية.",
+        "العملاء يعودون مراراً إلى Raven — حزام جلد للساعة قبل إتمام الشراء.",
+        "لا توجد أدلة حالية على مشكلة جودة في Horizon Steel — ساعة يد ستانلس.",
+        "لا توجد مشكلات تجارية حرجة ظاهرة.",
+        "تواصل العملاء يسير بشكل طبيعي."
+      ]
+    },
+    "themes": {
+      "http": 200,
+      "ok": true,
+      "enabled": true,
+      "store_slug": "demo",
+      "facts_in": 6,
+      "published_count": 6,
+      "collapsed_ratio": 1,
+      "theme_types": [
+        "product_conversion",
+        "shipping_friction",
+        "customer_return_behaviour",
+        "product_demand",
+        "communication_coverage",
+        "store_health"
+      ],
+      "titles_ar": [
+        "تحويل المنتجات",
+        "احتكاك الشحن",
+        "سلوك عودة العملاء",
+        "طلب المنتجات",
+        "تغطية التواصل",
+        "صحة المتجر"
+      ],
+      "summaries_ar": [
+        "تحويل Raven — حزام جلد للساعة ضعيف رغم اهتمام واضح — هذه أولوية تجارية اليوم.",
+        "الشحن يبدو أنه يضعف إتمام الشراء لـ TrueSound — سماعة لاسلكية.",
+        "العملاء يعودون مراراً إلى Raven — حزام جلد للساعة دون الإتمام.",
+        "لا توجد أدلة حالية على مشكلة جودة في Horizon Steel — ساعة يد ستانلس.",
+        "تواصل العملاء يسير بشكل طبيعي.",
+        "لا توجد مشكلات تجارية حرجة ظاهرة."
+      ],
+      "primary_owners": [
+        "decision_workspace",
+        "decision_workspace",
+        "decision_workspace",
+        "decision_workspace",
+        "communication",
+        "home"
+      ],
+      "constitution": "one_theme_one_owner_many_consumers",
+      "recommendation": null,
+      "routing": {
+        "ok": true,
+        "home": {
+          "themes": [
+            {
+              "theme_id": "bt:product_conversion:demo",
+              "theme_type": "product_conversion",
+              "title_ar": "تحويل المنتجات",
+              "executive_summary_ar": "تحويل Raven — حزام جلد للساعة ضعيف رغم اهتمام واضح — هذه أولوية تجارية اليوم.",
+              "subject_name_ar": "Raven — حزام جلد للساعة",
+              "priority": 96,
+              "primary_owner": "decision_workspace"
+            },
+            {
+              "theme_id": "bt:shipping_friction:demo",
+              "theme_type": "shipping_friction",
+              "title_ar": "احتكاك الشحن",
+              "executive_summary_ar": "الشحن يبدو أنه يضعف إتمام الشراء لـ TrueSound — سماعة لاسلكية.",
+              "subject_name_ar": "TrueSound — سماعة لاسلكية",
+              "priority": 91,
+              "primary_owner": "decision_workspace"
+            },
+            {
+              "theme_id": "bt:customer_return_behaviour:demo",
+              "theme_type": "customer_return_behaviour",
+              "title_ar": "سلوك عودة العملاء",
+              "executive_summary_ar": "العملاء يعودون مراراً إلى Raven — حزام جلد للساعة دون الإتمام.",
+              "subject_name_ar": "Raven — حزام جلد للساعة",
+              "priority": 81,
+              "primary_owner": "decision_workspace"
+            },
+            {
+              "theme_id": "bt:product_demand:demo",
+              "theme_type": "product_demand",
+              "title_ar": "طلب المنتجات",
+              "executive_summary_ar": "لا توجد أدلة حالية على مشكلة جودة في Horizon Steel — ساعة يد ستانلس.",
+              "subject_name_ar": "Horizon Steel — ساعة يد ستانلس",
+              "priority": 76,
+              "primary_owner": "decision_workspace"
+            },
+            {
+              "theme_id": "bt:communication_coverage:demo",
+              "theme_type": "communication_coverage",
+              "title_ar": "تغطية التواصل",
+              "executive_summary_ar": "تواصل العملاء يسير بشكل طبيعي.",
+              "subject_name_ar": "المتجر",
+              "priority": 61,
+              "primary_owner": "communication"
+            },
+            {
+              "theme_id": "bt:store_health:demo",
+              "theme_type": "store_health",
+              "title_ar": "صحة المتجر",
+              "executive_summary_ar": "لا توجد مشكلات تجارية حرجة ظاهرة.",
+              "subject_name_ar": "المتجر",
+              "priority": 51,
+              "primary_owner": "home"
+            }
+          ],
+          "top_theme": {
+            "theme_id": "bt:product_conversion:demo",
+            "theme_type": "product_conversion",
+            "title_ar": "تحويل المنتجات",
+            "executive_summary_ar": "تحويل Raven — حزام جلد للساعة ضعيف رغم اهتمام واضح — هذه أولوية تجارية اليوم.",
+            "subject_name_ar": "Raven — حزام جلد للساعة",
+            "source": "business_themes_v1"
+          },
+          "count": 6
+        },
+        "decision_workspace": {
+          "themes": [
+            {
+              "schema": "business_theme_v1",
+              "version": "business_themes_v1",
+              "theme_id": "bt:product_conversion:demo",
+              "theme_type": "product_conversion",
+              "title_ar": "تحويل المنتجات",
+              "title_en": "Product Conversion",
+              "executive_summary_ar": "تحويل Raven — حزام جلد للساعة ضعيف رغم اهتمام واضح — هذه أولوية تجارية اليوم.",
+              "executive_summary_en": "Conversion for Raven — حزام جلد للساعة is weak despite clear interest.",
+              "supporting_fact_ids": [
+                "bf:conversion:DEMO-WATCH-BAND:high_interest_low_conversion"
+              ],
+              "supporting_facts": [
+                {
+                  "fact_id": "bf:conversion:DEMO-WATCH-BAND:high_interest_low_conversion",
+                  "fact_type": "conversion",
+                  "business_meaning_ar": "Raven — حزام جلد للساعة يحظى باهتمام واضح، لكن التحويل إلى شراء لا يزال ضعيفاً.",
+                  "subject_name_ar": "Raven — حزام جلد للساعة"
+                }
+              ],
+              "evidence": {
+                "source_kinds": [
+                  "business_facts_v1"
+                ],
+                "fact_count": 1,
+                "capability_ids": [
+                  "high_interest_low_conversion"
+                ]
+              },
+              "confidence": {
+                "level": "high",
+                "ar": "مرتفع",
+                "score": 90
+              },
+              "business_impact": {
+                "category": "conversion",
+                "ar": "تحويل Raven — حزام جلد للساعة ضعيف رغم اهتمام واضح — هذه أولوية تجارية اليوم."
+              },
+              "freshness": {
+                "status": "current",
+                "as_of_utc": "2026-07-25T14:31:39.152319+00:00"
+              },
+              "priority": 96,
+              "primary_owner": "decision_workspace",
+              "destination_surfaces": {
+                "home_teaser": true,
+                "decision_workspace": true,
+                "communication": false
+              },
+              "admitted": true,
+              "internal_only": false,
+              "merchant_action_exists": true,
+              "recommendation": null,
+              "subject_name_ar": "Raven — حزام جلد للساعة"
+            },
+            {
+              "schema": "business_theme_v1",
+              "version": "business_themes_v1",
+              "theme_id": "bt:shipping_friction:demo",
+              "theme_type": "shipping_friction",
+              "title_ar": "احتكاك الشحن",
+              "title_en": "Shipping Friction",
+              "executive_summary_ar": "الشحن يبدو أنه يضعف إتمام الشراء لـ TrueSound — سماعة لاسلكية.",
+              "executive_summary_en": "Shipping appears to reduce conversion for TrueSound — سماعة لاسلكية.",
+              "supporting_fact_ids": [
+                "bf:customer_behaviour:b|demo_earbuds|demo-earbuds:shipping_stronger_than_price"
+              ],
+              "supporting_facts": [
+                {
+                  "fact_id": "bf:customer_behaviour:b|demo_earbuds|demo-earbuds:shipping_stronger_than_price",
+                  "fact_type": "customer_behaviour",
+                  "business_meaning_ar": "يبدو أن الشحن يضعف إتمام الشراء لـ TrueSound — سماعة لاسلكية.",
+                  "subject_name_ar": "TrueSound — سماعة لاسلكية"
+                }
+              ],
+              "evidence": {
+                "source_kinds": [
+                  "business_facts_v1"
+                ],
+                "fact_count": 1,
+                "capability_ids": [
+                  "shipping_stronger_than_price"
+                ]
+              },
+              "confidence": {
+                "level": "high",
+                "ar": "مرتفع",
+                "score": 90
+              },
+              "business_impact": {
+                "category": "conversion",
+                "ar": "الشحن يبدو أنه يضعف إتمام الشراء لـ TrueSound — سماعة لاسلكية."
+              },
+              "freshness": {
+                "status": "current",
+                "as_of_utc": "2026-07-25T14:31:39.152336+00:00"
+              },
+              "priority": 91,
+              "primary_owner": "decision_workspace",
+              "destination_surfaces": {
+                "home_teaser": true,
+                "decision_workspace": true,
+                "communication": false
+              },
+              "admitted": true,
+              "internal_only": false,
+              "merchant_action_exists": true,
+              "recommendation": null,
+              "subject_name_ar": "TrueSound — سماعة لاسلكية"
+            },
+            {
+              "schema": "business_theme_v1",
+              "version": "business_themes_v1",
+              "theme_id": "bt:customer_return_behaviour:demo",
+              "theme_type": "customer_return_behaviour",
+              "title_ar": "سلوك عودة العملاء",
+              "title_en": "Customer Return Behaviour",
+              "executive_summary_ar": "العملاء يعودون مراراً إلى Raven — حزام جلد للساعة دون الإتمام.",
+              "executive_summary_en": "Customers repeatedly return to Raven — حزام جلد للساعة without completing purchase.",
+              "supporting_fact_ids": [
+                "bf:customer_behaviour:DEMO-WATCH-BAND:repeated_return_without_purchase"
+              ],
+              "supporting_facts": [
+                {
+                  "fact_id": "bf:customer_behaviour:DEMO-WATCH-BAND:repeated_return_without_purchase",
+                  "fact_type": "customer_behaviour",
+                  "business_meaning_ar": "العملاء يعودون مراراً إلى Raven — حزام جلد للساعة قبل إتمام الشراء.",
+                  "subject_name_ar": "Raven — حزام جلد للساعة"
+                }
+              ],
+              "evidence": {
+                "source_kinds": [
+                  "business_facts_v1"
+                ],
+                "fact_count": 1,
+                "capability_ids": [
+                  "repeated_return_without_purchase"
+                ]
+              },
+              "confidence": {
+                "level": "high",
+                "ar": "مرتفع",
+                "score": 90
+              },
+              "business_impact": {
+                "category": "demand",
+                "ar": "العملاء يعودون مراراً إلى Raven — حزام جلد للساعة دون الإتمام."
+              },
+              "freshness": {
+                "status": "current",
+                "as_of_utc": "2026-07-25T14:31:39.152347+00:00"
+              },
+              "priority": 81,
+              "primary_owner": "decision_workspace",
+              "destination_surfaces": {
+                "home_teaser": true,
+                "decision_workspace": true,
+                "communication": false
+              },
+              "admitted": true,
+              "internal_only": false,
+              "merchant_action_exists": true,
+              "recommendation": null,
+              "subject_name_ar": "Raven — حزام جلد للساعة"
+            },
+            {
+              "schema": "business_theme_v1",
+              "version": "business_themes_v1",
+              "theme_id": "bt:product_demand:demo",
+              "theme_type": "product_demand",
+              "title_ar": "طلب المنتجات",
+              "title_en": "Product Demand",
+              "executive_summary_ar": "لا توجد أدلة حالية على مشكلة جودة في Horizon Steel — ساعة يد ستانلس.",
+              "executive_summary_en": "Product demand shows signals worth watching.",
+              "supporting_fact_ids": [
+                "bf:product_demand:b|demo_watch_pro|demo-watch-pro:no_quality_issue_evidence"
+              ],
+              "supporting_facts": [
+                {
+                  "fact_id": "bf:product_demand:b|demo_watch_pro|demo-watch-pro:no_quality_issue_evidence",
+                  "fact_type": "product_demand",
+                  "business_meaning_ar": "لا توجد أدلة حالية على مشكلة جودة في Horizon Steel — ساعة يد ستانلس.",
+                  "subject_name_ar": "Horizon Steel — ساعة يد ستانلس"
+                }
+              ],
+              "evidence": {
+                "source_kinds": [
+                  "business_facts_v1"
+                ],
+                "fact_count": 1,
+                "capability_ids": [
+                  "no_quality_issue_evidence"
+                ]
+              },
+              "confidence": {
+                "level": "high",
+                "ar": "مرتفع",
+                "score": 90
+              },
+              "business_impact": {
+                "category": "demand",
+                "ar": "لا توجد أدلة حالية على مشكلة جودة في Horizon Steel — ساعة يد ستانلس."
+              },
+              "freshness": {
+                "status": "current",
+                "as_of_utc": "2026-07-25T14:31:39.152356+00:00"
+              },
+              "priority": 76,
+              "primary_owner": "decision_workspace",
+              "destination_surfaces": {
+                "home_teaser": true,
+                "decision_workspace": true,
+                "communication": false
+              },
+              "admitted": true,
+              "internal_only": false,
+              "merchant_action_exists": true,
+              "recommendation": null,
+              "subject_name_ar": "Horizon Steel — ساعة يد ستانلس"
+            }
+          ],
+          "count": 4
+        },
+        "home_teaser": {
+          "count": 6,
+          "top": {
+            "product_name_ar": "Raven — حزام جلد للساعة",
+            "statement_ar": "تحويل Raven — حزام جلد للساعة ضعيف رغم اهتمام واضح — هذه أولوية تجارية اليوم.",
+            "theme_id": "bt:product_conversion:demo",
+            "theme_type": "product_conversion",
+            "title_ar": "تحويل المنتجات",
+            "source": "business_themes_v1"
+          },
+          "evidence": "business_themes"
+        }
+      }
+    }
+  },
+  "review_session": {
+    "http": 200,
+    "ok": true,
+    "store_slug": "demo",
+    "email": "cf.living.store.review@smartreplyai.net",
+    "cookie_name": "cartflow_merchant_session",
+    "note": "primary_store_id=demo so resolve_authenticated_store_slug → demo. Distinct from lab_session_bind (membership alongside signup primary)."
+  },
+  "home_api_probe": {
+    "http": 200,
+    "store_slug": "demo",
+    "hes_ok": true,
+    "section_ids": [
+      "health",
+      "decisions",
+      "observations",
+      "carts",
+      "communication"
+    ],
+    "health": "فرص استعادة المبيعات محدودة اليوم.",
+    "decisions": "راجع تجربة إتمام الشراء ومتابعة العملاء.",
+    "observations_title": "مواضيع المتجر",
+    "observations": "تحويل Raven — حزام جلد للساعة ضعيف رغم اهتمام واضح — هذه أولوية تجارية اليوم.",
+    "observations_built_from": "business_themes_v1",
+    "observations_count": "6",
+    "carts": "سلال العملاء تحتاج متابعة نشطة.",
+    "communication": "تواصل العملاء يسير بشكل طبيعي.",
+    "teaser_source": "business_themes_v1",
+    "themes_enabled": true,
+    "themes_ok": true,
+    "themes_published": 0,
+    "facts_count": 0,
+    "text_sample": "ملخص تنفيذي\n\nماذا يجب أن تعرف الآن؟\n\nملخص سريع فقط — التفاصيل في صفحاتها.\n\nحالة المتجر\nيتطلب متابعة\n\nفرص استعادة المبيعات محدودة اليوم.\n\nعرض التفاصيل ←\n\nقرارات اليوم\n2 قرارات عمل\n2\n\nراجع تجربة إتمام الشراء ومتابعة العملاء.\n\nعرض التفاصيل ← مساحة القرار ←\n\nمواضيع المتجر\nيتطلب انتباهاً\n6\n\nتحويل Raven — حزام جلد للساعة ضعيف رغم اهتمام واضح — هذه أولوية تجارية اليوم.\n\nعرض التفاصيل ←\n\nالسلال\nلا مهام\n0\n\nسلال العملاء تحتاج متابعة نشطة.\n\nعرض التفاصيل ←\n\nالتواصل\nلا مهام\n0\n\nتواصل العملاء يسير بشكل طبيعي.\n\nعرض التفاصيل ←\n\nالصفحة الرئيسية = ملخص تنفيذي · القرارات في مساحة القرار · السلال للتشغيل · التواصل للمتابعة · الإعدادات للضبط.",
+    "text_has_mawdoo": true,
+    "text_has_haqaeq": false,
+    "text_has_raven": true
+  },
+  "workspace_api_probe": {
+    "http": 401,
+    "store_slug": null,
+    "gate_business_themes_v1": false,
+    "business_themes_count": 0,
+    "card_count": 0,
+    "theme_card_count": 0,
+    "fact_card_count": 0,
+    "cards": [],
+    "theme_cards": [],
+    "text_sample": ""
+  },
+  "checks": {
+    "flag_enabled": true,
+    "themes_ok": true,
+    "store_demo_orv": true,
+    "store_demo_facts": true,
+    "store_demo_themes": true,
+    "store_demo_home": true,
+    "review_session_demo": true,
+    "no_duplicate_theme_types": true,
+    "recommendation_null": true,
+    "home_uses_themes_label": true,
+    "home_built_from_themes": true,
+    "collapse_material": false,
+    "workspace_theme_cards_present": false,
+    "no_home_workspace_verbatim_overlap": true
+  },
+  "merchant_experience": {
+    "facts_in": 6,
+    "themes_published": 6,
+    "collapsed_ratio": 1.0,
+    "home_observation_summary": "تحويل Raven — حزام جلد للساعة ضعيف رغم اهتمام واضح — هذه أولوية تجارية اليوم.",
+    "home_decision_summary": "راجع تجربة إتمام الشراء ومتابعة العملاء.",
+    "home_section_title": "مواضيع المتجر",
+    "workspace_theme_card_count": 0,
+    "workspace_fact_card_count": 0,
+    "workspace_theme_summaries": [],
+    "home_vs_ws_verbatim_overlap": [],
+    "before_vs_after_note": "Before (Business Facts alone): Home «حقائق المنتجات» teaser from top fact; Workspace one card per fact. After (Themes): Home «مواضيع المتجر» teaser from top theme; Workspace one card per theme type. Living Store collapse ratio=1.0 (facts_in=6, themes=6)."
+  },
+  "materially_better_heuristic": false,
+  "final_decision": "REMOVE / REDESIGN Business Theme Engine",
+  "final_decision_rationale": "Living Store collapse ratio 1.0; Home is rename/reword of Facts with worse count (6 vs 4); Decision Workspace failed to load in CEO review session (401 / تعذر التحميل). Not clearly better than Business Facts alone.",
+  "screenshots": {
+    "desktop_home": "docs/product/business_themes_v1/ceo_desktop_home.png",
+    "desktop_workspace": "docs/product/business_themes_v1/ceo_desktop_workspace.png",
+    "mobile_home": "docs/product/business_themes_v1/ceo_mobile_home.png",
+    "mobile_workspace": "docs/product/business_themes_v1/ceo_mobile_workspace.png"
+  },
+  "chain_ok": true
+}

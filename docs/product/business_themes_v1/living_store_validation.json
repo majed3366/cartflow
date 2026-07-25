@@ -1,0 +1,51 @@
+{
+  "generated_at_utc": "2026-07-25T14:31:09.332448+00:00",
+  "url": "https://smartreplyai.net/dev/business-themes?store=demo",
+  "facts_in": 6,
+  "published_count": 6,
+  "collapsed_ratio": 1.0,
+  "theme_types": [
+    "product_conversion",
+    "shipping_friction",
+    "customer_return_behaviour",
+    "product_demand",
+    "communication_coverage",
+    "store_health"
+  ],
+  "titles_ar": [
+    "تحويل المنتجات",
+    "احتكاك الشحن",
+    "سلوك عودة العملاء",
+    "طلب المنتجات",
+    "تغطية التواصل",
+    "صحة المتجر"
+  ],
+  "summaries_ar": [
+    "تحويل Raven — حزام جلد للساعة ضعيف رغم اهتمام واضح — هذه أولوية تجارية اليوم.",
+    "الشحن يبدو أنه يضعف إتمام الشراء لـ TrueSound — سماعة لاسلكية.",
+    "العملاء يعودون مراراً إلى Raven — حزام جلد للساعة دون الإتمام.",
+    "لا توجد أدلة حالية على مشكلة جودة في Horizon Steel — ساعة يد ستانلس.",
+    "تواصل العملاء يسير بشكل طبيعي.",
+    "لا توجد مشكلات تجارية حرجة ظاهرة."
+  ],
+  "primary_owners": [
+    "decision_workspace",
+    "decision_workspace",
+    "decision_workspace",
+    "decision_workspace",
+    "communication",
+    "home"
+  ],
+  "checks": {
+    "ok_flag": true,
+    "published_positive": true,
+    "no_duplicate_theme_types": true,
+    "facts_gte_themes": true,
+    "has_conversion_or_shipping_or_return": true,
+    "constitution_present": true,
+    "no_recommendation": true,
+    "no_waiting_total": true,
+    "no_pi": true
+  },
+  "ok": true
+}
