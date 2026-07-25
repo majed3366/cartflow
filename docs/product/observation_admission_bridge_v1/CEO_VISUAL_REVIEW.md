@@ -1,5 +1,6 @@
 # CEO Visual Review — Observation Admission Bridge V1
 
+**Production SHA:** `818d255` · PR [#99](https://github.com/majed3366/cartflow/pull/99) · Railway Success  
 **Probe:** `after_verification.json` · `ok: true`  
 **Living Store:** 30-day mass · foundation ready 4 → ORV admitted **4** · silent drops **0**
 
