@@ -250,7 +250,15 @@ class PipelineTests(unittest.TestCase):
             pkg = compose_decisions_v1("s")
         self.assertTrue(pkg["no_decision_supported"])
         self.assertEqual(pkg["counts"]["published"], 0)
-        self.assertGreater(pkg["counts"]["suppressed"], 0)
+        # Gate 2D: healthy domains produce no candidates (no fake suppressed decisions).
+        self.assertEqual(pkg["counts"]["candidates_total"], 0)
+        self.assertTrue(pkg.get("gate_2d_business_domains"))
+        healthy = [
+            x
+            for x in (pkg.get("category_landscape") or [])
+            if x.get("no_action_required")
+        ]
+        self.assertGreaterEqual(len(healthy), 1)
 
     def test_teaser_parity(self) -> None:
         from services.decision_composition_engine_v1.teaser_v1 import (

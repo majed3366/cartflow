@@ -39,12 +39,13 @@ DECISIONS_EMPTY_AR = "لا تتوفر أدلة كافية لإصدار قرار 
 
 GOVERNANCE_V1 = {
     "sprint": "home_stabilization_v1",
-    "gate": "gate_1b_executive_composition",
+    "gate": "gate_2d_business_domain_composition",
     "single_owner": "home_executive_summary_v1",
     "single_data_source": "home_teaser_inputs_v1",
     "single_render_path": "maApplyHomeExecutiveSummaryV1",
     "sections": list(SECTION_IDS_V1),
     "product_intelligence": False,
+    "home_creates_decisions": False,
 }
 
 # Card → owning constitutional page (View Details).
@@ -157,6 +158,8 @@ def _health_section(summary: Mapping[str, Any]) -> dict[str, Any]:
     no_phone = _as_int(health.get("no_phone"))
     store_ok = health.get("store_connected")
     needs = bool(health.get("needs_attention")) or waiting > 0 or no_phone > 0
+    # Gate 2D — prefer domain executive summary; never restate Today's Decision.
+    domain_summary = str(health.get("domain_summary_ar") or "").strip()
 
     href = SECTION_OWNERSHIP_HREF_V1["health"]
     if store_ok is False:
@@ -164,16 +167,13 @@ def _health_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         status_ar = "يتطلب متابعة"
         href = "#home-setup"
         empty = False
-    elif waiting > 0 and no_phone > 0:
-        summary_ar = "توجد عناصر تحتاج متابعة — سلال بانتظار الإجراء وأخرى بلا رقم تواصل."
-        status_ar = "يتطلب متابعة"
-        empty = False
-    elif waiting > 0:
-        summary_ar = "توجد عناصر تحتاج متابعة في تشغيل المتجر."
-        status_ar = "يتطلب متابعة"
-        empty = False
-    elif no_phone > 0:
-        summary_ar = "توجد سلال بلا رقم تواصل — قد يتأثر مسار المتابعة."
+    elif domain_summary:
+        summary_ar = domain_summary
+        status_ar = "يتطلب متابعة" if needs else "مستقر"
+        empty = not needs and "بانتظار" in domain_summary
+    elif waiting > 0 or no_phone > 0:
+        # Fallback without naming the same recoverability decision.
+        summary_ar = "المتجر يحتاج انتباهاً — التفاصيل في قرارات اليوم."
         status_ar = "يتطلب متابعة"
         empty = False
     elif active > 0 or recovered > 0:
@@ -212,24 +212,38 @@ def _carts_section(summary: Mapping[str, Any]) -> dict[str, Any]:
     active = _as_int(carts.get("active"))
     no_phone = _as_int(carts.get("no_phone"))
     count = waiting
+    # Gate 2D — short ops summary from domain layer (not a business decision).
+    domain_summary = str(carts.get("domain_summary_ar") or "").strip()
 
-    if waiting > 0 and no_phone > 0:
-        summary_ar = (
-            f"يوجد {waiting} سلة بانتظار المتابعة، و{no_phone} بلا رقم تواصل."
-        )
+    if domain_summary:
+        summary_ar = domain_summary
+        if waiting > 0 or no_phone > 0:
+            status_ar = "يتطلب متابعة"
+            empty = False
+            if waiting <= 0 and no_phone > 0:
+                count = no_phone
+        elif active > 0:
+            status_ar = "نشط"
+            empty = False
+            count = active
+        else:
+            status_ar = "لا مهام"
+            empty = True
+    elif waiting > 0 and no_phone > 0:
+        summary_ar = "توجد سلال بانتظار المتابعة، وحالات بلا رقم."
         status_ar = "يتطلب متابعة"
         empty = False
     elif waiting > 0:
-        summary_ar = f"يوجد {waiting} سلة بانتظار المتابعة."
+        summary_ar = "توجد سلال بانتظار المتابعة."
         status_ar = "بانتظار متابعة"
         empty = False
     elif no_phone > 0:
-        summary_ar = f"توجد {no_phone} سلة بلا رقم تواصل."
+        summary_ar = "توجد سلال بلا رقم تواصل."
         status_ar = "بلا تواصل"
         empty = False
         count = no_phone
     elif active > 0:
-        summary_ar = f"حركة سلال نشطة ({active}) — لا طوابير متابعة ظاهرة الآن."
+        summary_ar = "حركة سلال نشطة — لا طوابير متابعة ظاهرة الآن."
         status_ar = "نشط"
         empty = False
         count = active
@@ -260,9 +274,15 @@ def _communication_section(summary: Mapping[str, Any]) -> dict[str, Any]:
     waiting = _as_int(comm.get("waiting"))
     wa_state = str(comm.get("wa_state_key") or "").strip().lower()
     count = sent + schedules
+    domain_summary = str(comm.get("domain_summary_ar") or "").strip()
 
-    if no_phone > 0 and waiting > 0:
-        summary_ar = "يوجد عملاء بانتظار المتابعة، وتوجد سلال بلا رقم تواصل."
+    if domain_summary and (no_phone > 0 or waiting > 0 or schedules > 0):
+        summary_ar = domain_summary
+        status_ar = "يتطلب متابعة" if (no_phone > 0 or waiting > 0) else "نشط"
+        empty = False
+        count = max(count, waiting, no_phone)
+    elif no_phone > 0 and waiting > 0:
+        summary_ar = "متابعة معلّقة، وتوجد حالات بلا رقم."
         status_ar = "يتطلب متابعة"
         empty = False
         count = max(count, waiting, no_phone)

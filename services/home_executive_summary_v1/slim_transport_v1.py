@@ -169,8 +169,9 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
             wa_sent = max(wa_sent, _as_int((cops or {}).get("mock_whatsapp_sent")))
             schedules = _as_int((cops or {}).get("recovery_schedules"))
 
-    # Gate 2C — Home teaser from Decision Portfolio snapshot (never fat MEIF).
+    # Gate 2D — Home teaser from canonical Decision Portfolio + domain summaries.
     portfolio_landscape: list[dict[str, Any]] = []
+    domain_teasers: dict[str, Any] = {}
     if decisions_evidence == "none":
         slug = str(
             src.get("store_slug")
@@ -190,6 +191,9 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
                 raw_land = teaser_dec.get("category_landscape")
                 if isinstance(raw_land, list):
                     portfolio_landscape = [x for x in raw_land if isinstance(x, dict)]
+                raw_dom = teaser_dec.get("home_domain_teasers")
+                if isinstance(raw_dom, Mapping):
+                    domain_teasers = dict(raw_dom)
             except Exception:  # noqa: BLE001
                 pass
 
@@ -212,9 +216,11 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
             }
 
     needs_attention = waiting > 0 or no_phone > 0 or store_ok is False
+    if domain_teasers.get("store_health_attention") is True:
+        needs_attention = True
     return {
         "schema": "home_teaser_inputs_v1",
-        "version": "gate_2_single_decision_owner",
+        "version": "gate_2d_business_domain_composition",
         "health": {
             "watching": waiting > 0 or active > 0,
             "abandoned_carts": waiting,
@@ -224,6 +230,7 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
             "store_connected": store_ok,
             "wa_state_key": wa_state,
             "needs_attention": needs_attention,
+            "domain_summary_ar": str(domain_teasers.get("store_health_ar") or "").strip(),
         },
         "decisions": {
             "count": decisions_count,
@@ -231,6 +238,7 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
             "evidence": decisions_evidence,
             "category_landscape": portfolio_landscape,
             "portfolio": True,
+            "gate_2d": True,
         },
         "observations": {
             "count": obs_count,
@@ -242,6 +250,7 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
             "waiting": waiting,
             "active": active,
             "no_phone": no_phone,
+            "domain_summary_ar": str(domain_teasers.get("carts_ar") or "").strip(),
         },
         "communication": {
             "sent": wa_sent,
@@ -250,6 +259,9 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
             "waiting": waiting,
             "wa_state_key": wa_state,
             "activity": (wa_sent + schedules + waiting + no_phone) > 0,
+            "domain_summary_ar": str(
+                domain_teasers.get("communication_ar") or ""
+            ).strip(),
         },
     }
 

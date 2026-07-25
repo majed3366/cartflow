@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Canonical Decision Composition pipeline (+ Gate 2C portfolio + snapshot cache).
+Canonical Decision Composition pipeline (Gate 2B/2C/2D).
 
-Truth Inputs → Candidate → Evidence Sufficiency → Business Meaning
-→ Priority → Recommended Action → Contract Validation
+Operational Truth → Business Domains → Candidate Decisions
+→ Decision Deduplication → Priority → Contract Validation
 → Category Balance → Decision Portfolio → Cart Workspace
 """
 from __future__ import annotations
@@ -11,6 +11,10 @@ from __future__ import annotations
 import time
 from typing import Any, Mapping
 
+from services.decision_composition_engine_v1.business_domains_v1 import (
+    DOMAIN_COMPOSITION_VERSION_V1,
+    normalize_business_domains_v1,
+)
 from services.decision_composition_engine_v1.category_v1 import attach_category_v1
 from services.decision_composition_engine_v1.compose_finding_v1 import (
     compose_from_finding_contract_v1,
@@ -24,21 +28,14 @@ from services.decision_composition_engine_v1.compose_waiting_v1 import (
 from services.decision_composition_engine_v1.contract_v1 import (
     BAND_NEEDS_ACTION,
     COMPOSITION_VERSION_V1,
-    SUPPRESS_DUPLICATE,
 )
+from services.decision_composition_engine_v1.dedupe_v1 import dedupe_candidates_v1
 from services.decision_composition_engine_v1.inputs_v1 import (
     load_bound_finding_inputs_v1,
     load_store_counter_inputs_v1,
 )
 from services.decision_composition_engine_v1.portfolio_v1 import build_portfolio_v1
-from services.decision_composition_engine_v1.snapshot_cache_v1 import (
-    get_or_compose_package_v1,
-)
-from services.decision_composition_engine_v1.suppress_v1 import (
-    apply_contract_gate,
-    dedupe_key,
-    mark_suppressed,
-)
+from services.decision_composition_engine_v1.suppress_v1 import apply_contract_gate
 
 
 def _compose_uncached_v1(
@@ -72,17 +69,30 @@ def _compose_uncached_v1(
         timing["findings_ms"] = round((time.perf_counter() - t) * 1000.0, 2)
         timing["findings_source"] = "db"
 
+    # Gate 2D — normalize into business domains before composing decisions.
     t = time.perf_counter()
-    registry: list[dict[str, Any]] = []
+    domains_pkg = normalize_business_domains_v1(ctr, finds, store_slug=slug)
+    timing["domains_ms"] = round((time.perf_counter() - t) * 1000.0, 2)
+
+    t = time.perf_counter()
     candidates: list[dict[str, Any]] = []
 
-    rec = compose_recoverability_gap_v1(ctr)
-    if rec:
-        candidates.append(attach_category_v1(rec))
+    # Compose only when domain signals warrant a candidate (not raw counters).
+    recovery_signals = (
+        (domains_pkg.get("domains") or {}).get("recovery") or {}
+    ).get("signals") or []
+    if any(s.get("kind") == "recoverability_gap" for s in recovery_signals):
+        rec = compose_recoverability_gap_v1(ctr)
+        if rec:
+            candidates.append(attach_category_v1(rec))
 
-    wait = compose_waiting_recovery_v1(ctr)
-    if wait:
-        candidates.append(attach_category_v1(wait))
+    ops_signals = (
+        (domains_pkg.get("domains") or {}).get("operations") or {}
+    ).get("signals") or []
+    if any(s.get("kind") == "waiting_recovery_work" for s in ops_signals):
+        wait = compose_waiting_recovery_v1(ctr)
+        if wait:
+            candidates.append(attach_category_v1(wait))
 
     for contract in finds:
         composed = compose_from_finding_contract_v1(contract, store_slug=slug)
@@ -92,32 +102,9 @@ def _compose_uncached_v1(
     timing["compose_candidates_ms"] = round((time.perf_counter() - t) * 1000.0, 2)
 
     t = time.perf_counter()
-    seen: set[str] = set()
+    survivors, registry = dedupe_candidates_v1(candidates, domain_pkg=domains_pkg)
     published: list[dict[str, Any]] = []
-    for cand in candidates:
-        if cand.get("suppressed"):
-            registry.append(
-                {
-                    "decision_id": cand.get("decision_id"),
-                    "suppression_reason": cand.get("suppression_reason"),
-                    "decision_type": cand.get("decision_type"),
-                    "decision_category": cand.get("decision_category"),
-                }
-            )
-            continue
-        key = dedupe_key(cand)
-        if key in seen:
-            cand = mark_suppressed(cand, SUPPRESS_DUPLICATE)
-            registry.append(
-                {
-                    "decision_id": cand.get("decision_id"),
-                    "suppression_reason": SUPPRESS_DUPLICATE,
-                    "decision_type": cand.get("decision_type"),
-                    "decision_category": cand.get("decision_category"),
-                }
-            )
-            continue
-        seen.add(key)
+    for cand in survivors:
         gated = apply_contract_gate(dict(cand))
         if gated.get("suppressed"):
             registry.append(
@@ -126,6 +113,8 @@ def _compose_uncached_v1(
                     "suppression_reason": gated.get("suppression_reason"),
                     "decision_type": gated.get("decision_type"),
                     "decision_category": gated.get("decision_category"),
+                    "root_cause_key": gated.get("root_cause_key"),
+                    "business_domain": gated.get("business_domain"),
                 }
             )
             continue
@@ -138,7 +127,7 @@ def _compose_uncached_v1(
             str(d.get("decision_id") or ""),
         )
     )
-    timing["validate_ms"] = round((time.perf_counter() - t) * 1000.0, 2)
+    timing["dedupe_validate_ms"] = round((time.perf_counter() - t) * 1000.0, 2)
 
     t = time.perf_counter()
     portfolio_pkg = build_portfolio_v1(published, max_visible=6)
@@ -153,7 +142,16 @@ def _compose_uncached_v1(
         "ok": True,
         "store_slug": slug,
         "composition_version": COMPOSITION_VERSION_V1,
+        "domain_composition_version": DOMAIN_COMPOSITION_VERSION_V1,
         "gate_2c_decision_portfolio": True,
+        "gate_2d_business_domains": True,
+        "gate_2d_decision_dedupe": True,
+        "business_domains_v1": {
+            "domains": domains_pkg.get("domains"),
+            "home_teasers": domains_pkg.get("home_teasers"),
+            "signals": domains_pkg.get("signals"),
+            "root_causes": domains_pkg.get("root_causes"),
+        },
         "decisions": portfolio,
         "all_published": published,
         "needs_action_now": needs,
@@ -171,6 +169,7 @@ def _compose_uncached_v1(
             "needs_action_now": len(needs),
             "monitor": len(monitor),
             "candidates_total": len(candidates),
+            "root_causes": len(domains_pkg.get("root_causes") or []),
             "categories_healthy": sum(
                 1
                 for x in (portfolio_pkg.get("category_landscape") or [])
@@ -220,7 +219,6 @@ def compose_decisions_v1(
             )
 
         if cached is not None:
-            # Stale-while-revalidate with cheap payload refresh in background.
             return get_or_compose_package_v1(
                 slug, composer=_run_payload, allow_sync_miss=False
             )

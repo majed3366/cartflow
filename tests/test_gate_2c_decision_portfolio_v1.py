@@ -57,7 +57,8 @@ class PortfolioBalanceTests(unittest.TestCase):
         self.assertIn("communication", cats)
         # Landscape covers all categories; healthy ones say no action
         landscape = pkg["category_landscape"]
-        self.assertEqual(len(landscape), 7)
+        # Gate 2D expands categories with pricing + shipping.
+        self.assertEqual(len(landscape), 9)
         healthy = [x for x in landscape if x.get("no_action_required")]
         self.assertGreaterEqual(len(healthy), 1)
         self.assertTrue(any("لا إجراء" in (x.get("status_ar") or "") for x in healthy))

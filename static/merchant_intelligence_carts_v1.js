@@ -263,21 +263,12 @@
   function storyExpandedHtml(story, rowsInStory, deps) {
     var esc = deps.esc;
     var parts = [];
-    var meaning = merchantFacingText(story.merchant_meaning_ar || "");
-    if (meaning) {
-      parts.push(
-        '<section class="ma-mi-group-section">' +
-          '<h3 class="ma-mi-group-section__label">لماذا يهم؟</h3>' +
-          '<p class="ma-mi-group-section__text">' +
-          esc(meaning) +
-          "</p></section>"
-      );
-    }
+    /* Gate 2D — Carts ops only: no business meaning / conclusions («لماذا يهم؟»). */
     var observed = merchantFacingText(story.observed_result_ar || "");
     if (observed) {
       parts.push(
         '<section class="ma-mi-group-section">' +
-          '<h3 class="ma-mi-group-section__label">ماذا تغيّر؟</h3>' +
+          '<h3 class="ma-mi-group-section__label">آخر حالة</h3>' +
           '<p class="ma-mi-group-section__text">' +
           esc(observed) +
           "</p></section>"
@@ -287,7 +278,7 @@
     if (did) {
       parts.push(
         '<section class="ma-mi-group-section">' +
-          '<h3 class="ma-mi-group-section__label">ماذا فعل CartFlow؟</h3>' +
+          '<h3 class="ma-mi-group-section__label">آخر إجراء</h3>' +
           '<p class="ma-mi-group-section__text">' +
           esc(did) +
           "</p></section>"
