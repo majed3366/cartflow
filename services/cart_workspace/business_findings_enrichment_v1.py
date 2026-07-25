@@ -248,10 +248,10 @@ def _enrich_via_composition_engine_v1(
             business_facts_v1_enabled,
             workspace_cards_from_business_facts_v1,
         )
-        from services.business_themes_v1 import (  # noqa: PLC0415
-            build_business_themes_package_v1,
-            business_themes_v1_enabled,
-            workspace_cards_from_business_themes_v1,
+        from services.commerce_situations_v1 import (  # noqa: PLC0415
+            build_commerce_situations_package_v1,
+            commerce_situations_v1_enabled,
+            workspace_cards_from_commerce_situations_v1,
         )
         from services.decision_composition_engine_v1.project_workspace_v1 import (  # noqa: PLC0415
             decision_to_workspace_card_v1,
@@ -262,7 +262,7 @@ def _enrich_via_composition_engine_v1(
 
         orv = build_observation_reality_validation_v1(slug)
         obs_recon = dict(orv.get("admission_reconciliation") or {})
-        if business_themes_v1_enabled() and business_facts_v1_enabled():
+        if commerce_situations_v1_enabled() and business_facts_v1_enabled():
             bf_pkg = build_business_facts_package_v1(
                 slug,
                 orv_package=orv if isinstance(orv, dict) else None,
@@ -273,28 +273,27 @@ def _enrich_via_composition_engine_v1(
                 if isinstance(pkg, dict)
                 else None,
             )
-            bt_pkg = build_business_themes_package_v1(slug, facts_package=bf_pkg)
+            cs_pkg = build_commerce_situations_package_v1(
+                slug, facts_package=bf_pkg
+            )
             projection["business_facts_v1"] = {
                 "ok": bool(bf_pkg.get("ok")),
                 "counts": bf_pkg.get("counts"),
+                "atoms_only": True,
             }
-            projection["business_themes_v1"] = {
-                "ok": bool(bt_pkg.get("ok")),
-                "counts": bt_pkg.get("counts"),
-                "published": len(bt_pkg.get("published_themes") or []),
+            projection["commerce_situations_v1"] = {
+                "ok": bool(cs_pkg.get("ok")),
+                "counts": cs_pkg.get("counts"),
+                "published": len(cs_pkg.get("published_situations") or []),
             }
-            theme_cards = workspace_cards_from_business_themes_v1(bt_pkg)
-            card_source = theme_cards or workspace_cards_from_business_facts_v1(bf_pkg)
-            for od in card_source:
+            sit_cards = workspace_cards_from_commerce_situations_v1(cs_pkg)
+            for od in sit_cards:
                 if not isinstance(od, dict):
                     continue
-                is_theme = bool(od.get("gate_business_themes"))
                 card = decision_to_workspace_card_v1(
                     {
                         "decision_id": od.get("decision_id"),
-                        "decision_type": "business_theme"
-                        if is_theme
-                        else "business_fact",
+                        "decision_type": "commerce_situation",
                         "title": od.get("title") or od.get("merchant_decision"),
                         "merchant_decision": od.get("merchant_decision"),
                         "why": od.get("why"),
@@ -305,27 +304,63 @@ def _enrich_via_composition_engine_v1(
                         "expected_outcome": od.get("business_impact_ar"),
                         "ignore_consequence": od.get("business_impact_ar"),
                         "confidence": od.get("confidence") or "medium",
-                        "priority": int(od.get("priority") or 55)
-                        if not is_theme
-                        else 60,
+                        "priority": int(od.get("priority") or 65),
                         "priority_band": "needs_action",
                         "decision_category": "products",
                         "decision_category_ar": "المنتجات",
                         "business_domain": od.get("business_domain") or "products",
                         "business_meaning_ar": od.get("business_meaning_ar"),
                         "business_impact_ar": od.get("business_impact_ar"),
-                        "source_truth_types": [
-                            "business_themes_v1" if is_theme else "business_facts_v1"
-                        ],
+                        "source_truth_types": ["commerce_situations_v1"],
                         "published": True,
                     }
                 )
-                if is_theme:
-                    card["gate_business_themes"] = True
-                else:
-                    card["gate_business_facts"] = True
+                card["gate_commerce_situations"] = True
+                card["situation_id"] = od.get("situation_id")
+                card["situation_kind"] = od.get("situation_kind")
                 card["product_name_ar"] = od.get("product_name_ar")
+                card["supporting_fact_ids"] = od.get("supporting_fact_ids")
+                card["supporting_facts_ar"] = od.get("supporting_facts_ar")
+                card["affected_products"] = od.get("affected_products")
+                card["affected_carts"] = od.get("affected_carts")
+                card["affected_customers"] = od.get("affected_customers")
+                card["view_details_href"] = (
+                    f"#products?situation_id={od.get('situation_id') or ''}"
+                )
+                card["view_details_ar"] = "المنتجات المشاركة"
                 obs_cards.append(card)
+            try:
+                from services.commerce_situations_v1 import (  # noqa: PLC0415
+                    surface_projection_v1,
+                )
+
+                projection["commerce_situation_consumers_v1"] = {
+                    "products": surface_projection_v1(cs_pkg, "products"),
+                    "carts": surface_projection_v1(cs_pkg, "carts"),
+                    "communication": surface_projection_v1(cs_pkg, "communication"),
+                }
+            except Exception:  # noqa: BLE001
+                pass
+            try:
+                from services.reality_validation_context_v1 import (  # noqa: PLC0415
+                    stamp_reality_validation_identity_from_summary_v1,
+                )
+
+                stamp_holder = {
+                    "observation_reality_validation_v1": orv
+                    if isinstance(orv, dict)
+                    else {},
+                    "business_facts_v1": bf_pkg,
+                    "commerce_situations_v1": cs_pkg,
+                }
+                stamp_reality_validation_identity_from_summary_v1(
+                    stamp_holder, store_slug=slug
+                )
+                projection["reality_validation_identity_v1"] = stamp_holder.get(
+                    "reality_validation_identity_v1"
+                )
+            except Exception:  # noqa: BLE001
+                pass
         elif business_facts_v1_enabled():
             bf_pkg = build_business_facts_package_v1(
                 slug,
@@ -450,6 +485,7 @@ def _enrich_via_composition_engine_v1(
     projection["gate_2f_store_executive"] = True
     projection["gate_business_facts_v1"] = True
     projection["gate_business_themes_v1"] = True
+    projection["gate_commerce_situations_v1"] = True
     projection["observation_admission_bridge_v1"] = True
     projection["observation_admission_reconciliation"] = obs_recon
     projection["decisions_only"] = True

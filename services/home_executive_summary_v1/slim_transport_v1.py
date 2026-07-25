@@ -170,8 +170,29 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
             schedules = _as_int((cops or {}).get("recovery_schedules"))
 
     # Gate 2D — Home teaser from canonical Decision Portfolio + domain summaries.
+    # Prefer Commerce Situations (canonical) over independent portfolio inventing.
     portfolio_landscape: list[dict[str, Any]] = []
     domain_teasers: dict[str, Any] = {}
+    cs_pkg = src.get("commerce_situations_v1")
+    if isinstance(cs_pkg, Mapping) and cs_pkg.get("ok"):
+        routing = cs_pkg.get("routing") if isinstance(cs_pkg.get("routing"), Mapping) else {}
+        ws = (
+            routing.get("decision_workspace")
+            if isinstance(routing, Mapping)
+            else None
+        )
+        ws_sits = (
+            list((ws or {}).get("situations") or [])
+            if isinstance(ws, Mapping)
+            else []
+        )
+        if ws_sits:
+            top_ws = ws_sits[0] if isinstance(ws_sits[0], Mapping) else {}
+            action = str(top_ws.get("merchant_action_ar") or "").strip()
+            if action:
+                decisions_count = len(ws_sits)
+                decisions_title = action
+                decisions_evidence = "commerce_situations"
     if decisions_evidence == "none":
         slug = str(
             src.get("store_slug")
@@ -199,28 +220,71 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
 
     obs_count = 0
     obs_top: dict[str, str] | None = None
-    # Prefer Business Facts (truth atoms). Themes are out of target architecture.
+    # Canonical: Commerce Situations. Facts/Themes must not publish when Situations exist.
     try:
-        from services.business_facts_v1.attach_v1 import (  # noqa: PLC0415
-            home_observation_teaser_from_facts_v1,
+        from services.commerce_situations_v1.attach_v1 import (  # noqa: PLC0415
+            home_teaser_from_situations_v1,
         )
 
-        bf_teaser = home_observation_teaser_from_facts_v1(src)
-        if isinstance(bf_teaser, dict) and bf_teaser.get("top"):
-            obs_count = int(bf_teaser.get("count") or 0)
-            top_bf = (
-                bf_teaser.get("top")
-                if isinstance(bf_teaser.get("top"), Mapping)
+        cs_teaser = home_teaser_from_situations_v1(src)
+        if isinstance(cs_teaser, dict) and (
+            cs_teaser.get("top") or cs_teaser.get("situations")
+        ):
+            obs_count = int(cs_teaser.get("count") or 0)
+            top_cs = (
+                cs_teaser.get("top")
+                if isinstance(cs_teaser.get("top"), Mapping)
                 else {}
             )
+            sit_rows = [
+                s
+                for s in list(cs_teaser.get("situations") or [])
+                if isinstance(s, Mapping)
+            ]
             obs_top = {
-                "product_name_ar": str(top_bf.get("product_name_ar") or "").strip(),
-                "statement_ar": str(top_bf.get("statement_ar") or "").strip(),
-                "fact_id": str(top_bf.get("fact_id") or "").strip(),
-                "source": "business_facts_v1",
+                "product_name_ar": str(top_cs.get("product_name_ar") or "").strip(),
+                "statement_ar": str(top_cs.get("statement_ar") or "").strip(),
+                "situation_id": str(top_cs.get("situation_id") or "").strip(),
+                "situation_kind": str(top_cs.get("situation_kind") or "").strip(),
+                "title_ar": str(top_cs.get("title_ar") or "").strip(),
+                "source": "commerce_situations_v1",
+                "situations": [
+                    {
+                        "situation_id": str(s.get("situation_id") or "").strip(),
+                        "situation_kind": str(s.get("situation_kind") or "").strip(),
+                        "title_ar": str(s.get("title_ar") or "").strip(),
+                        "statement_ar": str(s.get("statement_ar") or "").strip(),
+                        "product_name_ar": str(s.get("product_name_ar") or "").strip(),
+                        "href": str(s.get("href") or "").strip(),
+                        "source": "commerce_situations_v1",
+                    }
+                    for s in sit_rows[:5]
+                ],
             }
     except Exception:  # noqa: BLE001
         pass
+    if obs_top is None:
+        try:
+            from services.business_facts_v1.attach_v1 import (  # noqa: PLC0415
+                home_observation_teaser_from_facts_v1,
+            )
+
+            bf_teaser = home_observation_teaser_from_facts_v1(src)
+            if isinstance(bf_teaser, dict) and bf_teaser.get("top"):
+                obs_count = int(bf_teaser.get("count") or 0)
+                top_bf = (
+                    bf_teaser.get("top")
+                    if isinstance(bf_teaser.get("top"), Mapping)
+                    else {}
+                )
+                obs_top = {
+                    "product_name_ar": str(top_bf.get("product_name_ar") or "").strip(),
+                    "statement_ar": str(top_bf.get("statement_ar") or "").strip(),
+                    "fact_id": str(top_bf.get("fact_id") or "").strip(),
+                    "source": "business_facts_v1",
+                }
+        except Exception:  # noqa: BLE001
+            pass
     if obs_top is None:
         orv = src.get("observation_reality_validation_v1")
         if isinstance(orv, Mapping):
@@ -275,7 +339,18 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
         "observations": {
             "count": obs_count,
             "top": obs_top,
-            "evidence": "product_findings" if obs_count and obs_top else "none",
+            "evidence": (
+                "commerce_situations"
+                if obs_count
+                and obs_top
+                and str((obs_top or {}).get("source") or "")
+                == "commerce_situations_v1"
+                else (
+                    "product_findings"
+                    if obs_count and obs_top
+                    else "none"
+                )
+            ),
         },
         "carts": {
             "count": waiting,
@@ -304,35 +379,81 @@ def strip_heavy_home_summary_payload_v1(summary: dict[str, Any]) -> dict[str, An
         return summary
     for key in HEAVY_SUMMARY_KEYS_V1:
         summary.pop(key, None)
-    # Keep slim Facts + Themes stamps (teaser already extracted).
+    # Keep slim Situations stamp (canonical). Facts kept atoms-only; Themes slimmed.
+    cs = summary.get("commerce_situations_v1")
+    if isinstance(cs, dict) and cs.get("ok"):
+        cr = cs.get("routing") if isinstance(cs.get("routing"), dict) else {}
+        teaser = (cr or {}).get("home_teaser") if isinstance(cr, dict) else {}
+        consumers = cs.get("consumers") if isinstance(cs.get("consumers"), dict) else {}
+        slim_consumers = {}
+        for surface in ("products", "carts", "communication", "decision_workspace"):
+            proj = consumers.get(surface) if isinstance(consumers, dict) else None
+            if isinstance(proj, dict):
+                slim_consumers[surface] = {
+                    "ok": True,
+                    "surface": surface,
+                    "count": proj.get("count"),
+                    "situation_ids": list(proj.get("situation_ids") or []),
+                    "items": list(proj.get("items") or [])[:8],
+                    "canonical_object": "commerce_situation_v1",
+                }
+        summary["commerce_situations_v1"] = {
+            "ok": True,
+            "enabled": True,
+            "schema": cs.get("schema") or "commerce_situations_v1",
+            "store_slug": cs.get("store_slug"),
+            "counts": cs.get("counts") or {},
+            "routing": {
+                "home_teaser": {
+                    "count": (teaser or {}).get("count"),
+                    "situations": list((teaser or {}).get("situations") or [])[:5],
+                    "top": (teaser or {}).get("top"),
+                    "evidence": (teaser or {}).get("evidence"),
+                }
+            },
+            "consumers": slim_consumers,
+            "constitution": cs.get("constitution"),
+            "slim_transport": True,
+            "product_intelligence": False,
+        }
     bf = summary.get("business_facts_v1")
     if isinstance(bf, dict) and bf.get("ok"):
-        routing = bf.get("routing") if isinstance(bf.get("routing"), dict) else {}
         summary["business_facts_v1"] = {
             "ok": True,
             "enabled": True,
             "schema": bf.get("schema") or "business_facts_v1",
             "store_slug": bf.get("store_slug"),
             "counts": bf.get("counts") or {"total": 0},
-            "routing": {
-                "home_teaser": (routing or {}).get("home_teaser"),
-            },
+            "routing": {},
             "slim_transport": True,
+            "atoms_only": True,
             "product_intelligence": False,
         }
     bt = summary.get("business_themes_v1")
-    if isinstance(bt, dict) and bt.get("ok"):
-        tr = bt.get("routing") if isinstance(bt.get("routing"), dict) else {}
-        summary["business_themes_v1"] = {
-            "ok": True,
-            "enabled": True,
-            "schema": bt.get("schema") or "business_themes_v1",
-            "store_slug": bt.get("store_slug"),
-            "counts": bt.get("counts") or {},
-            "routing": {"home_teaser": (tr or {}).get("home_teaser")},
+    if isinstance(bt, dict):
+        summary.pop("business_themes_v1", None)
+    # Keep Reality Validation identity stamp (CEO audit — must survive slim strip).
+    rvi = summary.get("reality_validation_identity_v1")
+    if isinstance(rvi, dict):
+        summary["reality_validation_identity_v1"] = {
+            "ok": rvi.get("ok"),
+            "status": rvi.get("status"),
+            "store_slug": rvi.get("store_slug"),
+            "merchant_id": rvi.get("merchant_id"),
+            "simulation_run_id": rvi.get("simulation_run_id"),
+            "living_store_profile": rvi.get("living_store_profile"),
+            "database_environment": rvi.get("database_environment"),
+            "last_simulation_timestamp": rvi.get("last_simulation_timestamp"),
+            "observation_count": rvi.get("observation_count"),
+            "situation_count": rvi.get("situation_count"),
+            "business_fact_count": rvi.get("business_fact_count"),
+            "home_projection": rvi.get("home_projection"),
+            "workspace_projection": rvi.get("workspace_projection"),
+            "products_projection": rvi.get("products_projection"),
+            "carts_projection": rvi.get("carts_projection"),
+            "communication_projection": rvi.get("communication_projection"),
+            "divergence_begins_at": rvi.get("divergence_begins_at"),
             "slim_transport": True,
-            "constitution": bt.get("constitution"),
-            "product_intelligence": False,
         }
     home = summary.get("merchant_home_experience_v1")
     if isinstance(home, dict):

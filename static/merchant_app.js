@@ -6,6 +6,7 @@
     "home-setup": "إعداد المتجر",
     "home-month": "الملخص العام",
     workspace: "مساحة القرار",
+    products: "المنتجات",
     carts: "السلال",
     followup: "السلال",
     completed: "السلال",
@@ -46,6 +47,7 @@
     "home-setup": "تحقق من جاهزية متجرك قبل التشغيل الكامل.",
     "home-month": "أرقام الاسترداد والأداء لهذا الشهر.",
     workspace: "",
+    products: "المنتجات المشاركة في مواقف العمل — بلا تفسير جديد.",
     carts: "ما الذي يحتاج انتباهك الآن؟",
     followup: "ردود العملاء والمتابعة التي يحتاج المتجر مراجعتها.",
     completed: "سلال أنهت مسار الاسترجاع — شراء أو استرداد ناجح.",
@@ -82,6 +84,7 @@
     "home-setup": "home",
     "home-month": "home",
     workspace: "workspace",
+    products: "products",
     carts: "carts",
     followup: "carts",
     completed: "carts",
@@ -101,6 +104,7 @@
   var SECTION_LABELS = {
     home: "الرئيسية",
     workspace: "مساحة القرار",
+    products: "المنتجات",
     carts: "السلال",
     comms: "التواصل",
     settings: "الإعدادات",
@@ -134,6 +138,7 @@
     "#home-test-tools": "settings-diagnostics",
     "#settings-diagnostics": "settings-diagnostics",
     "#workspace": "workspace",
+    "#products": "products",
     "#carts": "carts",
     "#followup": "followup",
     "#completed": "completed",
@@ -823,6 +828,10 @@
     }
     if (sec === "workspace") {
       goTo("workspace");
+      return;
+    }
+    if (sec === "products") {
+      goTo("products");
       return;
     }
     if (sec === "carts") {

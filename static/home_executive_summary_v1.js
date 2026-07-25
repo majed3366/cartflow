@@ -1,6 +1,6 @@
 /**
- * Home Executive Summary V1 — Home Stabilization Sprint V1.
- * Summaries + status + counts + View Details only. Single Home paint path.
+ * Home Executive Summary V1 — Situation portfolio when Commerce Situations present.
+ * Summaries + status + View Details. Single Home paint path.
  */
 (function () {
   "use strict";
@@ -20,6 +20,40 @@
       orv.innerHTML = "";
       orv.hidden = true;
     }
+  }
+
+  function renderSituationItems(items) {
+    if (!Array.isArray(items) || !items.length) return "";
+    var html = '<ul class="hes-situation-list" data-hes-situations="1">';
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i] || {};
+      var sid = String(it.situation_id || "").trim();
+      var href = String(it.href || (sid ? "#workspace?situation_id=" + sid : "#workspace"));
+      html +=
+        '<li class="hes-situation-card" data-situation-id="' +
+        esc(sid) +
+        '" data-situation-kind="' +
+        esc(it.situation_kind || "") +
+        '">' +
+        '<p class="hes-situation-card__title">' +
+        esc(it.title_ar || "") +
+        "</p>" +
+        '<p class="hes-situation-card__statement">' +
+        esc(it.statement_ar || "") +
+        "</p>" +
+        '<p class="hes-situation-card__meta">' +
+        '<span class="hes-situation-id" title="situation_id">' +
+        esc(sid) +
+        "</span>" +
+        ' · <a href="' +
+        esc(href) +
+        '" data-hes-situation-open="' +
+        esc(sid) +
+        '">وسّع في مساحة القرار ←</a>' +
+        "</p></li>";
+    }
+    html += "</ul>";
+    return html;
   }
 
   function renderSection(sec) {
@@ -43,11 +77,21 @@
         esc(sec.status_ar) +
         "</span>"
       : "";
-    /* Gate 1: View Details navigates to owning page — no in-place PI expand. */
+    var body = "";
+    if (sec.id === "situations" && Array.isArray(sec.items) && sec.items.length) {
+      body = renderSituationItems(sec.items);
+    } else {
+      body =
+        '<p class="hes-section__summary" data-hes-summary="1">' +
+        esc(sec.summary_ar || "") +
+        "</p>";
+    }
     return (
       '<section class="hes-section" data-hes-section="' +
       esc(sec.id || "") +
-      '">' +
+      '"' +
+      (sec.id === "situations" ? ' data-hes-portfolio="1"' : "") +
+      ">" +
       '<div class="hes-section__head">' +
       "<h3>" +
       esc(sec.title_ar || "") +
@@ -56,9 +100,7 @@
       statusHtml +
       countHtml +
       "</div></div>" +
-      '<p class="hes-section__summary" data-hes-summary="1">' +
-      esc(sec.summary_ar || "") +
-      "</p>" +
+      body +
       '<p class="hes-section__cta"><a href="' +
       esc(sec.view_details_href || "#") +
       '" data-hes-view-details="' +
@@ -70,10 +112,56 @@
     );
   }
 
-  function paintShell(root, pkg) {
+  function renderIdentityAudit(identity) {
+    if (!identity || typeof identity !== "object") return "";
+    var status = String(identity.status || "UNKNOWN");
+    var safe =
+      identity.CEO_REVIEW_SAFE === true ||
+      identity.CEO_REVIEW_SAFE === "TRUE" ||
+      identity.CEO_REVIEW_SAFE === "true";
+    return (
+      '<aside class="hes-rv-audit" data-rv-audit="1" data-rv-status="' +
+      esc(status) +
+      '" data-ceo-review-safe="' +
+      (safe ? "TRUE" : "FALSE") +
+      '">' +
+      '<p class="hes-rv-audit__status">Status = ' +
+      esc(status) +
+      "</p>" +
+      '<p class="hes-rv-audit__status">CEO_REVIEW_SAFE = ' +
+      (safe ? "TRUE" : "FALSE") +
+      "</p>" +
+      '<p class="hes-rv-audit__line">store=<code>' +
+      esc(identity.store_slug || "") +
+      "</code> · merchant=<code>" +
+      esc(identity.merchant_id || "—") +
+      "</code> · run=<code>" +
+      esc(identity.simulation_run_id || "—") +
+      "</code></p>" +
+      '<p class="hes-rv-audit__line">obs=' +
+      esc(String(identity.observation_count ?? "—")) +
+      " · facts=" +
+      esc(String(identity.business_fact_count ?? "—")) +
+      " · situations=" +
+      esc(String(identity.situation_count ?? "—")) +
+      " · home=" +
+      esc(String(identity.home_projection ?? "—")) +
+      "</p>" +
+      (identity.divergence_begins_at
+        ? '<p class="hes-rv-audit__div">begins_at: <code>' +
+          esc(identity.divergence_begins_at) +
+          "</code></p>"
+        : "") +
+      '<p class="hes-rv-audit__probe"><a href="/dev/reality-validation-context?store=demo&format=html" target="_blank" rel="noopener">شهادة الهوية (CEO) ←</a></p>' +
+      "</aside>"
+    );
+  }
+
+  function paintShell(root, pkg, identity) {
     var sections = Array.isArray(pkg.sections) ? pkg.sections : [];
     var html =
       '<section class="hes-surface" data-hes="1" data-hes-stabilization="1" aria-label="ملخص تنفيذي">' +
+      renderIdentityAudit(identity) +
       '<header class="hes-header">' +
       '<p class="hes-eyebrow">' +
       esc(pkg.eyebrow_ar || "ملخص تنفيذي") +
@@ -99,7 +187,7 @@
     html +=
       "</div>" +
       '<footer class="hes-ownership">' +
-      "<p>الصفحة الرئيسية = ملخص تنفيذي · القرارات في مساحة القرار · السلال للتشغيل · التواصل للمتابعة · الإعدادات للضبط.</p>" +
+      "<p>الصفحة الرئيسية تقدّم مواقف العمل · مساحة القرار توسّع نفس الموقف · المنتجات/السلال/التواصل تعرض المشاركة فقط.</p>" +
       "</footer></section>";
 
     root.className = "ma-home-experience hes-home-root";
@@ -136,7 +224,8 @@
             eyebrow_ar: "ملخص تنفيذي",
             title_ar: "ماذا يجب أن تعرف الآن؟",
             lede_ar: "تعذّر تحميل الملخص — أعد المحاولة.",
-          }
+          },
+      summary && summary.reality_validation_identity_v1
     );
     return true;
   };

@@ -464,6 +464,13 @@
     var home = pkg.pages.home;
     var root = document.getElementById("ma-home-experience-root");
     if (!root) return false;
+    /* Home Executive Summary / Situation portfolio owns Home — do not overwrite. */
+    if (
+      root.querySelector("[data-hes='1']") ||
+      (summary && summary.home_surface_mode === "executive_summary_v1")
+    ) {
+      return false;
+    }
     _mebfRenderDiagnostics = [];
     var ops = home.operational_truth || {};
     var sections = home.sections || {};
@@ -624,10 +631,10 @@
       sub.textContent = "تشغيل السلال فقط — القرارات في مساحة القرار.";
     }
 
-    /* Gate 2 — Carts ops only: never paint business findings / Decision blocks. */
-    if (focus) {
-      focus.hidden = true;
-      focus.innerHTML = "";
+    /* Gate 2 — Carts ops only for findings/decisions.
+       Commerce Situation participation is painted by commerce_situations_surfaces_v1. */
+    if (focus && !focus.querySelector("[data-cs-surface='carts']")) {
+      /* leave Situation banner if already painted */
     }
   }
 
