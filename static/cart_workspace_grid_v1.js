@@ -80,7 +80,7 @@
         '<h2 class="cw-ops__mission">' +
         esc(mission) +
         "</h2>" +
-        '<p class="cw-ops__subtitle">محفظة القرارات — أولوية مرتبة عبر فئات العمل</p>' +
+        '<p class="cw-ops__subtitle">محفظة القرارات — مجال عمل واحد ← قرار واحد (بدون تكرار)</p>' +
         (hasDecisions
           ? '<p class="cw-ops__bands">' +
             "يحتاج إجراء الآن: <strong>" +

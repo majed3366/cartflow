@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
-"""Gate 2B — Decision Composition Engine V1."""
+"""Gate 2B/2C/2D — Decision Composition Engine (+ domains + dedupe)."""
 from __future__ import annotations
 
+from services.decision_composition_engine_v1.business_domains_v1 import (
+    normalize_business_domains_v1,
+)
 from services.decision_composition_engine_v1.compose_v1 import compose_decisions_v1
+from services.decision_composition_engine_v1.dedupe_v1 import dedupe_candidates_v1
 from services.decision_composition_engine_v1.flag_v1 import (
     ENV_DECISION_COMPOSITION_ENGINE_V1,
     decision_composition_engine_v1_enabled,
@@ -26,6 +30,8 @@ __all__ = [
     "compose_decisions_v1",
     "count_composed_decisions_for_teaser_v1",
     "decision_composition_engine_v1_enabled",
+    "dedupe_candidates_v1",
     "decisions_to_workspace_cards_v1",
     "get_or_compose_package_v1",
+    "normalize_business_domains_v1",
 ]

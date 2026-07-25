@@ -272,9 +272,12 @@ def _enrich_via_composition_engine_v1(
     projection["gate_2a_decision_workspace_completion"] = True
     projection["gate_2b_decision_composition_engine"] = True
     projection["gate_2c_decision_portfolio"] = True
+    projection["gate_2d_business_domains"] = True
+    projection["gate_2d_decision_dedupe"] = True
     projection["decisions_only"] = True
     projection["decision_composition_v1"] = {
         "version": pkg.get("composition_version"),
+        "domain_composition_version": pkg.get("domain_composition_version"),
         "counts": pkg.get("counts"),
         "suppression_registry": pkg.get("suppression_registry"),
         "no_decision_supported": pkg.get("no_decision_supported"),
@@ -284,12 +287,14 @@ def _enrich_via_composition_engine_v1(
         "portfolio_version": pkg.get("portfolio_version"),
         "cache": pkg.get("_cache"),
         "timing_ms": pkg.get("timing_ms"),
+        "business_domains": (pkg.get("business_domains_v1") or {}).get("domains"),
     }
     projection["decision_portfolio_v1"] = {
         "portfolio": portfolio,
         "category_landscape": pkg.get("category_landscape"),
         "overflow": pkg.get("overflow"),
     }
+    projection["business_domains_v1"] = pkg.get("business_domains_v1")
     projection["business_finding_count"] = int(
         (pkg.get("counts") or {}).get("candidates_total") or 0
     )

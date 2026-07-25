@@ -662,12 +662,12 @@
       "</strong><span>ما ينتظر (جداول)</span></li>" +
       "<li><strong>" +
       esc(ops.has_communication_activity ? "متابعة" : "هدوء") +
-      "</strong><span>هل تحتاج تدخلاً؟</span></li>" +
+      "</strong><span>يحتاج متابعة</span></li>" +
       "</ul>" +
       '<p class="meif-watch">' +
       esc(needs) +
       "</p>" +
-      /* Gate 2 — Communication status only; no business findings / Decision blocks. */
+      /* Gate 2D — Communication facts only; no business decisions / recommendations. */
       '<p class="meif-next">' +
       '<a href="#messages">سجل الرسائل</a> · ' +
       '<a href="#whatsapp">إعدادات واتساب</a>' +

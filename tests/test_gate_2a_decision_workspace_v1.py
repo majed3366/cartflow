@@ -64,7 +64,7 @@ class Gate2AEnrichmentTests(unittest.TestCase):
             enrich_projection_with_fde_v1,
         )
 
-        with patch(
+        with patch.dict("os.environ", {"CARTFLOW_DECISION_COMPOSITION_ENGINE_V1": "0"}), patch(
             "services.cart_workspace.business_findings_enrichment_v1.list_fde_workspace_cards_v1",
             return_value=[],
         ), patch(
