@@ -1,0 +1,52 @@
+{
+  "email": "cf.g2d.8c2ef64335@smartreplyai.net",
+  "home_probe": {
+    "http": 200,
+    "fetch_ms": 165,
+    "body_bytes": 6411,
+    "surface_mode": "executive_summary_v1",
+    "hes_ok": true,
+    "meif": false,
+    "section_ids": [
+      "health",
+      "decisions",
+      "observations",
+      "carts",
+      "communication"
+    ],
+    "decisions_summary": "حسّن قدرة المتجر على جمع أرقام العملاء القابلين للاسترجاع.",
+    "health_summary": "المتجر يحتاج انتباهاً — التفاصيل في قرارات اليوم.",
+    "health_equals_decision": false,
+    "has_why_on_home": false,
+    "gate_2d_teaser": true,
+    "portfolio": true
+  },
+  "workspace_probe": {
+    "http": 200,
+    "fetch_ms": 241,
+    "gate_2d": true,
+    "gate_2d_dedupe": true,
+    "landscape": 9,
+    "has_portfolio_ui": true,
+    "has_healthy": true,
+    "has_why_on_workspace": true,
+    "has_working_chrome": false,
+    "suppressed": 0,
+    "cache_hit": true
+  },
+  "carts_probe": {
+    "has_why_matters": false,
+    "has_recommendation": false
+  },
+  "generated_at_utc": "2026-07-25T00:33:25.131687+00:00",
+  "sprint": "gate_2d_business_domain_dedupe",
+  "screenshots": {
+    "desktop_home": "docs/product/gate_2d_business_domain_dedupe_v1/after_desktop_home.png",
+    "desktop_workspace": "docs/product/gate_2d_business_domain_dedupe_v1/after_desktop_workspace.png",
+    "desktop_carts": "docs/product/gate_2d_business_domain_dedupe_v1/after_desktop_carts.png",
+    "mobile_home": "docs/product/gate_2d_business_domain_dedupe_v1/after_mobile_home.png",
+    "mobile_workspace": "docs/product/gate_2d_business_domain_dedupe_v1/after_mobile_workspace.png"
+  },
+  "ok": true,
+  "status": "AWAITING_CEO_REVIEW_BEFORE_GATE_2_CLOSE"
+}

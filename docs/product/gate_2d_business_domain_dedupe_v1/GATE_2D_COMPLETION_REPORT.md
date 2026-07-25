@@ -64,6 +64,8 @@ Domains: Store Health · Recovery · Products · Pricing · Shipping · Customer
 | Communication facts only | **DONE** |
 | No duplicated decision across surfaces | **DONE** |
 | Domains before every decision | **DONE** |
-| Production + CEO visual | **PENDING / OPEN** |
+| Production deploy (`33cf3f8` / PR #92) | **DONE** |
+| Production probe + Desktop/Mobile shots | **DONE** (`after_verification.json`) |
+| CEO visual | **OPEN** — awaiting **APPROVED — CLOSE Gate 2** |
 
-**STOP — deploy + CEO visual. Do not begin Gate 3.**
+**STOP — CEO visual. Do not begin Gate 3 or Product Intelligence.**

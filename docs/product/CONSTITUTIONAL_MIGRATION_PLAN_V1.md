@@ -3,7 +3,7 @@
 **Document type:** Mandatory governance workflow — **Execution Gates**  
 **Date (UTC):** 2026-07-24  
 **Amendment:** Constitutional Execution Gates V1 (2026-07-24)  
-**Status:** Gate 1 OPEN (deployed); **Gate 2 + 2A–2D IN_PROGRESS** (Domain Dedup) — Gates 3–7 LOCKED  
+**Status:** Gate 1 OPEN (deployed); **Gate 2 + 2A–2D DEPLOYED — CEO_REVIEW** (`33cf3f8`) — Gates 3–7 LOCKED  
 
 
 
