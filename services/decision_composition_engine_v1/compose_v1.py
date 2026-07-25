@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Canonical Decision Composition pipeline (Gate 2B–2F).
+Canonical Decision Composition pipeline (Gate 2B–2X).
 
-Operational Truth → Business Domains → Business Meaning
-→ Store Executive Understanding → Business Impact
-→ Candidate Decisions → Deduplication → Priority
-→ Decision Portfolio → Home / Decision Workspace
+Operational Reality → Observation → Business Understanding
+→ Merchant Understanding → Executive Summary → Decision Workspace
+
+(Composition internals: Domains → Meaning → Store Executive → Impact
+→ Portfolio, then Gate 2X Merchant Understanding publication gate.)
 """
 from __future__ import annotations
 
@@ -19,6 +20,11 @@ from services.decision_composition_engine_v1.business_domains_v1 import (
 from services.decision_composition_engine_v1.business_impact_v1 import (
     BUSINESS_IMPACT_VERSION_V1,
     attach_business_impact_v1,
+)
+from services.decision_composition_engine_v1.merchant_understanding_v1 import (
+    MERCHANT_UNDERSTANDING_VERSION_V1,
+    apply_merchant_understanding_package_v1,
+    apply_merchant_understanding_to_decisions_v1,
 )
 from services.decision_composition_engine_v1.store_executive_understanding_v1 import (
     STORE_EXECUTIVE_VERSION_V1,
@@ -171,13 +177,23 @@ def _compose_uncached_v1(
     exec_pkg = compose_store_executive_understanding_v1(
         domains_pkg, decisions=portfolio
     )
+    # Gate 2X — Merchant Understanding publication gate (store > CartFlow).
+    t_mu = time.perf_counter()
+    mu_pkg = apply_merchant_understanding_package_v1(
+        domains_pkg=domains_pkg,
+        store_executive_pkg=exec_pkg,
+        decisions=portfolio,
+    )
+    portfolio = list(mu_pkg.get("decisions") or portfolio)
+    published, _suppressed_pub = apply_merchant_understanding_to_decisions_v1(published)
+    home_teasers = dict(mu_pkg.get("home_teasers") or exec_pkg.get("home_teasers") or {})
+    timing["merchant_understanding_ms"] = round((time.perf_counter() - t_mu) * 1000.0, 2)
     timing["store_executive_ms"] = round((time.perf_counter() - t) * 1000.0, 2)
     timing["portfolio_ms"] = timing["store_executive_ms"]
     timing["total_ms"] = round((time.perf_counter() - t0) * 1000.0, 2)
 
     needs = [d for d in portfolio if d.get("priority_band") == BAND_NEEDS_ACTION]
     monitor = [d for d in portfolio if d.get("priority_band") != BAND_NEEDS_ACTION]
-    home_teasers = dict(exec_pkg.get("home_teasers") or {})
 
     return {
         "ok": True,
@@ -186,11 +202,13 @@ def _compose_uncached_v1(
         "domain_composition_version": DOMAIN_COMPOSITION_VERSION_V1,
         "business_impact_version": BUSINESS_IMPACT_VERSION_V1,
         "store_executive_version": STORE_EXECUTIVE_VERSION_V1,
+        "merchant_understanding_version": MERCHANT_UNDERSTANDING_VERSION_V1,
         "gate_2c_decision_portfolio": True,
         "gate_2d_business_domains": True,
         "gate_2d_decision_dedupe": True,
         "gate_2e_executive_business": True,
         "gate_2f_store_executive": True,
+        "gate_2x_merchant_understanding": True,
         "business_domains_v1": {
             "domains": domains_pkg.get("domains"),
             "home_teasers": home_teasers,
@@ -198,6 +216,8 @@ def _compose_uncached_v1(
             "root_causes": domains_pkg.get("root_causes"),
         },
         "store_executive_understanding_v1": exec_pkg,
+        "business_understanding_v1": mu_pkg.get("business_understanding_v1"),
+        "merchant_understanding_v1": mu_pkg.get("merchant_understanding_v1"),
         "decisions": portfolio,
         "all_published": published,
         "needs_action_now": needs,

@@ -60,11 +60,13 @@ class HomeExecutiveCompositionV1Tests(unittest.TestCase):
         carts = next(s for s in hes["sections"] if s["id"] == "carts")
         comm = next(s for s in hes["sections"] if s["id"] == "communication")
         health = next(s for s in hes["sections"] if s["id"] == "health")
-        # Gate 2F — merchant-centric operational summaries (not system queues).
+        # Gate 2X — store understanding (not queue-count reports).
         self.assertTrue(
-            "قيد المتابعة مع العملاء" in carts["summary_ar"]
+            "سلال العملاء" in carts["summary_ar"]
+            or "قيد المتابعة مع العملاء" in carts["summary_ar"]
             or "مقيدة حالياً" in carts["summary_ar"]
         )
+        self.assertFalse(str(carts["summary_ar"])[:1].isdigit())
         self.assertTrue(
             "تواصل العملاء" in comm["summary_ar"]
             or "متابعة العملاء" in comm["summary_ar"]
