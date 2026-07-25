@@ -1,6 +1,20 @@
 # CEO Visual Review — Gate 2E (Gate 2 Closure Candidate)
 
+**Production SHA:** `a958bb4`  
+**PR:** [#95](https://github.com/majed3366/cartflow/pull/95)  
+**Probe:** `after_verification.json` · `ok: true`
+
 **URLs:** https://smartreplyai.net/dashboard#home · `#workspace` · `#carts` · `#communication`
+
+## Measured (production)
+
+| Check | Result |
+|-------|--------|
+| Home | **188 ms** · 5 sections · executive_lang · health ≠ decision |
+| Today's Decision | «راجع مسار الاسترجاع.» (not counter phrase) |
+| Store Health | «أداء الاسترجاع انخفض اليوم.» |
+| Workspace | `gate_2e` · landscape 9 · business meaning · exec subtitle |
+| Cache | hit |
 
 ## 30-second Home test
 
@@ -13,13 +27,6 @@ Without opening details, can you answer:
 5. Is communication operating normally?
 
 If any answer is unclear → **CHANGES REQUIRED**.
-
-## Confirm
-
-- Store Health speaks business condition (not “43 carts without phone”).  
-- Today's Decisions is a business action title (e.g. «راجع مسار الاسترجاع.»).  
-- Workspace ranks by business impact domains.  
-- No Product Intelligence.
 
 ## Closure
 

@@ -60,6 +60,8 @@ Domain rank: Revenue → Products → Pricing → Shipping → Customer Behaviou
 | Workspace executive decision centre | **DONE** |
 | Carts/Comms ops/facts only | **DONE** |
 | No counter-as-decision | **DONE** |
-| Production + CEO visual | **PENDING / OPEN** |
+| Production deploy (`a958bb4` / PR #95) | **DONE** |
+| Production probe + Desktop/Mobile shots | **DONE** |
+| CEO visual | **OPEN** — awaiting **APPROVED — CLOSE Gate 2** |
 
-**STOP — deploy + CEO visual. Do not begin Gate 3.**
+**STOP — CEO visual. Do not begin Gate 3 or Product Intelligence.**
