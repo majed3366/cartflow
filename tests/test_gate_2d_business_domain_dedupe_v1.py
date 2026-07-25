@@ -38,8 +38,10 @@ class BusinessDomainNormalizationTests(unittest.TestCase):
         self.assertFalse(pkg["domains"]["operations"]["has_attention"])
         # Store health does not restate no-phone decision language.
         health_ar = pkg["home_teasers"]["store_health_ar"]
-        self.assertIn("قرارات اليوم", health_ar)
+        # Gate 2E — business condition; never restates the recovery decision text.
+        self.assertIn("الاسترجاع", health_ar)
         self.assertNotIn("بلا رقم تواصل", health_ar)
+        self.assertNotEqual(health_ar, "راجع مسار الاسترجاع.")
 
     def test_shipping_and_pricing_domain_mapping(self) -> None:
         from services.decision_composition_engine_v1.business_domains_v1 import (

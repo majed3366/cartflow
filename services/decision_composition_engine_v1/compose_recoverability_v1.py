@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Compose Recoverability Gap decisions from operational truth (not raw counters)."""
+"""Compose Recoverability Gap as a business decision (not a counter report)."""
 from __future__ import annotations
 
 from typing import Any, Mapping
@@ -48,24 +48,25 @@ def compose_recoverability_gap_v1(
             SUPPRESS_NORMAL_STATE,
         )
 
-    decision = "حسّن قدرة المتجر على جمع أرقام العملاء القابلين للاسترجاع."
+    # Gate 2E — executive decision language (never "N carts without phone").
+    decision = "راجع مسار الاسترجاع."
     why = (
-        f"{n} سلة نشطة لا يمكن بدء استرجاعها لأن رقم العميل غير متوفر، "
-        "فيتوقف مسار التواصل قبل أن يبدأ."
+        "فرص استعادة المبيعات المعلّقة تضيع عندما يتعذّر بدء المتابعة "
+        "بسبب غياب وسيلة تواصل صالحة مع العميل."
     )
     why_now = (
-        f"كل يوم تبقى فيه هذه السلال بلا رقم يقلل فرصة استعادتها — "
-        f"يوجد الآن {n} سلة محظورة عن المتابعة."
+        "كل يوم دون معالجة هذا العائق يقلل فرصة استعادة الإيراد من السلال المعلّقة."
     )
     evidence = (
-        f"{n} سلة نشطة بلا رقم تواصل صالح وفق حالة السلال المعتمدة للمتجر."
+        "حالة السلال المعتمدة تشير إلى سلال نشطة خارج مسار المتابعة "
+        "بسبب غياب رقم تواصل صالح."
     )
     ignore = (
-        "إذا تُركت كما هي، ستظل هذه السلال خارج مسار الاسترجاع ولن تصلها رسائل متابعة."
+        "إذا تُركت كما هي، ستستمر فرص الاسترجاع في الضياع ولن تصل رسائل المتابعة."
     )
-    action = "راجع كيف يُجمع رقم العميل قبل مغادرة المتجر، ثم عالج السلال المتأثرة."
-    first = "افتح سلال بلا رقم تواصل وحدد أين ينقطع التقاط الرقم في مسار الشراء."
-    outcome = "زيادة عدد السلال القابلة للدخول في مسار الاسترجاع."
+    action = "راجع كيف يُجمع رقم العميل قبل مغادرة المتجر، ثم عالج الحالات المتأثرة."
+    first = "افتح حالات بلا تواصل وحدد أين ينقطع التقاط الرقم في مسار الشراء."
+    outcome = "زيادة فرص استعادة المبيعات عبر مسار الاسترجاع."
 
     cand = new_candidate(
         decision_id="dce:recoverability_gap",
@@ -86,6 +87,7 @@ def compose_recoverability_gap_v1(
         confidence="high",
         source_truth_types=["merchant_store_cart_counts", "operational_truth"],
         affected_count=n,
+        business_domain="recovery",
         view_details_href="#carts?tab=nophone",
     )
     score, band, factors = calculate_priority_v1(

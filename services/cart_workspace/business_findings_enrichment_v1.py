@@ -274,10 +274,12 @@ def _enrich_via_composition_engine_v1(
     projection["gate_2c_decision_portfolio"] = True
     projection["gate_2d_business_domains"] = True
     projection["gate_2d_decision_dedupe"] = True
+    projection["gate_2e_executive_business"] = True
     projection["decisions_only"] = True
     projection["decision_composition_v1"] = {
         "version": pkg.get("composition_version"),
         "domain_composition_version": pkg.get("domain_composition_version"),
+        "business_impact_version": pkg.get("business_impact_version"),
         "counts": pkg.get("counts"),
         "suppression_registry": pkg.get("suppression_registry"),
         "no_decision_supported": pkg.get("no_decision_supported"),

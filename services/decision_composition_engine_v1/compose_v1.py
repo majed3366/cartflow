@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Canonical Decision Composition pipeline (Gate 2B/2C/2D).
+Canonical Decision Composition pipeline (Gate 2B–2E).
 
-Operational Truth → Business Domains → Candidate Decisions
-→ Decision Deduplication → Priority → Contract Validation
-→ Category Balance → Decision Portfolio → Cart Workspace
+Operational Truth → Business Domains → Business Meaning → Business Impact
+→ Candidate Decisions → Decision Deduplication → Decision Priority
+→ Contract Validation → Decision Portfolio → Cart Workspace
 """
 from __future__ import annotations
 
@@ -14,6 +14,10 @@ from typing import Any, Mapping
 from services.decision_composition_engine_v1.business_domains_v1 import (
     DOMAIN_COMPOSITION_VERSION_V1,
     normalize_business_domains_v1,
+)
+from services.decision_composition_engine_v1.business_impact_v1 import (
+    BUSINESS_IMPACT_VERSION_V1,
+    attach_business_impact_v1,
 )
 from services.decision_composition_engine_v1.category_v1 import attach_category_v1
 from services.decision_composition_engine_v1.compose_finding_v1 import (
@@ -35,7 +39,27 @@ from services.decision_composition_engine_v1.inputs_v1 import (
     load_store_counter_inputs_v1,
 )
 from services.decision_composition_engine_v1.portfolio_v1 import build_portfolio_v1
+from services.decision_composition_engine_v1.priority_v1 import calculate_priority_v1
 from services.decision_composition_engine_v1.suppress_v1 import apply_contract_gate
+
+
+def _finalize_priority_v1(cand: dict[str, Any]) -> dict[str, Any]:
+    """Re-score after business impact stamp (Gate 2E)."""
+    out = attach_business_impact_v1(attach_category_v1(cand))
+    if out.get("suppressed"):
+        return out
+    automation = bool((out.get("priority_factors") or {}).get("automation_discount"))
+    # Prefer explicit flag if present on candidate
+    auto_resolve = bool(out.get("automation_can_resolve"))
+    score, band, factors = calculate_priority_v1(
+        out,
+        affected_count=int(out.get("affected_count") or 0),
+        automation_can_resolve=auto_resolve or automation,
+    )
+    out["priority"] = score
+    out["priority_band"] = band
+    out["priority_factors"] = factors
+    return out
 
 
 def _compose_uncached_v1(
@@ -69,7 +93,6 @@ def _compose_uncached_v1(
         timing["findings_ms"] = round((time.perf_counter() - t) * 1000.0, 2)
         timing["findings_source"] = "db"
 
-    # Gate 2D — normalize into business domains before composing decisions.
     t = time.perf_counter()
     domains_pkg = normalize_business_domains_v1(ctr, finds, store_slug=slug)
     timing["domains_ms"] = round((time.perf_counter() - t) * 1000.0, 2)
@@ -77,14 +100,13 @@ def _compose_uncached_v1(
     t = time.perf_counter()
     candidates: list[dict[str, Any]] = []
 
-    # Compose only when domain signals warrant a candidate (not raw counters).
     recovery_signals = (
         (domains_pkg.get("domains") or {}).get("recovery") or {}
     ).get("signals") or []
     if any(s.get("kind") == "recoverability_gap" for s in recovery_signals):
         rec = compose_recoverability_gap_v1(ctr)
         if rec:
-            candidates.append(attach_category_v1(rec))
+            candidates.append(rec)
 
     ops_signals = (
         (domains_pkg.get("domains") or {}).get("operations") or {}
@@ -92,14 +114,16 @@ def _compose_uncached_v1(
     if any(s.get("kind") == "waiting_recovery_work" for s in ops_signals):
         wait = compose_waiting_recovery_v1(ctr)
         if wait:
-            candidates.append(attach_category_v1(wait))
+            candidates.append(wait)
 
     for contract in finds:
         composed = compose_from_finding_contract_v1(contract, store_slug=slug)
         if composed:
-            candidates.append(attach_category_v1(composed))
+            candidates.append(composed)
 
-    timing["compose_candidates_ms"] = round((time.perf_counter() - t) * 1000.0, 2)
+    # Gate 2E — Business Meaning / Impact before dedupe + final priority.
+    candidates = [_finalize_priority_v1(c) for c in candidates]
+    timing["compose_impact_ms"] = round((time.perf_counter() - t) * 1000.0, 2)
 
     t = time.perf_counter()
     survivors, registry = dedupe_candidates_v1(candidates, domain_pkg=domains_pkg)
@@ -123,6 +147,7 @@ def _compose_uncached_v1(
     published.sort(
         key=lambda d: (
             0 if d.get("priority_band") == BAND_NEEDS_ACTION else 1,
+            int(d.get("business_impact_rank") or 99),
             -int(d.get("priority") or 0),
             str(d.get("decision_id") or ""),
         )
@@ -143,9 +168,11 @@ def _compose_uncached_v1(
         "store_slug": slug,
         "composition_version": COMPOSITION_VERSION_V1,
         "domain_composition_version": DOMAIN_COMPOSITION_VERSION_V1,
+        "business_impact_version": BUSINESS_IMPACT_VERSION_V1,
         "gate_2c_decision_portfolio": True,
         "gate_2d_business_domains": True,
         "gate_2d_decision_dedupe": True,
+        "gate_2e_executive_business": True,
         "business_domains_v1": {
             "domains": domains_pkg.get("domains"),
             "home_teasers": domains_pkg.get("home_teasers"),
@@ -188,9 +215,7 @@ def compose_decisions_v1(
     use_cache: bool = True,
     allow_sync_miss: bool = True,
 ) -> dict[str, Any]:
-    """
-    Sole composition entry. When use_cache=True, serves snapshot first.
-    """
+    """Sole composition entry. When use_cache=True, serves snapshot first."""
     slug = str(store_slug or "").strip()
 
     def _run() -> dict[str, Any]:
@@ -205,12 +230,10 @@ def compose_decisions_v1(
         get_or_compose_package_v1,
     )
 
-    # Fresh snapshot wins — never re-compose on every Home paint.
     cached = cache_get(slug)
     if cached is not None and not (cached.get("_cache") or {}).get("stale"):
         return cached
 
-    # Stale or miss: prefer payload counters (no AbandonedCart scan).
     if counters is not None and isinstance(counters, Mapping) and counters.get("available"):
 
         def _run_payload() -> dict[str, Any]:

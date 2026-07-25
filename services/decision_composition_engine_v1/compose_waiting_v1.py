@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Compose Waiting Recovery Work — only when merchant intervention is required."""
+"""Compose Waiting Recovery Work as a business intervention decision."""
 from __future__ import annotations
 
 from typing import Any, Mapping
@@ -25,10 +25,9 @@ def compose_waiting_recovery_v1(
     counters: Mapping[str, Any],
 ) -> dict[str, Any] | None:
     """
-    Waiting carts often mean CartFlow is correctly automating.
+    Waiting often means automation is working.
 
-    Publish only when waiting volume exceeds no-phone blockers and engaged
-    attention suggests human work — otherwise suppress as normal automation.
+    Publish only when merchant intervention is required for business completion.
     """
     slug = str(counters.get("store_slug") or "").strip()
     waiting = _as_int(counters.get("waiting_total"))
@@ -46,7 +45,6 @@ def compose_waiting_recovery_v1(
             SUPPRESS_INSUFFICIENT_EVIDENCE,
         )
 
-    # Pure wait with no engagement / no excess over no-phone → automation OK.
     merchant_needed = engaged > 0 or (waiting > no_phone and waiting >= 5)
     if waiting <= 0 or not merchant_needed:
         return mark_suppressed(
@@ -56,7 +54,6 @@ def compose_waiting_recovery_v1(
                 decision_type=DECISION_TYPE_WAITING_RECOVERY,
                 title="Waiting recovery",
                 source_truth_types=["merchant_store_cart_counts"],
-                evidence_summary=f"waiting={waiting}; engaged={engaged}",
             ),
             SUPPRESS_NORMAL_STATE,
         )
@@ -65,29 +62,26 @@ def compose_waiting_recovery_v1(
     if engaged > 0:
         actionable = max(actionable, engaged)
 
-    decision = "راجع الحالات التي تحتاج تدخلك في مسار الاسترجاع."
+    decision = "راجع حالات الاسترجاع التي تحتاج تدخلك."
     why = (
-        f"يوجد {waiting} سلة في حالة انتظار، منها حالات تتطلب متابعة التاجر "
-        f"(انتباه/تدخل: {engaged})."
+        "مسار الاسترجاع فيه حالات تحتاج تدخلاً بشرياً لإبقاء فرصة إتمام الشراء مفتوحة."
     )
     why_now = (
-        "التأخير في الحالات التي تحتاج تدخلاً بشرياً يقلل فرصة إتمام الشراء."
+        "التأخير في التدخل البشري يقلل فرصة تحويل الاهتمام الحالي إلى شراء."
     )
-    # Business evidence language — no raw counter / DB field names (Gate 2D).
     if engaged > 0:
         evidence = (
-            f"مسار الاسترجاع فيه حالات تحتاج تدخلاً بشرياً "
-            f"(انتباه قائم: {engaged}؛ انتظار: {waiting})."
+            "حالات استرجاع قائمة تحتاج انتباه التاجر لإكمال المتابعة التجارية."
         )
     else:
         evidence = (
-            f"حجم الانتظار ({waiting}) يتجاوز حالات بلا رقم ({no_phone}) "
-            "ويشير إلى عمل استرجاع يحتاج مراجعة التاجر."
+            "حجم العمل في مسار الاسترجاع يشير إلى حالات تحتاج مراجعة التاجر "
+            "وليست مجرد انتظار آلي."
         )
-    ignore = "قد تبقى محادثات أو حالات تحتاج قرارك دون تقدم واضح."
-    action = "افتح السلال ذات الانتباه وحدد الخطوة التالية لكل حالة."
-    first = "ابدأ بسلال الانتباه (رد/تدخل) ثم راجع ما تبقّى من الانتظار."
-    outcome = "تقليل الحالات العالقة التي تحتاج تدخلاً بشرياً."
+    ignore = "قد تبقى فرص إتمام الشراء دون تقدم واضح."
+    action = "افتح الحالات ذات الانتباه وحدد الخطوة التالية لكل حالة."
+    first = "ابدأ بحالات الانتباه (رد/تدخل) ثم راجع ما تبقّى."
+    outcome = "تقليل الفرص العالقة وزيادة إتمام الشراء."
 
     automation = engaged == 0
     cand = new_candidate(
@@ -112,6 +106,7 @@ def compose_waiting_recovery_v1(
         confidence="medium" if engaged == 0 else "high",
         source_truth_types=["merchant_store_cart_counts", "operational_truth"],
         affected_count=actionable,
+        business_domain="operations",
         view_details_href="#carts",
     )
     score, band, factors = calculate_priority_v1(
