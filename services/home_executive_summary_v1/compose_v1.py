@@ -10,6 +10,10 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
+from services.home_executive_summary_v1.editorial_exclusivity_v1 import (
+    apply_editorial_exclusivity_v1,
+    editorial_brief_audit_v1,
+)
 from services.home_executive_summary_v1.flag_v1 import home_executive_summary_v1_enabled
 from services.home_executive_summary_v1.slim_transport_v1 import (
     extract_home_teaser_inputs_v1,
@@ -49,7 +53,9 @@ GOVERNANCE_V1 = {
     "executive_business_language": True,
     "store_executive_thinking": True,
     "merchant_understanding": True,
-    "page_question": "What should I know about my business right now?",
+    "page_question": "What is happening in my business today?",
+    "executive_editorial_exclusivity": True,
+    "morning_brief": True,
 }
 
 # Card → owning constitutional page (View Details).
@@ -84,8 +90,10 @@ def _observation_section(summary: Mapping[str, Any]) -> dict[str, Any]:
     obs = t.get("observations") if isinstance(t.get("observations"), Mapping) else {}
     count = _as_int(obs.get("count"))
     top = obs.get("top") if isinstance(obs.get("top"), Mapping) else None
-    from_themes = str(top.get("source") or "") == "business_themes_v1" if top else False
-    section_title = "مواضيع المتجر"
+    source = str(top.get("source") or "") if top else ""
+    from_facts = source == "business_facts_v1"
+    # Product Observations (constitution) — not Theme gallery.
+    section_title = "ملاحظات المنتجات"
     if count <= 0 or not top:
         return {
             "id": "observations",
@@ -99,20 +107,15 @@ def _observation_section(summary: Mapping[str, Any]) -> dict[str, Any]:
             "empty_state_ar": OBS_EMPTY_AR,
             "findings_preview": [],
             "owner_page": "decision_workspace",
-            "built_from": "business_themes_v1",
+            "built_from": "business_facts_v1",
         }
     name = str(top.get("product_name_ar") or top.get("title_ar") or "").strip()
     statement = str(top.get("statement_ar") or "").strip()
-    theme_title = str(top.get("title_ar") or "").strip()
-    # Themes: executive summary only (no fact laundry list / no recommendations).
-    if from_themes and statement:
-        summary_ar = statement
-    elif name and statement and name not in statement:
+    # Executive introduce only — no recommendations / fact laundry list.
+    if name and statement and name not in statement:
         summary_ar = f"المنتج {name}: {statement}"
     elif statement:
         summary_ar = statement
-    elif theme_title:
-        summary_ar = theme_title
     elif name:
         summary_ar = f"المنتج {name} يستحق الانتباه."
     else:
@@ -129,7 +132,7 @@ def _observation_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         "empty_state_ar": "",
         "findings_preview": [],
         "owner_page": "decision_workspace",
-        "built_from": "business_themes_v1" if from_themes else "business_facts_v1",
+        "built_from": "business_facts_v1" if from_facts or not source else source,
     }
 
 
@@ -366,13 +369,19 @@ def build_home_executive_summary_v1(
             "governance": dict(GOVERNANCE_V1),
         }
     src = summary if isinstance(summary, Mapping) else {}
-    sections = [
+    raw_sections = [
         _health_section(src),
         _decisions_section(src),
         _observation_section(src),
         _carts_section(src),
         _communication_section(src),
     ]
+    sections = apply_editorial_exclusivity_v1(raw_sections)
+    suppressions = []
+    if sections and isinstance(sections[0], dict):
+        suppressions = list(sections[0].pop("_editorial_suppressions", []) or [])
+    audit = editorial_brief_audit_v1(sections)
+    audit["suppressions"] = suppressions
     return {
         "ok": True,
         "enabled": True,
@@ -383,6 +392,7 @@ def build_home_executive_summary_v1(
         "ownership": dict(OWNERSHIP_V1),
         "section_ownership_href": dict(SECTION_OWNERSHIP_HREF_V1),
         "governance": dict(GOVERNANCE_V1),
+        "editorial_brief": audit,
         "sections": sections,
         "product_intelligence": False,
         "slim_transport": home_slim_transport_v1_enabled(environ=environ),

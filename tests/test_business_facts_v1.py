@@ -179,7 +179,9 @@ class HomeIntegrationTests(unittest.TestCase):
             }
         )
         obs = next(s for s in hes["sections"] if s["id"] == "observations")
-        self.assertIn(obs["title_ar"], {"حقائق المنتجات", "مواضيع المتجر"})
+        self.assertIn(
+            obs["title_ar"], {"حقائق المنتجات", "مواضيع المتجر", "ملاحظات المنتجات"}
+        )
         self.assertIn(obs.get("built_from"), {"business_facts_v1", "business_themes_v1"})
         self.assertIn("اهتمام", obs["summary_ar"])
         self.assertNotIn("waiting_total", obs["summary_ar"])
