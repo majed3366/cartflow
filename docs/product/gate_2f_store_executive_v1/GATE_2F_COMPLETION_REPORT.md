@@ -79,8 +79,8 @@ Feeling required: **«I understand my business.»** — not «I understand what 
 | Merchant-centric Home / Workspace copy | **DONE** |
 | Constitutional text filter | **DONE** |
 | Tests (`test_gate_2f_store_executive_v1` + Gate 2 suite) | **DONE** |
-| Production deploy | **PENDING** |
-| Production probe + Desktop/Mobile shots | **PENDING** |
+| Production deploy | **DONE** — `1fd5625` / PR [#97](https://github.com/majed3366/cartflow/pull/97) |
+| Production probe + Desktop/Mobile shots | **DONE** — Home **150 ms**; `ok: true` |
 | CEO visual | **OPEN** — awaiting **APPROVED — CLOSE Gate 2** |
 
 **STOP — CEO visual. Do not begin Gate 3 or Product Intelligence.**

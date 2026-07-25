@@ -1,21 +1,25 @@
 # CEO Visual Review — Gate 2F (Gate 2 Closure Candidate)
 
-**Production SHA:** _(fill after deploy)_  
-**PR:** _(fill after merge)_  
-**Probe:** `after_verification.json`
+**Production SHA:** `1fd5625`  
+**PR:** [#97](https://github.com/majed3366/cartflow/pull/97)  
+**Probe:** `after_verification.json` · `ok: true` · Home **150 ms**
 
 **URLs:** https://smartreplyai.net/dashboard#home · `#workspace` · `#carts` · `#communication`
 
-## What changed (2F vs 2E)
+## Measured (production)
 
-CartFlow must feel like the **executive assistant of a merchant**, not a recovery system reporter.
+| Check | Result |
+|-------|--------|
+| Home | **150 ms** · 5 sections · `store_executive` · health ≠ decision |
+| Store Health | «فرص استعادة المبيعات محدودة اليوم.» |
+| Today's Decision | «راجع تجربة إتمام الشراء ومتابعة العملاء.» |
+| Observations | «لا يوجد منتج حالياً بأدلة كافية لملاحظة تجارية.» |
+| Carts | «متابعة بعض العملاء مقيدة حالياً.» |
+| Communication | «تواصل العملاء يسير بشكل طبيعي.» |
+| Workspace | `gate_2f` · landscape 9 · subtitle «مساعد تنفيذي للمتجر…» · cache hit |
+| System-centric | **false** (no scheduler / counters-as-conclusion / bare بلا رقم) |
 
-| Surface | Prefer | Avoid |
-|---------|--------|-------|
-| Store Health | فرص استعادة المبيعات محدودة اليوم / نشاط المتجر مستقر | أداء الاسترجاع انخفض / scheduler / module health |
-| Today's Decisions | راجع تجربة إتمام الشراء ومتابعة العملاء | راجع مسار الاسترجاع (system path) / counter phrases |
-| Observations | أدلة كافية لملاحظة تجارية… | generic product talk / invented products |
-| Carts / Comms | customer progress language | queue waiting / missing phone as conclusion |
+Screenshots: `after_desktop_home.png` · `after_desktop_workspace.png` · `after_mobile_home.png` · `after_mobile_workspace.png`
 
 ## 30-second Home test
 
