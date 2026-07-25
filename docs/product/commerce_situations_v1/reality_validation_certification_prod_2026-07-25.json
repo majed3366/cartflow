@@ -1,0 +1,42 @@
+{
+  "verdict": "CERTIFIED",
+  "schema": "reality_validation_identity_certification_v1",
+  "host": "https://smartreplyai.net",
+  "composed_at_utc": "2026-07-25T21:57:19.301801+00:00",
+  "status": "CONSISTENT",
+  "CEO_REVIEW_SAFE": true,
+  "store_slug": "demo",
+  "merchant_id": "429",
+  "simulation_run_id": "srs_572fcb62fffc4955b0e7ae8fbe552642",
+  "environment": "production",
+  "database_environment": "production:postgresql",
+  "living_store_profile": "living_store",
+  "last_simulation_timestamp": "2026-07-25T21:40:48.858044+00:00",
+  "observations": 4,
+  "facts": 6,
+  "situations": 5,
+  "situation_ids": [
+    "cs:interest_without_purchase|DEMO-WATCH-BAND:demo",
+    "cs:shipping_friction|b|demo_earbuds|demo-earbuds:demo",
+    "cs:product_demand|b|demo_perfume_velvet|demo-perfume-velvet:demo",
+    "cs:communication_coverage|store:demo",
+    "cs:store_health|store:demo"
+  ],
+  "workspace_projection_after_pr112": {
+    "http": 200,
+    "ok": true,
+    "store_slug": "demo",
+    "degraded": false,
+    "load_error_ui": false
+  },
+  "prs": [
+    "https://github.com/majed3366/cartflow/pull/111",
+    "https://github.com/majed3366/cartflow/pull/112"
+  ],
+  "first_divergence_resolved": {
+    "component": "services/cart_workspace/merchant_api_v1._auth_slug",
+    "expected": "demo",
+    "actual": "unauthorized (HTTP 401)",
+    "fix_pr": 112
+  }
+}
