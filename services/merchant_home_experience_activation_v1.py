@@ -358,6 +358,16 @@ def finalize_dashboard_summary_payload(
             if _slug:
                 with dashboard_summary_profile_span("home_stage_orv_admit"):
                     attach_observation_reality_validation_to_summary_v1(body, _slug)
+                # Business Facts Extraction V1 — observations → merchant business truths.
+                try:
+                    from services.business_facts_v1 import (  # noqa: PLC0415
+                        attach_business_facts_to_summary_v1,
+                    )
+
+                    with dashboard_summary_profile_span("home_stage_business_facts"):
+                        attach_business_facts_to_summary_v1(body, _slug)
+                except Exception as bf_exc:  # noqa: BLE001
+                    log.warning("business_facts_v1 slim attach: %s", bf_exc)
         except Exception as exc:  # noqa: BLE001
             log.warning("observation_admission slim attach: %s", exc)
         with dashboard_summary_profile_span("home_stage_teaser_extract"):
@@ -413,6 +423,15 @@ def finalize_dashboard_summary_payload(
         _slug = str(_home.get("store_slug") or "").strip() or store_slug
         with dashboard_summary_profile_span("home_stage_orv_attach"):
             attach_observation_reality_validation_to_summary_v1(body, _slug)
+        try:
+            from services.business_facts_v1 import (  # noqa: PLC0415
+                attach_business_facts_to_summary_v1,
+            )
+
+            with dashboard_summary_profile_span("home_stage_business_facts"):
+                attach_business_facts_to_summary_v1(body, _slug)
+        except Exception as bf_exc:  # noqa: BLE001
+            log.warning("business_facts_v1 attach: %s", bf_exc)
     except Exception as exc:  # noqa: BLE001
         log.warning("observation_reality_validation_v1 attach: %s", exc)
     try:

@@ -1063,6 +1063,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/time-authority",
         "/dev/business-findings-lifecycle",
         "/dev/observation-reality-validation",
+        "/dev/business-facts",
         "/dev/living-store-reality-run",
         "/dev/living-store-reality-status",
         "/dev/living-store-home-review-session",
@@ -12291,6 +12292,49 @@ def dev_observation_reality_validation(
         ),
     }
     return j(report, 200)
+
+
+@app.get("/dev/business-facts")
+def dev_business_facts(
+    store: Optional[str] = None,
+    store_slug: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Business Facts Extraction V1.
+
+    Observations → merchant-readable business truths. No PI / recommendations.
+    Default store=demo.
+    """
+    from services.business_facts_v1 import (  # noqa: PLC0415
+        build_business_facts_package_v1,
+    )
+    from services.observation_foundation_v1.merchant_findings_v1 import (  # noqa: PLC0415
+        build_observation_reality_validation_v1,
+    )
+
+    slug = (store or store_slug or "demo").strip() or "demo"
+    orv = build_observation_reality_validation_v1(slug)
+    pkg = build_business_facts_package_v1(slug, orv_package=orv)
+    facts = list(pkg.get("facts") or [])
+    return j(
+        {
+            "ok": bool(pkg.get("ok")),
+            "enabled": bool(pkg.get("enabled")),
+            "store_slug": slug,
+            "facts_count": len(facts),
+            "counts": pkg.get("counts"),
+            "fact_types": sorted(
+                {str(f.get("fact_type") or "") for f in facts if isinstance(f, dict)}
+            ),
+            "meanings_ar": [
+                f.get("business_meaning_ar") for f in facts if isinstance(f, dict)
+            ],
+            "routing": pkg.get("routing"),
+            "recommendation": None,
+            "product_intelligence": False,
+        },
+        200,
+    )
 
 
 @app.post("/dev/living-store-reality-run")

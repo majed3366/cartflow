@@ -87,7 +87,7 @@ def _observation_section(summary: Mapping[str, Any]) -> dict[str, Any]:
     if count <= 0 or not top:
         return {
             "id": "observations",
-            "title_ar": "ملاحظات المنتجات",
+            "title_ar": "حقائق المنتجات",
             "summary_ar": OBS_EMPTY_AR,
             "status_ar": "أدلة غير كافية",
             "count": 0,
@@ -97,19 +97,22 @@ def _observation_section(summary: Mapping[str, Any]) -> dict[str, Any]:
             "empty_state_ar": OBS_EMPTY_AR,
             "findings_preview": [],
             "owner_page": "decision_workspace",
+            "built_from": "business_facts_v1",
         }
     name = str(top.get("product_name_ar") or "").strip()
     statement = str(top.get("statement_ar") or "").strip()
-    # Merchant-oriented observation line — statement only (no action/confidence).
-    if name and statement:
+    # Business Facts — merchant meaning (no action / confidence on Home).
+    if name and statement and name not in statement:
         summary_ar = f"المنتج {name}: {statement}"
-    elif name:
-        summary_ar = f"المنتج {name} يحتاج متابعة."
-    else:
+    elif statement:
         summary_ar = statement
+    elif name:
+        summary_ar = f"المنتج {name} يستحق الانتباه."
+    else:
+        summary_ar = OBS_EMPTY_AR
     return {
         "id": "observations",
-        "title_ar": "ملاحظات المنتجات",
+        "title_ar": "حقائق المنتجات",
         "summary_ar": summary_ar,
         "status_ar": "يتطلب انتباهاً",
         "count": count,
@@ -119,6 +122,7 @@ def _observation_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         "empty_state_ar": "",
         "findings_preview": [],
         "owner_page": "decision_workspace",
+        "built_from": "business_facts_v1",
     }
 
 

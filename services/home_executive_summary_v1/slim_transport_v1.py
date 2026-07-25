@@ -199,29 +199,49 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
 
     obs_count = 0
     obs_top: dict[str, str] | None = None
-    orv = src.get("observation_reality_validation_v1")
-    if isinstance(orv, Mapping):
-        findings = [f for f in list(orv.get("findings") or []) if isinstance(f, Mapping)]
-        named = [
-            f
-            for f in findings
-            if str(f.get("product_name_ar") or "").strip()
-            and (
-                str(f.get("home_teaser_ar") or "").strip()
-                or str(f.get("statement_ar") or "").strip()
-            )
-        ]
-        obs_count = len(named)
-        if named:
-            top_f = named[0]
-            # Prefer short Home teaser; never ship technical types / full evidence.
-            statement = str(
-                top_f.get("statement_ar") or top_f.get("home_teaser_ar") or ""
-            ).strip()
+    # Prefer Business Facts (merchant truths) over raw observation framing.
+    try:
+        from services.business_facts_v1.attach_v1 import (  # noqa: PLC0415
+            home_observation_teaser_from_facts_v1,
+        )
+
+        bf_teaser = home_observation_teaser_from_facts_v1(src)
+        if isinstance(bf_teaser, dict) and bf_teaser.get("top"):
+            obs_count = int(bf_teaser.get("count") or 0)
+            top_bf = bf_teaser.get("top") if isinstance(bf_teaser.get("top"), Mapping) else {}
             obs_top = {
-                "product_name_ar": str(top_f.get("product_name_ar") or "").strip(),
-                "statement_ar": statement,
+                "product_name_ar": str(top_bf.get("product_name_ar") or "").strip(),
+                "statement_ar": str(top_bf.get("statement_ar") or "").strip(),
+                "fact_id": str(top_bf.get("fact_id") or "").strip(),
+                "source": "business_facts_v1",
             }
+    except Exception:  # noqa: BLE001
+        bf_teaser = None
+    if obs_top is None:
+        orv = src.get("observation_reality_validation_v1")
+        if isinstance(orv, Mapping):
+            findings = [
+                f for f in list(orv.get("findings") or []) if isinstance(f, Mapping)
+            ]
+            named = [
+                f
+                for f in findings
+                if str(f.get("product_name_ar") or "").strip()
+                and (
+                    str(f.get("home_teaser_ar") or "").strip()
+                    or str(f.get("statement_ar") or "").strip()
+                )
+            ]
+            obs_count = len(named)
+            if named:
+                top_f = named[0]
+                statement = str(
+                    top_f.get("statement_ar") or top_f.get("home_teaser_ar") or ""
+                ).strip()
+                obs_top = {
+                    "product_name_ar": str(top_f.get("product_name_ar") or "").strip(),
+                    "statement_ar": statement,
+                }
 
     needs_attention = waiting > 0 or no_phone > 0 or store_ok is False
     if domain_teasers.get("store_health_attention") is True:
@@ -280,6 +300,22 @@ def strip_heavy_home_summary_payload_v1(summary: dict[str, Any]) -> dict[str, An
         return summary
     for key in HEAVY_SUMMARY_KEYS_V1:
         summary.pop(key, None)
+    # Keep a slim Business Facts stamp (teaser already extracted).
+    bf = summary.get("business_facts_v1")
+    if isinstance(bf, dict) and bf.get("ok"):
+        routing = bf.get("routing") if isinstance(bf.get("routing"), dict) else {}
+        summary["business_facts_v1"] = {
+            "ok": True,
+            "enabled": True,
+            "schema": bf.get("schema") or "business_facts_v1",
+            "store_slug": bf.get("store_slug"),
+            "counts": bf.get("counts") or {"total": 0},
+            "routing": {
+                "home_teaser": (routing or {}).get("home_teaser"),
+            },
+            "slim_transport": True,
+            "product_intelligence": False,
+        }
     home = summary.get("merchant_home_experience_v1")
     if isinstance(home, dict):
         summary["merchant_home_experience_v1"] = {
