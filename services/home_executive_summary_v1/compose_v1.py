@@ -39,7 +39,7 @@ DECISIONS_EMPTY_AR = "لا توجد أولوية قرار واضحة اليوم.
 
 GOVERNANCE_V1 = {
     "sprint": "home_stabilization_v1",
-    "gate": "gate_2f_store_executive_thinking",
+    "gate": "gate_2x_merchant_understanding",
     "single_owner": "home_executive_summary_v1",
     "single_data_source": "home_teaser_inputs_v1",
     "single_render_path": "maApplyHomeExecutiveSummaryV1",
@@ -48,6 +48,8 @@ GOVERNANCE_V1 = {
     "home_creates_decisions": False,
     "executive_business_language": True,
     "store_executive_thinking": True,
+    "merchant_understanding": True,
+    "page_question": "What should I know about my business right now?",
 }
 
 # Card → owning constitutional page (View Details).
@@ -223,17 +225,27 @@ def _carts_section(summary: Mapping[str, Any]) -> dict[str, Any]:
     )
     count = waiting
     domain_summary = str(carts.get("domain_summary_ar") or "").strip()
+    # Gate 2X — Home must explain carts as business progress, not queue size.
+    from services.decision_composition_engine_v1.merchant_understanding_v1 import (  # noqa: PLC0415
+        PREFERRED_CARTS_NEED_ATTENTION_AR,
+        PREFERRED_CARTS_STABLE_AR,
+        publish_executive_statement_v1,
+    )
 
     if domain_summary:
-        summary_ar = domain_summary
-        empty = waiting <= 0 and no_phone <= 0 and "مستقر" in domain_summary
+        summary_ar = publish_executive_statement_v1(
+            domain_summary,
+            surface="carts",
+            fallback=PREFERRED_CARTS_STABLE_AR,
+        )["text_ar"]
+        empty = waiting <= 0 and no_phone <= 0 and "مستقر" in summary_ar
         status_ar = "يتطلب متابعة" if (waiting > 0 or no_phone > 0) else ("نشط" if active > 0 else "لا مهام")
         if waiting <= 0 and no_phone > 0:
             count = no_phone
         elif waiting <= 0 and active > 0:
             count = active
     elif waiting > 0:
-        summary_ar = f"{waiting} سلة قيد المتابعة مع العملاء."
+        summary_ar = PREFERRED_CARTS_NEED_ATTENTION_AR
         status_ar = "يتطلب متابعة"
         empty = False
     elif no_phone > 0:
@@ -242,12 +254,12 @@ def _carts_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         empty = False
         count = no_phone
     elif recovered > 0:
-        summary_ar = f"{recovered} سلة اكتملت متابعتها — التقدم مستقر."
+        summary_ar = PREFERRED_CARTS_STABLE_AR
         status_ar = "مستقر"
         empty = False
         count = recovered
     elif active > 0:
-        summary_ar = "تقدّم سلال العملاء مستقر."
+        summary_ar = PREFERRED_CARTS_STABLE_AR
         status_ar = "نشط"
         empty = False
         count = active

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Gate 2B–2F — Decision Composition Engine (+ store executive understanding)."""
+"""Gate 2B–2X — Decision Composition Engine (+ Merchant Understanding)."""
 from __future__ import annotations
 
 from services.decision_composition_engine_v1.business_domains_v1 import (
@@ -7,6 +7,9 @@ from services.decision_composition_engine_v1.business_domains_v1 import (
 )
 from services.decision_composition_engine_v1.business_impact_v1 import (
     attach_business_impact_v1,
+)
+from services.decision_composition_engine_v1.merchant_understanding_v1 import (
+    compose_merchant_understanding_v1,
 )
 from services.decision_composition_engine_v1.store_executive_understanding_v1 import (
     compose_store_executive_understanding_v1,
@@ -35,6 +38,7 @@ __all__ = [
     "build_portfolio_v1",
     "cache_clear",
     "compose_decisions_v1",
+    "compose_merchant_understanding_v1",
     "compose_store_executive_understanding_v1",
     "count_composed_decisions_for_teaser_v1",
     "decision_composition_engine_v1_enabled",
