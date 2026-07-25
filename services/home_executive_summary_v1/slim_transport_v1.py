@@ -199,24 +199,50 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
 
     obs_count = 0
     obs_top: dict[str, str] | None = None
-    # Prefer Business Facts (merchant truths) over raw observation framing.
+    # Prefer Business Themes (canonical story) over isolated facts / ORV.
     try:
-        from services.business_facts_v1.attach_v1 import (  # noqa: PLC0415
-            home_observation_teaser_from_facts_v1,
+        from services.business_themes_v1.attach_v1 import (  # noqa: PLC0415
+            home_teaser_from_themes_v1,
         )
 
-        bf_teaser = home_observation_teaser_from_facts_v1(src)
-        if isinstance(bf_teaser, dict) and bf_teaser.get("top"):
-            obs_count = int(bf_teaser.get("count") or 0)
-            top_bf = bf_teaser.get("top") if isinstance(bf_teaser.get("top"), Mapping) else {}
+        bt_teaser = home_teaser_from_themes_v1(src)
+        if isinstance(bt_teaser, dict) and bt_teaser.get("top"):
+            obs_count = int(bt_teaser.get("count") or 0)
+            top_bt = bt_teaser.get("top") if isinstance(bt_teaser.get("top"), Mapping) else {}
             obs_top = {
-                "product_name_ar": str(top_bf.get("product_name_ar") or "").strip(),
-                "statement_ar": str(top_bf.get("statement_ar") or "").strip(),
-                "fact_id": str(top_bf.get("fact_id") or "").strip(),
-                "source": "business_facts_v1",
+                "product_name_ar": str(
+                    top_bt.get("product_name_ar") or top_bt.get("title_ar") or ""
+                ).strip(),
+                "statement_ar": str(top_bt.get("statement_ar") or "").strip(),
+                "theme_id": str(top_bt.get("theme_id") or "").strip(),
+                "theme_type": str(top_bt.get("theme_type") or "").strip(),
+                "title_ar": str(top_bt.get("title_ar") or "").strip(),
+                "source": "business_themes_v1",
             }
     except Exception:  # noqa: BLE001
-        bf_teaser = None
+        bt_teaser = None
+    if obs_top is None:
+        try:
+            from services.business_facts_v1.attach_v1 import (  # noqa: PLC0415
+                home_observation_teaser_from_facts_v1,
+            )
+
+            bf_teaser = home_observation_teaser_from_facts_v1(src)
+            if isinstance(bf_teaser, dict) and bf_teaser.get("top"):
+                obs_count = int(bf_teaser.get("count") or 0)
+                top_bf = (
+                    bf_teaser.get("top")
+                    if isinstance(bf_teaser.get("top"), Mapping)
+                    else {}
+                )
+                obs_top = {
+                    "product_name_ar": str(top_bf.get("product_name_ar") or "").strip(),
+                    "statement_ar": str(top_bf.get("statement_ar") or "").strip(),
+                    "fact_id": str(top_bf.get("fact_id") or "").strip(),
+                    "source": "business_facts_v1",
+                }
+        except Exception:  # noqa: BLE001
+            pass
     if obs_top is None:
         orv = src.get("observation_reality_validation_v1")
         if isinstance(orv, Mapping):
@@ -300,7 +326,7 @@ def strip_heavy_home_summary_payload_v1(summary: dict[str, Any]) -> dict[str, An
         return summary
     for key in HEAVY_SUMMARY_KEYS_V1:
         summary.pop(key, None)
-    # Keep a slim Business Facts stamp (teaser already extracted).
+    # Keep slim Facts + Themes stamps (teaser already extracted).
     bf = summary.get("business_facts_v1")
     if isinstance(bf, dict) and bf.get("ok"):
         routing = bf.get("routing") if isinstance(bf.get("routing"), dict) else {}
@@ -314,6 +340,20 @@ def strip_heavy_home_summary_payload_v1(summary: dict[str, Any]) -> dict[str, An
                 "home_teaser": (routing or {}).get("home_teaser"),
             },
             "slim_transport": True,
+            "product_intelligence": False,
+        }
+    bt = summary.get("business_themes_v1")
+    if isinstance(bt, dict) and bt.get("ok"):
+        tr = bt.get("routing") if isinstance(bt.get("routing"), dict) else {}
+        summary["business_themes_v1"] = {
+            "ok": True,
+            "enabled": True,
+            "schema": bt.get("schema") or "business_themes_v1",
+            "store_slug": bt.get("store_slug"),
+            "counts": bt.get("counts") or {},
+            "routing": {"home_teaser": (tr or {}).get("home_teaser")},
+            "slim_transport": True,
+            "constitution": bt.get("constitution"),
             "product_intelligence": False,
         }
     home = summary.get("merchant_home_experience_v1")

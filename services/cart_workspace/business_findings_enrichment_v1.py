@@ -239,7 +239,7 @@ def _enrich_via_composition_engine_v1(
     portfolio = list(pkg.get("portfolio") or pkg.get("decisions") or [])
     composed_cards = decisions_to_workspace_cards_v1(portfolio)
 
-    # Business Facts V1 — workspace evidence from facts (not raw observations).
+    # Business Themes V1 — one card per theme (not per fact / observation).
     obs_cards: list[dict[str, Any]] = []
     obs_recon: dict[str, Any] = {}
     try:
@@ -247,6 +247,11 @@ def _enrich_via_composition_engine_v1(
             build_business_facts_package_v1,
             business_facts_v1_enabled,
             workspace_cards_from_business_facts_v1,
+        )
+        from services.business_themes_v1 import (  # noqa: PLC0415
+            build_business_themes_package_v1,
+            business_themes_v1_enabled,
+            workspace_cards_from_business_themes_v1,
         )
         from services.decision_composition_engine_v1.project_workspace_v1 import (  # noqa: PLC0415
             decision_to_workspace_card_v1,
@@ -257,7 +262,71 @@ def _enrich_via_composition_engine_v1(
 
         orv = build_observation_reality_validation_v1(slug)
         obs_recon = dict(orv.get("admission_reconciliation") or {})
-        if business_facts_v1_enabled():
+        if business_themes_v1_enabled() and business_facts_v1_enabled():
+            bf_pkg = build_business_facts_package_v1(
+                slug,
+                orv_package=orv if isinstance(orv, dict) else None,
+                domains_pkg=pkg.get("business_domains_v1")
+                if isinstance(pkg, dict)
+                else None,
+                store_executive_pkg=pkg.get("store_executive_understanding_v1")
+                if isinstance(pkg, dict)
+                else None,
+            )
+            bt_pkg = build_business_themes_package_v1(slug, facts_package=bf_pkg)
+            projection["business_facts_v1"] = {
+                "ok": bool(bf_pkg.get("ok")),
+                "counts": bf_pkg.get("counts"),
+            }
+            projection["business_themes_v1"] = {
+                "ok": bool(bt_pkg.get("ok")),
+                "counts": bt_pkg.get("counts"),
+                "published": len(bt_pkg.get("published_themes") or []),
+            }
+            theme_cards = workspace_cards_from_business_themes_v1(bt_pkg)
+            card_source = theme_cards or workspace_cards_from_business_facts_v1(bf_pkg)
+            for od in card_source:
+                if not isinstance(od, dict):
+                    continue
+                is_theme = bool(od.get("gate_business_themes"))
+                card = decision_to_workspace_card_v1(
+                    {
+                        "decision_id": od.get("decision_id"),
+                        "decision_type": "business_theme"
+                        if is_theme
+                        else "business_fact",
+                        "title": od.get("title") or od.get("merchant_decision"),
+                        "merchant_decision": od.get("merchant_decision"),
+                        "why": od.get("why"),
+                        "why_now": od.get("why_now"),
+                        "evidence_summary": od.get("evidence"),
+                        "recommended_action": od.get("recommended_action") or "",
+                        "first_step": od.get("first_step") or "",
+                        "expected_outcome": od.get("business_impact_ar"),
+                        "ignore_consequence": od.get("business_impact_ar"),
+                        "confidence": od.get("confidence") or "medium",
+                        "priority": int(od.get("priority") or 55)
+                        if not is_theme
+                        else 60,
+                        "priority_band": "needs_action",
+                        "decision_category": "products",
+                        "decision_category_ar": "المنتجات",
+                        "business_domain": od.get("business_domain") or "products",
+                        "business_meaning_ar": od.get("business_meaning_ar"),
+                        "business_impact_ar": od.get("business_impact_ar"),
+                        "source_truth_types": [
+                            "business_themes_v1" if is_theme else "business_facts_v1"
+                        ],
+                        "published": True,
+                    }
+                )
+                if is_theme:
+                    card["gate_business_themes"] = True
+                else:
+                    card["gate_business_facts"] = True
+                card["product_name_ar"] = od.get("product_name_ar")
+                obs_cards.append(card)
+        elif business_facts_v1_enabled():
             bf_pkg = build_business_facts_package_v1(
                 slug,
                 orv_package=orv if isinstance(orv, dict) else None,
@@ -271,7 +340,6 @@ def _enrich_via_composition_engine_v1(
             projection["business_facts_v1"] = {
                 "ok": bool(bf_pkg.get("ok")),
                 "counts": bf_pkg.get("counts"),
-                "routing": (bf_pkg.get("routing") or {}).get("decision_workspace"),
             }
             for od in workspace_cards_from_business_facts_v1(bf_pkg):
                 if not isinstance(od, dict):
@@ -381,6 +449,7 @@ def _enrich_via_composition_engine_v1(
     projection["gate_2e_executive_business"] = True
     projection["gate_2f_store_executive"] = True
     projection["gate_business_facts_v1"] = True
+    projection["gate_business_themes_v1"] = True
     projection["observation_admission_bridge_v1"] = True
     projection["observation_admission_reconciliation"] = obs_recon
     projection["decisions_only"] = True
