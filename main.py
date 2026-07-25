@@ -1064,6 +1064,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/business-findings-lifecycle",
         "/dev/observation-reality-validation",
         "/dev/business-facts",
+        "/dev/business-themes",
         "/dev/living-store-reality-run",
         "/dev/living-store-reality-status",
         "/dev/living-store-home-review-session",
@@ -12330,6 +12331,57 @@ def dev_business_facts(
                 f.get("business_meaning_ar") for f in facts if isinstance(f, dict)
             ],
             "routing": pkg.get("routing"),
+            "recommendation": None,
+            "product_intelligence": False,
+        },
+        200,
+    )
+
+
+@app.get("/dev/business-themes")
+def dev_business_themes(
+    store: Optional[str] = None,
+    store_slug: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Business Theme Engine V1.
+
+    Many facts → one canonical theme. No PI / recommendations.
+    """
+    from services.business_facts_v1 import (  # noqa: PLC0415
+        build_business_facts_package_v1,
+    )
+    from services.business_themes_v1 import (  # noqa: PLC0415
+        build_business_themes_package_v1,
+    )
+    from services.observation_foundation_v1.merchant_findings_v1 import (  # noqa: PLC0415
+        build_observation_reality_validation_v1,
+    )
+
+    slug = (store or store_slug or "demo").strip() or "demo"
+    orv = build_observation_reality_validation_v1(slug)
+    facts = build_business_facts_package_v1(slug, orv_package=orv)
+    themes = build_business_themes_package_v1(slug, facts_package=facts)
+    published = list(themes.get("published_themes") or [])
+    return j(
+        {
+            "ok": bool(themes.get("ok")),
+            "enabled": bool(themes.get("enabled")),
+            "store_slug": slug,
+            "facts_in": (themes.get("counts") or {}).get("facts_in"),
+            "themes_count": (themes.get("counts") or {}).get("themes"),
+            "published_count": (themes.get("counts") or {}).get("published"),
+            "collapsed_ratio": (themes.get("counts") or {}).get("collapsed_ratio"),
+            "theme_types": [t.get("theme_type") for t in published if isinstance(t, dict)],
+            "titles_ar": [t.get("title_ar") for t in published if isinstance(t, dict)],
+            "summaries_ar": [
+                t.get("executive_summary_ar") for t in published if isinstance(t, dict)
+            ],
+            "primary_owners": [
+                t.get("primary_owner") for t in published if isinstance(t, dict)
+            ],
+            "routing": themes.get("routing"),
+            "constitution": themes.get("constitution"),
             "recommendation": None,
             "product_intelligence": False,
         },

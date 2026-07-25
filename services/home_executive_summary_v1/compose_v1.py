@@ -84,10 +84,12 @@ def _observation_section(summary: Mapping[str, Any]) -> dict[str, Any]:
     obs = t.get("observations") if isinstance(t.get("observations"), Mapping) else {}
     count = _as_int(obs.get("count"))
     top = obs.get("top") if isinstance(obs.get("top"), Mapping) else None
+    from_themes = str(top.get("source") or "") == "business_themes_v1" if top else False
+    section_title = "مواضيع المتجر"
     if count <= 0 or not top:
         return {
             "id": "observations",
-            "title_ar": "حقائق المنتجات",
+            "title_ar": section_title,
             "summary_ar": OBS_EMPTY_AR,
             "status_ar": "أدلة غير كافية",
             "count": 0,
@@ -97,22 +99,27 @@ def _observation_section(summary: Mapping[str, Any]) -> dict[str, Any]:
             "empty_state_ar": OBS_EMPTY_AR,
             "findings_preview": [],
             "owner_page": "decision_workspace",
-            "built_from": "business_facts_v1",
+            "built_from": "business_themes_v1",
         }
-    name = str(top.get("product_name_ar") or "").strip()
+    name = str(top.get("product_name_ar") or top.get("title_ar") or "").strip()
     statement = str(top.get("statement_ar") or "").strip()
-    # Business Facts — merchant meaning (no action / confidence on Home).
-    if name and statement and name not in statement:
+    theme_title = str(top.get("title_ar") or "").strip()
+    # Themes: executive summary only (no fact laundry list / no recommendations).
+    if from_themes and statement:
+        summary_ar = statement
+    elif name and statement and name not in statement:
         summary_ar = f"المنتج {name}: {statement}"
     elif statement:
         summary_ar = statement
+    elif theme_title:
+        summary_ar = theme_title
     elif name:
         summary_ar = f"المنتج {name} يستحق الانتباه."
     else:
         summary_ar = OBS_EMPTY_AR
     return {
         "id": "observations",
-        "title_ar": "حقائق المنتجات",
+        "title_ar": section_title,
         "summary_ar": summary_ar,
         "status_ar": "يتطلب انتباهاً",
         "count": count,
@@ -122,7 +129,7 @@ def _observation_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         "empty_state_ar": "",
         "findings_preview": [],
         "owner_page": "decision_workspace",
-        "built_from": "business_facts_v1",
+        "built_from": "business_themes_v1" if from_themes else "business_facts_v1",
     }
 
 

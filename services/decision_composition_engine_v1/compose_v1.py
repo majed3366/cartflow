@@ -208,6 +208,17 @@ def _compose_uncached_v1(
             )
     except Exception:  # noqa: BLE001
         bf_pkg = None
+    bt_pkg: dict[str, Any] | None = None
+    try:
+        from services.business_themes_v1 import (  # noqa: PLC0415
+            build_business_themes_package_v1,
+            business_themes_v1_enabled,
+        )
+
+        if business_themes_v1_enabled() and bf_pkg and bf_pkg.get("ok"):
+            bt_pkg = build_business_themes_package_v1(slug, facts_package=bf_pkg)
+    except Exception:  # noqa: BLE001
+        bt_pkg = None
     biz_u = dict(mu_pkg.get("business_understanding_v1") or {})
     if bf_pkg and bf_pkg.get("ok"):
         biz_u["business_facts_v1"] = {
@@ -220,6 +231,16 @@ def _compose_uncached_v1(
             ][:8],
         }
         biz_u["consumes"] = "business_facts_v1"
+    if bt_pkg and bt_pkg.get("ok"):
+        biz_u["business_themes_v1"] = {
+            "counts": bt_pkg.get("counts"),
+            "titles_ar": [
+                t.get("title_ar")
+                for t in list(bt_pkg.get("published_themes") or [])
+                if isinstance(t, dict)
+            ],
+        }
+        biz_u["consumes"] = "business_themes_v1"
     timing["merchant_understanding_ms"] = round((time.perf_counter() - t_mu) * 1000.0, 2)
     timing["store_executive_ms"] = round((time.perf_counter() - t) * 1000.0, 2)
     timing["portfolio_ms"] = timing["store_executive_ms"]
@@ -243,6 +264,7 @@ def _compose_uncached_v1(
         "gate_2f_store_executive": True,
         "gate_2x_merchant_understanding": True,
         "gate_business_facts_v1": bool(bf_pkg and bf_pkg.get("ok")),
+        "gate_business_themes_v1": bool(bt_pkg and bt_pkg.get("ok")),
         "business_domains_v1": {
             "domains": domains_pkg.get("domains"),
             "home_teasers": home_teasers,
@@ -252,6 +274,7 @@ def _compose_uncached_v1(
         "store_executive_understanding_v1": exec_pkg,
         "business_understanding_v1": biz_u,
         "business_facts_v1": bf_pkg,
+        "business_themes_v1": bt_pkg,
         "merchant_understanding_v1": mu_pkg.get("merchant_understanding_v1"),
         "decisions": portfolio,
         "all_published": published,
