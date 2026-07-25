@@ -90,6 +90,6 @@ All five rows must match.
 
 ## Deploy
 
-PR: _(fill)_  
-Commit: _(fill)_  
-Railway: _(fill)_  
+PR: https://github.com/majed3366/cartflow/pull/111  
+Commit: `77d55e7`  
+Railway: _(fill after merge/deploy)_  
