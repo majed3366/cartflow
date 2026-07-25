@@ -199,50 +199,28 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
 
     obs_count = 0
     obs_top: dict[str, str] | None = None
-    # Prefer Business Themes (canonical story) over isolated facts / ORV.
+    # Prefer Business Facts (truth atoms). Themes are out of target architecture.
     try:
-        from services.business_themes_v1.attach_v1 import (  # noqa: PLC0415
-            home_teaser_from_themes_v1,
+        from services.business_facts_v1.attach_v1 import (  # noqa: PLC0415
+            home_observation_teaser_from_facts_v1,
         )
 
-        bt_teaser = home_teaser_from_themes_v1(src)
-        if isinstance(bt_teaser, dict) and bt_teaser.get("top"):
-            obs_count = int(bt_teaser.get("count") or 0)
-            top_bt = bt_teaser.get("top") if isinstance(bt_teaser.get("top"), Mapping) else {}
+        bf_teaser = home_observation_teaser_from_facts_v1(src)
+        if isinstance(bf_teaser, dict) and bf_teaser.get("top"):
+            obs_count = int(bf_teaser.get("count") or 0)
+            top_bf = (
+                bf_teaser.get("top")
+                if isinstance(bf_teaser.get("top"), Mapping)
+                else {}
+            )
             obs_top = {
-                "product_name_ar": str(
-                    top_bt.get("product_name_ar") or top_bt.get("title_ar") or ""
-                ).strip(),
-                "statement_ar": str(top_bt.get("statement_ar") or "").strip(),
-                "theme_id": str(top_bt.get("theme_id") or "").strip(),
-                "theme_type": str(top_bt.get("theme_type") or "").strip(),
-                "title_ar": str(top_bt.get("title_ar") or "").strip(),
-                "source": "business_themes_v1",
+                "product_name_ar": str(top_bf.get("product_name_ar") or "").strip(),
+                "statement_ar": str(top_bf.get("statement_ar") or "").strip(),
+                "fact_id": str(top_bf.get("fact_id") or "").strip(),
+                "source": "business_facts_v1",
             }
     except Exception:  # noqa: BLE001
-        bt_teaser = None
-    if obs_top is None:
-        try:
-            from services.business_facts_v1.attach_v1 import (  # noqa: PLC0415
-                home_observation_teaser_from_facts_v1,
-            )
-
-            bf_teaser = home_observation_teaser_from_facts_v1(src)
-            if isinstance(bf_teaser, dict) and bf_teaser.get("top"):
-                obs_count = int(bf_teaser.get("count") or 0)
-                top_bf = (
-                    bf_teaser.get("top")
-                    if isinstance(bf_teaser.get("top"), Mapping)
-                    else {}
-                )
-                obs_top = {
-                    "product_name_ar": str(top_bf.get("product_name_ar") or "").strip(),
-                    "statement_ar": str(top_bf.get("statement_ar") or "").strip(),
-                    "fact_id": str(top_bf.get("fact_id") or "").strip(),
-                    "source": "business_facts_v1",
-                }
-        except Exception:  # noqa: BLE001
-            pass
+        pass
     if obs_top is None:
         orv = src.get("observation_reality_validation_v1")
         if isinstance(orv, Mapping):

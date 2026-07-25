@@ -4,6 +4,7 @@
 **Date (UTC):** 2026-07-24  
 **Status:** **Draft — awaiting CEO approval**  
 **Amendment:** Constitutional Principle — *Every Surface Must Lead to a Decision* (2026-07-24)  
+**Amendment:** Constitutional Principle — *Executive Editorial Exclusivity* (2026-07-25) — Principle 7; supersedes Business Theme experimentation  
 **Authority (upon approval):** Binding for all future merchant-surface development  
 **Supersedes (upon approval), on ownership conflicts:** page-ownership claims in `PRODUCT_CONSTITUTION_ADDENDUM_V1.md`, MEIF question wording where it diverges, and any feature that places Product Intelligence or decision explanation outside Decision Workspace  
 
@@ -11,6 +12,8 @@
 
 | Document | Role after this constitution is approved |
 |----------|------------------------------------------|
+| [`EXECUTIVE_EDITORIAL_EXCLUSIVITY_V1.md`](EXECUTIVE_EDITORIAL_EXCLUSIVITY_V1.md) | Permanent law — commercial situations; one executive introduction; Home brief / Workspace explain |
+| [`MERCHANT_STORY_DISCOVERY_V1.md`](MERCHANT_STORY_DISCOVERY_V1.md) | Discovery that Theme aggregation failed; Executive Brief direction under Principle 7 |
 | [`HOME_EXECUTIVE_CONSTITUTION_V1.md`](../../HOME_EXECUTIVE_CONSTITUTION_V1.md) | Home executive altitude & disclosure — must not contradict page ownership here |
 | [`PRODUCT_CONSTITUTION_ADDENDUM_V1.md`](../../PRODUCT_CONSTITUTION_ADDENDUM_V1.md) | Home purpose / explainability — amended: Home **summarizes and routes**; Decision Workspace **owns decisions & Product Intelligence** |
 | [`docs/architecture/CARTFLOW_ARCHITECTURE_SURFACE_ALIGNMENT_AUDIT_V1.md`](../architecture/CARTFLOW_ARCHITECTURE_SURFACE_ALIGNMENT_AUDIT_V1.md) | Evidence of current misalignment vs this law |
@@ -119,22 +122,50 @@ No Product Intelligence may appear on Home, Carts, Communication, or Settings.
 
 Home may show a **Product Observations executive teaser** (summary + status + count + View Details → Decision Workspace). That teaser is not Product Intelligence.
 
-**All Product Intelligence V1 (and later) work is governed by Principle 0 and Principle 6.** PI may only ship on Decision Workspace and must end with a recommended action.
+**All Product Intelligence V1 (and later) work is governed by Principle 0, Principle 6, and Principle 7.** PI may only ship on Decision Workspace and must end with a recommended action.
+
+### Principle 7 — Executive Editorial Exclusivity
+
+**Permanent CartFlow Constitutional Law.** Full text: [`EXECUTIVE_EDITORIAL_EXCLUSIVITY_V1.md`](EXECUTIVE_EDITORIAL_EXCLUSIVITY_V1.md).
+
+Merchants think in **commercial situations**, not technical categories.
+
+| Rule | Law |
+|------|-----|
+| Unit of executive communication | Commercial situation |
+| Executive introduction | **Once** at executive altitude |
+| After introduction | Expand / support / execute / evidence only — never a new executive restatement |
+| Formula | One situation · One Executive Brief · One Primary Owner · Many supporting surfaces |
+
+**Home** introduces the situation (Executive Brief).  
+**Decision Workspace** explains and decides — never repeats Home’s executive message.  
+**Carts / Communication** answer only their operational questions — never reinterpret commercial situations.
+
+**Publication policy:** Before any executive statement — (1) new situation? (2) merely rewording? (3) increases understanding? — suppress otherwise.
+
+**Editorial authority** overrides data availability, counter size, and observation count.
+
+**No layer may bypass this policy** — including Business Facts, Merchant Understanding, Product Intelligence, Knowledge Routing, or any future capability.
+
+Business Theme Engine experimentation is **superseded** and remains out of the target architecture.
+
+**Success test:** A merchant must never feel that multiple Home cards describe the same business situation. If removing a card does not reduce understanding, that card must not exist.
 
 ---
 
 ## 4. Permanent page constitution
 
-*Every page below is bound by Principle 0 — Every Surface Must Lead to a Decision.*
+*Every page below is bound by Principle 0 and Principle 7.*
 
 ### 4.1 Home — `#home`
 
 | Field | Law |
 |-------|-----|
-| **Merchant question** | What should I know about my store right now? |
-| **Purpose** | Executive guidance |
+| **Merchant question** | What is happening in my business today? / What should I know about my store right now? |
+| **Purpose** | Executive Brief — unique commercial understanding only |
 | **Decision type (P0)** | Executive routing — every section ends with a clear path to the appropriate detail page |
 | **Arabic anchor** | ماذا يجب أن تعرف الآن؟ |
+| **Editorial (P7)** | Each card introduces a **distinct** commercial situation; no synonym restatement across cards |
 
 **Allowed sections only:**
 
@@ -146,7 +177,9 @@ Home may show a **Product Observations executive teaser** (summary + status + co
 
 **Every section must end with:** View Details →  
 
-Home summarizes. Home never performs deep analysis.
+Home introduces. Home never explains (explanation belongs to Decision Workspace).  
+Home summarizes. Home never performs deep analysis.  
+Home must not become a dashboard, report, fact list, or collection of unrelated observations.
 
 **Forbidden on Home:**
 
@@ -160,6 +193,7 @@ Home summarizes. Home never performs deep analysis.
 - Full Communication history  
 - KPI / reporting walls  
 - Setup theatre as primary content  
+- Multiple executive messages for the same commercial situation (Principle 7)
 
 **Home may request only** lightweight executive summaries.
 
@@ -169,10 +203,11 @@ Home summarizes. Home never performs deep analysis.
 
 | Field | Law |
 |-------|-----|
-| **Merchant question** | What decision should I make, and why? |
-| **Purpose** | Decision engine — the **only** surface that owns business reasoning |
+| **Merchant question** | Why is this happening, and what should I do? / What decision should I make, and why? |
+| **Purpose** | Decision engine — the **only** surface that owns business reasoning and explanation |
 | **Decision type (P0)** | Business decision + Product Intelligence |
-| **Owns** | **Product Intelligence** (exclusive) |
+| **Owns** | **Product Intelligence** (exclusive); explanation of commercial situations introduced on Home |
+| **Editorial (P7)** | Explains / expands / evidences — **never** repeats Home’s executive introduction as a new executive message |
 
 **Every recommendation must explain:**
 
@@ -184,11 +219,14 @@ Home summarizes. Home never performs deep analysis.
 
 **Also owned here (when available):** related products · historical context  
 
+**Home introduces. Workspace explains.**
+
 **Forbidden:**
 
 - Raw operational cart tables as the page’s job  
 - Communication logs as primary content  
 - Configuration  
+- Restating Home’s executive brief as a duplicate headline (Principle 7)
 
 **No other page may explain business decisions.**
 
@@ -198,9 +236,10 @@ Home summarizes. Home never performs deep analysis.
 
 | Field | Law |
 |-------|-----|
-| **Merchant question** | What is happening to each cart? |
+| **Merchant question** | What is happening to customer carts? |
 | **Purpose** | Operational execution |
 | **Decision type (P0)** | Operational — next step must be immediately obvious |
+| **Editorial (P7)** | May support execution only — must not reinterpret commercial situations |
 
 **Contains:**
 
@@ -228,9 +267,10 @@ Operational “next step” is required. Business “you should discount because
 
 | Field | Law |
 |-------|-----|
-| **Merchant question** | What happened during customer communication? |
+| **Merchant question** | What happened during communication? |
 | **Purpose** | Communication execution / history |
 | **Decision type (P0)** | Operational — merchant must immediately understand follow-up vs wait vs done vs needs attention |
+| **Editorial (P7)** | May report communication status only — must not reinterpret commercial situations |
 
 **Contains:**
 
@@ -284,6 +324,10 @@ Every new feature, widget, card, section, or page must pass this review **before
 | V-3 | Does it help the merchant reach a decision? (Principle 0) |
 | V-4 | Would removing it reduce decision quality? |
 | V-5 | Is another page already responsible for this decision? |
+| V-6 | Does it introduce a new commercial situation at executive altitude? (Principle 7) |
+| V-7 | Is it merely another wording of an already published situation? If yes — suppress. (Principle 7) |
+
+**Executive Editorial features** must additionally pass **EEE-1…EEE-5** in [`EXECUTIVE_EDITORIAL_EXCLUSIVITY_V1.md`](EXECUTIVE_EDITORIAL_EXCLUSIVITY_V1.md).
 
 **Product Intelligence features** must additionally pass:
 
@@ -293,6 +337,7 @@ Every new feature, widget, card, section, or page must pass this review **before
 | PI-2 | Recommendation includes why / evidence / confidence / impact / action |
 | PI-3 | No PI content on Home, Carts, Communication, or Settings |
 | PI-4 | Home may only teaser + View Details → Decision Workspace |
+| PI-5 | Publishes through Executive Editorial Exclusivity (Principle 7) — no bypass |
 
 ---
 
@@ -309,7 +354,8 @@ Owning data source: <truth table / package / store>
 Merchant question:  <must match owning page>
 Decision type:      <executive_routing | business | operational | configuration>
 Leads to decision:  <one sentence — next action the merchant can take>
-Validation:         V-1…V-5 passed (and PI-1…PI-4 if Product Intelligence)
+Validation:         V-1…V-7 passed (EEE-1…EEE-5 if executive; PI-1…PI-5 if Product Intelligence)
+Commercial situation: <one situation id / none — must be unique at executive altitude>
 ```
 
 Pull requests that omit this declaration for merchant-visible behavior are **constitutionally incomplete**.
@@ -379,15 +425,16 @@ Status legend: **Aligned** · **Misaligned** · **Split** · **Retire / merge**
 This constitution is **complete for development use** only when **all** of the following are true:
 
 1. Principle 0 (*Every Surface Must Lead to a Decision*) is part of Product Constitution V1.  
-2. All page constitutions (Section 4) reference Principle 0 / decision type.  
-3. The constitutional validation checklist (Section 5) is documented.  
-4. Future Product Intelligence work is explicitly governed by Principle 0 and Principle 6.  
-5. Every existing merchant-visible feature is mapped to **exactly one** page (Section 9 closed).  
-6. Every duplicate responsibility is **removed**.  
-7. Home requests **only** executive summaries (HP-1…HP-7 enforced).  
-8. Architectural ownership matches product ownership (Section 6).  
-9. This amendment is **committed, reviewed, merged**, and becomes part of the permanent CartFlow Product Constitution.  
-10. **CEO has approved Product Constitution V1** before Product Intelligence V1 begins.
+2. Principle 7 (*Executive Editorial Exclusivity*) is part of Product Constitution V1 and filed in `EXECUTIVE_EDITORIAL_EXCLUSIVITY_V1.md`.  
+3. All page constitutions (Section 4) reference Principle 0 / decision type and Principle 7 where executive.  
+4. The constitutional validation checklist (Section 5) includes V-6/V-7 and EEE-1…EEE-5.  
+5. Future Product Intelligence work is explicitly governed by Principle 0, Principle 6, and Principle 7.  
+6. Every existing merchant-visible feature is mapped to **exactly one** page (Section 9 closed).  
+7. Every duplicate responsibility is **removed**.  
+8. Home requests **only** executive summaries (HP-1…HP-7 enforced) with unique commercial situations per card.  
+9. Architectural ownership matches product ownership (Section 6).  
+10. This amendment is **committed, reviewed, merged**, and becomes part of the permanent CartFlow Product Constitution.  
+11. **CEO has approved Product Constitution V1** before Product Intelligence V1 begins.
 
 Until then: status remains **Draft — awaiting CEO approval** (or **Approved — compliance incomplete** after signature if P0 work remains).
 
@@ -412,10 +459,12 @@ Audit P0 items are the minimum compliance program after CEO approval:
 
 **Do not begin Product Intelligence V1** until:
 
-1. CEO approves **Product Constitution V1** (including Principle 0), and  
+1. CEO approves **Product Constitution V1** (including Principle 0 and Principle 7), and  
 2. P0 ownership compliance is authorized (or an explicit written waiver records accepted risk).
 
-No page may gain responsibilities outside this constitution after approval.
+No page may gain responsibilities outside this constitution after approval.  
+No layer may bypass Executive Editorial Exclusivity.  
+Do not revive Business Theme Engine under another name.
 
 Product Intelligence may ship **only** on Decision Workspace and **must** lead to a recommended action.
 
