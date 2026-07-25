@@ -215,7 +215,9 @@ class UiContractTests(unittest.TestCase):
         self.assertIn("data-gate2c", grid)
         # Gate 2E — executive decision centre subtitle (portfolio still painted).
         self.assertTrue(
-            "محفظة القرارات" in grid or "مركز قرار تنفيذي" in grid
+            "محفظة القرارات" in grid
+            or "مركز قرار تنفيذي" in grid
+            or "مساعد تنفيذي" in grid
         )
         self.assertIn("cw-landscape", grid)
         card = (ROOT / "static" / "cart_workspace_decision_card_v1.js").read_text(

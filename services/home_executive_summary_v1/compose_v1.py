@@ -34,12 +34,12 @@ SECTION_IDS_V1 = (
     "communication",
 )
 
-OBS_EMPTY_AR = "لا توجد حالياً أدلة كافية لنشر ملاحظة منتج."
-DECISIONS_EMPTY_AR = "لا يوجد قرار تجاري عالي الأولوية اليوم."
+OBS_EMPTY_AR = "لا يوجد منتج حالياً بأدلة كافية لملاحظة تجارية."
+DECISIONS_EMPTY_AR = "لا توجد أولوية قرار واضحة اليوم."
 
 GOVERNANCE_V1 = {
     "sprint": "home_stabilization_v1",
-    "gate": "gate_2e_executive_business_composition",
+    "gate": "gate_2f_store_executive_thinking",
     "single_owner": "home_executive_summary_v1",
     "single_data_source": "home_teaser_inputs_v1",
     "single_render_path": "maApplyHomeExecutiveSummaryV1",
@@ -47,6 +47,7 @@ GOVERNANCE_V1 = {
     "product_intelligence": False,
     "home_creates_decisions": False,
     "executive_business_language": True,
+    "store_executive_thinking": True,
 }
 
 # Card → owning constitutional page (View Details).
@@ -173,21 +174,22 @@ def _health_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         status_ar = "يتطلب متابعة" if needs else "مستقر"
         empty = not needs and ("بانتظار" in domain_summary or "غير كافية" in domain_summary)
     elif waiting > 0 or no_phone > 0:
-        summary_ar = "أداء الاسترجاع انخفض اليوم."
+        # Gate 2F — business condition, never recovery-engine status.
+        summary_ar = "فرص استعادة المبيعات محدودة اليوم."
         status_ar = "يتطلب متابعة"
         empty = False
     elif recovered > 0:
-        summary_ar = "نشاط الشراء مستقر — أداء الاسترجاع يتحسّن."
+        summary_ar = "نشاط المتجر مستقر."
         status_ar = "مستقر"
         empty = False
         needs = False
     elif active > 0:
-        summary_ar = "المتجر يعمل بشكل طبيعي."
+        summary_ar = "نشاط المتجر مستقر."
         status_ar = "مستقر"
         empty = False
         needs = False
     else:
-        summary_ar = "لا توجد مشكلات حرجة ظاهرة."
+        summary_ar = "لا توجد مشكلات تجارية حرجة ظاهرة."
         status_ar = "هادئ"
         empty = True
         needs = False
@@ -231,21 +233,21 @@ def _carts_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         elif waiting <= 0 and active > 0:
             count = active
     elif waiting > 0:
-        summary_ar = f"{waiting} سلة تحتاج متابعة."
+        summary_ar = f"{waiting} سلة قيد المتابعة مع العملاء."
         status_ar = "يتطلب متابعة"
         empty = False
     elif no_phone > 0:
-        summary_ar = f"{no_phone} سلة خارج مسار المتابعة حالياً."
+        summary_ar = "متابعة بعض العملاء مقيدة حالياً."
         status_ar = "يتطلب متابعة"
         empty = False
         count = no_phone
     elif recovered > 0:
-        summary_ar = f"{recovered} سلة استُعيدت — نشاط الاسترجاع مستقر."
+        summary_ar = f"{recovered} سلة اكتملت متابعتها — التقدم مستقر."
         status_ar = "مستقر"
         empty = False
         count = recovered
     elif active > 0:
-        summary_ar = "نشاط الاسترجاع مستقر."
+        summary_ar = "تقدّم سلال العملاء مستقر."
         status_ar = "نشط"
         empty = False
         count = active
@@ -285,32 +287,32 @@ def _communication_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         empty = False
         count = max(count, waiting, no_phone, sent)
     elif waiting > 0 and no_phone > 0:
-        summary_ar = f"{waiting} عملاء بانتظار المتابعة · {no_phone} بلا رقم تواصل."
+        summary_ar = "تواصل العملاء يحتاج انتباهاً — المتابعة مقيدة لبعض الحالات."
         status_ar = "يتطلب متابعة"
         empty = False
         count = max(count, waiting, no_phone)
     elif waiting > 0 or schedules > 0:
         n = max(waiting, schedules)
-        summary_ar = f"{n} عملاء بانتظار المتابعة."
+        summary_ar = f"{n} عملاء بانتظار متابعة."
         status_ar = "بانتظار متابعة"
         empty = False
         count = n
     elif no_phone > 0:
-        summary_ar = f"{no_phone} سلة بلا رقم تواصل."
-        status_ar = "بلا تواصل"
+        summary_ar = "متابعة العملاء مقيدة لبعض الحالات حالياً."
+        status_ar = "يتطلب متابعة"
         empty = False
         count = no_phone
     elif sent > 0:
-        summary_ar = f"{sent} رسالة أُرسلت اليوم."
+        summary_ar = f"{sent} رسالة وصلت للعملاء اليوم."
         status_ar = "مكتمل اليوم"
         empty = False
         count = sent
     elif wa_state and wa_state not in {"ready", "connected", ""}:
-        summary_ar = "مسار التواصل يحتاج ضبطاً."
+        summary_ar = "تواصل العملاء يحتاج ضبطاً بسيطاً."
         status_ar = "يحتاج ضبطاً"
         empty = False
     else:
-        summary_ar = "التواصل يعمل بشكل طبيعي — لا مهام معلّقة."
+        summary_ar = "تواصل العملاء يسير بشكل طبيعي."
         status_ar = "لا مهام"
         empty = True
 

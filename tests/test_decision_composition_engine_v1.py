@@ -59,8 +59,8 @@ class RecoverabilityTests(unittest.TestCase):
         )
         assert cand is not None
         self.assertFalse(cand.get("suppressed"))
-        # Gate 2E — executive decision language (never "N carts without phone").
-        self.assertIn("الاسترجاع", cand["merchant_decision"])
+        # Gate 2F — merchant briefing language (never "N carts without phone").
+        self.assertIn("إتمام الشراء", cand["merchant_decision"])
         self.assertNotIn("راجع سلال بلا رقم", cand["merchant_decision"])
         self.assertNotIn("43", cand["merchant_decision"])
         self.assertIn("فرص", cand["why"])
@@ -300,7 +300,7 @@ class PipelineTests(unittest.TestCase):
             "decisions": [
                 {
                     "decision_id": "dce:recoverability_gap",
-                    "merchant_decision": "راجع مسار الاسترجاع.",
+                    "merchant_decision": "راجع تجربة إتمام الشراء ومتابعة العملاء.",
                     "title": "x",
                     "why": "why",
                     "why_now": "now",
@@ -343,7 +343,7 @@ class PipelineTests(unittest.TestCase):
         self.assertTrue(out.get("gate_2b_decision_composition_engine"))
         self.assertEqual(len(out["zone_b"]), 1)
         self.assertEqual(out["zone_b"][0]["card_kind"], "composed_decision")
-        self.assertIn("الاسترجاع", out["zone_b"][0]["decision_ar"])
+        self.assertIn("إتمام الشراء", out["zone_b"][0]["decision_ar"])
 
 
 class UiParityTests(unittest.TestCase):

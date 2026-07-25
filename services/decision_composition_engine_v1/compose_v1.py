@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Canonical Decision Composition pipeline (Gate 2B–2E).
+Canonical Decision Composition pipeline (Gate 2B–2F).
 
-Operational Truth → Business Domains → Business Meaning → Business Impact
-→ Candidate Decisions → Decision Deduplication → Decision Priority
-→ Contract Validation → Decision Portfolio → Cart Workspace
+Operational Truth → Business Domains → Business Meaning
+→ Store Executive Understanding → Business Impact
+→ Candidate Decisions → Deduplication → Priority
+→ Decision Portfolio → Home / Decision Workspace
 """
 from __future__ import annotations
 
@@ -18,6 +19,11 @@ from services.decision_composition_engine_v1.business_domains_v1 import (
 from services.decision_composition_engine_v1.business_impact_v1 import (
     BUSINESS_IMPACT_VERSION_V1,
     attach_business_impact_v1,
+)
+from services.decision_composition_engine_v1.store_executive_understanding_v1 import (
+    STORE_EXECUTIVE_VERSION_V1,
+    apply_store_executive_to_decisions_v1,
+    compose_store_executive_understanding_v1,
 )
 from services.decision_composition_engine_v1.category_v1 import attach_category_v1
 from services.decision_composition_engine_v1.compose_finding_v1 import (
@@ -156,12 +162,22 @@ def _compose_uncached_v1(
 
     t = time.perf_counter()
     portfolio_pkg = build_portfolio_v1(published, max_visible=6)
-    timing["portfolio_ms"] = round((time.perf_counter() - t) * 1000.0, 2)
+    portfolio = apply_store_executive_to_decisions_v1(
+        list(portfolio_pkg.get("portfolio") or [])
+    )
+    published = apply_store_executive_to_decisions_v1(published)
+
+    # Gate 2F — Store Executive Understanding (mandatory for Home teasers).
+    exec_pkg = compose_store_executive_understanding_v1(
+        domains_pkg, decisions=portfolio
+    )
+    timing["store_executive_ms"] = round((time.perf_counter() - t) * 1000.0, 2)
+    timing["portfolio_ms"] = timing["store_executive_ms"]
     timing["total_ms"] = round((time.perf_counter() - t0) * 1000.0, 2)
 
-    portfolio = list(portfolio_pkg.get("portfolio") or [])
     needs = [d for d in portfolio if d.get("priority_band") == BAND_NEEDS_ACTION]
     monitor = [d for d in portfolio if d.get("priority_band") != BAND_NEEDS_ACTION]
+    home_teasers = dict(exec_pkg.get("home_teasers") or {})
 
     return {
         "ok": True,
@@ -169,16 +185,19 @@ def _compose_uncached_v1(
         "composition_version": COMPOSITION_VERSION_V1,
         "domain_composition_version": DOMAIN_COMPOSITION_VERSION_V1,
         "business_impact_version": BUSINESS_IMPACT_VERSION_V1,
+        "store_executive_version": STORE_EXECUTIVE_VERSION_V1,
         "gate_2c_decision_portfolio": True,
         "gate_2d_business_domains": True,
         "gate_2d_decision_dedupe": True,
         "gate_2e_executive_business": True,
+        "gate_2f_store_executive": True,
         "business_domains_v1": {
             "domains": domains_pkg.get("domains"),
-            "home_teasers": domains_pkg.get("home_teasers"),
+            "home_teasers": home_teasers,
             "signals": domains_pkg.get("signals"),
             "root_causes": domains_pkg.get("root_causes"),
         },
+        "store_executive_understanding_v1": exec_pkg,
         "decisions": portfolio,
         "all_published": published,
         "needs_action_now": needs,

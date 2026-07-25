@@ -350,9 +350,11 @@ def normalize_business_domains_v1(
             "waiting_total": waiting,
             "engaged_total": engaged,
             "active_total": active,
+            "recovered_total": recovered,
             "waiting_collapsed_into_missing_contact": waiting_is_missing_contact,
             "merchant_waiting_needed": merchant_waiting_needed,
         },
+        # Gate 2F — raw domain teasers are inputs only; Store Executive overwrites for Home.
         "home_teasers": {
             "store_health_ar": domains[DOMAIN_STORE_HEALTH]["executive_summary_ar"],
             "store_health_attention": domains[DOMAIN_STORE_HEALTH]["has_attention"],

@@ -60,12 +60,17 @@ class HomeExecutiveCompositionV1Tests(unittest.TestCase):
         carts = next(s for s in hes["sections"] if s["id"] == "carts")
         comm = next(s for s in hes["sections"] if s["id"] == "communication")
         health = next(s for s in hes["sections"] if s["id"] == "health")
-        # Gate 2E — executive summaries (counts OK on carts/comms; not on Store Health).
-        self.assertIn("تحتاج متابعة", carts["summary_ar"])
+        # Gate 2F — merchant-centric operational summaries (not system queues).
         self.assertTrue(
-            "بانتظار المتابعة" in comm["summary_ar"]
-            or "بلا رقم" in comm["summary_ar"]
+            "قيد المتابعة مع العملاء" in carts["summary_ar"]
+            or "مقيدة حالياً" in carts["summary_ar"]
         )
+        self.assertTrue(
+            "تواصل العملاء" in comm["summary_ar"]
+            or "متابعة العملاء" in comm["summary_ar"]
+        )
+        self.assertNotIn("بلا رقم", carts["summary_ar"])
+        self.assertNotIn("بلا رقم", comm["summary_ar"])
         self.assertNotEqual(health["summary_ar"], carts["summary_ar"])
         self.assertNotIn("عدّاد", health["summary_ar"])
         self.assertEqual(carts["view_details_href"], SECTION_OWNERSHIP_HREF_V1["carts"])

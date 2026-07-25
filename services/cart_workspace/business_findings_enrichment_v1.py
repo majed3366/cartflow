@@ -275,11 +275,13 @@ def _enrich_via_composition_engine_v1(
     projection["gate_2d_business_domains"] = True
     projection["gate_2d_decision_dedupe"] = True
     projection["gate_2e_executive_business"] = True
+    projection["gate_2f_store_executive"] = True
     projection["decisions_only"] = True
     projection["decision_composition_v1"] = {
         "version": pkg.get("composition_version"),
         "domain_composition_version": pkg.get("domain_composition_version"),
         "business_impact_version": pkg.get("business_impact_version"),
+        "store_executive_version": pkg.get("store_executive_version"),
         "counts": pkg.get("counts"),
         "suppression_registry": pkg.get("suppression_registry"),
         "no_decision_supported": pkg.get("no_decision_supported"),
@@ -290,7 +292,13 @@ def _enrich_via_composition_engine_v1(
         "cache": pkg.get("_cache"),
         "timing_ms": pkg.get("timing_ms"),
         "business_domains": (pkg.get("business_domains_v1") or {}).get("domains"),
+        "executive_briefing": (
+            (pkg.get("store_executive_understanding_v1") or {}).get("briefing")
+        ),
     }
+    projection["store_executive_understanding_v1"] = pkg.get(
+        "store_executive_understanding_v1"
+    )
     projection["decision_portfolio_v1"] = {
         "portfolio": portfolio,
         "category_landscape": pkg.get("category_landscape"),

@@ -110,7 +110,8 @@ class ExecutiveLanguageTests(unittest.TestCase):
         )
         self.assertTrue(pkg.get("gate_2e_executive_business"))
         top = pkg["portfolio"][0]
-        self.assertEqual(top["merchant_decision"], "راجع مسار الاسترجاع.")
+        # Gate 2F rewrites recovery into morning-briefing attention language.
+        self.assertIn("إتمام الشراء", top["merchant_decision"])
         self.assertNotIn("43", top["merchant_decision"])
         self.assertIn("business_meaning_ar", top)
         self.assertIn("business_impact_ar", top)
@@ -133,40 +134,44 @@ class ExecutiveLanguageTests(unittest.TestCase):
                     },
                     "decisions": {
                         "count": 1,
-                        "top_title_ar": "راجع مسار الاسترجاع.",
-                        "evidence": "decision_composition_engine",
+                        "top_title_ar": "راجع تجربة إتمام الشراء ومتابعة العملاء.",
+                        "evidence": "store_executive_understanding",
                     },
                     "observations": {"count": 0},
                     "carts": {
                         "waiting": 3,
                         "no_phone": 3,
-                        "domain_summary_ar": "3 سلة تحتاج متابعة.",
+                        "domain_summary_ar": "3 سلة قيد المتابعة مع العملاء.",
                     },
                     "communication": {
                         "sent": 12,
                         "waiting": 3,
                         "no_phone": 8,
-                        "domain_summary_ar": "3 عملاء بانتظار المتابعة · 8 بلا رقم تواصل.",
+                        "domain_summary_ar": "تواصل العملاء يحتاج انتباهاً — المتابعة مقيدة لبعض الحالات.",
                     },
                 }
             }
         )
         by_id = {s["id"]: s for s in hes["sections"]}
         # 1) Store healthy? → clear business condition
-        self.assertIn("الاسترجاع", by_id["health"]["summary_ar"])
+        self.assertTrue(
+            "فرص" in by_id["health"]["summary_ar"]
+            or "الاسترجاع" in by_id["health"]["summary_ar"]
+        )
         self.assertNotEqual(
             by_id["health"]["summary_ar"], by_id["decisions"]["summary_ar"]
         )
         # 2) Highest-priority business decision
-        self.assertEqual(by_id["decisions"]["summary_ar"], "راجع مسار الاسترجاع.")
+        self.assertIn("إتمام الشراء", by_id["decisions"]["summary_ar"])
         self.assertNotIn("43", by_id["decisions"]["summary_ar"])
         # 3) Product observation honesty
         self.assertIn("أدلة كافية", by_id["observations"]["summary_ar"])
-        # 4) Recovery operating?
+        # 4) Recovery / carts operating?
         self.assertIn("متابعة", by_id["carts"]["summary_ar"])
         # 5) Communication operating?
         self.assertTrue(
-            "متابعة" in by_id["communication"]["summary_ar"]
+            "تواصل" in by_id["communication"]["summary_ar"]
+            or "متابعة" in by_id["communication"]["summary_ar"]
             or "رسالة" in by_id["communication"]["summary_ar"]
         )
         self.assertTrue(hes["governance"].get("executive_business_language"))
