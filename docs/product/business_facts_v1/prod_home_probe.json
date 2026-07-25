@@ -1,0 +1,93 @@
+{
+  "generated_at_utc": "2026-07-25T13:31:29.099466+00:00",
+  "environment": "production",
+  "base": "https://smartreplyai.net",
+  "seed_skipped": true,
+  "note": "Living Store already completed on production demo; shots-only pass.",
+  "orv_demo": {
+    "http": 200,
+    "body": {
+      "ok": true,
+      "enabled": true,
+      "store_slug": "demo",
+      "findings_count": 4,
+      "acceptance_all_four": true,
+      "present_capabilities": [
+        "high_interest_low_conversion",
+        "shipping_stronger_than_price",
+        "repeated_return_without_purchase",
+        "no_quality_issue_evidence"
+      ],
+      "missing_capabilities": [],
+      "mass_source": "durable_or_provided",
+      "titles_ar": [
+        "اهتمام مرتفع وتحويل منخفض",
+        "تردد الشحن أقوى من السعر",
+        "عودة متكررة بلا شراء",
+        "لا دليل على مشكلة جودة"
+      ],
+      "product_names": [
+        "Raven — حزام جلد للساعة",
+        "TrueSound — سماعة لاسلكية",
+        "Raven — حزام جلد للساعة",
+        "Horizon Steel — ساعة يد ستانلس"
+      ],
+      "statements_ar": [
+        "يحظى باهتمام واضح، لكن التحويل إلى شراء لا يزال منخفضاً.",
+        "تردد الشحن/التوصيل أقوى حالياً من تردد السعر.",
+        "يجذب زيارات متكررة دون إتمام شراء.",
+        "لا توجد أدلة حالية تدعم وجود مشكلة جودة."
+      ],
+      "admission_reconciliation": {
+        "foundation_ready_count": 4,
+        "orv_admitted_count": 4,
+        "routed_count": 4,
+        "home_visible_count": 4,
+        "workspace_visible_count": 3,
+        "suppressed_count": 41,
+        "suppressed_by_reason": {
+          "capability_already_admitted_for_stronger_product": 34,
+          "banned_placeholder_product_key": 6,
+          "observation_valid_for_home_not_workspace": 1
+        },
+        "silent_drops": 0,
+        "note": "home_visible == orv_admitted; workspace_visible ⊆ admitted (actionable only); suppressed includes home-only and failed candidates"
+      },
+      "has_statement_action_confidence": true,
+      "technical_fields_on_findings": false
+    }
+  },
+  "job_status": {
+    "http": 200,
+    "body": {
+      "ok": true,
+      "job": {
+        "status": "idle",
+        "ok": null,
+        "error": null,
+        "started_at_utc": null,
+        "finished_at_utc": null,
+        "simulation": null,
+        "calendar": null,
+        "observation": null
+      }
+    }
+  },
+  "review_session": {
+    "http": 200,
+    "ok": true,
+    "store_slug": "demo",
+    "email": "cf.living.store.review@smartreplyai.net",
+    "cookie_name": "cartflow_merchant_session",
+    "note": "primary_store_id=demo so resolve_authenticated_store_slug → demo. Distinct from lab_session_bind (membership alongside signup primary)."
+  },
+  "home_api_probe": {
+    "http": 200,
+    "store_slug": "demo",
+    "obs_summary": "Raven — حزام جلد للساعة يحظى باهتمام واضح، لكن التحويل إلى شراء لا يزال ضعيفاً.",
+    "obs_empty": "False",
+    "obs_count": "4",
+    "text_has_raven": true,
+    "text_sample": "ملخص تنفيذي\n\nماذا يجب أن تعرف الآن؟\n\nملخص سريع فقط — التفاصيل في صفحاتها.\n\nحالة المتجر\nيتطلب متابعة\n\nفرص استعادة المبيعات محدودة اليوم.\n\nعرض التفاصيل ←\n\nقرارات اليوم\n2 قرارات عمل\n2\n\nراجع تجربة إتمام الشراء ومتابعة العملاء.\n\nعرض التفاصيل ← مساحة القرار ←\n\nحقائق المنتجات\nيتطلب انتباهاً\n4\n\nRaven — حزام جلد للساعة يحظى باهتمام واضح، لكن التحويل إلى شراء لا يزال ضعيفاً.\n\nعرض التفاصيل ←\n\nالسلال\nلا مهام\n0\n\nسلال العملاء تحتاج متابعة نشطة.\n\nعرض التفاصيل ←\n\nالتواصل\nلا مهام\n0\n\nتواصل العملاء يسير بشكل طبيعي.\n\nعرض التفاصيل ←\n\nالصفحة الرئيسية = ملخص تنفيذي · القرارات في مساحة القرار · السلال للتشغيل · التواصل للمتابعة · الإعدادات للضبط."
+  }
+}
