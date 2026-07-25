@@ -80,7 +80,7 @@
         '<h2 class="cw-ops__mission">' +
         esc(mission) +
         "</h2>" +
-        '<p class="cw-ops__subtitle">مركز قرار تنفيذي — أولوية بحسب أثر العمل (وليس حجم العدادات)</p>' +
+        '<p class="cw-ops__subtitle">مساعد تنفيذي للمتجر — ماذا يستحق انتباهك في العمل اليوم؟</p>' +
         (hasDecisions
           ? '<p class="cw-ops__bands">' +
             "يحتاج إجراء الآن: <strong>" +
