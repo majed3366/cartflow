@@ -146,14 +146,30 @@ def main() -> int:
             home.screenshot(
                 path=str(OUT / "prod_after_desktop_home.png"), full_page=False
             )
-            mobile = browser_ctx.new_page(
+            mobile_ctx = browser.new_context(
                 viewport={"width": 390, "height": 844}, locale="ar-SA"
             )
+            if cookie_name and cookie_value:
+                mobile_ctx.add_cookies(
+                    [
+                        {
+                            "name": cookie_name,
+                            "value": cookie_value,
+                            "domain": "smartreplyai.net",
+                            "path": "/",
+                            "httpOnly": True,
+                            "secure": True,
+                            "sameSite": "Lax",
+                        }
+                    ]
+                )
+            mobile = mobile_ctx.new_page()
             mobile.goto(f"{BASE}/dashboard#home", timeout=120000)
             mobile.wait_for_timeout(6000)
             mobile.screenshot(
                 path=str(OUT / "prod_after_mobile_home.png"), full_page=False
             )
+            mobile_ctx.close()
             browser_ctx.close()
 
         browser.close()

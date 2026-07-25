@@ -1,7 +1,7 @@
 # Environment Mismatch Verification — Observation Admission Bridge
 
 **Date (UTC):** 2026-07-25  
-**Status:** DEFECT CONFIRMED — closing via production demo seed + demo-primary Home session
+**Status:** CLOSED — production demo seeded; Home API + Desktop/Mobile show observations (see `PRODUCTION_HOME_VERIFICATION_CLOSED.md`)
 
 ---
 

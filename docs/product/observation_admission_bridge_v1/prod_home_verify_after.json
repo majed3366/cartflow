@@ -1,0 +1,172 @@
+{
+  "generated_at_utc": "2026-07-25T03:55:51.307272+00:00",
+  "environment": "production",
+  "base": "https://smartreplyai.net",
+  "seed_skipped": true,
+  "note": "Living Store already completed on production demo; shots-only pass.",
+  "orv_demo": {
+    "http": 200,
+    "body": {
+      "ok": true,
+      "enabled": true,
+      "store_slug": "demo",
+      "findings_count": 4,
+      "acceptance_all_four": true,
+      "present_capabilities": [
+        "high_interest_low_conversion",
+        "shipping_stronger_than_price",
+        "repeated_return_without_purchase",
+        "no_quality_issue_evidence"
+      ],
+      "missing_capabilities": [],
+      "mass_source": "durable_or_provided",
+      "titles_ar": [
+        "اهتمام مرتفع وتحويل منخفض",
+        "تردد الشحن أقوى من السعر",
+        "عودة متكررة بلا شراء",
+        "لا دليل على مشكلة جودة"
+      ],
+      "product_names": [
+        "Raven — حزام جلد للساعة",
+        "TrueSound — سماعة لاسلكية",
+        "Raven — حزام جلد للساعة",
+        "Horizon Steel — ساعة يد ستانلس"
+      ],
+      "statements_ar": [
+        "يحظى باهتمام واضح، لكن التحويل إلى شراء لا يزال منخفضاً.",
+        "تردد الشحن/التوصيل أقوى حالياً من تردد السعر.",
+        "يجذب زيارات متكررة دون إتمام شراء.",
+        "لا توجد أدلة حالية تدعم وجود مشكلة جودة."
+      ],
+      "admission_reconciliation": {
+        "foundation_ready_count": 4,
+        "orv_admitted_count": 4,
+        "routed_count": 4,
+        "home_visible_count": 4,
+        "workspace_visible_count": 3,
+        "suppressed_count": 41,
+        "suppressed_by_reason": {
+          "capability_already_admitted_for_stronger_product": 34,
+          "banned_placeholder_product_key": 6,
+          "observation_valid_for_home_not_workspace": 1
+        },
+        "silent_drops": 0,
+        "note": "home_visible == orv_admitted; workspace_visible ⊆ admitted (actionable only); suppressed includes home-only and failed candidates"
+      },
+      "has_statement_action_confidence": true,
+      "technical_fields_on_findings": false
+    }
+  },
+  "job_status": {
+    "http": 200,
+    "body": {
+      "ok": true,
+      "job": {
+        "status": "completed",
+        "ok": true,
+        "error": null,
+        "started_at_utc": "2026-07-25T03:42:10.735162+00:00",
+        "finished_at_utc": "2026-07-25T03:53:30.051424+00:00",
+        "simulation": {
+          "simulation_run_id": "srs_68ff9ac5019849f9a693cb0a917fa638",
+          "reality_score_overall": 80,
+          "execute": {
+            "status": "completed",
+            "events_executed": null,
+            "batches": null
+          },
+          "plan_event_count": 2124,
+          "store_slug": "demo"
+        },
+        "calendar": {
+          "start_date": "2026-06-26",
+          "sim_end": "2026-07-25T03:42:10.735182+00:00",
+          "duration_days": 30,
+          "calendar_mode": "wall_clock_trailing",
+          "note": "Lab script used FixedAsOf May-2026; production Home uses wall clock, so prod seed must land inside the trailing window."
+        },
+        "observation": {
+          "store_slug": "demo",
+          "foundation_ready": [
+            "high_interest_low_conversion",
+            "no_quality_issue_evidence",
+            "repeated_return_without_purchase",
+            "shipping_stronger_than_price"
+          ],
+          "orv_count": 4,
+          "present_capabilities": [
+            "high_interest_low_conversion",
+            "shipping_stronger_than_price",
+            "repeated_return_without_purchase",
+            "no_quality_issue_evidence"
+          ],
+          "admission_reconciliation": {
+            "foundation_ready_count": 4,
+            "orv_admitted_count": 4,
+            "routed_count": 4,
+            "home_visible_count": 4,
+            "workspace_visible_count": 3,
+            "suppressed_count": 41,
+            "suppressed_by_reason": {
+              "capability_already_admitted_for_stronger_product": 34,
+              "banned_placeholder_product_key": 6,
+              "observation_valid_for_home_not_workspace": 1
+            },
+            "silent_drops": 0,
+            "note": "home_visible == orv_admitted; workspace_visible ⊆ admitted (actionable only); suppressed includes home-only and failed candidates"
+          },
+          "findings": [
+            {
+              "capability": "high_interest_low_conversion",
+              "title_ar": "اهتمام مرتفع وتحويل منخفض",
+              "statement_ar": "يحظى باهتمام واضح، لكن التحويل إلى شراء لا يزال منخفضاً.",
+              "product_name": "Raven — حزام جلد للساعة"
+            },
+            {
+              "capability": "shipping_stronger_than_price",
+              "title_ar": "تردد الشحن أقوى من السعر",
+              "statement_ar": "تردد الشحن/التوصيل أقوى حالياً من تردد السعر.",
+              "product_name": "TrueSound — سماعة لاسلكية"
+            },
+            {
+              "capability": "repeated_return_without_purchase",
+              "title_ar": "عودة متكررة بلا شراء",
+              "statement_ar": "يجذب زيارات متكررة دون إتمام شراء.",
+              "product_name": "Raven — حزام جلد للساعة"
+            },
+            {
+              "capability": "no_quality_issue_evidence",
+              "title_ar": "لا دليل على مشكلة جودة",
+              "statement_ar": "لا توجد أدلة حالية تدعم وجود مشكلة جودة.",
+              "product_name": "Velvet Musk — عطر يومي"
+            }
+          ],
+          "hes_observations": {
+            "summary_ar": "المنتج Raven — حزام جلد للساعة: يحظى باهتمام واضح، لكن التحويل إلى شراء لا يزال منخفضاً.",
+            "count": 4,
+            "empty": false
+          },
+          "mass_source": "durable_or_provided",
+          "clock": "wall_clock"
+        }
+      }
+    }
+  },
+  "review_session": {
+    "http": 200,
+    "ok": true,
+    "store_slug": "demo",
+    "email": "cf.living.store.review@smartreplyai.net",
+    "cookie_name": "cartflow_merchant_session",
+    "note": "primary_store_id=demo so resolve_authenticated_store_slug → demo. Distinct from lab_session_bind (membership alongside signup primary)."
+  },
+  "home_api_probe": {
+    "http": 200,
+    "store_slug": "demo",
+    "obs_summary": "المنتج Raven — حزام جلد للساعة: يحظى باهتمام واضح، لكن التحويل إلى شراء لا يزال منخفضاً.",
+    "obs_empty": "False",
+    "obs_count": "4",
+    "text_has_raven": true,
+    "text_sample": "ملخص تنفيذي\n\nماذا يجب أن تعرف الآن؟\n\nملخص سريع فقط — التفاصيل في صفحاتها.\n\nحالة المتجر\nيتطلب متابعة\n\nفرص استعادة المبيعات محدودة اليوم.\n\nعرض التفاصيل ←\n\nقرارات اليوم\n2 قرارات عمل\n2\n\nراجع تجربة إتمام الشراء ومتابعة العملاء.\n\nعرض التفاصيل ← مساحة القرار ←\n\nملاحظات المنتجات\nيتطلب انتباهاً\n4\n\nالمنتج Raven — حزام جلد للساعة: يحظى باهتمام واضح، لكن التحويل إلى شراء لا يزال منخفضاً.\n\nعرض التفاصيل ←\n\nالسلال\nلا مهام\n0\n\n86 سلة قيد المتابعة مع العملاء.\n\nعرض التفاصيل ←\n\nالتواصل\nلا مهام\n0\n\nتواصل العملاء يسير بشكل طبيعي.\n\nعرض التفاصيل ←\n\nالصفحة الرئيسية = ملخص تنفيذي · القرارات في مساحة القرار · السلال للتشغيل · التواصل للمتابعة · الإعدادات للضبط."
+  }
+}
