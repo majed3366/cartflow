@@ -85,6 +85,37 @@ class LivingStoreProdJobGuardTests(unittest.TestCase):
             with mod._JOB_LOCK:
                 mod._JOB.update({"status": "idle", "ok": None, "error": None})
 
+    def test_status_prefers_durable_when_memory_idle(self) -> None:
+        from unittest.mock import patch
+
+        from services import living_store_reality_prod_v1 as mod
+
+        with mod._JOB_LOCK:
+            mod._JOB.update(
+                {
+                    "status": "idle",
+                    "ok": None,
+                    "error": None,
+                    "simulation": None,
+                }
+            )
+        durable = {
+            "status": "completed",
+            "ok": True,
+            "simulation": {
+                "simulation_run_id": "srs_test_durable",
+                "store_slug": "demo",
+            },
+            "status_source": "durable_job_control",
+        }
+        with patch.object(mod, "_load_durable_job_v1", return_value=durable):
+            job = mod.living_store_prod_job_status_v1()
+        self.assertEqual(job.get("status"), "completed")
+        self.assertEqual(
+            (job.get("simulation") or {}).get("simulation_run_id"),
+            "srs_test_durable",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

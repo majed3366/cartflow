@@ -118,6 +118,32 @@
   .hes-conf{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(0,0,0,.06)}
   .hes-empty,.hes-details-note{margin:0;font-size:13px;opacity:.85}
   .hes-ownership{margin:14px 0 0;font-size:12px;opacity:.7}
+  .hes-rv-audit{margin:0 0 12px;padding:10px 12px;border-radius:8px;border:1px solid rgba(53,92,125,.2);background:#f3f6f8;font-size:12px}
+  .hes-rv-audit[data-rv-status="CONSISTENT"]{border-color:rgba(47,111,78,.35);background:#f3faf6}
+  .hes-rv-audit[data-rv-status="INCONSISTENT"]{border-color:rgba(180,60,60,.4);background:#fff5f5}
+  .hes-rv-audit__status{margin:0 0 4px;font-weight:800;letter-spacing:.04em}
+  .hes-rv-audit__line,.hes-rv-audit__div,.hes-rv-audit__probe{margin:2px 0;line-height:1.45}
+  .hes-rv-audit code{font-size:10px;word-break:break-all}
+  .hes-situation-list{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px}
+  .hes-situation-card{padding:10px 12px;border-radius:8px;background:#f7faf8;border:1px solid rgba(47,111,78,.18)}
+  .hes-situation-card__title{margin:0 0 4px;font-weight:700;font-size:14px;color:#1f3d2f}
+  .hes-situation-card__statement{margin:0 0 6px;font-size:13px;line-height:1.45}
+  .hes-situation-card__meta{margin:0;font-size:11px;opacity:.8}
+  .hes-situation-id{font-family:ui-monospace,Consolas,monospace;font-size:10px;word-break:break-all}
+  .cs-surface{padding:12px 14px}
+  .cs-list{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:10px}
+  .cs-card{padding:12px;border:1px solid rgba(53,92,125,.16);border-radius:10px;background:#fff}
+  .cs-card__title{margin:0 0 4px;font-weight:700}
+  .cs-card__body{margin:0 0 6px;font-size:13px;line-height:1.45}
+  .cs-card__id code,.cs-inline-id{font-size:10px;word-break:break-all}
+  .cs-ops-banner{margin:0 0 12px;padding:12px 14px;border-radius:10px;background:#f4f7f5;border:1px solid rgba(47,111,78,.16)}
+  .cs-ops-banner h3{margin:0 0 8px;font-size:14px}
+  .cs-ops-banner ul{margin:0;padding:0 18px;font-size:13px;line-height:1.5}
+  .cs-rv-chip{margin:0 0 10px;padding:8px 10px;border-radius:8px;background:#f3f6f8;border:1px solid rgba(53,92,125,.18);font-size:11px}
+  .cs-rv-chip[data-rv-status="CONSISTENT"]{background:#f3faf6;border-color:rgba(47,111,78,.3)}
+  .cs-rv-chip[data-rv-status="INCONSISTENT"]{background:#fff5f5;border-color:rgba(180,60,60,.35)}
+  .cs-rv-chip code{font-size:10px;word-break:break-all}
+  .cw-card__situation-id{margin:0 0 8px;font-size:11px}
   .meif-item{margin:0 0 10px;padding:0}
   .meif-item__title{font-size:14px;line-height:1.45}
   .meif-item__meta{font-size:12px;opacity:.7;margin-top:2px}
@@ -140,6 +166,7 @@
       {% if merchant_cart_workspace_v1 %}
       <button type="button" class="ma-gtb-section" data-ma-section="workspace">مساحة القرار</button>
       {% endif %}
+      <button type="button" class="ma-gtb-section" data-ma-section="products">المنتجات</button>
       <button type="button" class="ma-gtb-section" data-ma-section="carts">السلال</button>
       <button type="button" class="ma-gtb-section" data-ma-section="comms">التواصل</button>
       <button type="button" class="ma-gtb-section" data-ma-section="settings">الإعدادات</button>
@@ -170,9 +197,13 @@
   <nav class="ma-ctx-panel ma-sidebar-nav" data-ma-ctx="workspace" hidden aria-label="مساحة القرار">
     <p class="ma-ctx-label">مساحة القرار</p>
     <button type="button" class="nav-item active" data-nav="workspace" onclick="if(window.goTo){goTo('workspace');return false;}">ما يحتاج قرارك</button>
-    <p class="ma-ctx-hint" style="padding:8px 12px;font-size:12px;color:#71717a;line-height:1.45;">لا توجد تصنيفات حالة هنا — فقط القرارات المعتمدة.</p>
+    <p class="ma-ctx-hint" style="padding:8px 12px;font-size:12px;color:#71717a;line-height:1.45;">نفس مواقف العمل من الرئيسية — موسّعة بالأدلة.</p>
   </nav>
   {% endif %}
+  <nav class="ma-ctx-panel ma-sidebar-nav" data-ma-ctx="products" hidden aria-label="المنتجات">
+    <p class="ma-ctx-label">المنتجات</p>
+    <button type="button" class="nav-item active" data-nav="products" onclick="if(window.goTo){goTo('products');return false;}">المنتجات في المواقف</button>
+  </nav>
   <nav class="ma-ctx-panel ma-sidebar-nav" data-ma-ctx="carts" hidden aria-label="السلال">
     <p class="ma-ctx-label">السلال</p>
     <button type="button" class="nav-item" data-nav="carts" data-cart-tab="all" onclick="goToCartTab('all')">الكل</button>
@@ -334,6 +365,12 @@
     </div>
   </div>
   {% endif %}
+
+  <div class="page" id="page-products" data-cs-products="1">
+    <div id="cs-products-root" class="cs-products-root" aria-live="polite">
+      <div class="ma-dash-skel" style="padding:40px 20px;text-align:center;color:var(--muted);">…</div>
+    </div>
+  </div>
 
   <div class="page ma-pe-v2{% if merchant_carts_v2_ui %} ma-carts--v2-ui{% endif %}" id="page-carts" data-ma-cart-section="waiting"{% if merchant_carts_v2_ui %} data-carts-v2-ui="1"{% endif %}>
     <div class="page-header ma-cart-page-header">
@@ -1144,7 +1181,8 @@
 <script defer src="/static/merchant_home_experience.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_experience_integration_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-msr1"></script>
 <script defer src="/static/observation_reality_validation_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-orv1hes"></script>
-<script defer src="/static/home_executive_summary_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-hes1"></script>
+<script defer src="/static/home_executive_summary_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-hes2"></script>
+<script defer src="/static/commerce_situations_surfaces_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-cs1"></script>
 <script defer src="/static/merchant_dashboard_home_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_pulse_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_intelligence_carts_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>

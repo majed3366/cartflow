@@ -40,6 +40,18 @@ class CommandBody(BaseModel):
     payload: Optional[dict[str, Any]] = None
 
 
+def _empty_quiet_projection(store_slug: str) -> dict[str, Any]:
+    return {
+        "store_slug": store_slug,
+        "zone_a": [],
+        "zone_b": [],
+        "quiet": True,
+        "mission_question": "ماذا يجب أن أقرر الآن، ولماذا؟",
+        "degraded_load": True,
+        "gate_2_single_decision_owner": True,
+    }
+
+
 @router.get("/projection")
 def api_cart_workspace_projection(request: Request):
     if not cart_workspace_v1_enabled():
@@ -55,34 +67,70 @@ def api_cart_workspace_projection(request: Request):
     if not auth:
         return j({"ok": False, "error": "unauthorized"}, 401)
 
-    # Silent Success: auto-seed once if merchant has no open Decisions (facilitator prep).
-    if cart_workspace_silent_success_enabled() and not SHADOW_STORE.open_decisions(auth):
-        seed_merchant_comprehension_set(auth, SHADOW_STORE)
-
-    snap = shadow_snapshot(auth, store=SHADOW_STORE)
-    if not snap.get("projection"):
-        proj = build_workspace_projection(auth, SHADOW_STORE)
-        snap["projection"] = proj.to_dict()
-    projection = dict(snap.get("projection") or {})
+    degraded = False
+    degrade_reason = None
+    projection: dict[str, Any] = {}
+    zone_assignment = None
     try:
-        from services.cart_workspace.business_findings_enrichment_v1 import (  # noqa: PLC0415
-            enrich_projection_with_fde_v1,
+        # Silent Success: auto-seed once if merchant has no open Decisions.
+        if cart_workspace_silent_success_enabled() and not SHADOW_STORE.open_decisions(
+            auth
+        ):
+            seed_merchant_comprehension_set(auth, SHADOW_STORE)
+
+        snap = shadow_snapshot(auth, store=SHADOW_STORE)
+        if not snap.get("projection"):
+            proj = build_workspace_projection(auth, SHADOW_STORE)
+            snap["projection"] = proj.to_dict()
+        projection = dict(snap.get("projection") or {})
+        zone_assignment = snap.get("zone_assignment")
+        try:
+            from services.cart_workspace.business_findings_enrichment_v1 import (  # noqa: PLC0415
+                enrich_projection_with_fde_v1,
+            )
+
+            projection = enrich_projection_with_fde_v1(projection, auth)
+            snap["projection"] = projection
+        except Exception as enrich_exc:  # noqa: BLE001
+            degraded = True
+            degrade_reason = f"enrich:{type(enrich_exc).__name__}"
+    except Exception as exc:  # noqa: BLE001
+        # Reality Validation: Workspace must never hard-fail the merchant surface.
+        degraded = True
+        degrade_reason = f"projection:{type(exc).__name__}:{exc}"[:240]
+        projection = _empty_quiet_projection(auth)
+
+    # Stamp identity for CEO Reality Validation (same dataset proof).
+    try:
+        from services.reality_validation_context_v1 import (  # noqa: PLC0415
+            stamp_reality_validation_identity_from_summary_v1,
         )
 
-        projection = enrich_projection_with_fde_v1(projection, auth)
-        snap["projection"] = projection
+        holder = {"commerce_situations_v1": projection.get("commerce_situations_v1")}
+        stamp_reality_validation_identity_from_summary_v1(
+            holder, store_slug=auth, cookies=dict(request.cookies)
+        )
+        projection["reality_validation_identity_v1"] = holder.get(
+            "reality_validation_identity_v1"
+        )
     except Exception:  # noqa: BLE001
         pass
+
     return j(
         {
             "ok": True,
             "store_slug": auth,
             "projection": projection,
-            "zone_assignment": snap.get("zone_assignment"),
+            "zone_assignment": zone_assignment,
             "projection_version": projection.get("projection_version"),
             "flag": cart_workspace_v1_flag_state(),
             "merchant_surface_active": True,
             "silent_success_mode": cart_workspace_silent_success_enabled(),
+            "degraded": degraded,
+            "degrade_reason": degrade_reason,
+            "reality_validation_identity_v1": projection.get(
+                "reality_validation_identity_v1"
+            ),
             "gate_2_single_decision_owner": True,
             "gate_2a_decision_workspace_completion": True,
             "gate_2b_decision_composition_engine": bool(

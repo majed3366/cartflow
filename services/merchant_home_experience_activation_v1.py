@@ -377,6 +377,30 @@ def finalize_dashboard_summary_payload(
                         attach_business_themes_to_summary_v1(body, _slug)
                 except Exception as bt_exc:  # noqa: BLE001
                     log.warning("business_themes_v1 slim attach: %s", bt_exc)
+                try:
+                    from services.commerce_situations_v1 import (  # noqa: PLC0415
+                        attach_commerce_situations_to_summary_v1,
+                    )
+
+                    with dashboard_summary_profile_span(
+                        "home_stage_commerce_situations"
+                    ):
+                        attach_commerce_situations_to_summary_v1(body, _slug)
+                except Exception as cs_exc:  # noqa: BLE001
+                    log.warning("commerce_situations_v1 slim attach: %s", cs_exc)
+                try:
+                    from services.reality_validation_context_v1 import (  # noqa: PLC0415
+                        stamp_reality_validation_identity_from_summary_v1,
+                    )
+
+                    with dashboard_summary_profile_span(
+                        "home_stage_reality_validation_identity"
+                    ):
+                        stamp_reality_validation_identity_from_summary_v1(
+                            body, store_slug=_slug
+                        )
+                except Exception as rv_exc:  # noqa: BLE001
+                    log.warning("reality_validation_identity slim attach: %s", rv_exc)
         except Exception as exc:  # noqa: BLE001
             log.warning("observation_admission slim attach: %s", exc)
         with dashboard_summary_profile_span("home_stage_teaser_extract"):
@@ -450,6 +474,28 @@ def finalize_dashboard_summary_payload(
                 attach_business_themes_to_summary_v1(body, _slug)
         except Exception as bt_exc:  # noqa: BLE001
             log.warning("business_themes_v1 attach: %s", bt_exc)
+        try:
+            from services.commerce_situations_v1 import (  # noqa: PLC0415
+                attach_commerce_situations_to_summary_v1,
+            )
+
+            with dashboard_summary_profile_span("home_stage_commerce_situations"):
+                attach_commerce_situations_to_summary_v1(body, _slug)
+        except Exception as cs_exc:  # noqa: BLE001
+            log.warning("commerce_situations_v1 attach: %s", cs_exc)
+        try:
+            from services.reality_validation_context_v1 import (  # noqa: PLC0415
+                stamp_reality_validation_identity_from_summary_v1,
+            )
+
+            with dashboard_summary_profile_span(
+                "home_stage_reality_validation_identity"
+            ):
+                stamp_reality_validation_identity_from_summary_v1(
+                    body, store_slug=_slug
+                )
+        except Exception as rv_exc:  # noqa: BLE001
+            log.warning("reality_validation_identity attach: %s", rv_exc)
     except Exception as exc:  # noqa: BLE001
         log.warning("observation_reality_validation_v1 attach: %s", exc)
     try:

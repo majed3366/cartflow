@@ -2294,6 +2294,19 @@
         homeV1Rendered = false;
       }
     }
+    if (homeV1Rendered && window.maApplyMerchantExperienceIntegrationV1) {
+      /* Carts/Communication MEIF ops; Home skipped when HES owns root. */
+      try {
+        window.maApplyMerchantExperienceIntegrationV1(d);
+      } catch (meifOpsErr) {}
+    }
+    /* Commerce Situations — Products / Carts / Communication (after MEIF so banners stick). */
+    if (window.maApplyCommerceSituationSurfacesV1) {
+      try {
+        window.maApplyCommerceSituationSurfacesV1(d);
+        window.__cfLastSummaryForSituations = d;
+      } catch (csSurfErr) {}
+    }
     /* ORV sibling — only when executive summary did not claim Home. */
     if (!homeV1Rendered && window.maApplyObservationRealityValidationV1) {
       try {

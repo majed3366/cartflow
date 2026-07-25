@@ -133,10 +133,37 @@
         if (global.CartWorkspaceRenderControllerV1) {
           global.CartWorkspaceRenderControllerV1.resetForTests();
         }
-        paint(proj);
+        paint(proj || { zone_a: [], zone_b: [], quiet: true });
       })
-      .catch(function () {
-        setStatus("تعذر التحميل", true);
+      .catch(function (err) {
+        /* Reality Validation: never hard-fail Workspace — paint quiet + retry. */
+        var quiet = {
+          zone_a: [],
+          zone_b: [],
+          quiet: true,
+          degraded_load: true,
+          load_error: String((err && err.message) || err || "projection_failed"),
+        };
+        try {
+          if (global.CartWorkspaceRenderControllerV1) {
+            global.CartWorkspaceRenderControllerV1.resetForTests();
+          }
+          paint(quiet);
+          setStatus("جاري إعادة المحاولة…", false);
+          setTimeout(function () {
+            fetchProjection()
+              .then(function (proj) {
+                paint(proj || quiet);
+                setStatus("");
+              })
+              .catch(function () {
+                paint(quiet);
+                setStatus("");
+              });
+          }, 1200);
+        } catch (e2) {
+          setStatus("");
+        }
       });
   }
 

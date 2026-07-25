@@ -219,10 +219,22 @@ def _compose_uncached_v1(
             bt_pkg = build_business_themes_package_v1(slug, facts_package=bf_pkg)
     except Exception:  # noqa: BLE001
         bt_pkg = None
+    cs_pkg: dict[str, Any] | None = None
+    try:
+        from services.commerce_situations_v1 import (  # noqa: PLC0415
+            build_commerce_situations_package_v1,
+            commerce_situations_v1_enabled,
+        )
+
+        if commerce_situations_v1_enabled() and bf_pkg and bf_pkg.get("ok"):
+            cs_pkg = build_commerce_situations_package_v1(slug, facts_package=bf_pkg)
+    except Exception:  # noqa: BLE001
+        cs_pkg = None
     biz_u = dict(mu_pkg.get("business_understanding_v1") or {})
     if bf_pkg and bf_pkg.get("ok"):
         biz_u["business_facts_v1"] = {
             "counts": bf_pkg.get("counts"),
+            "atoms_only": True,
             "product_meanings_ar": [
                 f.get("business_meaning_ar")
                 for f in list(bf_pkg.get("facts") or [])
@@ -239,8 +251,23 @@ def _compose_uncached_v1(
                 for t in list(bt_pkg.get("published_themes") or [])
                 if isinstance(t, dict)
             ],
+            "legacy": True,
         }
-        biz_u["consumes"] = "business_themes_v1"
+    if cs_pkg and cs_pkg.get("ok"):
+        biz_u["commerce_situations_v1"] = {
+            "counts": cs_pkg.get("counts"),
+            "titles_ar": [
+                s.get("title_ar")
+                for s in list(cs_pkg.get("published_situations") or [])
+                if isinstance(s, dict)
+            ],
+            "situation_ids": [
+                s.get("situation_id")
+                for s in list(cs_pkg.get("published_situations") or [])
+                if isinstance(s, dict)
+            ],
+        }
+        biz_u["consumes"] = "commerce_situations_v1"
     timing["merchant_understanding_ms"] = round((time.perf_counter() - t_mu) * 1000.0, 2)
     timing["store_executive_ms"] = round((time.perf_counter() - t) * 1000.0, 2)
     timing["portfolio_ms"] = timing["store_executive_ms"]
@@ -265,6 +292,7 @@ def _compose_uncached_v1(
         "gate_2x_merchant_understanding": True,
         "gate_business_facts_v1": bool(bf_pkg and bf_pkg.get("ok")),
         "gate_business_themes_v1": bool(bt_pkg and bt_pkg.get("ok")),
+        "gate_commerce_situations_v1": bool(cs_pkg and cs_pkg.get("ok")),
         "business_domains_v1": {
             "domains": domains_pkg.get("domains"),
             "home_teasers": home_teasers,
@@ -275,6 +303,7 @@ def _compose_uncached_v1(
         "business_understanding_v1": biz_u,
         "business_facts_v1": bf_pkg,
         "business_themes_v1": bt_pkg,
+        "commerce_situations_v1": cs_pkg,
         "merchant_understanding_v1": mu_pkg.get("merchant_understanding_v1"),
         "decisions": portfolio,
         "all_published": published,

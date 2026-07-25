@@ -1065,6 +1065,9 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/observation-reality-validation",
         "/dev/business-facts",
         "/dev/business-themes",
+        "/dev/commerce-situations",
+        "/dev/reality-validation-context",
+        "/dev/reality-validation-console",
         "/dev/living-store-reality-run",
         "/dev/living-store-reality-status",
         "/dev/living-store-home-review-session",
@@ -12382,6 +12385,239 @@ def dev_business_themes(
             ],
             "routing": themes.get("routing"),
             "constitution": themes.get("constitution"),
+            "recommendation": None,
+            "product_intelligence": False,
+        },
+        200,
+    )
+
+
+_REALITY_VALIDATION_CONSOLE_HTML = """<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Reality Validation Console</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,sans-serif;margin:24px;max-width:720px;line-height:1.45;color:#111;background:#f7f8f6}
+    h1{font-size:22px;margin:0 0 8px}
+    .card{background:#fff;border:1px solid #d0d5d1;border-radius:10px;padding:16px;margin:14px 0}
+    button{font-size:16px;font-weight:700;padding:12px 18px;border-radius:8px;border:0;background:#1f3d2f;color:#fff;cursor:pointer}
+    button:disabled{opacity:.5;cursor:wait}
+    pre{white-space:pre-wrap;word-break:break-word;background:#f3f4f2;padding:12px;border-radius:8px;font-size:12px}
+    a.btn{display:inline-block;margin:6px 8px 6px 0;padding:10px 14px;border-radius:8px;background:#355c7d;color:#fff;text-decoration:none;font-weight:700}
+    .warn{color:#8b1e1e;font-weight:700}
+    .ok{color:#1f3d2f;font-weight:700}
+    ol{padding-inline-start:22px}
+  </style>
+</head>
+<body>
+  <h1>Reality Validation Console</h1>
+  <p>CEO production walkthrough — no SSH, no terminal, no Python.</p>
+  <div class="card">
+    <p><strong>Store:</strong> <code>demo</code> · <strong>Host:</strong> this production site</p>
+    <ol>
+      <li>Click <strong>Run Living Store</strong> and wait until status is <code>completed</code> and a <code>simulation_run_id</code> appears.</li>
+      <li>Open <strong>Bind browser to demo</strong> (sets review cookie — do not use /login).</li>
+      <li>Open <strong>Identity Certification</strong> and verify <code>CEO_REVIEW_SAFE = TRUE</code> + <code>CONSISTENT</code>.</li>
+      <li>Only then open Home / Workspace / Products / Carts / Communication.</li>
+    </ol>
+    <button id="runBtn" type="button">Run Living Store</button>
+    <p id="runMsg"></p>
+    <pre id="statusBox">Status will appear here…</pre>
+    <p id="certLine"></p>
+    <p>
+      <a class="btn" href="/dev/living-store-home-review">Bind browser to demo</a>
+      <a class="btn" href="/dev/reality-validation-context?store=demo&amp;format=html">Identity Certification (HTML)</a>
+      <a class="btn" href="/dashboard#home">Home</a>
+      <a class="btn" href="/dashboard#workspace">Decision Workspace</a>
+      <a class="btn" href="/dashboard#products">Products</a>
+      <a class="btn" href="/dashboard#carts">Carts</a>
+      <a class="btn" href="/dashboard#communication">Communication</a>
+    </p>
+    <p class="warn">Do not review UI while CEO_REVIEW_SAFE = FALSE.</p>
+  </div>
+  <script>
+  (function () {
+    var btn = document.getElementById("runBtn");
+    var msg = document.getElementById("runMsg");
+    var box = document.getElementById("statusBox");
+    var certLine = document.getElementById("certLine");
+    var timer = null;
+    function paint(data) {
+      box.textContent = JSON.stringify(data, null, 2);
+      var job = (data && data.job) || data || {};
+      var st = job.status || "?";
+      var runId = (job.simulation && job.simulation.simulation_run_id) || "";
+      var src = job.status_source ? (" · source=" + job.status_source) : "";
+      if (st === "completed" && (job.ok === true || runId)) {
+        msg.innerHTML = '<span class="ok">Completed.</span> simulation_run_id=<code>' +
+          (runId || "—") + "</code>" + src +
+          " — next: Bind browser to demo, then Identity Certification.";
+        btn.disabled = false;
+        if (timer) { clearInterval(timer); timer = null; }
+      } else if (st === "failed") {
+        msg.innerHTML = '<span class="warn">Failed.</span> Do not review. Share this JSON with engineering.';
+        btn.disabled = false;
+        if (timer) { clearInterval(timer); timer = null; }
+      } else {
+        msg.textContent = "Job status: " + st + src + " — waiting…";
+      }
+    }
+    function pollCert() {
+      fetch("/dev/reality-validation-context?store=demo", { credentials: "same-origin" })
+        .then(function (r) { return r.json(); })
+        .then(function (ctx) {
+          var safe = !!(ctx && ctx.CEO_REVIEW_SAFE);
+          var st = (ctx && ctx.status) || "?";
+          var runId = (ctx && ctx.simulation_run_id) || "—";
+          certLine.innerHTML = "Certification preview: Status=<strong>" + st +
+            "</strong> · CEO_REVIEW_SAFE=<strong>" + (safe ? "TRUE" : "FALSE") +
+            "</strong> · simulation_run_id=<code>" + runId + "</code>" +
+            (safe ? ' <span class="ok">— safe to open surfaces</span>' :
+              ' <span class="warn">— bind demo session if needed</span>');
+        })
+        .catch(function () { /* ignore */ });
+    }
+    function poll() {
+      fetch("/dev/living-store-reality-status", { credentials: "same-origin" })
+        .then(function (r) { return r.json(); })
+        .then(function (data) { paint(data); pollCert(); })
+        .catch(function (e) { box.textContent = String(e); });
+    }
+    btn.addEventListener("click", function () {
+      btn.disabled = true;
+      msg.textContent = "Starting Living Store on production demo…";
+      fetch("/dev/living-store-reality-run", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Accept": "application/json" }
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          paint(data);
+          if (timer) clearInterval(timer);
+          timer = setInterval(poll, 4000);
+          poll();
+        })
+        .catch(function (e) {
+          btn.disabled = false;
+          msg.innerHTML = '<span class="warn">Start failed.</span>';
+          box.textContent = String(e);
+        });
+    });
+    poll();
+  })();
+  </script>
+</body>
+</html>
+"""
+
+
+@app.get("/dev/reality-validation-console", response_class=HTMLResponse)
+def dev_reality_validation_console() -> Any:
+    """
+    CEO-facing production console: Run Living Store (POST) + status + certification links.
+    No SSH / terminal / Python. Production-allowlisted.
+    """
+    return HTMLResponse(_REALITY_VALIDATION_CONSOLE_HTML, status_code=200)
+
+
+@app.get("/dev/reality-validation-context")
+def dev_reality_validation_context(
+    request: Request,
+    store: Optional[str] = None,
+    store_slug: Optional[str] = None,
+    format: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Reality Validation Identity Certification V1.
+
+    Certifies Living Store + browser session + all merchant surfaces share one
+    dataset. Returns status CONSISTENT|INCONSISTENT and CEO_REVIEW_SAFE TRUE|FALSE.
+    Use ?format=html for CEO screenshot. No PI. No UX review without certification.
+    """
+    from services.reality_validation_context_v1 import (  # noqa: PLC0415
+        build_reality_validation_context_v1,
+        render_certification_html_v1,
+    )
+
+    slug = (store or store_slug or "demo").strip() or "demo"
+    payload = build_reality_validation_context_v1(
+        store_slug=slug, cookies=dict(request.cookies)
+    )
+    fmt = (format or "").strip().lower()
+    accept = (request.headers.get("accept") or "").lower()
+    if fmt == "html" or "text/html" in accept and "application/json" not in accept:
+        return HTMLResponse(render_certification_html_v1(payload), status_code=200)
+    return j(payload, 200)
+
+
+@app.get("/dev/commerce-situations")
+def dev_commerce_situations(
+    store: Optional[str] = None,
+    store_slug: Optional[str] = None,
+) -> Any:
+    """
+    Diagnostic (allowed in production): Commerce Situation Engine V1.
+
+    Many Business Facts → entity-bound commercial situations.
+    Canonical business object for Home / Workspace / Products / Carts / Communication.
+    No PI / recommendations. Facts never publish directly when Situations are on.
+    """
+    from services.business_facts_v1 import (  # noqa: PLC0415
+        build_business_facts_package_v1,
+    )
+    from services.commerce_situations_v1 import (  # noqa: PLC0415
+        build_commerce_situations_package_v1,
+        surface_projection_v1,
+    )
+    from services.observation_foundation_v1.merchant_findings_v1 import (  # noqa: PLC0415
+        build_observation_reality_validation_v1,
+    )
+
+    slug = (store or store_slug or "demo").strip() or "demo"
+    orv = build_observation_reality_validation_v1(slug)
+    facts = build_business_facts_package_v1(slug, orv_package=orv)
+    pkg = build_commerce_situations_package_v1(slug, facts_package=facts)
+    published = list(pkg.get("published_situations") or [])
+    return j(
+        {
+            "ok": bool(pkg.get("ok")),
+            "enabled": bool(pkg.get("enabled")),
+            "store_slug": slug,
+            "facts_in": (pkg.get("counts") or {}).get("facts_in"),
+            "situations_count": (pkg.get("counts") or {}).get("situations"),
+            "published_count": (pkg.get("counts") or {}).get("published"),
+            "collapsed_ratio": (pkg.get("counts") or {}).get("collapsed_ratio"),
+            "situation_kinds": [
+                s.get("situation_kind") for s in published if isinstance(s, dict)
+            ],
+            "situation_ids": [
+                s.get("situation_id") for s in published if isinstance(s, dict)
+            ],
+            "titles_ar": [s.get("title_ar") for s in published if isinstance(s, dict)],
+            "business_questions_ar": [
+                s.get("business_question_ar") for s in published if isinstance(s, dict)
+            ],
+            "supporting_fact_counts": [
+                len(s.get("supporting_fact_ids") or [])
+                for s in published
+                if isinstance(s, dict)
+            ],
+            "primary_owners": [
+                s.get("primary_owner") for s in published if isinstance(s, dict)
+            ],
+            "routing": pkg.get("routing"),
+            "consumers": {
+                "home": surface_projection_v1(pkg, "home"),
+                "decision_workspace": surface_projection_v1(pkg, "decision_workspace"),
+                "products": surface_projection_v1(pkg, "products"),
+                "carts": surface_projection_v1(pkg, "carts"),
+                "communication": surface_projection_v1(pkg, "communication"),
+            },
+            "constitution": pkg.get("constitution"),
+            "principle_7": bool(pkg.get("principle_7")),
             "recommendation": None,
             "product_intelligence": False,
         },

@@ -25,12 +25,19 @@
 
   function isConstitutionCard(card) {
     if (!card) return false;
-    if (card.constitution_v1 || card.gate_2b_composition) return true;
+    if (
+      card.constitution_v1 ||
+      card.gate_2b_composition ||
+      card.gate_commerce_situations
+    ) {
+      return true;
+    }
     var kind = String(card.card_kind || "");
     return (
       kind === "business_finding" ||
       kind === "operational_truth" ||
-      kind === "composed_decision"
+      kind === "composed_decision" ||
+      kind === "commerce_situation"
     );
   }
 
@@ -145,6 +152,74 @@
 
   function constitutionFaceHtml(card) {
     var ex = explanationOf(card);
+    var situationId = String(card.situation_id || "").trim();
+    if (card.gate_commerce_situations || situationId) {
+      var sitTitle = String(
+        card.decision_ar || card.title_ar || card.merchant_decision || "موقف تجاري"
+      );
+      var sitWhy = String(card.why_ar || ex.why_here || "");
+      var sitQ = String(card.why_now_ar || "");
+      var sitEvidence = String(card.evidence_summary || "");
+      if (
+        !sitEvidence &&
+        Array.isArray(card.supporting_facts_ar) &&
+        card.supporting_facts_ar.length
+      ) {
+        sitEvidence = card.supporting_facts_ar.join(" · ");
+      }
+      var sitAction = String(
+        card.required_merchant_action ||
+          card.action_label_ar ||
+          card.recommended_action ||
+          ""
+      );
+      var sitImpact = String(
+        card.expected_outcome_ar ||
+          card.expected_business_impact ||
+          card.business_impact_ar ||
+          ""
+      );
+      var sitConf = String(card.decision_confidence_ar || "").trim();
+      var href = String(card.view_details_href || "").trim();
+      if (!href && situationId) {
+        href = "#products?situation_id=" + encodeURIComponent(situationId);
+      }
+      var rowsSit = [];
+      rowsSit.push(
+        '<p class="cw-card__band">موقف تجاري</p>'
+      );
+      rowsSit.push(
+        '<p class="cw-card__situation-id" data-situation-id="' +
+          esc(situationId) +
+          '"><code>' +
+          esc(situationId) +
+          "</code></p>"
+      );
+      rowsSit.push(
+        fieldRow("الموقف", sitTitle, "cw-card__field-value--decision")
+      );
+      rowsSit.push(fieldRow("لماذا يهم؟", sitWhy));
+      rowsSit.push(fieldRow("سؤال العمل", sitQ));
+      rowsSit.push(fieldRow("الأدلة", sitEvidence || INSUFFICIENT_EVIDENCE_AR));
+      rowsSit.push(fieldRow("إجراء التاجر", sitAction));
+      rowsSit.push(fieldRow("الأثر المتوقع", sitImpact));
+      rowsSit.push(fieldRow("الثقة", sitConf));
+      if (href) {
+        rowsSit.push(
+          '<p class="cw-card__dest"><a class="cw-card__dest-link" href="' +
+            esc(href) +
+            '">المنتجات المشاركة ←</a> · ' +
+            '<a class="cw-card__dest-link" href="#carts?situation_id=' +
+            encodeURIComponent(situationId) +
+            '">السلال</a> · ' +
+            '<a class="cw-card__dest-link" href="#communication?situation_id=' +
+            encodeURIComponent(situationId) +
+            '">التواصل</a></p>'
+        );
+      }
+      return rowsSit.join("");
+    }
+
     var decision = String(
       card.decision_ar || card.title_ar || "قرار يحتاج مراجعتك"
     );
@@ -171,7 +246,7 @@
     var outcome = String(
       card.expected_outcome_ar || card.expected_business_impact || ex.expected_after || ""
     );
-    var href = String(card.view_details_href || "").trim();
+    var href2 = String(card.view_details_href || "").trim();
     var detailsLabel = String(card.view_details_ar || "عرض التفاصيل");
     var band = String(card.priority_band || "");
     var bandLabel = "";
@@ -209,10 +284,10 @@
     rows.push(fieldRow("الثقة", conf));
 
     var dest = "";
-    if (href) {
+    if (href2) {
       dest =
         '<p class="cw-card__dest"><a class="cw-card__dest-link" href="' +
-        esc(href) +
+        esc(href2) +
         '">' +
         esc(detailsLabel) +
         "</a></p>";
@@ -332,6 +407,7 @@
     if (p.isConstitution || isConstitutionCard(card)) mods.push("cw-card--constitution");
 
     if (p.isConstitution || isConstitutionCard(card)) {
+      var sitAttr = String(card.situation_id || "").trim();
       return (
         '<article class="' +
         mods.join(" ") +
@@ -343,7 +419,11 @@
         esc(card.card_kind || "ops") +
         '" data-decision-status="' +
         esc(card.decision_status || "") +
-        '" data-constitution="1">' +
+        '" data-constitution="1"' +
+        (sitAttr
+          ? ' data-situation-id="' + esc(sitAttr) + '" data-commerce-situation="1"'
+          : "") +
+        ">" +
         constitutionFaceHtml(card) +
         detailsHtml(card, id, extraDetails) +
         "</article>"

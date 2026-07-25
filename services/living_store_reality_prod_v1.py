@@ -16,7 +16,7 @@ import logging
 import secrets
 import threading
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any, Mapping, Optional
 
 from services.store_reality_simulator.contracts_v1 import DEMO_STORE_SLUG
 
@@ -49,6 +49,11 @@ LIVING_SCENARIOS = [
 
 REVIEW_EMAIL = "cf.living.store.review@smartreplyai.net"
 
+# Durable job control plane (multi-worker Railway): in-memory alone returns idle
+# on replicas that did not accept the POST.
+_JOB_CONTROL_RUN_ID = "lsr_prod_job_control_v1"
+_JOB_CONTROL_PROFILE = "living_store_job_ctrl"
+
 _JOB_LOCK = threading.Lock()
 _JOB: dict[str, Any] = {
     "status": "idle",
@@ -60,6 +65,8 @@ _JOB: dict[str, Any] = {
     "calendar": None,
     "observation": None,
 }
+
+_ACTIVE_JOB_STATUSES = frozenset({"starting", "running", "observing"})
 
 
 def wall_clock_living_calendar_v1(
@@ -88,14 +95,156 @@ def wall_clock_living_calendar_v1(
     }
 
 
-def living_store_prod_job_status_v1() -> dict[str, Any]:
+def _job_snapshot() -> dict[str, Any]:
     with _JOB_LOCK:
         return dict(_JOB)
+
+
+def _load_durable_job_v1() -> Optional[dict[str, Any]]:
+    """Read cross-replica job control row (SimulationRun progress_json)."""
+    try:
+        from extensions import db  # noqa: PLC0415
+        from models import SimulationRun  # noqa: PLC0415
+
+        row = (
+            db.session.query(SimulationRun)
+            .filter(SimulationRun.simulation_run_id == _JOB_CONTROL_RUN_ID)
+            .first()
+        )
+        if row is None:
+            return None
+        raw = getattr(row, "progress_json", None) or "{}"
+        data = json.loads(raw) if isinstance(raw, str) else (raw or {})
+        if not isinstance(data, dict):
+            return None
+        out = dict(data)
+        out["status_source"] = "durable_job_control"
+        return out
+    except Exception as exc:  # noqa: BLE001
+        log.warning("living_store_prod_v1 durable job load failed: %s", exc)
+        return None
+
+
+def _persist_durable_job_v1(job: Mapping[str, Any]) -> None:
+    """Upsert job control so every Railway replica can poll the same status."""
+    try:
+        from extensions import db  # noqa: PLC0415
+        from models import SimulationRun  # noqa: PLC0415
+
+        payload = {
+            "status": job.get("status"),
+            "ok": job.get("ok"),
+            "error": job.get("error"),
+            "started_at_utc": job.get("started_at_utc"),
+            "finished_at_utc": job.get("finished_at_utc"),
+            "simulation": job.get("simulation"),
+            "calendar": job.get("calendar"),
+            "observation": job.get("observation"),
+        }
+        now = datetime.now(timezone.utc)
+        row = (
+            db.session.query(SimulationRun)
+            .filter(SimulationRun.simulation_run_id == _JOB_CONTROL_RUN_ID)
+            .first()
+        )
+        if row is None:
+            row = SimulationRun(
+                simulation_run_id=_JOB_CONTROL_RUN_ID,
+                store_slug=DEMO_STORE_SLUG,
+                scenario_ids_json="[]",
+                seed=0,
+                start_date=now,
+                duration_days=0,
+                status="control",
+                scale_profile=_JOB_CONTROL_PROFILE,
+                progress_json=json.dumps(payload, ensure_ascii=False),
+                config_json=json.dumps(
+                    {"kind": "living_store_prod_job_control_v1"}, ensure_ascii=False
+                ),
+            )
+            db.session.add(row)
+        else:
+            row.progress_json = json.dumps(payload, ensure_ascii=False)
+            row.scale_profile = _JOB_CONTROL_PROFILE
+            row.status = "control"
+            row.updated_at = now
+        db.session.commit()
+    except Exception as exc:  # noqa: BLE001
+        log.warning("living_store_prod_v1 durable job persist failed: %s", exc)
+        try:
+            from extensions import db  # noqa: PLC0415
+
+            db.session.rollback()
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def living_store_prod_job_status_v1() -> dict[str, Any]:
+    """
+    Effective job status for CEO console / probes.
+
+    Prefers in-memory when this replica owns an active job; otherwise reads the
+    durable control row so multi-worker status polls stay coherent.
+    """
+    mem = _job_snapshot()
+    mem_st = str(mem.get("status") or "idle")
+    if mem_st in _ACTIVE_JOB_STATUSES or (
+        mem_st in {"completed", "failed"} and mem.get("simulation")
+    ):
+        out = dict(mem)
+        out["status_source"] = "in_memory"
+        return out
+    durable = _load_durable_job_v1()
+    if durable and str(durable.get("status") or "idle") != "idle":
+        return durable
+    # Last resort: latest durable Living Store simulation_run_id (completed history).
+    try:
+        from extensions import db  # noqa: PLC0415
+        from models import SimulationRun  # noqa: PLC0415
+
+        row = (
+            db.session.query(SimulationRun)
+            .filter(SimulationRun.store_slug == DEMO_STORE_SLUG)
+            .filter(SimulationRun.scale_profile == "living_store")
+            .order_by(SimulationRun.created_at.desc())
+            .first()
+        )
+        if row is not None and row.simulation_run_id:
+            ts = getattr(row, "updated_at", None) or getattr(row, "created_at", None)
+            return {
+                "status": "completed"
+                if str(row.status or "").lower()
+                in {"completed", "executed", "done", "success"}
+                else str(row.status or "durable"),
+                "ok": True
+                if str(row.status or "").lower()
+                in {"completed", "executed", "done", "success"}
+                else None,
+                "error": None,
+                "started_at_utc": None,
+                "finished_at_utc": ts.isoformat()
+                if hasattr(ts, "isoformat")
+                else None,
+                "simulation": {
+                    "simulation_run_id": str(row.simulation_run_id),
+                    "store_slug": DEMO_STORE_SLUG,
+                },
+                "calendar": None,
+                "observation": None,
+                "status_source": "simulation_runs_table",
+            }
+    except Exception as exc:  # noqa: BLE001
+        log.warning("living_store_prod_v1 latest run enrich failed: %s", exc)
+    out = dict(mem)
+    out["status_source"] = "in_memory"
+    return out
 
 
 def _set_job(**fields: Any) -> None:
     with _JOB_LOCK:
         _JOB.update(fields)
+        snap = dict(_JOB)
+    _persist_durable_job_v1(snap)
 
 
 def _observe_demo_wall_clock() -> dict[str, Any]:
@@ -304,13 +453,23 @@ def _job_worker() -> None:
 
 def start_living_store_prod_run_v1() -> dict[str, Any]:
     """Start async Living Store execute against connected DB (demo only)."""
+    # Cross-replica guard: durable control row may show active on another worker.
+    effective = living_store_prod_job_status_v1()
+    if str(effective.get("status") or "idle") in _ACTIVE_JOB_STATUSES:
+        return {
+            "ok": False,
+            "error": "already_running",
+            "job": effective,
+        }
     with _JOB_LOCK:
         st = str(_JOB.get("status") or "idle")
-        if st in ("starting", "running", "observing"):
+        if st in _ACTIVE_JOB_STATUSES:
+            snap = dict(_JOB)
+            snap["status_source"] = "in_memory"
             return {
                 "ok": False,
                 "error": "already_running",
-                "job": dict(_JOB),
+                "job": snap,
             }
         _JOB.update(
             {
@@ -324,6 +483,8 @@ def start_living_store_prod_run_v1() -> dict[str, Any]:
                 "observation": None,
             }
         )
+        snap = dict(_JOB)
+    _persist_durable_job_v1(snap)
     thread = threading.Thread(
         target=_job_worker,
         name="living-store-reality-prod-v1",

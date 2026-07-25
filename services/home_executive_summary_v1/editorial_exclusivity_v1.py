@@ -79,6 +79,10 @@ def classify_commercial_situation_v1(
     if not text:
         return None
 
+    # Portfolio introduces many situations — never collapse to one classifier bucket.
+    if sid == "situations":
+        return None
+
     # Operational surfaces never reinterpret business situations.
     if sid == "carts":
         return SIT_CART_OPS

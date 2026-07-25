@@ -8,7 +8,7 @@ previews on Home — View Details routes to owning pages.
 """
 from __future__ import annotations
 
-from typing import Any, Mapping
+from typing import Any, Mapping, Optional
 
 from services.home_executive_summary_v1.editorial_exclusivity_v1 import (
     apply_editorial_exclusivity_v1,
@@ -32,6 +32,7 @@ OWNERSHIP_V1 = {
 # Stable section ids (transport/UI). Titles are merchant-facing Arabic.
 SECTION_IDS_V1 = (
     "health",
+    "situations",
     "decisions",
     "observations",
     "carts",
@@ -85,19 +86,81 @@ def _as_int(v: Any) -> int:
         return 0
 
 
+def _situations_portfolio_section(summary: Mapping[str, Any]) -> Optional[dict[str, Any]]:
+    """
+    CEO Reality Validation — Home must introduce 3–5 distinct commercial situations.
+    Not a rename of Facts/Decisions: a Situation portfolio with situation_id on each item.
+    """
+    t = _teasers(summary)
+    obs = t.get("observations") if isinstance(t.get("observations"), Mapping) else {}
+    top = obs.get("top") if isinstance(obs.get("top"), Mapping) else None
+    items_raw = []
+    if isinstance(top, Mapping) and isinstance(top.get("situations"), list):
+        items_raw = [x for x in top.get("situations") or [] if isinstance(x, Mapping)]
+    if not items_raw:
+        # Prefer full package routing when available (fat summary / tests).
+        cs = summary.get("commerce_situations_v1")
+        if isinstance(cs, Mapping):
+            routing = cs.get("routing") if isinstance(cs.get("routing"), Mapping) else {}
+            teaser = (
+                routing.get("home_teaser")
+                if isinstance(routing, Mapping)
+                else None
+            )
+            if isinstance(teaser, Mapping):
+                items_raw = [
+                    x
+                    for x in list(teaser.get("situations") or [])
+                    if isinstance(x, Mapping)
+                ]
+    items: list[dict[str, Any]] = []
+    for row in items_raw[:5]:
+        sid = str(row.get("situation_id") or "").strip()
+        title = str(row.get("title_ar") or "").strip()
+        statement = str(row.get("statement_ar") or "").strip()
+        if not sid or not (title or statement):
+            continue
+        items.append(
+            {
+                "situation_id": sid,
+                "situation_kind": str(row.get("situation_kind") or "").strip(),
+                "title_ar": title,
+                "statement_ar": statement,
+                "product_name_ar": str(row.get("product_name_ar") or "").strip(),
+                "href": str(row.get("href") or f"#workspace?situation_id={sid}"),
+                "source": "commerce_situations_v1",
+            }
+        )
+    if len(items) < 1:
+        return None
+    return {
+        "id": "situations",
+        "title_ar": "مواقف العمل الآن",
+        "summary_ar": f"{len(items)} مواقف تجارية تستحق فهمك الآن.",
+        "status_ar": "فهم تجاري",
+        "count": len(items),
+        "items": items,
+        "situation_ids": [i["situation_id"] for i in items],
+        "view_details_href": "#workspace",
+        "view_details_ar": "افتح مساحة القرار",
+        "empty": False,
+        "owner_page": "decision_workspace",
+        "built_from": "commerce_situations_v1",
+        "portfolio": True,
+        "canonical_object": "commerce_situation_v1",
+    }
+
+
 def _observation_section(summary: Mapping[str, Any]) -> dict[str, Any]:
+    """Legacy fallback when Situations portfolio is unavailable."""
     t = _teasers(summary)
     obs = t.get("observations") if isinstance(t.get("observations"), Mapping) else {}
     count = _as_int(obs.get("count"))
     top = obs.get("top") if isinstance(obs.get("top"), Mapping) else None
-    source = str(top.get("source") or "") if top else ""
-    from_facts = source == "business_facts_v1"
-    # Product Observations (constitution) — not Theme gallery.
-    section_title = "ملاحظات المنتجات"
     if count <= 0 or not top:
         return {
             "id": "observations",
-            "title_ar": section_title,
+            "title_ar": "ملاحظات المنتجات",
             "summary_ar": OBS_EMPTY_AR,
             "status_ar": "أدلة غير كافية",
             "count": 0,
@@ -111,7 +174,6 @@ def _observation_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         }
     name = str(top.get("product_name_ar") or top.get("title_ar") or "").strip()
     statement = str(top.get("statement_ar") or "").strip()
-    # Executive introduce only — no recommendations / fact laundry list.
     if name and statement and name not in statement:
         summary_ar = f"المنتج {name}: {statement}"
     elif statement:
@@ -122,7 +184,7 @@ def _observation_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         summary_ar = OBS_EMPTY_AR
     return {
         "id": "observations",
-        "title_ar": section_title,
+        "title_ar": "ملاحظات المنتجات",
         "summary_ar": summary_ar,
         "status_ar": "يتطلب انتباهاً",
         "count": count,
@@ -132,7 +194,7 @@ def _observation_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         "empty_state_ar": "",
         "findings_preview": [],
         "owner_page": "decision_workspace",
-        "built_from": "business_facts_v1" if from_facts or not source else source,
+        "built_from": str(top.get("source") or "business_facts_v1"),
     }
 
 
@@ -369,13 +431,20 @@ def build_home_executive_summary_v1(
             "governance": dict(GOVERNANCE_V1),
         }
     src = summary if isinstance(summary, Mapping) else {}
-    raw_sections = [
-        _health_section(src),
-        _decisions_section(src),
-        _observation_section(src),
-        _carts_section(src),
-        _communication_section(src),
-    ]
+    portfolio = _situations_portfolio_section(src)
+    raw_sections: list[dict[str, Any]] = [_health_section(src)]
+    if portfolio is not None:
+        # Situations replace Facts/Decisions dual slots — no parallel publisher.
+        raw_sections.append(portfolio)
+    else:
+        raw_sections.append(_decisions_section(src))
+        raw_sections.append(_observation_section(src))
+    raw_sections.extend(
+        [
+            _carts_section(src),
+            _communication_section(src),
+        ]
+    )
     sections = apply_editorial_exclusivity_v1(raw_sections)
     suppressions = []
     if sections and isinstance(sections[0], dict):
