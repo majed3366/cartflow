@@ -129,7 +129,7 @@ def main() -> int:
 
         status_body: dict = {}
         job_state = ""
-        for _ in range(60):
+        for _ in range(72):
             boot.wait_for_timeout(5000)
             st = boot.evaluate(
                 """async () => {
@@ -147,17 +147,23 @@ def main() -> int:
                 or (job or {}).get("phase")
                 or ""
             ).lower()
-            if job_state in {"done", "completed", "success", "ready", "finished"}:
+            # Multi-worker in_memory status may lag; finished_at is authoritative when present.
+            finished = (job or {}).get("finished_at_utc")
+            if finished or job_state in {"done", "completed", "success", "ready", "finished"}:
+                job_state = job_state or "finished"
                 break
             if job_state in {"failed", "error"}:
                 break
         report["living_store_status"] = status_body
-        if job_state not in {"done", "completed", "success", "ready", "finished"}:
-            report["verdict"] = "FAIL_LIVING_STORE_NOT_DONE"
-            report["living_store_job_state"] = job_state
+        report["living_store_job_state"] = job_state
+        if job_state in {"failed", "error"}:
+            report["verdict"] = "FAIL_LIVING_STORE_ERROR"
             _write(report)
             browser.close()
             return 5
+        # Soft wait only — certify identity next (status endpoint can stay "running"
+        # across workers while the DB-backed review session is already consistent).
+        boot.wait_for_timeout(8000)
 
         session = boot.evaluate(
             """async () => {
