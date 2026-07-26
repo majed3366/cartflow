@@ -1,7 +1,7 @@
 # Dashboard Constitution V1 — Production Validation
 
-**Generated (UTC):** 2026-07-26T22:11:37.092527+00:00  
-**Verdict:** `FAIL_CONSTITUTION_PROD`  
+**Generated (UTC):** 2026-07-26T23:09:06.985089+00:00  
+**Verdict:** `PASS_CONSTITUTION_PROD`  
 
 ## Precondition (certified Living Store)
 
@@ -10,7 +10,7 @@
 | status | `CONSISTENT` |
 | CEO_REVIEW_SAFE | `True` |
 | store_slug | `demo` |
-| simulation_run_id | `srs_354a106febbd4e48bc45d1e6999fa393` |
+| simulation_run_id | `srs_c8e24386205a4a1e82063049113f80d4` |
 
 ## Acceptance flags
 
@@ -20,10 +20,10 @@
   "any_tech": false,
   "same_run": true,
   "carts_operational_only": true,
-  "comms_facts": false,
-  "empty_hash_home": false,
+  "comms_facts": true,
+  "empty_hash_home": true,
   "month_wall_hidden": true,
-  "purposes_ok": false
+  "purposes_ok": true
 }
 ```
 

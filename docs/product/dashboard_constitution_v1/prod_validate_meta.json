@@ -1,9 +1,9 @@
 {
-  "generated_at_utc": "2026-07-26T22:11:37.092527+00:00",
+  "generated_at_utc": "2026-07-26T23:09:06.985089+00:00",
   "environment": "production",
   "base": "https://smartreplyai.net",
   "gate": "dashboard_constitution_v1",
-  "verdict": "FAIL_CONSTITUTION_PROD",
+  "verdict": "PASS_CONSTITUTION_PROD",
   "deploy": {
     "deployed": true,
     "attempt": 1,
@@ -18,20 +18,18 @@
   "living_store_run": {
     "http": 200,
     "body": {
-      "ok": true,
-      "accepted": true,
-      "store_slug": "demo",
-      "environment": "connected_database",
+      "ok": false,
+      "error": "already_running",
       "job": {
         "status": "running",
         "ok": null,
         "error": null,
-        "started_at_utc": "2026-07-26T22:12:06.812255+00:00",
+        "started_at_utc": "2026-07-26T23:00:41.416070+00:00",
         "finished_at_utc": null,
         "simulation": null,
         "calendar": {
           "start_date": "2026-06-27",
-          "sim_end": "2026-07-26T22:12:06.812261+00:00",
+          "sim_end": "2026-07-26T23:00:41.416080+00:00",
           "duration_days": 30,
           "calendar_mode": "wall_clock_trailing",
           "note": "Lab script used FixedAsOf May-2026; production Home uses wall clock, so prod seed must land inside the trailing window."
@@ -47,20 +45,21 @@
       "status": "running",
       "ok": null,
       "error": null,
-      "started_at_utc": "2026-07-26T22:12:06.812255+00:00",
+      "started_at_utc": "2026-07-26T23:00:41.416070+00:00",
       "finished_at_utc": null,
       "simulation": null,
       "calendar": {
         "start_date": "2026-06-27",
-        "sim_end": "2026-07-26T22:12:06.812261+00:00",
+        "sim_end": "2026-07-26T23:00:41.416080+00:00",
         "duration_days": 30,
         "calendar_mode": "wall_clock_trailing",
         "note": "Lab script used FixedAsOf May-2026; production Home uses wall clock, so prod seed must land inside the trailing window."
       },
       "observation": null,
-      "status_source": "in_memory"
+      "status_source": "durable_job_control"
     }
   },
+  "living_store_job_state": "running",
   "review_session": {
     "http": 200,
     "ok": true,
@@ -70,7 +69,7 @@
     "status": "CONSISTENT",
     "CEO_REVIEW_SAFE": true,
     "store_slug": "demo",
-    "simulation_run_id": "srs_354a106febbd4e48bc45d1e6999fa393",
+    "simulation_run_id": "srs_c8e24386205a4a1e82063049113f80d4",
     "http": 200
   },
   "screenshots": {
@@ -89,22 +88,20 @@
   },
   "parity": {
     "desktop": {
+      "store_slug": "demo",
+      "simulation_run_id": "srs_c8e24386205a4a1e82063049113f80d4",
       "store_condition": "المتجر يحتاج تدخلاً عاجلاً — متابعة العملاء مقيدة بسبب نقص معلومات التواصل.",
-      "primary_action": "راجع مسار التحويل لـ Raven — حزام جلد للساعة.",
-      "primary_subject": "Raven — حزام جلد للساعة",
-      "communication": "متابعة بعض العملاء مقيدة بسبب نقص معلومات التواصل.",
-      "carts": "185 سلة تحتاج متابعة تشغيلية.",
-      "simulation_run_id": "srs_354a106febbd4e48bc45d1e6999fa393",
-      "store_slug": "demo"
+      "primary_action": "راجع مسار التحويل لـ Nano 20W — رأس شحن سريع USB‑PD.",
+      "primary_subject": "Nano 20W — رأس شحن سريع USB‑PD",
+      "communication": "متابعة بعض العملاء مقيدة بسبب نقص معلومات التواصل."
     },
     "mobile": {
+      "store_slug": "demo",
+      "simulation_run_id": "srs_c8e24386205a4a1e82063049113f80d4",
       "store_condition": "المتجر يحتاج تدخلاً عاجلاً — متابعة العملاء مقيدة بسبب نقص معلومات التواصل.",
-      "primary_action": "راجع مسار التحويل لـ Raven — حزام جلد للساعة.",
-      "primary_subject": "Raven — حزام جلد للساعة",
-      "communication": "متابعة بعض العملاء مقيدة بسبب نقص معلومات التواصل.",
-      "carts": "185 سلة تحتاج متابعة تشغيلية.",
-      "simulation_run_id": "srs_354a106febbd4e48bc45d1e6999fa393",
-      "store_slug": "demo"
+      "primary_action": "راجع مسار التحويل لـ Nano 20W — رأس شحن سريع USB‑PD.",
+      "primary_subject": "Nano 20W — رأس شحن سريع USB‑PD",
+      "communication": "متابعة بعض العملاء مقيدة بسبب نقص معلومات التواصل."
     },
     "match": true
   },
@@ -129,18 +126,29 @@
       "monthHidden": true,
       "notifyHidden": true,
       "autoHidden": true,
-      "viewDetails": 0,
+      "viewDetails": 6,
       "systemicOnCarts": false,
       "commsFacts": [],
       "actionLinks": [
-        "/dashboard#carts|عرض السلال"
+        "#carts|عرض التفاصيل ←",
+        "#workspace|عرض التفاصيل ←",
+        "#workspace|عرض التفاصيل ←",
+        "#workspace|عرض التفاصيل ←",
+        "#carts|عرض التفاصيل ←",
+        "#communication|عرض التفاصيل ←",
+        "/dashboard#settings|متابعة الإعداد",
+        "#workspace|عرض التفاصيل ←",
+        "#workspace|عرض التفاصيل ←",
+        "#workspace|عرض التفاصيل ←",
+        "#workspace|عرض القرارات في مساحة القرار ←",
+        "#carts?tab=nophone|عرض العملاء بلا رقم ←"
       ],
       "hash": "#home",
       "page_attr": "home"
     },
     "desktop_workspace": {
-      "purpose": "",
-      "purpose_ok": false,
+      "purpose": "أي قرار يجب أن أتخذه، ولماذا؟",
+      "purpose_ok": true,
       "monthHidden": true,
       "notifyHidden": true,
       "autoHidden": true,
@@ -215,12 +223,12 @@
       "page_attr": "products"
     },
     "desktop_carts": {
-      "purpose": "",
-      "purpose_ok": false,
+      "purpose": "ما حالة كل سلة؟",
+      "purpose_ok": true,
       "monthHidden": true,
       "notifyHidden": true,
       "autoHidden": true,
-      "viewDetails": 0,
+      "viewDetails": 4,
       "systemicOnCarts": false,
       "commsFacts": [],
       "actionLinks": [
@@ -260,7 +268,14 @@
       "autoHidden": true,
       "viewDetails": 0,
       "systemicOnCarts": false,
-      "commsFacts": [],
+      "commsFacts": [
+        "تم الإرسال",
+        "تم التسليم",
+        "تم الرد",
+        "عاد العميل",
+        "لا يوجد رقم",
+        "يحتاج متابعة"
+      ],
       "actionLinks": [
         "#carts|عرض التفاصيل ←",
         "#workspace|عرض التفاصيل ←",
@@ -329,7 +344,8 @@
       "page_attr": "settings"
     },
     "desktop_empty_hash": {
-      "hash": "#workspace"
+      "hash": "#home",
+      "page": "home"
     },
     "mobile_home": {
       "purpose": "ماذا يجب أن أعرف الآن عن متجري؟",
@@ -352,14 +368,14 @@
         "#workspace|عرض التفاصيل ←",
         "#workspace|عرض التفاصيل ←",
         "#workspace|عرض القرارات في مساحة القرار ←",
-        "#carts?tab=nophone|عرض العملاء المتأثرين ←"
+        "#carts?tab=nophone|عرض العملاء بلا رقم ←"
       ],
       "hash": "#home",
       "page_attr": "home"
     },
     "mobile_workspace": {
-      "purpose": "",
-      "purpose_ok": false,
+      "purpose": "أي قرار يجب أن أتخذه، ولماذا؟",
+      "purpose_ok": true,
       "monthHidden": true,
       "notifyHidden": true,
       "autoHidden": true,
@@ -434,7 +450,7 @@
       "page_attr": "products"
     },
     "mobile_carts": {
-      "purpose": "القائمة أدناه تعرض حالة كل سلة.",
+      "purpose": "ما حالة كل سلة؟",
       "purpose_ok": true,
       "monthHidden": true,
       "notifyHidden": true,
@@ -479,7 +495,14 @@
       "autoHidden": true,
       "viewDetails": 0,
       "systemicOnCarts": false,
-      "commsFacts": [],
+      "commsFacts": [
+        "تم الإرسال",
+        "تم التسليم",
+        "تم الرد",
+        "عاد العميل",
+        "لا يوجد رقم",
+        "يحتاج متابعة"
+      ],
       "actionLinks": [
         "#carts|عرض التفاصيل ←",
         "#workspace|عرض التفاصيل ←",
@@ -548,7 +571,8 @@
       "page_attr": "settings"
     },
     "mobile_empty_hash": {
-      "hash": "#workspace"
+      "hash": "#home",
+      "page": "home"
     }
   },
   "acceptance_flags": {
@@ -556,9 +580,9 @@
     "any_tech": false,
     "same_run": true,
     "carts_operational_only": true,
-    "comms_facts": false,
-    "empty_hash_home": false,
+    "comms_facts": true,
+    "empty_hash_home": true,
     "month_wall_hidden": true,
-    "purposes_ok": false
+    "purposes_ok": true
   }
 }

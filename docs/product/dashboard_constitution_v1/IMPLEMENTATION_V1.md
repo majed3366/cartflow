@@ -1,8 +1,9 @@
 # Dashboard Constitution Implementation V1
 
-**Status:** Implemented (merchant UI alignment — no new engines)  
+**Status:** Implemented + production validated  
 **Date (UTC):** 2026-07-26  
-**Audit:** [`OWNERSHIP_AUDIT_V1.md`](OWNERSHIP_AUDIT_V1.md)
+**Audit:** [`OWNERSHIP_AUDIT_V1.md`](OWNERSHIP_AUDIT_V1.md)  
+**Prod pack:** [`PRODUCTION_VALIDATION_V1.md`](PRODUCTION_VALIDATION_V1.md)
 
 ## What changed
 
