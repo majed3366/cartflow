@@ -26,6 +26,7 @@ from services.decision_composition_engine_v1.suppress_v1 import (
 
 SUPPRESS_SAME_ROOT_CAUSE = "duplicate_root_cause"
 SUPPRESS_SUBSUMED_BY_CANONICAL = "subsumed_by_canonical_decision"
+SUPPRESS_DUPLICATE_ACTION = "duplicate_recommended_action"
 
 
 def attach_root_cause_v1(
@@ -182,9 +183,74 @@ def dedupe_candidates_v1(
     return survivors, registry
 
 
+def _action_key_v1(cand: Mapping[str, Any]) -> str:
+    import re
+
+    text = str(
+        cand.get("merchant_decision")
+        or cand.get("executive_decision_ar")
+        or cand.get("recommended_action")
+        or cand.get("title")
+        or ""
+    ).strip()
+    if not text:
+        return ""
+    return re.sub(r"\s+", " ", text).casefold()
+
+
+def dedupe_published_by_action_v1(
+    decisions: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """
+    After executive titles are stamped: merge decisions that require the same
+    merchant action (F3). Priority labels must never distinguish duplicates.
+    """
+    registry: list[dict[str, Any]] = []
+    working = [dict(d) for d in decisions if isinstance(d, Mapping) and not d.get("suppressed")]
+    working.sort(key=_priority_tuple)
+    seen_action: set[str] = set()
+    survivors: list[dict[str, Any]] = []
+    for cand in working:
+        key = _action_key_v1(cand)
+        subject = str(
+            cand.get("decision_subject_id")
+            or cand.get("situation_id")
+            or cand.get("product_id")
+            or ""
+        ).strip()
+        # Same action + same/empty subject → duplicate. Distinct product subjects may share
+        # generic verbs only when actions differ after normalization.
+        composite = f"{key}|{subject}" if subject else key
+        if key and (key in seen_action or composite in seen_action):
+            # If identical action text regardless of subject — suppress (F3).
+            if key in seen_action:
+                cand = mark_suppressed(cand, SUPPRESS_DUPLICATE_ACTION)
+                registry.append(
+                    {
+                        "decision_id": cand.get("decision_id"),
+                        "suppression_reason": SUPPRESS_DUPLICATE_ACTION,
+                        "decision_type": cand.get("decision_type"),
+                        "root_cause_key": cand.get("root_cause_key"),
+                        "business_domain": cand.get("business_domain"),
+                        "duplicate_action_ar": str(
+                            cand.get("merchant_decision") or ""
+                        ).strip(),
+                    }
+                )
+                continue
+        if key:
+            seen_action.add(key)
+            if composite:
+                seen_action.add(composite)
+        survivors.append(cand)
+    return survivors, registry
+
+
 __all__ = [
+    "SUPPRESS_DUPLICATE_ACTION",
     "SUPPRESS_SAME_ROOT_CAUSE",
     "SUPPRESS_SUBSUMED_BY_CANONICAL",
     "attach_root_cause_v1",
     "dedupe_candidates_v1",
+    "dedupe_published_by_action_v1",
 ]

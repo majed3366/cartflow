@@ -40,7 +40,12 @@ PREFERRED_CARTS_NEED_ATTENTION_AR = "سلال العملاء تحتاج متاب
 PREFERRED_CARTS_STABLE_AR = "تقدّم سلال العملاء مستقر."
 PREFERRED_COMM_ATTENTION_AR = "تواصل العملاء يحتاج انتباهاً."
 PREFERRED_COMM_HEALTHY_AR = "تواصل العملاء يسير بشكل طبيعي."
+PREFERRED_COMM_CONTACT_CONSTRAINT_AR = (
+    "متابعة بعض العملاء مقيدة بسبب نقص معلومات التواصل."
+)
 PREFERRED_DECISION_CHECKOUT_AR = "راجع تجربة إتمام الشراء ومتابعة العملاء."
+PREFERRED_DECISION_RECOVERY_CONTACT_AR = "راجع آلية جمع رقم العميل قبل مغادرة المتجر."
+PREFERRED_DECISION_OPERATIONS_AR = "راجع حالات الشراء التي تحتاج تدخلك."
 
 _AVOID_TOKENS = (
     "scheduler",
@@ -164,14 +169,28 @@ def rewrite_for_merchant_understanding_v1(
         if surface == "communication":
             return PREFERRED_COMM_ATTENTION_AR
 
-    if "بلا رقم" in cleaned or "مقيدة" in cleaned and "تواصل" in cleaned:
+    if "بلا رقم" in cleaned or ("مقيدة" in cleaned and "تواصل" in cleaned):
         if surface == "communication":
-            return PREFERRED_COMM_ATTENTION_AR
+            return PREFERRED_COMM_CONTACT_CONSTRAINT_AR
         if surface in ("carts", "health", "home"):
             return PREFERRED_HEALTH_LIMITED_AR
 
+    # Keep recovery vs operations actions distinct (F3) — never merge into one phrase.
+    if surface in ("decisions", "workspace"):
+        if "رقم العميل" in cleaned or "بلا تواصل" in cleaned or "وسيلة تواصل" in cleaned:
+            return PREFERRED_DECISION_RECOVERY_CONTACT_AR
+        if "تدخلاً بشرياً" in cleaned or "تدخل بشري" in cleaned or "حالات الانتباه" in cleaned:
+            return PREFERRED_DECISION_OPERATIONS_AR
+        if "محرك" in cleaned:
+            return PREFERRED_DECISION_RECOVERY_CONTACT_AR
+
     if "مسار الاسترجاع" in cleaned or "محرك" in cleaned:
-        return PREFERRED_DECISION_CHECKOUT_AR if surface in ("decisions", "workspace") else PREFERRED_HEALTH_LIMITED_AR
+        if surface in ("decisions", "workspace"):
+            # Prefer the distinct recovery contact action over a vague checkout phrase.
+            if "تدخل" in cleaned or "انتباه" in cleaned:
+                return PREFERRED_DECISION_OPERATIONS_AR
+            return PREFERRED_DECISION_RECOVERY_CONTACT_AR
+        return PREFERRED_HEALTH_LIMITED_AR
 
     if violates_merchant_understanding_language_v1(cleaned):
         return sanitize_executive_text_v1(cleaned, fallback=fallback)
@@ -268,6 +287,25 @@ def compose_business_understanding_v1(
     }
 
 
+def _decision_fallback_ar(d: Mapping[str, Any]) -> str:
+    domain = _norm(d.get("business_domain") or d.get("decision_category")).lower()
+    dtype = _norm(d.get("decision_type")).lower()
+    root = _norm(d.get("root_cause_key")).lower()
+    if (
+        domain == "operations"
+        or dtype in {"waiting_recovery", "waiting_recovery_work"}
+        or "waiting_intervention" in root
+    ):
+        return PREFERRED_DECISION_OPERATIONS_AR
+    if (
+        domain == "recovery"
+        or dtype == "recoverability_gap"
+        or "missing_contact" in root
+    ):
+        return PREFERRED_DECISION_RECOVERY_CONTACT_AR
+    return PREFERRED_DECISION_CHECKOUT_AR
+
+
 def apply_merchant_understanding_to_decisions_v1(
     decisions: list[dict[str, Any]],
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -283,10 +321,11 @@ def apply_merchant_understanding_to_decisions_v1(
             or d.get("merchant_decision")
             or d.get("title")
         )
+        fallback = _decision_fallback_ar(d)
         out = publish_executive_statement_v1(
             title,
             surface="decisions",
-            fallback=PREFERRED_DECISION_CHECKOUT_AR,
+            fallback=fallback,
             leads_to_decision=True,
         )
         d["merchant_decision"] = out["text_ar"]
@@ -447,8 +486,12 @@ def apply_merchant_understanding_package_v1(
 __all__ = [
     "MERCHANT_UNDERSTANDING_VERSION_V1",
     "PREFERRED_CARTS_NEED_ATTENTION_AR",
+    "PREFERRED_COMM_ATTENTION_AR",
+    "PREFERRED_COMM_CONTACT_CONSTRAINT_AR",
     "PREFERRED_COMM_HEALTHY_AR",
     "PREFERRED_DECISION_CHECKOUT_AR",
+    "PREFERRED_DECISION_OPERATIONS_AR",
+    "PREFERRED_DECISION_RECOVERY_CONTACT_AR",
     "PREFERRED_HEALTH_LIMITED_AR",
     "PREFERRED_NO_CRITICAL_AR",
     "PREFERRED_PURCHASE_SLOW_AR",

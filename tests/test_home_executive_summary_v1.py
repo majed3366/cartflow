@@ -159,7 +159,13 @@ class HomeExecutiveSummaryV1Tests(unittest.TestCase):
         self.assertTrue(hes["ok"])
         self.assertEqual(out["home_surface_mode"], "executive_summary_v1")
         ids = [s["id"] for s in hes["sections"]]
-        self.assertEqual(ids, list(SECTION_IDS_V1))
+        # Without a publication product situation: health → primary decision → observations.
+        self.assertEqual(
+            ids,
+            ["health", "decisions", "observations", "carts", "communication"],
+        )
+        for sid in ids:
+            self.assertIn(sid, SECTION_IDS_V1)
         for sec in hes["sections"]:
             self.assertTrue(sec.get("status_ar"))
             self.assertTrue(sec.get("summary_ar"))

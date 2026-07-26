@@ -30,10 +30,12 @@ OWNERSHIP_V1 = {
 }
 
 # Stable section ids (transport/UI). Titles are merchant-facing Arabic.
+# Repair V1 order: condition → one primary decision → optional product situation
+# (or observations fallback) → carts ops → communication condition.
 SECTION_IDS_V1 = (
     "health",
-    "situations",
     "decisions",
+    "situations",
     "observations",
     "carts",
     "communication",
@@ -88,14 +90,22 @@ def _as_int(v: Any) -> int:
 
 def _situations_portfolio_section(summary: Mapping[str, Any]) -> Optional[dict[str, Any]]:
     """
-    CEO Reality Validation — Home must introduce 3–5 distinct commercial situations.
-    Not a rename of Facts/Decisions: a Situation portfolio with situation_id on each item.
+    Home introduces at most one distinct product situation (Repair V1).
+    Store condition + primary decision are separate sections — not duplicated here.
     """
     t = _teasers(summary)
+    pub = _publication(summary)
     obs = t.get("observations") if isinstance(t.get("observations"), Mapping) else {}
     top = obs.get("top") if isinstance(obs.get("top"), Mapping) else None
     items_raw = []
-    if isinstance(top, Mapping) and isinstance(top.get("situations"), list):
+    home_product = (
+        pub.get("home_product_situation")
+        if isinstance(pub.get("home_product_situation"), Mapping)
+        else None
+    )
+    if home_product and str(home_product.get("situation_id") or "").strip():
+        items_raw = [home_product]
+    elif isinstance(top, Mapping) and isinstance(top.get("situations"), list):
         items_raw = [x for x in top.get("situations") or [] if isinstance(x, Mapping)]
     if not items_raw:
         # Prefer full package routing when available (fat summary / tests).
@@ -112,9 +122,16 @@ def _situations_portfolio_section(summary: Mapping[str, Any]) -> Optional[dict[s
                     x
                     for x in list(teaser.get("situations") or [])
                     if isinstance(x, Mapping)
+                    and str(x.get("situation_kind") or "")
+                    in {
+                        "interest_without_purchase",
+                        "shipping_friction",
+                        "product_demand",
+                    }
                 ]
     items: list[dict[str, Any]] = []
-    for row in items_raw[:5]:
+    primary_sid = str(pub.get("highest_priority_situation_id") or "").strip()
+    for row in items_raw[:1]:
         sid = str(row.get("situation_id") or "").strip()
         title = str(row.get("title_ar") or "").strip()
         statement = str(row.get("statement_ar") or "").strip()
@@ -133,21 +150,35 @@ def _situations_portfolio_section(summary: Mapping[str, Any]) -> Optional[dict[s
         )
     if len(items) < 1:
         return None
+    lead = items[0]
+    # Merchant-safe items — no situation_id / technical keys in display payload.
+    safe_items = [
+        {
+            "title_ar": str(i.get("title_ar") or "").strip(),
+            "statement_ar": str(i.get("statement_ar") or "").strip(),
+            "product_name_ar": str(
+                i.get("product_name_ar") or i.get("subject_ar") or ""
+            ).strip(),
+            "href": "#workspace",
+        }
+        for i in items
+    ]
     return {
         "id": "situations",
-        "title_ar": "مواقف العمل الآن",
-        "summary_ar": f"{len(items)} مواقف تجارية تستحق فهمك الآن.",
-        "status_ar": "فهم تجاري",
-        "count": len(items),
-        "items": items,
-        "situation_ids": [i["situation_id"] for i in items],
+        "title_ar": "أهم منتج يستحق الانتباه",
+        "summary_ar": str(
+            lead.get("statement_ar") or lead.get("title_ar") or ""
+        ).strip(),
+        "status_ar": "منتج",
+        "count": 1,
+        "items": safe_items,
         "view_details_href": "#workspace",
-        "view_details_ar": "افتح مساحة القرار",
+        "view_details_ar": "وسّع في مساحة القرار",
         "empty": False,
         "owner_page": "decision_workspace",
-        "built_from": "commerce_situations_v1",
-        "portfolio": True,
-        "canonical_object": "commerce_situation_v1",
+        "built_from": "merchant_publication_v1",
+        "portfolio": False,
+        "executive_rank": 3,
     }
 
 
@@ -199,15 +230,34 @@ def _observation_section(summary: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _decisions_section(summary: Mapping[str, Any]) -> dict[str, Any]:
+    """One highest-priority decision teaser only (F2)."""
     t = _teasers(summary)
     dec = t.get("decisions") if isinstance(t.get("decisions"), Mapping) else {}
-    count = _as_int(dec.get("count"))
-    title = str(dec.get("top_title_ar") or "").strip()
-    # Only surface a decision when evidence-backed title exists — never invent.
+    pub = _publication(summary)
+    ped = (
+        pub.get("primary_executive_decision")
+        if isinstance(pub.get("primary_executive_decision"), Mapping)
+        else {}
+    )
+    title = str(
+        pub.get("primary_action")
+        or ped.get("action_ar")
+        or pub.get("primary_business_action")
+        or dec.get("top_title_ar")
+        or ""
+    ).strip()
+    subject = str(pub.get("primary_subject") or ped.get("subject_ar") or "").strip()
+    primary_id = str(
+        pub.get("highest_priority_decision_id")
+        or ped.get("decision_id")
+        or dec.get("highest_priority_decision_id")
+        or ""
+    ).strip()
+    count = 1 if title and (primary_id or _as_int(dec.get("count")) > 0 or subject) else 0
     if count <= 0 or not title:
         return {
             "id": "decisions",
-            "title_ar": "قرارات اليوم",
+            "title_ar": "أهم قرار اليوم",
             "summary_ar": DECISIONS_EMPTY_AR,
             "status_ar": "أدلة غير كافية",
             "count": 0,
@@ -215,22 +265,42 @@ def _decisions_section(summary: Mapping[str, Any]) -> dict[str, Any]:
             "view_details_ar": DECISIONS_VIEW_DETAILS_AR,
             "empty": True,
             "owner_page": "decision_workspace",
+            "executive_rank": 2,
         }
+    summary_ar = title
+    if subject and subject.split("—")[0].strip() not in title:
+        # Keep action dominant; subject is owned by the product section.
+        summary_ar = title
     return {
         "id": "decisions",
-        "title_ar": "قرارات اليوم",
-        "summary_ar": title,
-        "status_ar": "أولوية العمل اليوم" if count == 1 else f"{count} قرارات عمل",
-        "count": count,
+        "title_ar": "أهم قرار اليوم",
+        "summary_ar": summary_ar,
+        "status_ar": "القرار الأهم",
+        "count": 1,
         "view_details_href": SECTION_OWNERSHIP_HREF_V1["decisions"],
         "view_details_ar": DECISIONS_VIEW_DETAILS_AR,
         "empty": False,
         "owner_page": "decision_workspace",
+        "is_primary": True,
+        "executive_rank": 2,
+        "subject_ar": subject,
+        "dominant": True,
     }
 
 
+def _publication(summary: Mapping[str, Any]) -> dict[str, Any]:
+    raw = summary.get("merchant_publication_v1")
+    if isinstance(raw, Mapping) and raw.get("ok"):
+        return dict(raw)
+    t = _teasers(summary)
+    nested = t.get("merchant_publication_v1")
+    if isinstance(nested, Mapping) and nested.get("ok"):
+        return dict(nested)
+    return {}
+
+
 def _health_section(summary: Mapping[str, Any]) -> dict[str, Any]:
-    """Gate 2E — business condition of the store; never Today's Decision; never raw counters."""
+    """Store condition — must agree with admitted priority / situations (F1)."""
     t = _teasers(summary)
     health = t.get("health") if isinstance(t.get("health"), Mapping) else {}
     waiting = _as_int(health.get("abandoned_carts"))
@@ -238,8 +308,8 @@ def _health_section(summary: Mapping[str, Any]) -> dict[str, Any]:
     recovered = _as_int(health.get("recovered_today"))
     no_phone = _as_int(health.get("no_phone"))
     store_ok = health.get("store_connected")
-    needs = bool(health.get("needs_attention")) or waiting > 0 or no_phone > 0
-    domain_summary = str(health.get("domain_summary_ar") or "").strip()
+    pub = _publication(summary)
+    sc = pub.get("store_condition") if isinstance(pub.get("store_condition"), Mapping) else {}
 
     href = SECTION_OWNERSHIP_HREF_V1["health"]
     if store_ok is False:
@@ -247,30 +317,40 @@ def _health_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         status_ar = "يتطلب متابعة"
         href = "#home-setup"
         empty = False
-    elif domain_summary:
-        summary_ar = domain_summary
-        status_ar = "يتطلب متابعة" if needs else "مستقر"
-        empty = not needs and ("بانتظار" in domain_summary or "غير كافية" in domain_summary)
-    elif waiting > 0 or no_phone > 0:
-        # Gate 2F — business condition, never recovery-engine status.
-        summary_ar = "فرص استعادة المبيعات محدودة اليوم."
-        status_ar = "يتطلب متابعة"
-        empty = False
-    elif recovered > 0:
-        summary_ar = "نشاط المتجر مستقر."
-        status_ar = "مستقر"
-        empty = False
-        needs = False
-    elif active > 0:
-        summary_ar = "نشاط المتجر مستقر."
-        status_ar = "مستقر"
-        empty = False
-        needs = False
+        needs = True
+    elif sc:
+        # Canonical publication — never invent calm over a high-priority decision.
+        summary_ar = str(sc.get("summary_ar") or "").strip()
+        status_ar = str(sc.get("status_ar") or "").strip() or (
+            "يتطلب متابعة" if sc.get("needs_attention") else "هادئ"
+        )
+        needs = bool(sc.get("needs_attention"))
+        empty = not needs
+        if needs and summary_ar in {"لا توجد مشكلات تجارية حرجة ظاهرة.", ""}:
+            summary_ar = "المتجر يحتاج انتباهك اليوم."
+            status_ar = "يتطلب متابعة"
     else:
-        summary_ar = "لا توجد مشكلات تجارية حرجة ظاهرة."
-        status_ar = "هادئ"
-        empty = True
-        needs = False
+        needs = bool(health.get("needs_attention")) or waiting > 0 or no_phone > 0
+        domain_summary = str(health.get("domain_summary_ar") or "").strip()
+        status_hint = str(health.get("status_ar") or "").strip()
+        if domain_summary:
+            summary_ar = domain_summary
+            status_ar = status_hint or ("يتطلب متابعة" if needs else "مستقر")
+            empty = not needs
+        elif waiting > 0 or no_phone > 0:
+            summary_ar = "فرص استعادة المبيعات محدودة اليوم."
+            status_ar = "يتطلب متابعة"
+            empty = False
+        elif recovered > 0 or active > 0:
+            summary_ar = "نشاط المتجر مستقر."
+            status_ar = "مستقر"
+            empty = False
+            needs = False
+        else:
+            summary_ar = "لا توجد مشكلات تجارية حرجة ظاهرة."
+            status_ar = "هادئ"
+            empty = True
+            needs = False
 
     out = {
         "id": "health",
@@ -282,15 +362,30 @@ def _health_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         "empty": empty,
         "needs_attention": needs,
         "owner_page": "carts" if href == "#carts" else "settings",
+        "executive_rank": 1,
     }
-    # Executive status — avoid surfacing operational queue counts on Store Health.
     return out
 
 
 def _carts_section(summary: Mapping[str, Any]) -> dict[str, Any]:
-    """Executive carts summary only — no reasoning / recommendations."""
+    """Cart operational summary — never a competing business decision (F5)."""
     t = _teasers(summary)
     carts = t.get("carts") if isinstance(t.get("carts"), Mapping) else {}
+    pub = _publication(summary)
+    cart_ops = (
+        pub.get("cart_condition")
+        if isinstance(pub.get("cart_condition"), Mapping)
+        else (
+            pub.get("cart_operational_action")
+            if isinstance(pub.get("cart_operational_action"), Mapping)
+            else {}
+        )
+    )
+    systemic = (
+        pub.get("systemic_business_action")
+        if isinstance(pub.get("systemic_business_action"), Mapping)
+        else {}
+    )
     waiting = _as_int(carts.get("waiting") if carts.get("waiting") is not None else carts.get("count"))
     active = _as_int(carts.get("active"))
     no_phone = _as_int(carts.get("no_phone"))
@@ -300,51 +395,69 @@ def _carts_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         else 0
     )
     count = waiting
-    domain_summary = str(carts.get("domain_summary_ar") or "").strip()
-    # Gate 2X — Home must explain carts as business progress, not queue size.
     from services.decision_composition_engine_v1.merchant_understanding_v1 import (  # noqa: PLC0415
         PREFERRED_CARTS_NEED_ATTENTION_AR,
         PREFERRED_CARTS_STABLE_AR,
         publish_executive_statement_v1,
     )
 
-    if domain_summary:
-        summary_ar = publish_executive_statement_v1(
-            domain_summary,
-            surface="carts",
-            fallback=PREFERRED_CARTS_STABLE_AR,
-        )["text_ar"]
-        empty = waiting <= 0 and no_phone <= 0 and "مستقر" in summary_ar
-        status_ar = "يتطلب متابعة" if (waiting > 0 or no_phone > 0) else ("نشط" if active > 0 else "لا مهام")
-        if waiting <= 0 and no_phone > 0:
+    if cart_ops:
+        summary_ar = str(cart_ops.get("summary_ar") or "").strip()
+        status_ar = str(cart_ops.get("status_ar") or "").strip() or (
+            "يتطلب متابعة" if waiting > 0 or no_phone > 0 else "لا مهام"
+        )
+        empty = bool(cart_ops.get("empty")) and waiting <= 0
+        individual = str(cart_ops.get("individual_action_ar") or "").strip()
+        if waiting > 0:
+            count = waiting
+        elif no_phone > 0:
             count = no_phone
-        elif waiting <= 0 and active > 0:
+        elif active > 0:
             count = active
-    elif waiting > 0:
-        summary_ar = PREFERRED_CARTS_NEED_ATTENTION_AR
-        status_ar = "يتطلب متابعة"
-        empty = False
-    elif no_phone > 0:
-        summary_ar = "متابعة بعض العملاء مقيدة حالياً."
-        status_ar = "يتطلب متابعة"
-        empty = False
-        count = no_phone
-    elif recovered > 0:
-        summary_ar = PREFERRED_CARTS_STABLE_AR
-        status_ar = "مستقر"
-        empty = False
-        count = recovered
-    elif active > 0:
-        summary_ar = PREFERRED_CARTS_STABLE_AR
-        status_ar = "نشط"
-        empty = False
-        count = active
     else:
-        summary_ar = "لا توجد سلال تحتاج متابعة حالياً."
-        status_ar = "لا مهام"
-        empty = True
+        domain_summary = str(carts.get("domain_summary_ar") or "").strip()
+        individual = str(carts.get("individual_action_ar") or "").strip()
+        if domain_summary:
+            summary_ar = publish_executive_statement_v1(
+                domain_summary,
+                surface="carts",
+                fallback=PREFERRED_CARTS_STABLE_AR,
+            )["text_ar"]
+            empty = waiting <= 0 and no_phone <= 0 and "مستقر" in summary_ar
+            status_ar = (
+                "يتطلب متابعة"
+                if (waiting > 0 or no_phone > 0)
+                else ("نشط" if active > 0 else "لا مهام")
+            )
+            if waiting <= 0 and no_phone > 0:
+                count = no_phone
+            elif waiting <= 0 and active > 0:
+                count = active
+        elif waiting > 0:
+            summary_ar = PREFERRED_CARTS_NEED_ATTENTION_AR
+            status_ar = "يتطلب متابعة"
+            empty = False
+        elif no_phone > 0:
+            summary_ar = "متابعة بعض العملاء مقيدة حالياً."
+            status_ar = "يتطلب متابعة"
+            empty = False
+            count = no_phone
+        elif recovered > 0:
+            summary_ar = PREFERRED_CARTS_STABLE_AR
+            status_ar = "مستقر"
+            empty = False
+            count = recovered
+        elif active > 0:
+            summary_ar = PREFERRED_CARTS_STABLE_AR
+            status_ar = "نشط"
+            empty = False
+            count = active
+        else:
+            summary_ar = "لا توجد سلال تحتاج متابعة فردية حالياً."
+            status_ar = "لا مهام"
+            empty = True
 
-    return {
+    out = {
         "id": "carts",
         "title_ar": "السلال",
         "summary_ar": summary_ar,
@@ -354,28 +467,52 @@ def _carts_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         "view_details_ar": "عرض التفاصيل",
         "empty": empty,
         "owner_page": "carts",
+        "cart_level_action_ar": individual
+        or "لا يحتاج إجراءً فردياً الآن.",
+        "systemic_business_action_ar": str(systemic.get("summary_ar") or "").strip(),
+        "systemic_workspace_href": "#workspace",
+        "executive_rank": 4,
     }
+    return out
 
 
 def _communication_section(summary: Mapping[str, Any]) -> dict[str, Any]:
-    """Executive communication summary — reports communication only."""
+    """Communication condition — same canonical truth as Workspace (F4)."""
     t = _teasers(summary)
     comm = t.get("communication") if isinstance(t.get("communication"), Mapping) else {}
+    pub = _publication(summary)
+    cc = (
+        pub.get("communication_condition")
+        if isinstance(pub.get("communication_condition"), Mapping)
+        else {}
+    )
     sent = _as_int(comm.get("sent"))
     schedules = _as_int(comm.get("schedules"))
     no_phone = _as_int(comm.get("no_phone"))
     waiting = _as_int(comm.get("waiting"))
     wa_state = str(comm.get("wa_state_key") or "").strip().lower()
     count = sent + schedules
-    domain_summary = str(comm.get("domain_summary_ar") or "").strip()
 
-    if domain_summary and (no_phone > 0 or waiting > 0 or schedules > 0 or sent > 0):
+    if cc:
+        summary_ar = str(cc.get("summary_ar") or "").strip()
+        status_ar = str(cc.get("status_ar") or "").strip() or (
+            "يتطلب متابعة" if cc.get("constrained") or cc.get("normal_forbidden") else "لا مهام"
+        )
+        empty = not bool(cc.get("constrained") or cc.get("normal_forbidden"))
+        if cc.get("constrained"):
+            count = max(count, no_phone, 1)
+        # Never publish "normal" when constrained.
+        if cc.get("normal_forbidden") and "بشكل طبيعي" in summary_ar:
+            summary_ar = "متابعة بعض العملاء مقيدة بسبب نقص معلومات التواصل."
+            status_ar = "يتطلب متابعة"
+            empty = False
+    elif domain_summary := str(comm.get("domain_summary_ar") or "").strip():
         summary_ar = domain_summary
-        status_ar = "يتطلب متابعة" if (no_phone > 0 or waiting > 0) else "نشط"
+        status_ar = "يتطلب متابعة" if (no_phone > 0 or waiting > 0 or comm.get("constrained")) else "نشط"
         empty = False
         count = max(count, waiting, no_phone, sent)
     elif waiting > 0 and no_phone > 0:
-        summary_ar = "تواصل العملاء يحتاج انتباهاً — المتابعة مقيدة لبعض الحالات."
+        summary_ar = "متابعة بعض العملاء مقيدة بسبب نقص معلومات التواصل."
         status_ar = "يتطلب متابعة"
         empty = False
         count = max(count, waiting, no_phone)
@@ -386,7 +523,7 @@ def _communication_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         empty = False
         count = n
     elif no_phone > 0:
-        summary_ar = "متابعة العملاء مقيدة لبعض الحالات حالياً."
+        summary_ar = "متابعة بعض العملاء مقيدة بسبب نقص معلومات التواصل."
         status_ar = "يتطلب متابعة"
         empty = False
         count = no_phone
@@ -414,6 +551,8 @@ def _communication_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         "view_details_ar": "عرض التفاصيل",
         "empty": empty,
         "owner_page": "communication",
+        "reports_condition_only": True,
+        "executive_rank": 5,
     }
 
 
@@ -432,12 +571,14 @@ def build_home_executive_summary_v1(
         }
     src = summary if isinstance(summary, Mapping) else {}
     portfolio = _situations_portfolio_section(src)
-    raw_sections: list[dict[str, Any]] = [_health_section(src)]
+    # Repair V1: health + one primary decision + optional distinct product situation.
+    raw_sections: list[dict[str, Any]] = [
+        _health_section(src),
+        _decisions_section(src),
+    ]
     if portfolio is not None:
-        # Situations replace Facts/Decisions dual slots — no parallel publisher.
         raw_sections.append(portfolio)
     else:
-        raw_sections.append(_decisions_section(src))
         raw_sections.append(_observation_section(src))
     raw_sections.extend(
         [

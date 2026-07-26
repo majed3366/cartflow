@@ -129,29 +129,43 @@ def _communication_ar(signals: Mapping[str, Any], *, sent: int = 0) -> str:
 
 
 def _executive_decision_title_v1(decision: Mapping[str, Any]) -> str:
-    """Merchant attention title — never a counter report."""
+    """Merchant attention title — never a counter report.
+
+    Domain is authoritative. Never collapse recovery + operations into one phrase.
+    """
     domain = _norm(decision.get("business_domain") or decision.get("decision_category")).lower()
+    dtype = _norm(decision.get("decision_type")).lower()
+    root = _norm(decision.get("root_cause_key")).lower()
     title = _norm(
         decision.get("executive_decision_ar")
         or decision.get("merchant_decision")
         or decision.get("title")
     )
-    # Soft rewrite known recovery system phrasing into morning-briefing language.
-    if domain == "recovery" or "استرجاع" in title:
-        return "راجع تجربة إتمام الشراء ومتابعة العملاء."
+    # Domain-first — distinct actions required (Merchant Understanding Repair V1 / F3).
+    if (
+        domain == "recovery"
+        or dtype == "recoverability_gap"
+        or root.endswith("missing_contact")
+        or "missing_contact" in root
+    ):
+        return "راجع آلية جمع رقم العميل قبل مغادرة المتجر."
+    if (
+        domain == "operations"
+        or dtype in {"waiting_recovery", "waiting_recovery_work"}
+        or root.endswith("waiting_intervention")
+        or "waiting_intervention" in root
+    ):
+        return "راجع حالات الشراء التي تحتاج تدخلك."
     if domain == "shipping" or "شحن" in title:
         return "راجع تكلفة أو تجربة الشحن."
     if domain == "pricing" or "سعر" in title or "تسعير" in title:
         return "راجع استراتيجية التسعير أو الخصم."
     if domain == "products" or "منتج" in title:
-        # Keep named product if present; otherwise generic product attention.
         if title and "راجع" in title:
             return sanitize_executive_text_v1(
                 title, fallback="راجع منتجاً يستحق انتباهك اليوم."
             )
         return "راجع منتجاً يستحق انتباهك اليوم."
-    if domain == "operations":
-        return "راجع حالات الشراء التي تحتاج تدخلك."
     if title:
         return sanitize_executive_text_v1(
             title, fallback="راجع أولوية العمل اليوم."

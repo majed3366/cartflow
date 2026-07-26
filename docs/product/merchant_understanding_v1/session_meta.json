@@ -1,0 +1,34 @@
+{
+  "schema": "merchant_understanding_reality_validation_v1_session",
+  "host": "https://smartreplyai.net",
+  "store_slug": "demo",
+  "merchant_id": "429",
+  "simulation_run_id": "srs_32dca83c60b045639d530ac1ba841e9e",
+  "living_store": {
+    "started_at_utc": "2026-07-26T03:45:03.492575+00:00",
+    "finished_at_utc": "2026-07-26T03:57:07.104645+00:00",
+    "status": "completed",
+    "ok": true,
+    "orv_count": 3,
+    "reality_score_overall": 80.0
+  },
+  "identity_certification": {
+    "status": "CONSISTENT",
+    "CEO_REVIEW_SAFE": true,
+    "observations": 3,
+    "facts": 5,
+    "situations": 5,
+    "composed_at_utc": "2026-07-26T03:58:17.083252+00:00",
+    "note": "Identity Certification HTML in the bound Living Store Review browser session showed CEO_REVIEW_SAFE=TRUE. The Home/Workspace CEO banner in the same session painted CEO_REVIEW_SAFE=FALSE (merchant-visible noise; identity matrix still CONSISTENT)."
+  },
+  "evidence_screenshots": [
+    "mu_v1_home.png",
+    "mu_v1_workspace.png",
+    "mu_v1_products.png",
+    "mu_v1_carts.png",
+    "mu_v1_communication.png"
+  ],
+  "observed_at_utc": "2026-07-26T04:03:00Z",
+  "product_changes": false,
+  "solutions": false
+}

@@ -464,11 +464,76 @@ def _enrich_via_composition_engine_v1(
         _normalize_constitution_fields(dict(c)) for c in zone_a if isinstance(c, dict)
     ]
 
+    # Merchant Understanding Repair V1 — shared publication + single primary.
+    publication = (
+        pkg.get("merchant_publication_v1")
+        if isinstance(pkg.get("merchant_publication_v1"), Mapping)
+        else {}
+    )
+    try:
+        from services.decision_composition_engine_v1.merchant_publication_v1 import (  # noqa: PLC0415
+            apply_publication_priority_to_decisions_v1,
+            compose_merchant_publication_v1,
+        )
+
+        if not publication.get("ok"):
+            publication = compose_merchant_publication_v1(
+                pkg,
+                situations_pkg=projection.get("commerce_situations_v1")
+                if isinstance(projection.get("commerce_situations_v1"), Mapping)
+                else pkg.get("commerce_situations_v1"),
+                identity_pkg=projection.get("reality_validation_identity_v1")
+                if isinstance(projection.get("reality_validation_identity_v1"), Mapping)
+                else None,
+            )
+        zone_b = apply_publication_priority_to_decisions_v1(zone_b, publication)
+        # Stamp primary subject onto the lead card for Workspace Part 4.
+        primary_subject = str((publication or {}).get("primary_subject") or "").strip()
+        primary_action = str(
+            (publication or {}).get("primary_action")
+            or (publication or {}).get("primary_business_action")
+            or ""
+        ).strip()
+        for card in zone_b:
+            if not card.get("is_primary_decision"):
+                continue
+            if primary_subject and not str(card.get("subject_ar") or "").strip():
+                card["subject_ar"] = primary_subject
+                card["product_name_ar"] = primary_subject.split("—")[0].strip() or primary_subject
+            if primary_action:
+                card["merchant_decision"] = primary_action
+                card["title_ar"] = primary_action
+                card["required_merchant_action"] = primary_action
+                card["first_step_ar"] = primary_action
+            break
+        # Deduplicate workspace cards that share the same recommended action text.
+        seen_actions: set[str] = set()
+        deduped_b: list[dict[str, Any]] = []
+        for card in zone_b:
+            action = str(
+                card.get("merchant_decision")
+                or card.get("title_ar")
+                or card.get("required_merchant_action")
+                or ""
+            ).strip()
+            key = " ".join(action.split()).casefold()
+            if key and key in seen_actions and not card.get("is_primary_decision"):
+                continue
+            if key:
+                seen_actions.add(key)
+            deduped_b.append(card)
+        zone_b = deduped_b
+    except Exception:  # noqa: BLE001
+        publication = publication if isinstance(publication, dict) else {}
+
     projection["zone_b"] = zone_b
     projection["zone_a"] = zone_a
     quiet = not zone_a and not zone_b
     projection["quiet"] = quiet
-    if zone_a:
+    primary_id = str((publication or {}).get("highest_priority_decision_id") or "").strip()
+    if primary_id:
+        projection["attention_focus_decision_id"] = primary_id
+    elif zone_a:
         projection["attention_focus_decision_id"] = zone_a[0].get("decision_id")
     elif zone_b:
         projection["attention_focus_decision_id"] = zone_b[0].get("decision_id")
@@ -483,12 +548,30 @@ def _enrich_via_composition_engine_v1(
     projection["gate_2d_decision_dedupe"] = True
     projection["gate_2e_executive_business"] = True
     projection["gate_2f_store_executive"] = True
+    projection["gate_merchant_understanding_repair_v1"] = True
+    projection["gate_executive_control_v1"] = True
     projection["gate_business_facts_v1"] = True
     projection["gate_business_themes_v1"] = True
     projection["gate_commerce_situations_v1"] = True
     projection["observation_admission_bridge_v1"] = True
     projection["observation_admission_reconciliation"] = obs_recon
     projection["decisions_only"] = True
+    projection["merchant_publication_v1"] = publication
+    projection["highest_priority_decision_id"] = primary_id
+    projection["highest_priority_situation_id"] = str(
+        (publication or {}).get("highest_priority_situation_id")
+        or (publication or {}).get("primary_situation_id")
+        or ""
+    ).strip()
+    projection["primary_action"] = str(
+        (publication or {}).get("primary_action")
+        or (publication or {}).get("primary_business_action")
+        or ""
+    ).strip()
+    projection["primary_subject"] = str(
+        (publication or {}).get("primary_subject") or ""
+    ).strip()
+    projection["truth_version"] = str((publication or {}).get("truth_version") or "").strip()
     projection["decision_composition_v1"] = {
         "version": pkg.get("composition_version"),
         "domain_composition_version": pkg.get("domain_composition_version"),
@@ -507,6 +590,11 @@ def _enrich_via_composition_engine_v1(
         "executive_briefing": (
             (pkg.get("store_executive_understanding_v1") or {}).get("briefing")
         ),
+        "highest_priority_decision_id": primary_id,
+        "suppressed_duplicate_decisions": (publication or {}).get(
+            "suppressed_duplicate_decisions"
+        )
+        or [],
     }
     projection["store_executive_understanding_v1"] = pkg.get(
         "store_executive_understanding_v1"
@@ -515,6 +603,10 @@ def _enrich_via_composition_engine_v1(
         "portfolio": portfolio,
         "category_landscape": pkg.get("category_landscape"),
         "overflow": pkg.get("overflow"),
+        "primary_decision_id": primary_id,
+        "secondary_decision_ids": list(
+            (publication or {}).get("secondary_decision_ids") or []
+        ),
     }
     projection["business_domains_v1"] = pkg.get("business_domains_v1")
     projection["business_finding_count"] = int(
@@ -527,6 +619,17 @@ def _enrich_via_composition_engine_v1(
     projection["zone_labels"] = labels
     projection["zone_c"] = {"visible": False, "summary": ""}
     projection["zone_d"] = {"visible": False, "completed_count": 0}
+    # F5 — cart vs business action distinction for Workspace consumers.
+    projection["cart_operational_action"] = (publication or {}).get(
+        "cart_operational_action"
+    )
+    projection["systemic_business_action"] = (publication or {}).get(
+        "systemic_business_action"
+    )
+    projection["store_condition"] = (publication or {}).get("store_condition")
+    projection["communication_condition"] = (publication or {}).get(
+        "communication_condition"
+    )
     return projection
 
 
