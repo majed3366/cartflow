@@ -39,7 +39,7 @@
         '<p class="hes-situation-card__meta">' +
         '<a href="' +
         esc(href) +
-        '">وسّع في مساحة القرار ←</a>' +
+        '">عرض التفاصيل ←</a>' +
         "</p></li>";
     }
     html += "</ul>";
@@ -81,13 +81,7 @@
           '<p class="hes-section__note">' +
           esc(sec.cart_level_action_ar) +
           "</p>";
-        if (sec.systemic_business_action_ar) {
-          body +=
-            '<p class="hes-section__note hes-section__note--systemic">' +
-            "قرار العمل: " +
-            esc(sec.systemic_business_action_ar) +
-            ' <a href="#workspace">مساحة القرار ←</a></p>';
-        }
+        /* Constitution: business decision text lives only on Workspace — Home links. */
       }
     }
     var dominant = sec.dominant || sec.id === "decisions" ? ' data-hes-dominant="1"' : "";
@@ -115,9 +109,7 @@
       esc(sec.view_details_href || "#") +
       '" data-hes-view-details="' +
       esc(sec.id || "") +
-      '">' +
-      esc(sec.view_details_ar || "عرض التفاصيل") +
-      " ←</a></p>" +
+      '">عرض التفاصيل ←</a></p>' +
       "</section>"
     );
   }

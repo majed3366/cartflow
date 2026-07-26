@@ -610,12 +610,10 @@
     var focus = document.getElementById("meif-carts-focus-root");
     var ops = carts.operational_truth || {};
 
+    /* Constitution: operational list owns Carts — suppress duplicate MEIF executive banner. */
     if (banner) {
-      banner.hidden = false;
-      banner.className = "meif-carts-truth-banner meif-banner";
-      banner.innerHTML =
-        '<span class="meif-trust meif-trust--fact">حقيقة</span> ' +
-        esc(carts.status_message_ar || "");
+      banner.hidden = true;
+      banner.innerHTML = "";
     }
     if (carts.forbid_please_wait && loading) {
       loading.hidden = true;
@@ -628,13 +626,11 @@
       header.textContent = "السلال";
     }
     if (sub && ops.has_durable_carts) {
-      sub.textContent = "تشغيل السلال فقط — القرارات في مساحة القرار.";
+      sub.textContent = "حالة كل سلة والإجراء التشغيلي التالي.";
     }
 
-    /* Gate 2 — Carts ops only for findings/decisions.
-       Commerce Situation participation is painted by commerce_situations_surfaces_v1. */
     if (focus && !focus.querySelector("[data-cs-surface='carts']")) {
-      /* leave Situation banner if already painted */
+      /* publication banner painted by commerce_situations_surfaces_v1 */
     }
   }
 
@@ -644,40 +640,76 @@
     if (!root || !pkg || !pkg.pages || !pkg.pages.communication) return false;
     var comm = pkg.pages.communication;
     var ops = comm.operational_truth || {};
-    var sent = Number(ops.mock_whatsapp_sent || 0);
+    var pub =
+      summary && summary.merchant_publication_v1
+        ? summary.merchant_publication_v1
+        : {};
+    var cc =
+      pub && pub.communication_condition && typeof pub.communication_condition === "object"
+        ? pub.communication_condition
+        : {};
+    var sent = Number(ops.mock_whatsapp_sent || ops.whatsapp_sent || 0);
+    var delivered = Number(ops.delivered_total || ops.whatsapp_delivered || 0);
+    var replied = Number(ops.replied_total || ops.customer_replies || 0);
+    var returned = Number(ops.returned_total || ops.recovery_success || 0);
+    var noPhone = Number(ops.no_phone_total || ops.missing_phone || 0);
+    if (!noPhone && summary && summary.home_teaser_inputs_v1) {
+      var ht = summary.home_teaser_inputs_v1;
+      var cartsT = (ht.carts || ht.communication || {}) || {};
+      noPhone = Number((ht.communication && ht.communication.no_phone) || cartsT.no_phone || 0);
+    }
     var schedules = Number(ops.recovery_schedules || 0);
-    var waiting = schedules;
-    var needs =
-      ops.has_communication_activity && (sent === 0 || schedules > 0)
-        ? "راجع ما بانتظار الإرسال أو المتابعة."
-        : "لا تدخل فوري مطلوب من هذه الصفحة.";
+    var constrained = !!(cc.constrained || cc.normal_forbidden || noPhone > 0);
+    var needsFollow = schedules > 0 || constrained;
+    var statusAr =
+      (cc.summary_ar || comm.status_message_ar || "").trim() ||
+      (constrained
+        ? "متابعة بعض العملاء مقيدة بسبب نقص معلومات التواصل."
+        : "تواصل العملاء يسير بشكل طبيعي.");
+
+    var actions = [];
+    if (noPhone > 0 || constrained) {
+      actions.push(
+        '<a href="#carts?tab=nophone">عرض العملاء بلا رقم ←</a>'
+      );
+    }
+    if (schedules > 0) {
+      actions.push('<a href="#carts?tab=waiting">عرض ما بانتظار الإرسال ←</a>');
+    }
+    actions.push('<a href="#messages">سجل الرسائل ←</a>');
+    if (constrained) {
+      actions.push('<a href="#whatsapp">ضبط التواصل ←</a>');
+    }
 
     root.className = "meif-communication-root";
     root.innerHTML =
-      '<section class="meif-surface meif-comms" data-meif="1" data-msr="1">' +
-      '<p class="meif-eyebrow">حالة التواصل</p>' +
-      "<h2>ماذا يحدث في التواصل الآن؟</h2>" +
+      '<section class="meif-surface meif-comms" data-meif="1" data-constitution="communication">' +
+      "<h2>ماذا حدث في التواصل مع العملاء؟</h2>" +
       '<p class="meif-lede">' +
-      esc(comm.status_message_ar || "") +
+      esc(statusAr) +
       "</p>" +
       '<ul class="meif-facts meif-facts--3">' +
       "<li><strong>" +
       esc(String(sent)) +
-      "</strong><span>ما حدث (إرسال مسجّل)</span></li>" +
+      "</strong><span>تم الإرسال</span></li>" +
       "<li><strong>" +
-      esc(String(waiting)) +
-      "</strong><span>ما ينتظر (جداول)</span></li>" +
+      esc(String(delivered || "—")) +
+      "</strong><span>تم التسليم</span></li>" +
       "<li><strong>" +
-      esc(ops.has_communication_activity ? "متابعة" : "هدوء") +
+      esc(String(replied || "—")) +
+      "</strong><span>تم الرد</span></li>" +
+      "<li><strong>" +
+      esc(String(returned || "—")) +
+      "</strong><span>عاد العميل</span></li>" +
+      "<li><strong>" +
+      esc(String(noPhone)) +
+      "</strong><span>لا يوجد رقم</span></li>" +
+      "<li><strong>" +
+      esc(needsFollow ? "نعم" : "لا") +
       "</strong><span>يحتاج متابعة</span></li>" +
       "</ul>" +
-      '<p class="meif-watch">' +
-      esc(needs) +
-      "</p>" +
-      /* Gate 2D — Communication facts only; no business decisions / recommendations. */
       '<p class="meif-next">' +
-      '<a href="#messages">سجل الرسائل</a> · ' +
-      '<a href="#whatsapp">إعدادات واتساب</a>' +
+      actions.join(" · ") +
       "</p></section>";
     return true;
   }

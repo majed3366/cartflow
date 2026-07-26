@@ -71,7 +71,7 @@ SECTION_OWNERSHIP_HREF_V1 = {
 }
 
 # Gate 2 — Home decision teasers must route explicitly to Cart Workspace.
-DECISIONS_VIEW_DETAILS_AR = "عرض التفاصيل ← مساحة القرار"
+DECISIONS_VIEW_DETAILS_AR = "عرض التفاصيل"
 
 
 def _teasers(summary: Mapping[str, Any]) -> dict[str, Any]:
@@ -173,7 +173,7 @@ def _situations_portfolio_section(summary: Mapping[str, Any]) -> Optional[dict[s
         "count": 1,
         "items": safe_items,
         "view_details_href": "#workspace",
-        "view_details_ar": "وسّع في مساحة القرار",
+        "view_details_ar": "عرض التفاصيل",
         "empty": False,
         "owner_page": "decision_workspace",
         "built_from": "merchant_publication_v1",

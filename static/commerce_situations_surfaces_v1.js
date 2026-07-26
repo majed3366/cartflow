@@ -76,7 +76,7 @@
         esc(it.why_it_matters_ar || names.join(" · ") || "") +
         "</p>" +
         '<p class="cs-card__links">' +
-        '<a href="#workspace">وسّع في مساحة القرار ←</a>' +
+        '<a href="#workspace">عرض التفاصيل ←</a>' +
         "</p></li>";
     }
     html += "</ul></section>";
@@ -90,39 +90,49 @@
     var cartsFocus = document.getElementById("meif-carts-focus-root");
     if (cartsFocus) {
       var cartOps = pub.cart_condition || pub.cart_operational_action || {};
-      var systemic = pub.systemic_business_action || {};
+      /* Constitution: Carts owns operational status only — no business decision text. */
       var cartHtml =
         '<section class="cs-ops-banner cs-pub-truth" data-cs-surface="carts">' +
         "<h3>حالة السلال</h3>" +
         "<p>" +
         esc(cartOps.summary_ar || "تقدّم سلال العملاء مستقر.") +
         "</p>" +
-        "<p><strong>مستوى السلة:</strong> " +
+        "<p>" +
         esc(cartOps.individual_action_ar || "لا يحتاج إجراءً فردياً الآن.") +
-        "</p>";
-      if (systemic.summary_ar) {
-        cartHtml +=
-          "<p><strong>قرار العمل:</strong> " +
-          esc(systemic.summary_ar) +
-          ' <a href="#workspace">مساحة القرار ←</a></p>';
-      }
-      cartHtml += "</section>";
+        "</p>" +
+        '<p class="cs-ops-banner__cta"><a href="#workspace">عرض القرارات في مساحة القرار ←</a></p>' +
+        "</section>";
       var existingCart = cartsFocus.querySelector(
         "[data-cs-surface='carts'].cs-pub-truth"
       );
       if (existingCart) existingCart.outerHTML = cartHtml;
       else cartsFocus.insertAdjacentHTML("afterbegin", cartHtml);
+      cartsFocus.hidden = false;
+      var meifBanner = document.getElementById("meif-carts-truth-banner");
+      if (meifBanner) {
+        meifBanner.hidden = true;
+        meifBanner.innerHTML = "";
+      }
     }
 
     var commRoot = document.getElementById("meif-communication-root");
     if (commRoot) {
       var cc = pub.communication_condition || {};
+      var constrained = !!(cc.constrained || cc.normal_forbidden);
       var commHtml =
         '<section class="cs-ops-banner cs-pub-truth" data-cs-surface="communication">' +
         "<h3>حالة التواصل</h3>" +
         "<p>" +
         esc(cc.summary_ar || "تواصل العملاء يسير بشكل طبيعي.") +
-        "</p></section>";
+        "</p>";
+      if (constrained) {
+        commHtml +=
+          '<p class="cs-ops-banner__cta"><a href="#carts?tab=nophone">عرض العملاء المتأثرين ←</a></p>';
+      } else {
+        commHtml +=
+          '<p class="cs-ops-banner__cta"><a href="#messages">عرض سجل الرسائل ←</a></p>';
+      }
+      commHtml += "</section>";
       var existing = commRoot.querySelector(
         "[data-cs-surface='communication'].cs-pub-truth"
       );

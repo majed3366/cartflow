@@ -43,25 +43,25 @@
 
   /** One-sentence page purpose — hero rhythm (Product Polish V1). */
   var PAGE_PURPOSE = {
-    home: "كيف حال متجرك الآن — وما الذي يستحق انتباهك.",
-    "home-setup": "تحقق من جاهزية متجرك قبل التشغيل الكامل.",
-    "home-month": "أرقام الاسترداد والأداء لهذا الشهر.",
-    workspace: "",
-    products: "المنتجات المشاركة في مواقف العمل — بلا تفسير جديد.",
-    carts: "ما الذي يحتاج انتباهك الآن؟",
-    followup: "ردود العملاء والمتابعة التي يحتاج المتجر مراجعتها.",
-    completed: "سلال أنهت مسار الاسترجاع — شراء أو استرداد ناجح.",
-    vip: "سلال عالية القيمة تحتاج متابعة خاصة منك.",
-    messages: "سجل رسائل استرداد واتساب المسجّلة لمتجرك.",
-    communication: "ما حدث في التواصل، وما يحتاج متابعة.",
-    reasons: "ما يمنع عملاءك من إتمام الشراء — خلال آخر 30 يوماً.",
-    "trigger-templates": "محتوى رسائل الاسترجاع لكل سبب تردد.",
+    home: "ماذا يجب أن أعرف الآن عن متجري؟",
+    "home-setup": "تحقق من جاهزية متجرك للتشغيل.",
+    "home-month": "ملخص أرقام — خارج المسار التنفيذي.",
+    workspace: "أي قرار يجب أن أتخذه، ولماذا؟",
+    products: "ماذا يحدث لمنتجاتك — وأيها يستحق انتباهك؟",
+    carts: "ما حالة كل سلة؟",
+    followup: "سلال بانتظار تفاعل العميل أو متابعتك.",
+    completed: "سلال أنهت مسار الاسترجاع.",
+    vip: "سلال عالية القيمة وحالتها التشغيلية.",
+    messages: "ما أُرسل للعملاء عبر واتساب.",
+    communication: "ماذا حدث في التواصل مع العملاء؟",
+    reasons: "أسباب تردد العملاء عن إتمام الشراء.",
+    "trigger-templates": "محتوى رسائل المتابعة لكل سبب تردد.",
     widget: "مظهر الودجيت ومتى يظهر للعميل في المتجر.",
-    whatsapp: "صحة تواصل متجرك عبر واتساب — حالة الربط والإرسال.",
-    "whatsapp-connect": "اربط رقم واتساب أعمال متجرك لإرسال الاسترجاع.",
-    plans: "اشتراكك الحالي — ما تشمله باقتك وكيف تقارن.",
-    settings: "إعداد متجرك — الربط والحساب والتفضيلات.",
-    "settings-diagnostics": "اختبر الودجيت والاسترجاع بدون إرسال حقيقي.",
+    whatsapp: "حالة ربط واتساب وإرسال الرسائل.",
+    "whatsapp-connect": "اربط رقم واتساب أعمال متجرك.",
+    plans: "باقتك الحالية والمقارنة مع الباقات الأخرى.",
+    settings: "ربط المتجر والحساب والتفضيلات العاملة فقط.",
+    "settings-diagnostics": "أدوات اختبار داخلية.",
   };
 
   var CART_TAB_TITLES = {
@@ -81,7 +81,7 @@
 
   var PAGE_TO_SECTION = {
     home: "home",
-    "home-setup": "home",
+    "home-setup": "settings",
     "home-month": "home",
     workspace: "workspace",
     products: "products",
@@ -185,9 +185,13 @@
   function parseHash() {
     var raw = (location.hash || "").split("?")[0];
     var h = raw.toLowerCase();
-    /* Flag ON: empty entry opens Workspace; #carts remains an explicit rollback path. */
+    /* Constitution: merchant entry is Home — every other page is reached via View Details. */
     if (h === "" || h === "#") {
-      h = window.CARTFLOW_CART_WORKSPACE_V1 ? "#workspace" : "#home";
+      h = "#home";
+    }
+    /* KPI month wall removed from merchant executive path. */
+    if (h === "#home-month") {
+      h = "#home";
     }
     var page = PAGE_FOR_HASH[h] || "home";
     var cartTab = null;

@@ -3880,9 +3880,9 @@
   function cartsHeroSupportFromVerdict(verdict) {
     verdict = verdict || {};
     if (String(verdict.mode || "") === "needs_you") {
-      return "تابع الحالات التي تحتاج قرارًا منك.";
+      return "راجع السلة وحالتها والإجراء التشغيلي التالي.";
     }
-    return "";
+    return "القائمة أدناه تعرض حالة كل سلة.";
   }
 
   function fillSharedCartsHero(verdict) {
@@ -3903,7 +3903,7 @@
       hero.setAttribute("data-shared-hero-carts", "1");
     }
     var payload = {
-      question: "ما الذي يحتاج انتباهك الآن؟",
+      question: "ما حالة كل سلة؟",
       story: story,
       support: cartsHeroSupportFromVerdict(verdict),
     };
