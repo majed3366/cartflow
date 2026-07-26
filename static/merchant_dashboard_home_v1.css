@@ -1197,3 +1197,37 @@ body[data-ma-page="home"] #ma-page-hero-global {
     transition: none;
   }
 }
+
+/* Executive Control V1 — Home: one dominant primary decision */
+.hes-surface[data-executive-control="1"] .hes-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.hes-surface[data-executive-control="1"] .hes-section {
+  padding: 0.85rem 0;
+  border-block-end: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.hes-surface[data-executive-control="1"] .hes-section--dominant {
+  padding: 1.15rem 1rem;
+  margin-block: 0.15rem;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 0.5rem;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.03), transparent);
+}
+
+.hes-surface[data-executive-control="1"] .hes-section--dominant h3 {
+  font-size: 1.15rem;
+}
+
+.hes-surface[data-executive-control="1"] .hes-section--dominant .hes-section__summary {
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.55;
+}
+
+.hes-surface[data-executive-control="1"] .hes-section:not(.hes-section--dominant) .hes-section__summary {
+  opacity: 0.92;
+}

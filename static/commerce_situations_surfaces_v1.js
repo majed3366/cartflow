@@ -1,6 +1,6 @@
 /**
  * Commerce Situation surfaces — Products / Carts / Communication consumers.
- * Same situation_id across pages; no reinterpretation.
+ * Merchant-safe: no situation_id, run stamps, or identity chips on merchant pages.
  */
 (function () {
   "use strict";
@@ -50,20 +50,13 @@
     if (!rows.length) {
       root.innerHTML =
         '<section class="cs-surface" data-cs-surface="products">' +
-        "<h2>المنتجات في مواقف العمل</h2>" +
-        '<p class="cs-empty">لا توجد منتجات مشاركة في موقف تجاري حالياً.</p></section>';
+        "<h2>المنتجات التي تستحق انتباهك</h2>" +
+        '<p class="cs-empty">لا توجد منتجات تستحق انتباهاً خاصاً حالياً.</p></section>';
       return;
     }
     var html =
       '<section class="cs-surface" data-cs-surface="products">' +
-      "<h2>المنتجات المشاركة في المواقف</h2>" +
-      (focusId
-        ? '<p class="cs-focus">الموقف: <code data-situation-id="' +
-          esc(focusId) +
-          '">' +
-          esc(focusId) +
-          "</code></p>"
-        : "") +
+      "<h2>المنتجات التي تستحق انتباهك</h2>" +
       '<ul class="cs-list">';
     for (var i = 0; i < rows.length; i++) {
       var it = rows[i] || {};
@@ -75,134 +68,100 @@
         .filter(Boolean);
       if (!names.length && it.title_ar) names = [it.title_ar];
       html +=
-        '<li class="cs-card" data-situation-id="' +
-        esc(it.situation_id || "") +
-        '">' +
+        '<li class="cs-card">' +
         '<p class="cs-card__title">' +
         esc(it.title_ar || "") +
         "</p>" +
         '<p class="cs-card__body">' +
-        esc(names.join(" · ") || it.why_it_matters_ar || "") +
+        esc(it.why_it_matters_ar || names.join(" · ") || "") +
         "</p>" +
-        '<p class="cs-card__id"><code>' +
-        esc(it.situation_id || "") +
-        "</code></p>" +
         '<p class="cs-card__links">' +
-        '<a href="#workspace?situation_id=' +
-        encodeURIComponent(it.situation_id || "") +
-        '">وسّع في مساحة القرار</a>' +
+        '<a href="#workspace">وسّع في مساحة القرار ←</a>' +
         "</p></li>";
     }
     html += "</ul></section>";
     root.innerHTML = html;
   }
 
-  function renderOpsBanner(root, surface, items, focusId, emptyAr) {
-    if (!root) return;
-    var rows = filterItems(items, focusId);
-    root.hidden = false;
-    if (!rows.length) {
-      root.innerHTML =
-        '<section class="cs-ops-banner" data-cs-surface="' +
-        esc(surface) +
-        '"><p>' +
-        esc(emptyAr) +
-        "</p></section>";
-      return;
-    }
-    var html =
-      '<section class="cs-ops-banner" data-cs-surface="' +
-      esc(surface) +
-      '">' +
-      "<h3>مشاركة في مواقف العمل</h3><ul>";
-    for (var i = 0; i < rows.length; i++) {
-      var it = rows[i] || {};
-      var note =
-        surface === "carts"
-          ? (it.ops_note_ar ||
-              (it.affected_carts && it.affected_carts.summary_ar) ||
-              "")
-          : it.why_it_matters_ar || it.merchant_action_ar || "";
-      html +=
-        '<li data-situation-id="' +
-        esc(it.situation_id || "") +
-        '">' +
-        "<strong>" +
-        esc(it.title_ar || "") +
-        "</strong> — " +
-        esc(note) +
-        ' <code class="cs-inline-id">' +
-        esc(it.situation_id || "") +
-        "</code></li>";
-    }
-    html += "</ul></section>";
-    root.innerHTML = html;
-  }
+  function paintPublicationTruth(summary) {
+    var pub = summary && summary.merchant_publication_v1;
+    if (!pub || !pub.ok) return;
 
-  function paintIdentityChip(hostId, summary) {
-    var id = summary && summary.reality_validation_identity_v1;
-    if (!id) return;
-    var host = document.getElementById(hostId);
-    if (!host) return;
-    var el = host.querySelector("[data-rv-audit-chip]") || document.createElement("div");
-    el.setAttribute("data-rv-audit-chip", "1");
-    el.className = "cs-rv-chip";
-    el.setAttribute("data-rv-status", String(id.status || ""));
-    el.innerHTML =
-      "<strong>" +
-      esc(id.status || "?") +
-      "</strong> · store=<code>" +
-      esc(id.store_slug || "") +
-      "</code> · run=<code>" +
-      esc(id.simulation_run_id || "—") +
-      "</code> · situations=" +
-      esc(String(id.situation_count ?? "—"));
-    if (!el.parentNode) host.insertBefore(el, host.firstChild);
+    var cartsFocus = document.getElementById("meif-carts-focus-root");
+    if (cartsFocus) {
+      var cartOps = pub.cart_condition || pub.cart_operational_action || {};
+      var systemic = pub.systemic_business_action || {};
+      var cartHtml =
+        '<section class="cs-ops-banner cs-pub-truth" data-cs-surface="carts">' +
+        "<h3>حالة السلال</h3>" +
+        "<p>" +
+        esc(cartOps.summary_ar || "تقدّم سلال العملاء مستقر.") +
+        "</p>" +
+        "<p><strong>مستوى السلة:</strong> " +
+        esc(cartOps.individual_action_ar || "لا يحتاج إجراءً فردياً الآن.") +
+        "</p>";
+      if (systemic.summary_ar) {
+        cartHtml +=
+          "<p><strong>قرار العمل:</strong> " +
+          esc(systemic.summary_ar) +
+          ' <a href="#workspace">مساحة القرار ←</a></p>';
+      }
+      cartHtml += "</section>";
+      var existingCart = cartsFocus.querySelector(
+        "[data-cs-surface='carts'].cs-pub-truth"
+      );
+      if (existingCart) existingCart.outerHTML = cartHtml;
+      else cartsFocus.insertAdjacentHTML("afterbegin", cartHtml);
+    }
+
+    var commRoot = document.getElementById("meif-communication-root");
+    if (commRoot) {
+      var cc = pub.communication_condition || {};
+      var commHtml =
+        '<section class="cs-ops-banner cs-pub-truth" data-cs-surface="communication">' +
+        "<h3>حالة التواصل</h3>" +
+        "<p>" +
+        esc(cc.summary_ar || "تواصل العملاء يسير بشكل طبيعي.") +
+        "</p></section>";
+      var existing = commRoot.querySelector(
+        "[data-cs-surface='communication'].cs-pub-truth"
+      );
+      if (existing) existing.outerHTML = commHtml;
+      else {
+        if (!document.getElementById("cs-comms-banner")) {
+          commRoot.insertAdjacentHTML(
+            "afterbegin",
+            '<div id="cs-comms-banner" class="cs-ops-banner-wrap"></div>'
+          );
+        }
+        var host = document.getElementById("cs-comms-banner");
+        if (host) host.insertAdjacentHTML("afterbegin", commHtml);
+        else commRoot.insertAdjacentHTML("afterbegin", commHtml);
+      }
+    }
   }
 
   window.maApplyCommerceSituationSurfacesV1 = function (summary) {
     var cs = pkgFromSummary(summary);
-    paintIdentityChip("cs-products-root", summary);
-    paintIdentityChip("meif-carts-focus-root", summary);
-    paintIdentityChip("meif-communication-root", summary);
-    if (!cs) return false;
+    paintPublicationTruth(summary);
+    // Remove any leftover identity chips from prior paints.
+    ["cs-products-root", "meif-carts-focus-root", "meif-communication-root"].forEach(
+      function (id) {
+        var host = document.getElementById(id);
+        if (!host) return;
+        var chips = host.querySelectorAll("[data-rv-audit-chip], .cs-rv-chip");
+        for (var i = 0; i < chips.length; i++) chips[i].remove();
+      }
+    );
+    if (!cs) return !!summary && !!summary.merchant_publication_v1;
     var focus = readSituationIdFromHash();
     var productsRoot = document.getElementById("cs-products-root");
     var products = consumer(cs, "products");
     if (productsRoot && products) {
       renderProducts(productsRoot, products.items || [], focus);
     }
-    var cartsFocus = document.getElementById("meif-carts-focus-root");
-    var carts = consumer(cs, "carts");
-    if (cartsFocus && carts) {
-      renderOpsBanner(
-        cartsFocus,
-        "carts",
-        carts.items || [],
-        focus,
-        "لا توجد سلال مشاركة في موقف تجاري معلن حالياً — تشغيل السلال أدناه."
-      );
-    }
-    var commRoot = document.getElementById("meif-communication-root");
-    var comm = consumer(cs, "communication");
-    if (commRoot && comm && Array.isArray(comm.items) && comm.items.length) {
-      if (!document.getElementById("cs-comms-banner")) {
-        commRoot.insertAdjacentHTML(
-          "afterbegin",
-          '<div id="cs-comms-banner" class="cs-ops-banner-wrap"></div>'
-        );
-      }
-      var host = document.getElementById("cs-comms-banner");
-      if (host) {
-        renderOpsBanner(
-          host,
-          "communication",
-          comm.items || [],
-          focus,
-          "لا يوجد عملاء مشاركون في موقف تواصل معلن حالياً."
-        );
-      }
-    }
+    // Carts / Communication: publication banner is the merchant-facing layer.
+    // Do not paint raw situation-id banners above operational lists.
     return true;
   };
 

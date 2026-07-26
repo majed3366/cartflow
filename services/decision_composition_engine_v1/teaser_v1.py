@@ -57,12 +57,21 @@ def count_composed_decisions_for_teaser_v1(
         top_domain = str(top.get("business_domain") or top_category).strip()
 
     landscape = list(pkg.get("category_landscape") or [])
+    publication = (
+        pkg.get("merchant_publication_v1")
+        if isinstance(pkg.get("merchant_publication_v1"), Mapping)
+        else {}
+    )
+    if publication.get("primary_business_action"):
+        top_title = str(publication.get("primary_business_action") or top_title).strip()
     return {
-        "count": len(decisions),
+        "count": 1 if publication.get("highest_priority_decision_id") else len(decisions),
         "top_title_ar": top_title,
         "top_category": top_category,
         "top_domain": top_domain,
-        "evidence": "store_executive_understanding" if decisions else "none",
+        "evidence": "merchant_publication_v1"
+        if publication.get("ok")
+        else ("store_executive_understanding" if decisions else "none"),
         "total_findings": int((pkg.get("counts") or {}).get("candidates_total") or 0),
         "suppressed": int((pkg.get("counts") or {}).get("suppressed") or 0),
         "composition_version": pkg.get("composition_version"),
@@ -71,10 +80,19 @@ def count_composed_decisions_for_teaser_v1(
         "portfolio_version": pkg.get("portfolio_version"),
         "category_landscape": landscape,
         "home_domain_teasers": dict(home_teasers),
+        "merchant_publication_v1": dict(publication) if publication else {},
+        "highest_priority_decision_id": str(
+            publication.get("highest_priority_decision_id") or ""
+        ).strip(),
+        "highest_priority_situation_id": str(
+            publication.get("highest_priority_situation_id") or ""
+        ).strip(),
+        "truth_version": str(publication.get("truth_version") or "").strip(),
         "executive_briefing": (exec_pkg.get("briefing") if isinstance(exec_pkg, Mapping) else {}),
         "gate_2d": True,
         "gate_2e": True,
         "gate_2f": True,
+        "gate_merchant_understanding_repair_v1": True,
         "cache": pkg.get("_cache") or {},
         "timing_ms": pkg.get("timing_ms") or {},
     }

@@ -45,7 +45,13 @@ from services.decision_composition_engine_v1.contract_v1 import (
     BAND_NEEDS_ACTION,
     COMPOSITION_VERSION_V1,
 )
-from services.decision_composition_engine_v1.dedupe_v1 import dedupe_candidates_v1
+from services.decision_composition_engine_v1.dedupe_v1 import (
+    dedupe_candidates_v1,
+    dedupe_published_by_action_v1,
+)
+from services.decision_composition_engine_v1.merchant_publication_v1 import (
+    compose_merchant_publication_v1,
+)
 from services.decision_composition_engine_v1.inputs_v1 import (
     load_bound_finding_inputs_v1,
     load_store_counter_inputs_v1,
@@ -186,6 +192,11 @@ def _compose_uncached_v1(
     )
     portfolio = list(mu_pkg.get("decisions") or portfolio)
     published, _suppressed_pub = apply_merchant_understanding_to_decisions_v1(published)
+    # F3 — after titles stamped, suppress identical recommended actions.
+    portfolio, action_dupes = dedupe_published_by_action_v1(portfolio)
+    published, action_dupes_pub = dedupe_published_by_action_v1(published)
+    registry.extend(action_dupes)
+    registry.extend(action_dupes_pub)
     home_teasers = dict(mu_pkg.get("home_teasers") or exec_pkg.get("home_teasers") or {})
     # Business Facts V1 — evidence layer for Business Understanding / Workspace.
     bf_pkg: dict[str, Any] | None = None
@@ -276,6 +287,72 @@ def _compose_uncached_v1(
     needs = [d for d in portfolio if d.get("priority_band") == BAND_NEEDS_ACTION]
     monitor = [d for d in portfolio if d.get("priority_band") != BAND_NEEDS_ACTION]
 
+    publication = compose_merchant_publication_v1(
+        {
+            "ok": True,
+            "composition_version": COMPOSITION_VERSION_V1,
+            "domain_composition_version": DOMAIN_COMPOSITION_VERSION_V1,
+            "business_impact_version": BUSINESS_IMPACT_VERSION_V1,
+            "store_executive_version": STORE_EXECUTIVE_VERSION_V1,
+            "merchant_understanding_version": MERCHANT_UNDERSTANDING_VERSION_V1,
+            "portfolio": portfolio,
+            "decisions": portfolio,
+            "needs_action_now": needs,
+            "suppression_registry": registry,
+            "business_domains_v1": {
+                "domains": domains_pkg.get("domains"),
+                "signals": domains_pkg.get("signals"),
+                "home_teasers": home_teasers,
+            },
+            "store_executive_understanding_v1": exec_pkg,
+            "merchant_understanding_v1": mu_pkg.get("merchant_understanding_v1"),
+            "commerce_situations_v1": cs_pkg,
+        },
+        situations_pkg=cs_pkg,
+    )
+    # Align Home teasers with publication authority (F1 / F4).
+    sc = publication.get("store_condition") if isinstance(publication.get("store_condition"), dict) else {}
+    cc = (
+        publication.get("communication_condition")
+        if isinstance(publication.get("communication_condition"), dict)
+        else {}
+    )
+    cart_ops = (
+        publication.get("cart_condition")
+        if isinstance(publication.get("cart_condition"), dict)
+        else (
+            publication.get("cart_operational_action")
+            if isinstance(publication.get("cart_operational_action"), dict)
+            else {}
+        )
+    )
+    if sc:
+        home_teasers["store_health_ar"] = str(sc.get("summary_ar") or home_teasers.get("store_health_ar") or "")
+        home_teasers["store_health_attention"] = bool(sc.get("needs_attention"))
+        home_teasers["store_status_ar"] = str(sc.get("status_ar") or "")
+    if cc:
+        home_teasers["communication_ar"] = str(cc.get("summary_ar") or home_teasers.get("communication_ar") or "")
+        home_teasers["communication_attention"] = bool(cc.get("constrained") or cc.get("normal_forbidden"))
+    if cart_ops:
+        home_teasers["carts_ar"] = str(cart_ops.get("summary_ar") or home_teasers.get("carts_ar") or "")
+    primary_action = str(
+        publication.get("primary_action")
+        or publication.get("primary_business_action")
+        or ""
+    )
+    if primary_action:
+        home_teasers["decisions_top_title_ar"] = primary_action
+    home_teasers["highest_priority_decision_id"] = publication.get("highest_priority_decision_id") or ""
+    home_teasers["highest_priority_situation_id"] = (
+        publication.get("highest_priority_situation_id")
+        or publication.get("primary_situation_id")
+        or ""
+    )
+    home_teasers["primary_subject"] = publication.get("primary_subject") or ""
+    home_teasers["truth_version"] = publication.get("truth_version") or ""
+    home_teasers["merchant_publication"] = True
+    home_teasers["gate_executive_control_v1"] = True
+
     return {
         "ok": True,
         "store_slug": slug,
@@ -290,6 +367,7 @@ def _compose_uncached_v1(
         "gate_2e_executive_business": True,
         "gate_2f_store_executive": True,
         "gate_2x_merchant_understanding": True,
+        "gate_merchant_understanding_repair_v1": True,
         "gate_business_facts_v1": bool(bf_pkg and bf_pkg.get("ok")),
         "gate_business_themes_v1": bool(bt_pkg and bt_pkg.get("ok")),
         "gate_commerce_situations_v1": bool(cs_pkg and cs_pkg.get("ok")),
@@ -305,6 +383,7 @@ def _compose_uncached_v1(
         "business_themes_v1": bt_pkg,
         "commerce_situations_v1": cs_pkg,
         "merchant_understanding_v1": mu_pkg.get("merchant_understanding_v1"),
+        "merchant_publication_v1": publication,
         "decisions": portfolio,
         "all_published": published,
         "needs_action_now": needs,

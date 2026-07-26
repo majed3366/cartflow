@@ -7,6 +7,7 @@ import unittest
 from services.decision_composition_engine_v1.merchant_understanding_v1 import (
     PREFERRED_CARTS_NEED_ATTENTION_AR,
     PREFERRED_DECISION_CHECKOUT_AR,
+    PREFERRED_DECISION_RECOVERY_CONTACT_AR,
     PREFERRED_HEALTH_LIMITED_AR,
     PREFERRED_NO_CRITICAL_AR,
     compose_merchant_understanding_v1,
@@ -85,7 +86,8 @@ class MerchantUnderstandingComposeTests(unittest.TestCase):
             mu["home_teasers"]["carts_ar"], PREFERRED_CARTS_NEED_ATTENTION_AR
         )
         self.assertEqual(
-            mu["decisions"][0]["merchant_decision"], PREFERRED_DECISION_CHECKOUT_AR
+            mu["decisions"][0]["merchant_decision"],
+            PREFERRED_DECISION_RECOVERY_CONTACT_AR,
         )
         self.assertEqual(
             mu["guiding_principle"], "merchant_understands_store_not_cartflow"
@@ -118,11 +120,29 @@ class PipelineStampTests(unittest.TestCase):
         carts = ((pkg.get("business_domains_v1") or {}).get("home_teasers") or {}).get(
             "carts_ar"
         ) or ""
-        self.assertFalse(carts[:1].isdigit(), carts)
+        # Executive Control allows count-led cart condition ("N سلة تحتاج…");
+        # still forbid internal queue field names.
         self.assertNotIn("waiting_total", carts)
+        self.assertTrue(
+            ("سلة" in carts) or ("سلال" in carts) or ("مستقر" in carts),
+            carts,
+        )
         top = (pkg.get("portfolio") or [{}])[0]
         self.assertTrue(top.get("gate_2x_merchant_understanding"))
-        self.assertIn("إتمام الشراء", top.get("merchant_decision") or "")
+        decision = top.get("merchant_decision") or ""
+        self.assertTrue(
+            ("رقم العميل" in decision)
+            or ("تدخلك" in decision)
+            or ("إتمام الشراء" in decision),
+            decision,
+        )
+        self.assertTrue(pkg.get("gate_merchant_understanding_repair_v1"))
+        pub = pkg.get("merchant_publication_v1") or {}
+        self.assertTrue(pub.get("ok"))
+        # Exactly one primary executive action; may be product-led over portfolio[0].
+        self.assertTrue(pub.get("primary_action") or pub.get("primary_business_action"))
+        if pub.get("highest_priority_decision_id") and not pub.get("primary_situation_id"):
+            self.assertEqual(pub.get("highest_priority_decision_id"), top.get("decision_id"))
 
 
 class HomeFeelsLikeStoreTests(unittest.TestCase):

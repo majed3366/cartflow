@@ -401,6 +401,19 @@ def finalize_dashboard_summary_payload(
                         )
                 except Exception as rv_exc:  # noqa: BLE001
                     log.warning("reality_validation_identity slim attach: %s", rv_exc)
+                try:
+                    from services.decision_composition_engine_v1.merchant_publication_v1 import (  # noqa: PLC0415
+                        attach_merchant_publication_to_summary_v1,
+                    )
+
+                    with dashboard_summary_profile_span(
+                        "home_stage_merchant_publication"
+                    ):
+                        attach_merchant_publication_to_summary_v1(
+                            body, store_slug=_slug
+                        )
+                except Exception as mp_exc:  # noqa: BLE001
+                    log.warning("merchant_publication_v1 slim attach: %s", mp_exc)
         except Exception as exc:  # noqa: BLE001
             log.warning("observation_admission slim attach: %s", exc)
         with dashboard_summary_profile_span("home_stage_teaser_extract"):
@@ -496,6 +509,15 @@ def finalize_dashboard_summary_payload(
                 )
         except Exception as rv_exc:  # noqa: BLE001
             log.warning("reality_validation_identity attach: %s", rv_exc)
+        try:
+            from services.decision_composition_engine_v1.merchant_publication_v1 import (  # noqa: PLC0415
+                attach_merchant_publication_to_summary_v1,
+            )
+
+            with dashboard_summary_profile_span("home_stage_merchant_publication"):
+                attach_merchant_publication_to_summary_v1(body, store_slug=_slug)
+        except Exception as mp_exc:  # noqa: BLE001
+            log.warning("merchant_publication_v1 attach: %s", mp_exc)
     except Exception as exc:  # noqa: BLE001
         log.warning("observation_reality_validation_v1 attach: %s", exc)
     try:

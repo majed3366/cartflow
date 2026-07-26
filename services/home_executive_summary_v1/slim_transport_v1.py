@@ -215,6 +215,15 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
                 raw_dom = teaser_dec.get("home_domain_teasers")
                 if isinstance(raw_dom, Mapping):
                     domain_teasers = dict(raw_dom)
+                raw_pub = teaser_dec.get("merchant_publication_v1")
+                if isinstance(raw_pub, Mapping) and raw_pub.get("ok"):
+                    # Prefer teaser-composed publication when summary stamp missing.
+                    if not isinstance(src.get("merchant_publication_v1"), Mapping):
+                        if isinstance(src, dict):
+                            src["merchant_publication_v1"] = dict(raw_pub)  # type: ignore[index]
+                        else:
+                            # Immutable mapping — stash for local use via domain_teasers.
+                            domain_teasers["_merchant_publication_v1"] = dict(raw_pub)
             except Exception:  # noqa: BLE001
                 pass
 
@@ -314,9 +323,84 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
     needs_attention = waiting > 0 or no_phone > 0 or store_ok is False
     if domain_teasers.get("store_health_attention") is True:
         needs_attention = True
+
+    # Merchant Understanding Repair V1 — canonical publication overrides local inference.
+    pub = src.get("merchant_publication_v1")
+    if not isinstance(pub, Mapping):
+        pub = domain_teasers.get("_merchant_publication_v1")
+    if not isinstance(pub, Mapping):
+        pub = {}
+    sc = pub.get("store_condition") if isinstance(pub.get("store_condition"), Mapping) else {}
+    cc = (
+        pub.get("communication_condition")
+        if isinstance(pub.get("communication_condition"), Mapping)
+        else {}
+    )
+    cart_ops = (
+        pub.get("cart_condition")
+        if isinstance(pub.get("cart_condition"), Mapping)
+        else (
+            pub.get("cart_operational_action")
+            if isinstance(pub.get("cart_operational_action"), Mapping)
+            else {}
+        )
+    )
+    if sc:
+        needs_attention = bool(sc.get("needs_attention"))
+        domain_teasers["store_health_ar"] = str(
+            sc.get("summary_ar") or domain_teasers.get("store_health_ar") or ""
+        ).strip()
+        domain_teasers["store_status_ar"] = str(sc.get("status_ar") or "").strip()
+        domain_teasers["store_health_attention"] = needs_attention
+    if cc:
+        domain_teasers["communication_ar"] = str(
+            cc.get("summary_ar") or domain_teasers.get("communication_ar") or ""
+        ).strip()
+        domain_teasers["communication_attention"] = bool(
+            cc.get("constrained") or cc.get("normal_forbidden")
+        )
+    if cart_ops:
+        domain_teasers["carts_ar"] = str(
+            cart_ops.get("summary_ar") or domain_teasers.get("carts_ar") or ""
+        ).strip()
+    primary_action = str(
+        pub.get("primary_action") or pub.get("primary_business_action") or ""
+    ).strip()
+    if primary_action:
+        decisions_count = 1
+        decisions_title = primary_action
+        decisions_evidence = "merchant_publication_v1"
+    # Prefer a single distinct product situation for Home (not a 5-card portfolio).
+    home_product = (
+        pub.get("home_product_situation")
+        if isinstance(pub.get("home_product_situation"), Mapping)
+        else None
+    )
+    if home_product and str(home_product.get("situation_id") or "").strip():
+        obs_count = 1
+        obs_top = {
+            "situation_id": str(home_product.get("situation_id") or "").strip(),
+            "situation_kind": str(home_product.get("situation_kind") or "").strip(),
+            "title_ar": str(home_product.get("title_ar") or "").strip(),
+            "statement_ar": str(home_product.get("statement_ar") or "").strip(),
+            "product_name_ar": str(home_product.get("title_ar") or "").strip(),
+            "href": str(home_product.get("href") or "").strip(),
+            "source": "merchant_publication_v1",
+            "situations": [
+                {
+                    "situation_id": str(home_product.get("situation_id") or "").strip(),
+                    "situation_kind": str(home_product.get("situation_kind") or "").strip(),
+                    "title_ar": str(home_product.get("title_ar") or "").strip(),
+                    "statement_ar": str(home_product.get("statement_ar") or "").strip(),
+                    "href": str(home_product.get("href") or "").strip(),
+                    "source": "merchant_publication_v1",
+                }
+            ],
+        }
+
     return {
         "schema": "home_teaser_inputs_v1",
-        "version": "gate_2d_business_domain_composition",
+        "version": "merchant_understanding_repair_v1",
         "health": {
             "watching": waiting > 0 or active > 0,
             "abandoned_carts": waiting,
@@ -327,6 +411,7 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
             "wa_state_key": wa_state,
             "needs_attention": needs_attention,
             "domain_summary_ar": str(domain_teasers.get("store_health_ar") or "").strip(),
+            "status_ar": str(domain_teasers.get("store_status_ar") or "").strip(),
         },
         "decisions": {
             "count": decisions_count,
@@ -335,20 +420,32 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
             "category_landscape": portfolio_landscape,
             "portfolio": True,
             "gate_2d": True,
+            "highest_priority_decision_id": str(
+                pub.get("highest_priority_decision_id") or ""
+            ).strip(),
+            "highest_priority_situation_id": str(
+                pub.get("highest_priority_situation_id") or ""
+            ).strip(),
+            "truth_version": str(pub.get("truth_version") or "").strip(),
         },
         "observations": {
             "count": obs_count,
             "top": obs_top,
             "evidence": (
-                "commerce_situations"
-                if obs_count
-                and obs_top
-                and str((obs_top or {}).get("source") or "")
-                == "commerce_situations_v1"
+                "merchant_publication_v1"
+                if obs_top
+                and str((obs_top or {}).get("source") or "") == "merchant_publication_v1"
                 else (
-                    "product_findings"
-                    if obs_count and obs_top
-                    else "none"
+                    "commerce_situations"
+                    if obs_count
+                    and obs_top
+                    and str((obs_top or {}).get("source") or "")
+                    == "commerce_situations_v1"
+                    else (
+                        "product_findings"
+                        if obs_count and obs_top
+                        else "none"
+                    )
                 )
             ),
         },
@@ -358,6 +455,9 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
             "active": active,
             "no_phone": no_phone,
             "domain_summary_ar": str(domain_teasers.get("carts_ar") or "").strip(),
+            "individual_action_ar": str(
+                (cart_ops or {}).get("individual_action_ar") or ""
+            ).strip(),
         },
         "communication": {
             "sent": wa_sent,
@@ -365,11 +465,57 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
             "no_phone": no_phone,
             "waiting": waiting,
             "wa_state_key": wa_state,
-            "activity": (wa_sent + schedules + waiting + no_phone) > 0,
+            "activity": (wa_sent + schedules + waiting + no_phone) > 0
+            or bool((cc or {}).get("constrained")),
             "domain_summary_ar": str(
                 domain_teasers.get("communication_ar") or ""
             ).strip(),
+            "constrained": bool((cc or {}).get("constrained")),
         },
+        "merchant_publication_v1": {
+            "ok": bool(pub.get("ok")),
+            "schema": str(pub.get("schema") or "merchant_publication_v1"),
+            "truth_version": str(pub.get("truth_version") or "").strip(),
+            "simulation_run_id": str(pub.get("simulation_run_id") or "").strip(),
+            "store_condition": pub.get("store_condition")
+            if isinstance(pub.get("store_condition"), Mapping)
+            else {},
+            "primary_executive_decision": pub.get("primary_executive_decision")
+            if isinstance(pub.get("primary_executive_decision"), Mapping)
+            else None,
+            "primary_situation_id": str(
+                pub.get("primary_situation_id")
+                or pub.get("highest_priority_situation_id")
+                or ""
+            ).strip(),
+            "primary_subject": str(pub.get("primary_subject") or "").strip(),
+            "primary_action": primary_action,
+            "supporting_secondary_situations": list(
+                pub.get("supporting_secondary_situations") or []
+            )[:4],
+            "communication_condition": pub.get("communication_condition")
+            if isinstance(pub.get("communication_condition"), Mapping)
+            else {},
+            "cart_condition": cart_ops if isinstance(cart_ops, Mapping) else {},
+            "highest_priority_decision_id": str(
+                pub.get("highest_priority_decision_id") or ""
+            ).strip(),
+            "highest_priority_situation_id": str(
+                pub.get("highest_priority_situation_id")
+                or pub.get("primary_situation_id")
+                or ""
+            ).strip(),
+            "primary_business_action": primary_action,
+            "home_product_situation": pub.get("home_product_situation")
+            if isinstance(pub.get("home_product_situation"), Mapping)
+            else None,
+            "systemic_business_action": pub.get("systemic_business_action")
+            if isinstance(pub.get("systemic_business_action"), Mapping)
+            else {},
+            "gate_executive_control_v1": True,
+        }
+        if pub
+        else {},
     }
 
 
@@ -454,6 +600,56 @@ def strip_heavy_home_summary_payload_v1(summary: dict[str, Any]) -> dict[str, An
             "communication_projection": rvi.get("communication_projection"),
             "divergence_begins_at": rvi.get("divergence_begins_at"),
             "slim_transport": True,
+        }
+    # Keep Merchant Publication contract (cross-surface truth authority).
+    mp = summary.get("merchant_publication_v1")
+    if isinstance(mp, dict) and mp.get("ok"):
+        cart_cond = (
+            mp.get("cart_condition")
+            if isinstance(mp.get("cart_condition"), Mapping)
+            else mp.get("cart_operational_action")
+        )
+        primary_action = str(
+            mp.get("primary_action") or mp.get("primary_business_action") or ""
+        ).strip()
+        summary["merchant_publication_v1"] = {
+            "ok": True,
+            "schema": mp.get("schema") or "merchant_publication_v1",
+            "version": mp.get("version"),
+            "truth_version": mp.get("truth_version"),
+            "simulation_run_id": mp.get("simulation_run_id")
+            or (rvi or {}).get("simulation_run_id"),
+            "store_condition": mp.get("store_condition"),
+            "primary_executive_decision": mp.get("primary_executive_decision")
+            or mp.get("primary_decision"),
+            "primary_situation_id": mp.get("primary_situation_id")
+            or mp.get("highest_priority_situation_id"),
+            "primary_subject": mp.get("primary_subject"),
+            "primary_action": primary_action,
+            "supporting_secondary_situations": list(
+                mp.get("supporting_secondary_situations") or []
+            )[:4],
+            "communication_condition": mp.get("communication_condition"),
+            "cart_condition": cart_cond,
+            "highest_priority_situation_id": mp.get("highest_priority_situation_id")
+            or mp.get("primary_situation_id"),
+            "highest_priority_decision_id": mp.get("highest_priority_decision_id"),
+            "primary_business_action": primary_action,
+            "secondary_decision_ids": list(mp.get("secondary_decision_ids") or [])[:8],
+            "cart_operational_action": cart_cond,
+            "systemic_business_action": mp.get("systemic_business_action"),
+            "suppressed_duplicate_decisions": list(
+                mp.get("suppressed_duplicate_decisions") or []
+            )[:12],
+            "primary_decision": mp.get("primary_executive_decision")
+            or mp.get("primary_decision"),
+            "home_product_situation": mp.get("home_product_situation"),
+            "counts": mp.get("counts") or {},
+            "gate_merchant_understanding_repair_v1": True,
+            "gate_executive_control_v1": True,
+            "slim_transport": True,
+            "product_intelligence": False,
+            "merchant_safe": True,
         }
     home = summary.get("merchant_home_experience_v1")
     if isinstance(home, dict):

@@ -311,9 +311,10 @@ def build_merchant_explanation_v1(
     if action_required and attention == ATTENTION_INFORMATIONAL:
         attention = ATTENTION_NEEDS_REVIEW
 
-    merchant_action = "لا حاجة لإجراء — CartFlow يتابع تلقائياً."
+    # F5 — cart-level action must not contradict systemic Workspace decisions.
+    merchant_action = "لا يحتاج إجراءً فردياً الآن."
     if action_required:
-        merchant_action = what_next or "يلزم مراجعة منك لهذه السلة."
+        merchant_action = what_next or "يلزم مراجعة فردية منك لهذه السلة."
 
     diagnostic: dict[str, Any] = {
         "lifecycle_state": _norm(diagnostic_lifecycle_state or lifecycle_state),
