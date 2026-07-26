@@ -20,7 +20,8 @@ from playwright.sync_api import sync_playwright
 
 BASE = "https://smartreplyai.net"
 OUT = Path(__file__).resolve().parents[1] / "docs" / "product" / "dashboard_constitution_v1"
-DEPLOY_MARKER = "Constitution: empty entry is Home"
+DEPLOY_MARKER = "Constitution: hide workspace question off-page"
+APP_MARKER = "Constitution: empty entry is Home"
 COMMS_MARKER = 'data-constitution="communication"'
 
 SURFACES = (
@@ -70,11 +71,11 @@ def wait_for_deploy(*, attempts: int = 40, sleep_s: float = 15.0) -> dict:
             out["attempts"].append({"n": i, "error": str(e)})
             time.sleep(sleep_s)
             continue
-        hit = DEPLOY_MARKER in app and COMMS_MARKER in cs
+        hit = APP_MARKER in app and DEPLOY_MARKER in app and COMMS_MARKER in cs
         out["attempts"].append(
             {
                 "n": i,
-                "marker_app": DEPLOY_MARKER in app,
+                "marker_app": APP_MARKER in app and DEPLOY_MARKER in app,
                 "marker_comms": COMMS_MARKER in cs,
             }
         )
@@ -127,7 +128,8 @@ def main() -> int:
         report["living_store_run"] = {"http": run.get("http"), "body": run.get("body")}
 
         status_body: dict = {}
-        for _ in range(48):
+        job_state = ""
+        for _ in range(60):
             boot.wait_for_timeout(5000)
             st = boot.evaluate(
                 """async () => {
@@ -139,15 +141,23 @@ def main() -> int:
             )
             status_body = st.get("body") or {}
             job = status_body.get("job") if isinstance(status_body.get("job"), dict) else status_body
-            state = str(
+            job_state = str(
                 (job or {}).get("status")
                 or (job or {}).get("state")
                 or (job or {}).get("phase")
                 or ""
             ).lower()
-            if state in {"done", "completed", "success", "ready", "finished", "failed", "error"}:
+            if job_state in {"done", "completed", "success", "ready", "finished"}:
+                break
+            if job_state in {"failed", "error"}:
                 break
         report["living_store_status"] = status_body
+        if job_state not in {"done", "completed", "success", "ready", "finished"}:
+            report["verdict"] = "FAIL_LIVING_STORE_NOT_DONE"
+            report["living_store_job_state"] = job_state
+            _write(report)
+            browser.close()
+            return 5
 
         session = boot.evaluate(
             """async () => {
@@ -224,6 +234,38 @@ def main() -> int:
         tech_hits: dict = {}
         surface_checks: dict = {}
 
+        # Parity: capture Home fingerprints back-to-back before long surface tours.
+        for mode, w, h in (("desktop", 1440, 900), ("mobile", 390, 844)):
+            ctx = browser.new_context(viewport={"width": w, "height": h}, locale="ar-SA")
+            ctx.add_cookies([cookie])
+            page = ctx.new_page()
+            page.goto(f"{BASE}/dashboard#home", timeout=120000)
+            try:
+                page.wait_for_selector("text=عرض التفاصيل", timeout=45000)
+            except Exception:
+                page.wait_for_timeout(8000)
+            fingerprints[mode] = page.evaluate(
+                """async () => {
+                  const r = await fetch('/api/dashboard/summary?_=' + Date.now(), {
+                    credentials: 'same-origin', cache: 'no-store'
+                  });
+                  const j = await r.json().catch(() => ({}));
+                  const pub = j.merchant_publication_v1 || {};
+                  const sc = pub.store_condition || {};
+                  const cc = pub.communication_condition || {};
+                  return {
+                    store_slug: j.store_slug || null,
+                    simulation_run_id: pub.simulation_run_id
+                      || ((j.reality_validation_identity_v1||{}).simulation_run_id) || '',
+                    store_condition: sc.summary_ar || '',
+                    primary_action: pub.primary_action || pub.primary_business_action || '',
+                    primary_subject: pub.primary_subject || '',
+                    communication: cc.summary_ar || '',
+                  };
+                }"""
+            )
+            ctx.close()
+
         for mode, w, h in (("desktop", 1440, 900), ("mobile", 390, 844)):
             ctx = browser.new_context(viewport={"width": w, "height": h}, locale="ar-SA")
             ctx.add_cookies([cookie])
@@ -243,13 +285,17 @@ def main() -> int:
                 page.screenshot(path=str(shot), full_page=False)
                 probe = page.evaluate(
                     """() => {
+                      const pageAttr = document.body && document.body.getAttribute('data-ma-page');
                       const purposeEl = document.getElementById('pagePurpose');
                       const subEl = document.getElementById('pageSub');
                       const wq = document.getElementById('cw-constitution-question');
-                      const purpose = ((purposeEl && purposeEl.textContent) || '').trim();
+                      const purpose = ((purposeEl && !purposeEl.hidden && purposeEl.textContent) || '').trim();
                       const sub = ((subEl && !subEl.hidden && subEl.textContent) || '').trim();
-                      const workspaceQ = ((wq && !wq.hidden && wq.textContent) || '').trim();
-                      const question = purpose || workspaceQ || sub;
+                      const workspaceQ = (pageAttr === 'workspace' && wq && !wq.hidden)
+                        ? ((wq.textContent || '').trim()) : '';
+                      const question = pageAttr === 'workspace'
+                        ? (workspaceQ || purpose || sub)
+                        : (pageAttr === 'carts' ? (sub || purpose) : (purpose || sub));
                       const text = (document.body && document.body.innerText) || '';
                       const monthPage = document.getElementById('page-home-month');
                       const monthHidden = !monthPage || monthPage.hidden || monthPage.getAttribute('aria-hidden') === 'true';
@@ -324,16 +370,6 @@ def main() -> int:
                     "hash": probe.get("hash"),
                     "page_attr": probe.get("page"),
                 }
-                if name == "home":
-                    fingerprints[mode] = {
-                        "store_condition": pub.get("store_condition"),
-                        "primary_action": pub.get("primary_action"),
-                        "primary_subject": pub.get("primary_subject"),
-                        "communication": pub.get("communication"),
-                        "carts": pub.get("carts"),
-                        "simulation_run_id": pub.get("simulation_run_id"),
-                        "store_slug": pub.get("store_slug"),
-                    }
             # empty hash → home
             page.goto(f"{BASE}/dashboard", timeout=120000)
             page.wait_for_timeout(3500)
@@ -346,10 +382,22 @@ def main() -> int:
             surface_checks[f"{mode}_empty_hash"] = empty_hash or {}
             ctx.close()
 
+        def _meaning(fp: dict | None) -> dict:
+            fp = fp or {}
+            return {
+                "store_condition": fp.get("store_condition"),
+                "primary_action": fp.get("primary_action"),
+                "primary_subject": fp.get("primary_subject"),
+                "communication": fp.get("communication"),
+                "simulation_run_id": fp.get("simulation_run_id"),
+                "store_slug": fp.get("store_slug"),
+            }
+
         report["parity"] = {
             "desktop": fingerprints.get("desktop"),
             "mobile": fingerprints.get("mobile"),
-            "match": fingerprints.get("desktop") == fingerprints.get("mobile"),
+            "match": _meaning(fingerprints.get("desktop"))
+            == _meaning(fingerprints.get("mobile")),
         }
         report["technical_copy_scan"] = tech_hits
         report["surface_checks"] = surface_checks

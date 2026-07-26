@@ -524,6 +524,11 @@
       clearQuestionFirstHero();
       if (document.body) document.body.removeAttribute("data-carts-ready");
     }
+    /* Constitution: hide workspace question off-page */
+    var wqHide = byId("cw-constitution-question");
+    if (wqHide && pageKey && pageKey !== "workspace") {
+      wqHide.hidden = true;
+    }
     // Home Pulse owns the shared global Hero — re-assert, do not clobber with page defaults.
     if (pageKey === "home") {
       var homeRoot = byId("ma-home-experience-root");
