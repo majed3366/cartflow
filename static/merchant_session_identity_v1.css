@@ -1,0 +1,155 @@
+/* Merchant Session Identity Panel V1 */
+
+.ma-account-identity {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 64px 12px 16px;
+  box-sizing: border-box;
+}
+
+.ma-account-identity[hidden] {
+  display: none !important;
+}
+
+.ma-account-identity__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(11, 18, 32, 0.35);
+}
+
+.ma-account-identity__card {
+  position: relative;
+  z-index: 1;
+  width: min(380px, 100%);
+  max-height: min(78vh, 640px);
+  overflow: auto;
+  background: #fff;
+  color: #0b1220;
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(11, 18, 32, 0.22);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  padding: 14px 16px 16px;
+}
+
+.ma-account-identity__hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.ma-account-identity__hdr h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.ma-account-identity__close {
+  border: none;
+  background: transparent;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  color: #64748b;
+  padding: 0 4px;
+}
+
+.ma-account-identity__review {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(13, 148, 136, 0.1);
+  color: #0f766e;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ma-account-identity__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  font-size: 13px;
+}
+
+.ma-account-identity__k {
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.ma-account-identity__v {
+  text-align: left;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.ma-account-identity__row--mono .ma-account-identity__v {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.ma-account-identity__check {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.ma-account-identity__check--ok {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+.ma-account-identity__check--bad {
+  background: rgba(234, 88, 12, 0.12);
+  color: #9a3412;
+}
+
+.ma-account-identity__check-msg {
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.ma-account-identity__action {
+  margin: 10px 0 0;
+}
+
+.ma-account-identity__cta {
+  display: inline-block;
+  color: #0f766e;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.ma-account-identity__cta:hover {
+  text-decoration: underline;
+}
+
+.ma-account-identity__empty {
+  margin: 8px 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+@media (max-width: 720px) {
+  .ma-account-identity {
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .ma-account-identity__card {
+    width: 100%;
+    max-height: 85vh;
+    border-radius: 16px 16px 0 0;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+}

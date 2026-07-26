@@ -16,6 +16,7 @@
 <link rel="stylesheet" href="/static/merchant_visual_identity_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
 <link rel="stylesheet" href="/static/merchant_typography_certification_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
 <link rel="stylesheet" href="/static/merchant_shell_identity_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
+<link rel="stylesheet" href="/static/merchant_session_identity_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-msi1">
 <link rel="stylesheet" href="/static/merchant_card_system_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
 <link rel="stylesheet" href="/static/merchant_icon_language_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
 <link rel="stylesheet" href="/static/merchant_spacing_certification_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
@@ -176,7 +177,7 @@
     <span class="ma-gtb-date ma-dash-skel" id="ma-topbar-date">{{ merchant_ar_date_header | default("") }}</span>
     <div class="ma-gtb-utils" role="group" aria-label="أدوات الحساب">
       <button type="button" class="ma-gtb-util" id="ma-gtb-notify" aria-label="الإشعارات" title="الإشعارات" hidden>🔔</button>
-      <button type="button" class="ma-gtb-util ma-gtb-util--text" id="ma-gtb-account-btn" title="{{ merchant_store_display_name | default('متجرك') | e }}">
+      <button type="button" class="ma-gtb-util ma-gtb-util--text" id="ma-gtb-account-btn" title="هوية الحساب — {{ merchant_store_display_name | default('متجرك') | e }}" aria-haspopup="dialog" aria-expanded="false" aria-controls="ma-account-identity-panel">
         <span class="ma-gtb-util-ico" aria-hidden="true">👤</span>
         <span class="ma-gtb-util-label">{{ merchant_store_display_name | default("متجرك") }}</span>
       </button>
@@ -1181,6 +1182,7 @@
 <script defer src="/static/merchant_general_settings.js"></script>
 <script defer src="/static/merchant_trigger_templates.js"></script>
 <script defer src="/static/merchant_widget_panel.js"></script>
+<script defer src="/static/merchant_session_identity_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-msi1"></script>
 <script defer src="/static/merchant_app.js?v={{ merchant_setup_render_build | default('unknown') }}-dc2"></script>
 </body>
 </html>

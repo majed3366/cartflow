@@ -20222,8 +20222,25 @@ def _merchant_dashboard_shell_store_fields(
     max_msgs = int(getattr(dash_store, "recovery_attempts", None) or 1) if dash_store else 1
     vip_th = merchant_vip_threshold_int(dash_store)
     vip_threshold_ar = f"{int(vip_th):,} ريال" if vip_th is not None else "غير مفعّل"
+    auth_slug = ""
+    try:
+        from services.merchant_auth_v1 import (  # noqa: PLC0415
+            resolve_authenticated_store_slug,
+        )
+
+        auth_slug = (
+            resolve_authenticated_store_slug(cookies or {}) or ""
+        ).strip()
+    except Exception:  # noqa: BLE001
+        auth_slug = ""
+    shell_slug = auth_slug or (
+        (getattr(dash_store, "zid_store_id", None) or "").strip()
+        if dash_store is not None
+        else ""
+    )
     return {
         "merchant_store_display_name": store_name,
+        "merchant_store_slug": shell_slug or "demo",
         "merchant_platform_ar": platform_ar,
         "merchant_wa_number_display": wa_num_display,
         "merchant_wa_first_delay_ar": first_delay_ar,
@@ -20981,6 +20998,40 @@ async def api_storefront_widget_seen(request: Request):
         pass
     updated, store_id = record_storefront_runtime_beacon(body)
     return j({"ok": True, "updated": updated, "store_id": store_id})
+
+
+@app.get("/api/merchant/session-identity")
+def api_merchant_session_identity(request: Request):
+    """
+    Account Identity panel — verify merchant/store for the current session.
+
+    Merchant-facing verification only (no simulation_run_id / developer diagnostics).
+    """
+    from services.merchant_session_identity_v1 import (  # noqa: PLC0415
+        build_merchant_session_identity_v1,
+    )
+
+    wall0 = time.perf_counter()
+    try:
+        _merchant_dashboard_db_ready()
+        dash_slug = (
+            (request.query_params.get("dashboard_store_slug") or "").strip()[:255]
+        )
+        payload = build_merchant_session_identity_v1(
+            cookies=dict(request.cookies),
+            dashboard_store_slug=dash_slug,
+        )
+        code = 200 if payload.get("ok") else 401
+        return j(payload, code)
+    except (OSError, TypeError, ValueError) as e:
+        log.warning("api merchant/session-identity: %s", e)
+        return j({"ok": False, "error": "failed"}, 500)
+    finally:
+        _log_dashboard_profile(
+            endpoint="GET /api/merchant/session-identity",
+            section="merchant_session_identity",
+            wall_perf_start=wall0,
+        )
 
 
 @app.get("/api/merchant/store-connection")
