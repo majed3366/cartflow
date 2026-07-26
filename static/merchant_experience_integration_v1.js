@@ -635,10 +635,21 @@
   }
 
   function applyCommunication(summary) {
+    /* Fallback only — commerce_situations_surfaces_v1 owns Communication facts. */
     var pkg = meif(summary);
     var root = document.getElementById("meif-communication-root");
-    if (!root || !pkg || !pkg.pages || !pkg.pages.communication) return false;
-    var comm = pkg.pages.communication;
+    if (!root) return false;
+    if (
+      summary &&
+      summary.merchant_publication_v1 &&
+      summary.merchant_publication_v1.ok
+    ) {
+      return false;
+    }
+    var comm =
+      pkg && pkg.pages && pkg.pages.communication
+        ? pkg.pages.communication
+        : {};
     var ops = comm.operational_truth || {};
     var pub =
       summary && summary.merchant_publication_v1
@@ -655,8 +666,7 @@
     var noPhone = Number(ops.no_phone_total || ops.missing_phone || 0);
     if (!noPhone && summary && summary.home_teaser_inputs_v1) {
       var ht = summary.home_teaser_inputs_v1;
-      var cartsT = (ht.carts || ht.communication || {}) || {};
-      noPhone = Number((ht.communication && ht.communication.no_phone) || cartsT.no_phone || 0);
+      noPhone = Number((ht.communication && ht.communication.no_phone) || 0);
     }
     var schedules = Number(ops.recovery_schedules || 0);
     var constrained = !!(cc.constrained || cc.normal_forbidden || noPhone > 0);

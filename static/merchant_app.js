@@ -188,10 +188,18 @@
     /* Constitution: merchant entry is Home — every other page is reached via View Details. */
     if (h === "" || h === "#") {
       h = "#home";
+      if ((location.hash || "") !== "#home") {
+        try {
+          history.replaceState(null, "", location.pathname + location.search + "#home");
+        } catch (e) {}
+      }
     }
     /* KPI month wall removed from merchant executive path. */
     if (h === "#home-month") {
       h = "#home";
+      try {
+        history.replaceState(null, "", location.pathname + location.search + "#home");
+      } catch (e2) {}
     }
     var page = PAGE_FOR_HASH[h] || "home";
     var cartTab = null;
@@ -384,7 +392,7 @@
     vip: true,
   };
 
-  var CARTS_HERO_QUESTION = "ما الذي يحتاج انتباهك الآن؟";
+  var CARTS_HERO_QUESTION = "ما حالة كل سلة؟";
 
   /**
    * Hero Experience Sprint 2.1 — Question → Answer → Optional.
@@ -552,6 +560,13 @@
       if (ps) {
         ps.textContent = "";
         ps.hidden = true;
+      }
+      var wq = byId("cw-constitution-question");
+      if (wq) {
+        wq.textContent =
+          (PAGE_PURPOSE && PAGE_PURPOSE.workspace) ||
+          "أي قرار يجب أن أتخذه، ولماذا؟";
+        wq.hidden = false;
       }
       return;
     }
@@ -885,17 +900,7 @@
       currentNormalCartFilter = stored;
     }
     initGlobalTopbar();
-    if (window.CARTFLOW_CART_WORKSPACE_V1) {
-      var rawHash = (location.hash || "").split("?")[0];
-      if (!rawHash || rawHash === "#") {
-        if (location.hash !== "#workspace") {
-          location.replace(
-            location.pathname + location.search + "#workspace"
-          );
-          return;
-        }
-      }
-    }
+    /* Constitution: empty entry is Home — never redirect to Workspace. */
     syncFromHash();
   });
 

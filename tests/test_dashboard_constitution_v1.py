@@ -13,7 +13,13 @@ class DashboardConstitutionGuards(unittest.TestCase):
         js = (ROOT / "static" / "merchant_app.js").read_text(encoding="utf-8")
         self.assertIn('h = "#home"', js)
         self.assertNotIn('h = window.CARTFLOW_CART_WORKSPACE_V1 ? "#workspace"', js)
+        self.assertNotIn(
+            'location.pathname + location.search + "#workspace"',
+            js,
+        )
+        self.assertIn("Constitution: empty entry is Home", js)
         self.assertIn('if (h === "#home-month")', js)
+        self.assertIn("ما حالة كل سلة؟", js)
 
     def test_home_cta_is_view_details_only(self) -> None:
         js = (ROOT / "static" / "home_executive_summary_v1.js").read_text(encoding="utf-8")
@@ -44,6 +50,17 @@ class DashboardConstitutionGuards(unittest.TestCase):
         self.assertIn("#carts?tab=nophone", js)
         self.assertIn("تم الإرسال", js)
         self.assertIn("لا يوجد رقم", js)
+        cs = (ROOT / "static" / "commerce_situations_surfaces_v1.js").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('data-constitution="communication"', cs)
+        self.assertIn("تم الإرسال", cs)
+        self.assertIn("يحتاج متابعة", cs)
+
+    def test_workspace_exposes_constitution_question(self) -> None:
+        html = (ROOT / "templates" / "merchant_app.html").read_text(encoding="utf-8")
+        self.assertIn('id="cw-constitution-question"', html)
+        self.assertIn("أي قرار يجب أن أتخذه، ولماذا؟", html)
 
 
 if __name__ == "__main__":

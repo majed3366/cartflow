@@ -215,7 +215,7 @@
     <button type="button" class="nav-item" data-nav="communication" onclick="goTo('communication')">حالة التواصل</button>
     <button type="button" class="nav-item" data-nav="messages" onclick="goTo('messages')">الرسائل</button>
     <button type="button" class="nav-item" data-nav="trigger-templates" onclick="goTo('trigger-templates')">قوالب المتابعة</button>
-    <button type="button" class="nav-item" data-nav="reasons" onclick="goTo('reasons')">أسباب التردد</button>
+    <button type="button" class="nav-item" data-nav="reasons" onclick="goTo('reasons')" hidden aria-hidden="true" data-constitution-owner="workspace">أسباب التردد</button>
   </nav>
   <nav class="ma-ctx-panel ma-sidebar-nav" data-ma-ctx="settings" hidden aria-label="الإعدادات">
     <p class="ma-ctx-label">الإعدادات</p>
@@ -357,6 +357,7 @@
 
   {% if merchant_cart_workspace_v1 %}
   <div class="page" id="page-workspace" data-ma-workspace="1" data-cw-console="1"{% if merchant_cart_workspace_silent_success %} data-cw-silent-success="1"{% endif %}>
+    <p class="ma-workspace-question" id="cw-constitution-question">أي قرار يجب أن أتخذه، ولماذا؟</p>
     <div id="meif-decision-root" class="meif-decision-root" aria-live="polite"{% if not decision_dual_stack_v1 %} hidden{% endif %}></div>
     <div class="cw-workspace-shell">
       <span id="cw-merchant-status" hidden aria-live="polite"></span>
@@ -1154,15 +1155,15 @@
 <script defer src="/static/merchant_product_language_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_vip_automation_ui.js"></script>
 <script defer src="/static/merchant_home_experience.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
-<script defer src="/static/merchant_experience_integration_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-dc1"></script>
+<script defer src="/static/merchant_experience_integration_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-dc2"></script>
 <script defer src="/static/observation_reality_validation_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-orv1hes"></script>
-<script defer src="/static/home_executive_summary_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-hes4dc"></script>
-<script defer src="/static/commerce_situations_surfaces_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-cs3dc"></script>
+<script defer src="/static/home_executive_summary_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-hes4dc2"></script>
+<script defer src="/static/commerce_situations_surfaces_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-cs3dc2"></script>
 <script defer src="/static/merchant_dashboard_home_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_pulse_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_intelligence_carts_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/cart_page_rendering_state_controller_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
-<script defer src="/static/merchant_dashboard_lazy.js?v={{ merchant_setup_render_build | default('unknown') }}-dc1"></script>
+<script defer src="/static/merchant_dashboard_lazy.js?v={{ merchant_setup_render_build | default('unknown') }}-dc2"></script>
 {% if merchant_cart_workspace_v1 %}
 <link rel="stylesheet" href="/static/cart_workspace_merchant_v1.css?v={{ merchant_setup_render_build | default('unknown') }}" />
 <script defer src="/static/cart_workspace_projection_version_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
@@ -1180,6 +1181,6 @@
 <script defer src="/static/merchant_general_settings.js"></script>
 <script defer src="/static/merchant_trigger_templates.js"></script>
 <script defer src="/static/merchant_widget_panel.js"></script>
-<script defer src="/static/merchant_app.js?v={{ merchant_setup_render_build | default('unknown') }}-dc1"></script>
+<script defer src="/static/merchant_app.js?v={{ merchant_setup_render_build | default('unknown') }}-dc2"></script>
 </body>
 </html>

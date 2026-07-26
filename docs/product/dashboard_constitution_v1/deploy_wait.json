@@ -1,0 +1,11 @@
+{
+  "attempts": [
+    {
+      "n": 1,
+      "marker_app": true,
+      "marker_comms": true
+    }
+  ],
+  "deployed": true,
+  "attempt": 1
+}

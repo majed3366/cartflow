@@ -32,6 +32,16 @@ body[data-ma-page="workspace"] .ma-content-root {
   padding: 0.35rem 0.65rem 1.75rem;
 }
 
+#page-workspace .ma-workspace-question {
+  max-width: var(--v2-max-wide, 1080px);
+  margin: 0.35rem auto 0.85rem;
+  padding: 0 0.15rem;
+  color: var(--cw-ink-soft);
+  font-size: var(--ma-type-md, 15px);
+  font-weight: 600;
+  line-height: 1.45;
+}
+
 #page-workspace .cw-workspace-shell {
   max-width: var(--v2-max-wide, 1080px);
   margin: 0 auto;

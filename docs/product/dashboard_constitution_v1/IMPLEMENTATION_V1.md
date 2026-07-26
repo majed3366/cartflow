@@ -26,7 +26,14 @@
 - [x] Communication problems expose next action
 - [x] Unfinished Settings controls hidden
 - [x] Default navigation lands on Home
-- [ ] Production validation (Desktop/Mobile parity) — after deploy
+- [ ] Production validation (Desktop/Mobile parity) — after deploy of empty-hash + Communication facts repair
+
+## Prod repair (same pass)
+
+- Removed `CARTFLOW_CART_WORKSPACE_V1` empty-hash → `#workspace` redirect
+- Communication facts painted by `commerce_situations_surfaces_v1` (owner surface)
+- Workspace question `#cw-constitution-question`
+- Carts question constant aligned to «ما حالة كل سلة؟»
 
 ## STOP
 

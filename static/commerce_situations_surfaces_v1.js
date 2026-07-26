@@ -119,35 +119,82 @@
     if (commRoot) {
       var cc = pub.communication_condition || {};
       var constrained = !!(cc.constrained || cc.normal_forbidden);
-      var commHtml =
-        '<section class="cs-ops-banner cs-pub-truth" data-cs-surface="communication">' +
+      var meif =
+        summary && summary.merchant_experience_integration_v1
+          ? summary.merchant_experience_integration_v1
+          : null;
+      var ops =
+        meif &&
+        meif.pages &&
+        meif.pages.communication &&
+        meif.pages.communication.operational_truth
+          ? meif.pages.communication.operational_truth
+          : {};
+      var sent = Number(ops.mock_whatsapp_sent || ops.whatsapp_sent || 0);
+      var delivered = Number(ops.delivered_total || ops.whatsapp_delivered || 0);
+      var replied = Number(ops.replied_total || ops.customer_replies || 0);
+      var returned = Number(ops.returned_total || ops.recovery_success || 0);
+      var noPhone = Number(ops.no_phone_total || ops.missing_phone || 0);
+      if (!noPhone && summary && summary.home_teaser_inputs_v1) {
+        var ht = summary.home_teaser_inputs_v1;
+        noPhone = Number(
+          (ht.communication && ht.communication.no_phone) || 0
+        );
+      }
+      if (!noPhone && constrained) noPhone = Math.max(noPhone, 1);
+      var schedules = Number(ops.recovery_schedules || 0);
+      var needsFollow = schedules > 0 || constrained || noPhone > 0;
+      var statusAr =
+        (cc.summary_ar || "").trim() ||
+        (constrained
+          ? "متابعة بعض العملاء مقيدة بسبب نقص معلومات التواصل."
+          : "تواصل العملاء يسير بشكل طبيعي.");
+      var actions = [];
+      if (noPhone > 0 || constrained) {
+        actions.push(
+          '<a href="#carts?tab=nophone">عرض العملاء بلا رقم ←</a>'
+        );
+      }
+      if (schedules > 0) {
+        actions.push(
+          '<a href="#carts?tab=waiting">عرض ما بانتظار الإرسال ←</a>'
+        );
+      }
+      actions.push('<a href="#messages">سجل الرسائل ←</a>');
+      if (constrained) {
+        actions.push('<a href="#whatsapp">ضبط التواصل ←</a>');
+      }
+      /* Constitution: Communication owns facts + immediate action paths. */
+      commRoot.hidden = false;
+      commRoot.innerHTML =
+        '<section class="cs-ops-banner cs-pub-truth meif-comms" data-cs-surface="communication" data-constitution="communication">' +
         "<h3>حالة التواصل</h3>" +
         "<p>" +
-        esc(cc.summary_ar || "تواصل العملاء يسير بشكل طبيعي.") +
-        "</p>";
-      if (constrained) {
-        commHtml +=
-          '<p class="cs-ops-banner__cta"><a href="#carts?tab=nophone">عرض العملاء المتأثرين ←</a></p>';
-      } else {
-        commHtml +=
-          '<p class="cs-ops-banner__cta"><a href="#messages">عرض سجل الرسائل ←</a></p>';
-      }
-      commHtml += "</section>";
-      var existing = commRoot.querySelector(
-        "[data-cs-surface='communication'].cs-pub-truth"
-      );
-      if (existing) existing.outerHTML = commHtml;
-      else {
-        if (!document.getElementById("cs-comms-banner")) {
-          commRoot.insertAdjacentHTML(
-            "afterbegin",
-            '<div id="cs-comms-banner" class="cs-ops-banner-wrap"></div>'
-          );
-        }
-        var host = document.getElementById("cs-comms-banner");
-        if (host) host.insertAdjacentHTML("afterbegin", commHtml);
-        else commRoot.insertAdjacentHTML("afterbegin", commHtml);
-      }
+        esc(statusAr) +
+        "</p>" +
+        '<ul class="meif-facts meif-facts--3">' +
+        "<li><strong>" +
+        esc(String(sent)) +
+        "</strong><span>تم الإرسال</span></li>" +
+        "<li><strong>" +
+        esc(String(delivered || "—")) +
+        "</strong><span>تم التسليم</span></li>" +
+        "<li><strong>" +
+        esc(String(replied || "—")) +
+        "</strong><span>تم الرد</span></li>" +
+        "<li><strong>" +
+        esc(String(returned || "—")) +
+        "</strong><span>عاد العميل</span></li>" +
+        "<li><strong>" +
+        esc(String(noPhone)) +
+        "</strong><span>لا يوجد رقم</span></li>" +
+        "<li><strong>" +
+        esc(needsFollow ? "نعم" : "لا") +
+        "</strong><span>يحتاج متابعة</span></li>" +
+        "</ul>" +
+        '<p class="cs-ops-banner__cta meif-next">' +
+        actions.join(" · ") +
+        "</p></section>";
     }
   }
 
