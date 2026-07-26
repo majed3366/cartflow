@@ -27,7 +27,7 @@
 - [x] Communication problems expose next action
 - [x] Unfinished Settings controls hidden
 - [x] Default navigation lands on Home
-- [ ] Production validation (Desktop/Mobile parity) — after deploy of empty-hash + Communication facts repair
+- [x] Production validation (Desktop/Mobile parity) — `PASS_CONSTITUTION_PROD` · `srs_c8e24386205a4a1e82063049113f80d4`
 
 ## Prod repair (same pass)
 
