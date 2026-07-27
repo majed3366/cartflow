@@ -1,8 +1,11 @@
 # Home Diagnosis Language V1 — CEO Home Review Pack
 
-**Status:** Awaiting production deploy + Home-only CEO Review  
+**Status:** Production deployed · Home-only CEO Review  
 **Date (UTC):** 2026-07-27  
-**Scope:** Home only (`/dashboard#home`)
+**Commit:** `72f614b`  
+**Store:** Living Store review · `demo` · `cf.living.store.review@smartreplyai.net`  
+**Verdict (automated):** `PASS_HOME_DIAGNOSIS_LANGUAGE_V1`  
+**Evidence:** `prod_home_ceo_review.json` · `prod_desktop_home.png` · `prod_mobile_home.png`
 
 ---
 
@@ -18,14 +21,27 @@ Merchant reaction target: *“Now I understand why this is happening.”*
 
 ---
 
-## Required language
+## Painted slots (Living Store at capture)
 
-| Card | Diagnosis shape | Recommendation |
-|------|-----------------|----------------|
-| حالة المتجر | يعتقد CartFlow أن… (contact / setup) أو أدلة غير كافية | راجع التواصل / الإعدادات / واصل جمع الأدلة |
-| أهم قرار اليوم | يعتقد CartFlow أن أكبر فرصة… (never يبدأ بـ راجع) | راجع رحلة الشراء |
-| أبرز المنتجات | نية شراء دون سبب مؤكد / شحن / عودة / أدلة غير كافية | بعد التشخيص |
-| التواصل | لا يمكن التواصل… لأن رقم الهاتف غير متاح | راجع التواصل |
+| Slot | Diagnosis (short) | Recommendation |
+|------|-------------------|----------------|
+| حالة المتجر | يعتقد CartFlow أن متابعة العملاء مقيدة لأن السلال بلا معلومات تواصل قابلة للاستخدام | راجع التواصل. |
+| أهم قرار اليوم | يعتقد CartFlow أن أكبر فرصة ضائعة هي Nano 20W لأن العملاء يغادرون عند الشحن | راجع رحلة الشراء. |
+| أبرز المنتجات | يغادر العملاء بعد ظهور الشحن في مسار Nano 20W | راجع رحلة الشراء. |
+| السلال | omitted | — |
+| التواصل | لا يمكن التواصل… لأن رقم الهاتف غير متاح | راجع التواصل. |
+
+Desktop and Mobile: **identical diagnosis meaning**.
+
+---
+
+## Automated checks (all green)
+
+- Diagnosis nodes painted (4)
+- Recommendation nodes painted (4)
+- No card diagnosis starts with راجع / اذهب / افتح
+- Marker `home_diagnosis_language_v1` on surface + API
+- No event-summary title «اهتمام مرتفع دون شراء» as diagnosis
 
 ---
 

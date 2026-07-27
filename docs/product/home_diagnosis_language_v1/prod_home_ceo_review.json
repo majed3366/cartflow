@@ -1,0 +1,134 @@
+{
+  "generated_at_utc": "2026-07-27T10:11:38.395262+00:00",
+  "environment": "production",
+  "base": "https://smartreplyai.net",
+  "diagnosis_language": "home_diagnosis_language_v1",
+  "scope": "home_only",
+  "review_session": {
+    "http": 200,
+    "ok": true,
+    "store_slug": "demo",
+    "email": "cf.living.store.review@smartreplyai.net",
+    "password_issued": true
+  },
+  "desktop": {
+    "http": 200,
+    "store_slug": "demo",
+    "home_surface_mode": "executive_summary_v1",
+    "constitution": "home_constitution_v2",
+    "diagnosis_language": "home_diagnosis_language_v1",
+    "section_ids": [
+      "health",
+      "decisions",
+      "situations",
+      "communication"
+    ],
+    "sections": [
+      {
+        "id": "health",
+        "title_ar": "حالة المتجر",
+        "diagnosis_ar": "يعتقد CartFlow أن متابعة العملاء مقيدة لأن كثيراً من السلال لا تحتوي معلومات تواصل قابلة للاستخدام.",
+        "recommendation_ar": "راجع التواصل.",
+        "summary_ar": "يعتقد CartFlow أن متابعة العملاء مقيدة لأن كثيراً من السلال لا تحتوي معلومات تواصل قابلة للاستخدام.\nراجع التواصل.",
+        "status_ar": "يحتاج تدخلاً عاجلاً",
+        "view_details_href": "#communication"
+      },
+      {
+        "id": "decisions",
+        "title_ar": "أهم قرار اليوم",
+        "diagnosis_ar": "يعتقد CartFlow أن أكبر فرصة مبيعات ضائعة اليوم هي Nano 20W لأن العملاء يغادرون عند الشحن.",
+        "recommendation_ar": "راجع رحلة الشراء.",
+        "summary_ar": "يعتقد CartFlow أن أكبر فرصة مبيعات ضائعة اليوم هي Nano 20W لأن العملاء يغادرون عند الشحن.\nراجع رحلة الشراء.",
+        "status_ar": null,
+        "view_details_href": "#workspace"
+      },
+      {
+        "id": "situations",
+        "title_ar": "أبرز المنتجات",
+        "diagnosis_ar": "يغادر العملاء بعد ظهور الشحن في مسار Nano 20W.",
+        "recommendation_ar": "راجع رحلة الشراء.",
+        "summary_ar": "يغادر العملاء بعد ظهور الشحن في مسار Nano 20W.\nراجع رحلة الشراء.",
+        "status_ar": "يتطلب متابعة",
+        "view_details_href": "#workspace"
+      },
+      {
+        "id": "communication",
+        "title_ar": "التواصل",
+        "diagnosis_ar": "لا يمكن التواصل مع بعض العملاء لأن رقم الهاتف غير متاح.",
+        "recommendation_ar": "راجع التواصل.",
+        "summary_ar": "لا يمكن التواصل مع بعض العملاء لأن رقم الهاتف غير متاح.\nراجع التواصل.",
+        "status_ar": "يتطلب متابعة",
+        "view_details_href": "#communication"
+      }
+    ],
+    "page_purpose": "ماذا يجب أن أعرف الآن عن متجري؟",
+    "ui": {
+      "diagnosis_nodes": 4,
+      "recommendation_nodes": 4,
+      "marker": true,
+      "root_text": "حالة المتجر\nيحتاج تدخلاً عاجلاً\n\nيعتقد CartFlow أن متابعة العملاء مقيدة لأن كثيراً من السلال لا تحتوي معلومات تواصل قابلة للاستخدام.\n\nراجع التواصل.\n\nعرض التفاصيل ←\n\nأهم قرار اليوم\n\nيعتقد CartFlow أن أكبر فرصة مبيعات ضائعة اليوم هي Nano 20W لأن العملاء يغادرون عند الشحن.\n\nراجع رحلة الشراء.\n\nعرض التفاصيل ←\n\nأبرز المنتجات\nيتطلب متابعة\n\nيغادر العملاء بعد ظهور الشحن في مسار Nano 20W.\n\nراجع رحلة الشراء.\n\nعرض التفاصيل ←\n\nالتواصل\nيتطلب متابعة\n\nلا يمكن التواصل مع بعض العملاء لأن رقم الهاتف غير متاح.\n\nراجع التواصل.\n\nعرض التفاصيل ←"
+    },
+    "screenshot": "docs\\product\\home_diagnosis_language_v1\\prod_desktop_home.png"
+  },
+  "mobile": {
+    "http": 200,
+    "store_slug": "demo",
+    "home_surface_mode": "executive_summary_v1",
+    "constitution": "home_constitution_v2",
+    "diagnosis_language": "home_diagnosis_language_v1",
+    "section_ids": [
+      "health",
+      "decisions",
+      "situations",
+      "communication"
+    ],
+    "sections": [
+      {
+        "id": "health",
+        "title_ar": "حالة المتجر",
+        "diagnosis_ar": "يعتقد CartFlow أن متابعة العملاء مقيدة لأن كثيراً من السلال لا تحتوي معلومات تواصل قابلة للاستخدام.",
+        "recommendation_ar": "راجع التواصل.",
+        "summary_ar": "يعتقد CartFlow أن متابعة العملاء مقيدة لأن كثيراً من السلال لا تحتوي معلومات تواصل قابلة للاستخدام.\nراجع التواصل.",
+        "status_ar": "يحتاج تدخلاً عاجلاً",
+        "view_details_href": "#communication"
+      },
+      {
+        "id": "decisions",
+        "title_ar": "أهم قرار اليوم",
+        "diagnosis_ar": "يعتقد CartFlow أن أكبر فرصة مبيعات ضائعة اليوم هي Nano 20W لأن العملاء يغادرون عند الشحن.",
+        "recommendation_ar": "راجع رحلة الشراء.",
+        "summary_ar": "يعتقد CartFlow أن أكبر فرصة مبيعات ضائعة اليوم هي Nano 20W لأن العملاء يغادرون عند الشحن.\nراجع رحلة الشراء.",
+        "status_ar": null,
+        "view_details_href": "#workspace"
+      },
+      {
+        "id": "situations",
+        "title_ar": "أبرز المنتجات",
+        "diagnosis_ar": "يغادر العملاء بعد ظهور الشحن في مسار Nano 20W.",
+        "recommendation_ar": "راجع رحلة الشراء.",
+        "summary_ar": "يغادر العملاء بعد ظهور الشحن في مسار Nano 20W.\nراجع رحلة الشراء.",
+        "status_ar": "يتطلب متابعة",
+        "view_details_href": "#workspace"
+      },
+      {
+        "id": "communication",
+        "title_ar": "التواصل",
+        "diagnosis_ar": "لا يمكن التواصل مع بعض العملاء لأن رقم الهاتف غير متاح.",
+        "recommendation_ar": "راجع التواصل.",
+        "summary_ar": "لا يمكن التواصل مع بعض العملاء لأن رقم الهاتف غير متاح.\nراجع التواصل.",
+        "status_ar": "يتطلب متابعة",
+        "view_details_href": "#communication"
+      }
+    ],
+    "page_purpose": "ماذا يجب أن أعرف الآن عن متجري؟",
+    "ui": {
+      "diagnosis_nodes": 4,
+      "recommendation_nodes": 4,
+      "marker": true,
+      "root_text": "حالة المتجر\nيحتاج تدخلاً عاجلاً\n\nيعتقد CartFlow أن متابعة العملاء مقيدة لأن كثيراً من السلال لا تحتوي معلومات تواصل قابلة للاستخدام.\n\nراجع التواصل.\n\nعرض التفاصيل ←\n\nأهم قرار اليوم\n\nيعتقد CartFlow أن أكبر فرصة مبيعات ضائعة اليوم هي Nano 20W لأن العملاء يغادرون عند الشحن.\n\nراجع رحلة الشراء.\n\nعرض التفاصيل ←\n\nأبرز المنتجات\nيتطلب متابعة\n\nيغادر العملاء بعد ظهور الشحن في مسار Nano 20W.\n\nراجع رحلة الشراء.\n\nعرض التفاصيل ←\n\nالتواصل\nيتطلب متابعة\n\nلا يمكن التواصل مع بعض العملاء لأن رقم الهاتف غير متاح.\n\nراجع التواصل.\n\nعرض التفاصيل ←"
+    },
+    "screenshot": "docs\\product\\home_diagnosis_language_v1\\prod_mobile_home.png"
+  },
+  "flags": [],
+  "verdict": "PASS_HOME_DIAGNOSIS_LANGUAGE_V1"
+}
