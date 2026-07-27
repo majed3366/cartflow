@@ -98,10 +98,14 @@ class HomeSlimTransportV1Tests(unittest.TestCase):
         hes = out["home_executive_summary_v1"]
         self.assertTrue(hes["ok"])
         self.assertEqual(out["home_surface_mode"], "executive_summary_v1")
-        obs = next(s for s in hes["sections"] if s["id"] == "observations")
-        # Teasers extracted before strip — count may be 1; no action preview.
-        self.assertEqual(obs["findings_preview"], [])
-        self.assertEqual(obs["view_details_href"], "#workspace")
+        # Product slot may omit when editorial silence applies; teasers keep signal.
+        self.assertIn("home_teaser_inputs_v1", out)
+        self.assertGreaterEqual(
+            int(out["home_teaser_inputs_v1"]["observations"].get("count") or 0),
+            1,
+        )
+        for sec in hes["sections"]:
+            self.assertNotIn("count", sec)
 
     def test_strip_helper(self) -> None:
         d = {
@@ -121,8 +125,10 @@ class HomeSlimTransportV1Tests(unittest.TestCase):
             {"home_teaser_inputs_v1": {"schema": "home_teaser_inputs_v1", "observations": {"count": 0}}},
             environ={"CARTFLOW_HOME_EXECUTIVE_SUMMARY_V1": "1"},
         )
-        obs = next(s for s in hes["sections"] if s["id"] == "observations")
-        self.assertEqual(obs["summary_ar"], OBS_EMPTY_AR)
+        self.assertNotIn(
+            "observations", [s["id"] for s in hes["sections"]]
+        )
+        self.assertEqual(OBS_EMPTY_AR, "لا يوجد منتج يستحق انتباهك الآن.")
 
 
 if __name__ == "__main__":

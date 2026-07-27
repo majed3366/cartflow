@@ -221,7 +221,8 @@ class PublicationContractTests(unittest.TestCase):
         self.assertNotEqual(health.get("status_ar"), "هادئ")
         self.assertNotIn("لا توجد مشكلات تجارية حرجة", health.get("summary_ar") or "")
         dec = by_id.get("decisions") or {}
-        self.assertEqual(dec.get("count"), 1)
+        self.assertFalse(dec.get("empty"))
+        self.assertNotIn("count", dec)
         self.assertEqual(
             dec.get("summary_ar"),
             "راجع آلية جمع رقم العميل قبل مغادرة المتجر.",
@@ -237,7 +238,11 @@ class PublicationContractTests(unittest.TestCase):
         self.assertTrue(carts.get("systemic_business_action_ar"))
         sits = by_id.get("situations") or {}
         if sits:
-            self.assertEqual(sits.get("count"), 1)
+            self.assertFalse(sits.get("empty"))
+            self.assertTrue(sits.get("items"))
+            self.assertNotIn("count", sits)
+        # Recovery-framed health → Workspace (Constitution §8); not Carts.
+        self.assertEqual(health.get("view_details_href"), "#workspace")
 
 
 if __name__ == "__main__":

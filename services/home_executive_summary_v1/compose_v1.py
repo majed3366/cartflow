@@ -8,6 +8,7 @@ previews on Home — View Details routes to owning pages.
 """
 from __future__ import annotations
 
+import re
 from typing import Any, Mapping, Optional
 
 from services.home_executive_summary_v1.editorial_exclusivity_v1 import (
@@ -41,8 +42,31 @@ SECTION_IDS_V1 = (
     "communication",
 )
 
-OBS_EMPTY_AR = "لا يوجد منتج حالياً بأدلة كافية لملاحظة تجارية."
+OBS_EMPTY_AR = "لا يوجد منتج يستحق انتباهك الآن."
 DECISIONS_EMPTY_AR = "لا توجد أولوية قرار واضحة اليوم."
+HOME_QUESTION_AR = "ماذا يجب أن أعرف الآن عن متجري؟"
+
+# Constitution V2 / Sentence Audit — one calm term + one attention term.
+STATUS_STABLE_AR = "مستقر"
+STATUS_ATTENTION_AR = "يتطلب متابعة"
+STATUS_URGENT_AR = "يحتاج تدخلاً عاجلاً"
+STATUS_INSUFFICIENT_AR = "أدلة غير كافية"
+STATUS_NO_TASKS_AR = "لا مهام"
+STATUS_WAITING_AR = "بانتظار متابعة"
+STATUS_NEEDS_SETUP_AR = "يحتاج ضبطاً"
+STATUS_STABLE_WITH_OPPORTUNITY_AR = "مستقر مع فرصة تستحق الانتباه"
+
+# Status chips with no executive value (Sentence Audit D8/D9/D12/D14).
+_STATUS_OMIT_AR = frozenset(
+    {"القرار الأهم", "منتج", "مكتمل اليوم", "نشط", ""}
+)
+_STATUS_ALIAS_AR = {
+    "هادئ": STATUS_STABLE_AR,
+    "يحتاج انتباهك": STATUS_ATTENTION_AR,
+    "يتطلب انتباهاً": STATUS_ATTENTION_AR,
+}
+
+PRODUCT_HIGHLIGHTS_TITLE_AR = "أبرز المنتجات"
 
 GOVERNANCE_V1 = {
     "sprint": "home_stabilization_v1",
@@ -56,16 +80,18 @@ GOVERNANCE_V1 = {
     "executive_business_language": True,
     "store_executive_thinking": True,
     "merchant_understanding": True,
-    "page_question": "What is happening in my business today?",
+    "page_question": HOME_QUESTION_AR,
+    "constitution": "home_constitution_v2",
     "executive_editorial_exclusivity": True,
     "morning_brief": True,
 }
 
-# Card → owning constitutional page (View Details).
+# Card → owning constitutional page (View Details) — Home Constitution V2 §8.
 SECTION_OWNERSHIP_HREF_V1 = {
-    "health": "#carts",
+    "health": "#workspace",
     "decisions": "#workspace",
     "observations": "#workspace",
+    "situations": "#workspace",
     "carts": "#carts",
     "communication": "#communication",
 }
@@ -86,6 +112,108 @@ def _as_int(v: Any) -> int:
         return max(0, int(v))
     except (TypeError, ValueError):
         return 0
+
+
+def _home_status_ar(raw: Any) -> str:
+    """Normalize or omit status chips (Constitution §5 / Sentence Audit D)."""
+    s = str(raw or "").strip()
+    s = _STATUS_ALIAS_AR.get(s, s)
+    if s in _STATUS_OMIT_AR:
+        return ""
+    return s
+
+
+def _home_cart_summary_ar(
+    raw: str, *, waiting: int, no_phone: int, active: int
+) -> str:
+    from services.decision_composition_engine_v1.merchant_understanding_v1 import (  # noqa: PLC0415
+        PREFERRED_CARTS_NEED_ATTENTION_AR,
+        PREFERRED_CARTS_STABLE_AR,
+    )
+
+    t = (raw or "").strip()
+    if not t:
+        if waiting > 0 or no_phone > 0:
+            return PREFERRED_CARTS_NEED_ATTENTION_AR
+        return PREFERRED_CARTS_STABLE_AR
+    # Count-first patterns → executive line without inventory.
+    if t[0].isdigit() or t.startswith("سلتان") or re.match(r"^\d", t):
+        if no_phone > 0 and waiting <= 0:
+            return "متابعة بعض العملاء مقيدة حالياً."
+        if waiting > 0 or no_phone > 0:
+            return PREFERRED_CARTS_NEED_ATTENTION_AR
+        return PREFERRED_CARTS_STABLE_AR
+    if "سلة تحتاج" in t and any(ch.isdigit() for ch in t[:8]):
+        if no_phone > 0 and waiting <= 0:
+            return "متابعة بعض العملاء مقيدة حالياً."
+        return PREFERRED_CARTS_NEED_ATTENTION_AR
+    return t
+
+
+def _home_comm_summary_ar(
+    raw: str, *, no_phone: int, waiting: int, schedules: int
+) -> tuple[str, bool]:
+    """Return (summary_ar, empty). Rewrites count-first delivery reporting."""
+    from services.decision_composition_engine_v1.merchant_understanding_v1 import (  # noqa: PLC0415
+        PREFERRED_COMM_ATTENTION_AR,
+        PREFERRED_COMM_HEALTHY_AR,
+    )
+
+    t = (raw or "").strip()
+    if not t:
+        return PREFERRED_COMM_HEALTHY_AR, True
+    if t[0].isdigit() or "عملاء بانتظار" in t or "رسالة وصلت" in t:
+        if no_phone > 0:
+            return (
+                "متابعة بعض العملاء مقيدة بسبب نقص معلومات التواصل.",
+                False,
+            )
+        if waiting > 0 or schedules > 0:
+            return PREFERRED_COMM_ATTENTION_AR, False
+        return PREFERRED_COMM_HEALTHY_AR, True
+    constrained = "مقيدة" in t or "يحتاج انتباهاً" in t or "يحتاج ضبطاً" in t
+    healthy = "بشكل طبيعي" in t
+    return t, (healthy and not constrained)
+
+
+def _health_view_details_href(
+    *,
+    store_ok: Any,
+    summary_ar: str,
+    no_phone: int,
+) -> str:
+    """Constitution V2 §8 — Health ownership destinations."""
+    if store_ok is False:
+        return "#settings"
+    text = summary_ar or ""
+    if "نقص معلومات التواصل" in text or (
+        no_phone > 0 and "مقيدة" in text
+    ):
+        return "#communication"
+    return SECTION_OWNERSHIP_HREF_V1["health"]
+
+
+def _paint_home_sections_v1(sections: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """§9 Silence — always Health (+ Decisions); omit empty optional domain slots."""
+    out: list[dict[str, Any]] = []
+    for sec in sections:
+        if not isinstance(sec, dict):
+            continue
+        sid = str(sec.get("id") or "")
+        # Never paint bare counts on Home (Value Law).
+        sec.pop("count", None)
+        status = _home_status_ar(sec.get("status_ar"))
+        if status:
+            sec["status_ar"] = status
+        else:
+            sec.pop("status_ar", None)
+        if sid in {"health", "decisions"}:
+            out.append(sec)
+            continue
+        if sec.get("empty"):
+            continue
+        out.append(sec)
+    return out
 
 
 def _situations_portfolio_section(summary: Mapping[str, Any]) -> Optional[dict[str, Any]]:
@@ -165,14 +293,13 @@ def _situations_portfolio_section(summary: Mapping[str, Any]) -> Optional[dict[s
     ]
     return {
         "id": "situations",
-        "title_ar": "أهم منتج يستحق الانتباه",
+        "title_ar": PRODUCT_HIGHLIGHTS_TITLE_AR,
         "summary_ar": str(
             lead.get("statement_ar") or lead.get("title_ar") or ""
         ).strip(),
-        "status_ar": "منتج",
-        "count": 1,
+        "status_ar": STATUS_ATTENTION_AR,
         "items": safe_items,
-        "view_details_href": "#workspace",
+        "view_details_href": SECTION_OWNERSHIP_HREF_V1["situations"],
         "view_details_ar": "عرض التفاصيل",
         "empty": False,
         "owner_page": "decision_workspace",
@@ -191,10 +318,9 @@ def _observation_section(summary: Mapping[str, Any]) -> dict[str, Any]:
     if count <= 0 or not top:
         return {
             "id": "observations",
-            "title_ar": "ملاحظات المنتجات",
+            "title_ar": PRODUCT_HIGHLIGHTS_TITLE_AR,
             "summary_ar": OBS_EMPTY_AR,
-            "status_ar": "أدلة غير كافية",
-            "count": 0,
+            "status_ar": STATUS_INSUFFICIENT_AR,
             "view_details_href": SECTION_OWNERSHIP_HREF_V1["observations"],
             "view_details_ar": "عرض التفاصيل",
             "empty": True,
@@ -202,6 +328,7 @@ def _observation_section(summary: Mapping[str, Any]) -> dict[str, Any]:
             "findings_preview": [],
             "owner_page": "decision_workspace",
             "built_from": "business_facts_v1",
+            "executive_rank": 3,
         }
     name = str(top.get("product_name_ar") or top.get("title_ar") or "").strip()
     statement = str(top.get("statement_ar") or "").strip()
@@ -215,10 +342,9 @@ def _observation_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         summary_ar = OBS_EMPTY_AR
     return {
         "id": "observations",
-        "title_ar": "ملاحظات المنتجات",
+        "title_ar": PRODUCT_HIGHLIGHTS_TITLE_AR,
         "summary_ar": summary_ar,
-        "status_ar": "يتطلب انتباهاً",
-        "count": count,
+        "status_ar": STATUS_ATTENTION_AR,
         "view_details_href": SECTION_OWNERSHIP_HREF_V1["observations"],
         "view_details_ar": "عرض التفاصيل",
         "empty": False,
@@ -226,6 +352,7 @@ def _observation_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         "findings_preview": [],
         "owner_page": "decision_workspace",
         "built_from": str(top.get("source") or "business_facts_v1"),
+        "executive_rank": 3,
     }
 
 
@@ -259,8 +386,7 @@ def _decisions_section(summary: Mapping[str, Any]) -> dict[str, Any]:
             "id": "decisions",
             "title_ar": "أهم قرار اليوم",
             "summary_ar": DECISIONS_EMPTY_AR,
-            "status_ar": "أدلة غير كافية",
-            "count": 0,
+            "status_ar": STATUS_INSUFFICIENT_AR,
             "view_details_href": SECTION_OWNERSHIP_HREF_V1["decisions"],
             "view_details_ar": DECISIONS_VIEW_DETAILS_AR,
             "empty": True,
@@ -275,8 +401,7 @@ def _decisions_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         "id": "decisions",
         "title_ar": "أهم قرار اليوم",
         "summary_ar": summary_ar,
-        "status_ar": "القرار الأهم",
-        "count": 1,
+        # No status chip — "القرار الأهم" restates the title (Audit D8).
         "view_details_href": SECTION_OWNERSHIP_HREF_V1["decisions"],
         "view_details_ar": DECISIONS_VIEW_DETAILS_AR,
         "empty": False,
@@ -311,57 +436,67 @@ def _health_section(summary: Mapping[str, Any]) -> dict[str, Any]:
     pub = _publication(summary)
     sc = pub.get("store_condition") if isinstance(pub.get("store_condition"), Mapping) else {}
 
-    href = SECTION_OWNERSHIP_HREF_V1["health"]
     if store_ok is False:
         summary_ar = "جاهزية المتجر غير مكتملة — اضبط الربط أولاً."
-        status_ar = "يتطلب متابعة"
-        href = "#home-setup"
+        status_ar = STATUS_ATTENTION_AR
         empty = False
         needs = True
     elif sc:
         # Canonical publication — never invent calm over a high-priority decision.
         summary_ar = str(sc.get("summary_ar") or "").strip()
         status_ar = str(sc.get("status_ar") or "").strip() or (
-            "يتطلب متابعة" if sc.get("needs_attention") else "هادئ"
+            STATUS_ATTENTION_AR if sc.get("needs_attention") else STATUS_STABLE_AR
         )
         needs = bool(sc.get("needs_attention"))
         empty = not needs
         if needs and summary_ar in {"لا توجد مشكلات تجارية حرجة ظاهرة.", ""}:
             summary_ar = "المتجر يحتاج انتباهك اليوم."
-            status_ar = "يتطلب متابعة"
+            status_ar = STATUS_ATTENTION_AR
     else:
         needs = bool(health.get("needs_attention")) or waiting > 0 or no_phone > 0
         domain_summary = str(health.get("domain_summary_ar") or "").strip()
         status_hint = str(health.get("status_ar") or "").strip()
         if domain_summary:
             summary_ar = domain_summary
-            status_ar = status_hint or ("يتطلب متابعة" if needs else "مستقر")
+            status_ar = status_hint or (
+                STATUS_ATTENTION_AR if needs else STATUS_STABLE_AR
+            )
             empty = not needs
         elif waiting > 0 or no_phone > 0:
             summary_ar = "فرص استعادة المبيعات محدودة اليوم."
-            status_ar = "يتطلب متابعة"
+            status_ar = STATUS_ATTENTION_AR
             empty = False
         elif recovered > 0 or active > 0:
-            summary_ar = "نشاط المتجر مستقر."
-            status_ar = "مستقر"
+            # E11 → E7 family (Sentence Audit): one calm line.
+            summary_ar = "المتجر مستقر."
+            status_ar = STATUS_STABLE_AR
             empty = False
             needs = False
         else:
             summary_ar = "لا توجد مشكلات تجارية حرجة ظاهرة."
-            status_ar = "هادئ"
+            status_ar = STATUS_STABLE_AR
             empty = True
             needs = False
+
+    href = _health_view_details_href(
+        store_ok=store_ok, summary_ar=summary_ar, no_phone=no_phone
+    )
+    owner = {
+        "#settings": "settings",
+        "#communication": "communication",
+        "#workspace": "decision_workspace",
+    }.get(href, "decision_workspace")
 
     out = {
         "id": "health",
         "title_ar": "حالة المتجر",
         "summary_ar": summary_ar,
-        "status_ar": status_ar,
+        "status_ar": _home_status_ar(status_ar) or STATUS_STABLE_AR,
         "view_details_href": href,
         "view_details_ar": "عرض التفاصيل",
         "empty": empty,
         "needs_attention": needs,
-        "owner_page": "carts" if href == "#carts" else "settings",
+        "owner_page": owner,
         "executive_rank": 1,
     }
     return out
@@ -394,7 +529,6 @@ def _carts_section(summary: Mapping[str, Any]) -> dict[str, Any]:
         if isinstance(t.get("health"), Mapping)
         else 0
     )
-    count = waiting
     from services.decision_composition_engine_v1.merchant_understanding_v1 import (  # noqa: PLC0415
         PREFERRED_CARTS_NEED_ATTENTION_AR,
         PREFERRED_CARTS_STABLE_AR,
@@ -404,16 +538,10 @@ def _carts_section(summary: Mapping[str, Any]) -> dict[str, Any]:
     if cart_ops:
         summary_ar = str(cart_ops.get("summary_ar") or "").strip()
         status_ar = str(cart_ops.get("status_ar") or "").strip() or (
-            "يتطلب متابعة" if waiting > 0 or no_phone > 0 else "لا مهام"
+            STATUS_ATTENTION_AR if waiting > 0 or no_phone > 0 else STATUS_NO_TASKS_AR
         )
-        empty = bool(cart_ops.get("empty")) and waiting <= 0
+        empty = bool(cart_ops.get("empty")) and waiting <= 0 and no_phone <= 0
         individual = str(cart_ops.get("individual_action_ar") or "").strip()
-        if waiting > 0:
-            count = waiting
-        elif no_phone > 0:
-            count = no_phone
-        elif active > 0:
-            count = active
     else:
         domain_summary = str(carts.get("domain_summary_ar") or "").strip()
         individual = str(carts.get("individual_action_ar") or "").strip()
@@ -425,44 +553,43 @@ def _carts_section(summary: Mapping[str, Any]) -> dict[str, Any]:
             )["text_ar"]
             empty = waiting <= 0 and no_phone <= 0 and "مستقر" in summary_ar
             status_ar = (
-                "يتطلب متابعة"
+                STATUS_ATTENTION_AR
                 if (waiting > 0 or no_phone > 0)
-                else ("نشط" if active > 0 else "لا مهام")
+                else (STATUS_STABLE_AR if active > 0 or recovered > 0 else STATUS_NO_TASKS_AR)
             )
-            if waiting <= 0 and no_phone > 0:
-                count = no_phone
-            elif waiting <= 0 and active > 0:
-                count = active
         elif waiting > 0:
             summary_ar = PREFERRED_CARTS_NEED_ATTENTION_AR
-            status_ar = "يتطلب متابعة"
+            status_ar = STATUS_ATTENTION_AR
             empty = False
         elif no_phone > 0:
             summary_ar = "متابعة بعض العملاء مقيدة حالياً."
-            status_ar = "يتطلب متابعة"
+            status_ar = STATUS_ATTENTION_AR
             empty = False
-            count = no_phone
-        elif recovered > 0:
+        elif recovered > 0 or active > 0:
             summary_ar = PREFERRED_CARTS_STABLE_AR
-            status_ar = "مستقر"
-            empty = False
-            count = recovered
-        elif active > 0:
-            summary_ar = PREFERRED_CARTS_STABLE_AR
-            status_ar = "نشط"
-            empty = False
-            count = active
+            status_ar = STATUS_STABLE_AR
+            # Calm carts with no queue work — omit slot (§9).
+            empty = True
         else:
             summary_ar = "لا توجد سلال تحتاج متابعة فردية حالياً."
-            status_ar = "لا مهام"
+            status_ar = STATUS_NO_TASKS_AR
             empty = True
+
+    summary_ar = _home_cart_summary_ar(
+        summary_ar, waiting=waiting, no_phone=no_phone, active=active
+    )
+    if waiting > 0 or no_phone > 0:
+        empty = False
+        status_ar = STATUS_ATTENTION_AR
+    elif "مستقر" in summary_ar and waiting <= 0 and no_phone <= 0:
+        empty = True
+        status_ar = STATUS_STABLE_AR
 
     out = {
         "id": "carts",
         "title_ar": "السلال",
         "summary_ar": summary_ar,
-        "status_ar": status_ar,
-        "count": count,
+        "status_ar": _home_status_ar(status_ar) or STATUS_NO_TASKS_AR,
         "view_details_href": SECTION_OWNERSHIP_HREF_V1["carts"],
         "view_details_ar": "عرض التفاصيل",
         "empty": empty,
@@ -491,62 +618,72 @@ def _communication_section(summary: Mapping[str, Any]) -> dict[str, Any]:
     no_phone = _as_int(comm.get("no_phone"))
     waiting = _as_int(comm.get("waiting"))
     wa_state = str(comm.get("wa_state_key") or "").strip().lower()
-    count = sent + schedules
 
     if cc:
         summary_ar = str(cc.get("summary_ar") or "").strip()
         status_ar = str(cc.get("status_ar") or "").strip() or (
-            "يتطلب متابعة" if cc.get("constrained") or cc.get("normal_forbidden") else "لا مهام"
+            STATUS_ATTENTION_AR
+            if cc.get("constrained") or cc.get("normal_forbidden")
+            else STATUS_NO_TASKS_AR
         )
         empty = not bool(cc.get("constrained") or cc.get("normal_forbidden"))
-        if cc.get("constrained"):
-            count = max(count, no_phone, 1)
         # Never publish "normal" when constrained.
         if cc.get("normal_forbidden") and "بشكل طبيعي" in summary_ar:
             summary_ar = "متابعة بعض العملاء مقيدة بسبب نقص معلومات التواصل."
-            status_ar = "يتطلب متابعة"
+            status_ar = STATUS_ATTENTION_AR
             empty = False
     elif domain_summary := str(comm.get("domain_summary_ar") or "").strip():
         summary_ar = domain_summary
-        status_ar = "يتطلب متابعة" if (no_phone > 0 or waiting > 0 or comm.get("constrained")) else "نشط"
-        empty = False
-        count = max(count, waiting, no_phone, sent)
+        status_ar = (
+            STATUS_ATTENTION_AR
+            if (no_phone > 0 or waiting > 0 or comm.get("constrained"))
+            else STATUS_NO_TASKS_AR
+        )
+        empty = not (no_phone > 0 or waiting > 0 or comm.get("constrained"))
     elif waiting > 0 and no_phone > 0:
         summary_ar = "متابعة بعض العملاء مقيدة بسبب نقص معلومات التواصل."
-        status_ar = "يتطلب متابعة"
+        status_ar = STATUS_ATTENTION_AR
         empty = False
-        count = max(count, waiting, no_phone)
     elif waiting > 0 or schedules > 0:
-        n = max(waiting, schedules)
-        summary_ar = f"{n} عملاء بانتظار متابعة."
-        status_ar = "بانتظار متابعة"
+        summary_ar = f"{max(waiting, schedules)} عملاء بانتظار متابعة."
+        status_ar = STATUS_WAITING_AR
         empty = False
-        count = n
     elif no_phone > 0:
         summary_ar = "متابعة بعض العملاء مقيدة بسبب نقص معلومات التواصل."
-        status_ar = "يتطلب متابعة"
+        status_ar = STATUS_ATTENTION_AR
         empty = False
-        count = no_phone
     elif sent > 0:
+        # Delivery reporting — rewrite to calm; omit slot (§5 / Audit I5).
         summary_ar = f"{sent} رسالة وصلت للعملاء اليوم."
-        status_ar = "مكتمل اليوم"
-        empty = False
-        count = sent
+        status_ar = STATUS_NO_TASKS_AR
+        empty = True
     elif wa_state and wa_state not in {"ready", "connected", ""}:
         summary_ar = "تواصل العملاء يحتاج ضبطاً بسيطاً."
-        status_ar = "يحتاج ضبطاً"
+        status_ar = STATUS_NEEDS_SETUP_AR
         empty = False
     else:
         summary_ar = "تواصل العملاء يسير بشكل طبيعي."
-        status_ar = "لا مهام"
+        status_ar = STATUS_NO_TASKS_AR
         empty = True
+
+    summary_ar, rewritten_empty = _home_comm_summary_ar(
+        summary_ar, no_phone=no_phone, waiting=waiting, schedules=schedules
+    )
+    if rewritten_empty and not (no_phone > 0 or waiting > 0 or schedules > 0):
+        empty = True
+        status_ar = STATUS_NO_TASKS_AR
+    elif no_phone > 0 or waiting > 0 or schedules > 0:
+        empty = False
+        if no_phone > 0:
+            status_ar = STATUS_ATTENTION_AR
+        elif waiting > 0 or schedules > 0:
+            status_ar = STATUS_WAITING_AR
 
     return {
         "id": "communication",
         "title_ar": "التواصل",
         "summary_ar": summary_ar,
-        "status_ar": status_ar,
-        "count": count,
+        "status_ar": _home_status_ar(status_ar) or STATUS_NO_TASKS_AR,
         "view_details_href": SECTION_OWNERSHIP_HREF_V1["communication"],
         "view_details_ar": "عرض التفاصيل",
         "empty": empty,
@@ -592,13 +729,15 @@ def build_home_executive_summary_v1(
         suppressions = list(sections[0].pop("_editorial_suppressions", []) or [])
     audit = editorial_brief_audit_v1(sections)
     audit["suppressions"] = suppressions
+    sections = _paint_home_sections_v1(sections)
     return {
         "ok": True,
         "enabled": True,
         "schema": "home_executive_summary_v1",
-        "eyebrow_ar": "ملخص تنفيذي",
-        "title_ar": "ماذا يجب أن تعرف الآن؟",
-        "lede_ar": "ملخص سريع فقط — التفاصيل في صفحاتها.",
+        # Question lives once in pagePurpose (Constitution §2 / Audit B).
+        "eyebrow_ar": "",
+        "title_ar": HOME_QUESTION_AR,
+        "lede_ar": "",
         "ownership": dict(OWNERSHIP_V1),
         "section_ownership_href": dict(SECTION_OWNERSHIP_HREF_V1),
         "governance": dict(GOVERNANCE_V1),
@@ -607,6 +746,7 @@ def build_home_executive_summary_v1(
         "product_intelligence": False,
         "slim_transport": home_slim_transport_v1_enabled(environ=environ),
         "ui": True,
+        "constitution": "home_constitution_v2",
     }
 
 
@@ -650,9 +790,10 @@ def attach_home_executive_summary_to_summary_v1(
             "error": "attach_failed",
             "sections": [],
             "governance": dict(GOVERNANCE_V1),
-            "eyebrow_ar": "ملخص تنفيذي",
-            "title_ar": "ماذا يجب أن تعرف الآن؟",
+            "eyebrow_ar": "",
+            "title_ar": HOME_QUESTION_AR,
             "lede_ar": "تعذّر تحميل الملخص — أعد المحاولة.",
+            "constitution": "home_constitution_v2",
         }
     return summary
 

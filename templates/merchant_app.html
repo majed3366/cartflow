@@ -255,12 +255,7 @@
       aria-live="polite"
     >
       <div class="ma-home-experience-loading" id="ma-home-experience-loading">
-        <header class="ma-home-greeting ma-home-greeting--shell">
-          <p class="ma-home-greeting-text" id="ma-home-greeting-shell">مرحباً</p>
-          <p class="ma-home-greeting-name">{{ merchant_store_display_name | default('متجرك') }}</p>
-          <p class="ma-home-greeting-date" id="ma-home-date-shell">{{ merchant_ar_date_header | default('') }}</p>
-        </header>
-        <p class="ma-home-experience-pending">CartFlow يجهّز ملخص يومك…</p>
+        <p class="ma-home-experience-pending">جاري تحميل الملخص…</p>
       </div>
     </section>
   </div>
@@ -1158,7 +1153,7 @@
 <script defer src="/static/merchant_home_experience.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_experience_integration_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-dc2"></script>
 <script defer src="/static/observation_reality_validation_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-orv1hes"></script>
-<script defer src="/static/home_executive_summary_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-hes4dc2"></script>
+<script defer src="/static/home_executive_summary_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-hes-c2"></script>
 <script defer src="/static/commerce_situations_surfaces_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-cs3dc2"></script>
 <script defer src="/static/merchant_dashboard_home_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_pulse_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>

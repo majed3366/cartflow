@@ -26,34 +26,30 @@ SIT_COMMUNICATION = "communication"
 _SUPPRESS_COPY: dict[str, dict[str, Any]] = {
     "health": {
         "summary_ar": "لا توجد مشكلات تجارية حرجة ظاهرة.",
-        "status_ar": "هادئ",
+        "status_ar": "مستقر",
         "empty": True,
         "needs_attention": False,
     },
     "decisions": {
         "summary_ar": "لا توجد أولوية قرار واضحة اليوم.",
         "status_ar": "أدلة غير كافية",
-        "count": 0,
         "empty": True,
     },
     "observations": {
-        "summary_ar": "لا يوجد منتج حالياً بأدلة كافية لملاحظة تجارية.",
+        "summary_ar": "لا يوجد منتج يستحق انتباهك الآن.",
         "status_ar": "أدلة غير كافية",
-        "count": 0,
         "empty": True,
-        "empty_state_ar": "لا يوجد منتج حالياً بأدلة كافية لملاحظة تجارية.",
+        "empty_state_ar": "لا يوجد منتج يستحق انتباهك الآن.",
         "findings_preview": [],
     },
     "carts": {
         "summary_ar": "لا توجد سلال تحتاج متابعة حالياً.",
         "status_ar": "لا مهام",
-        "count": 0,
         "empty": True,
     },
     "communication": {
         "summary_ar": "تواصل العملاء يسير بشكل طبيعي.",
         "status_ar": "لا مهام",
-        "count": 0,
         "empty": True,
     },
 }

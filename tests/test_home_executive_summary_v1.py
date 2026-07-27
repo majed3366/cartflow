@@ -159,26 +159,24 @@ class HomeExecutiveSummaryV1Tests(unittest.TestCase):
         self.assertTrue(hes["ok"])
         self.assertEqual(out["home_surface_mode"], "executive_summary_v1")
         ids = [s["id"] for s in hes["sections"]]
-        # Without a publication product situation: health → primary decision → observations.
-        self.assertEqual(
-            ids,
-            ["health", "decisions", "observations", "carts", "communication"],
-        )
+        # Constitution V2: Health + Decisions always; product/carts/comms only with signal.
+        self.assertEqual(ids[0], "health")
+        self.assertEqual(ids[1], "decisions")
+        self.assertIn("observations", ids)
+        self.assertIn("carts", ids)
         for sid in ids:
             self.assertIn(sid, SECTION_IDS_V1)
         for sec in hes["sections"]:
-            self.assertTrue(sec.get("status_ar"))
             self.assertTrue(sec.get("summary_ar"))
             self.assertTrue(sec.get("view_details_href"))
+            self.assertNotIn("count", sec)
         obs = next(s for s in hes["sections"] if s["id"] == "observations")
-        self.assertEqual(obs["count"], 1)
         self.assertIn("زيت الورد", obs["summary_ar"])
         self.assertEqual(obs["view_details_href"], "#workspace")
         self.assertEqual(obs.get("findings_preview"), [])
         carts = next(s for s in hes["sections"] if s["id"] == "carts")
-        self.assertEqual(carts["count"], 3)
-        comm = next(s for s in hes["sections"] if s["id"] == "communication")
-        self.assertEqual(comm["count"], 3)
+        self.assertFalse(str(carts["summary_ar"])[:1].isdigit())
+        self.assertEqual(hes["title_ar"], "ماذا يجب أن أعرف الآن عن متجري؟")
         teasers = out["home_teaser_inputs_v1"]
         self.assertEqual(teasers["schema"], "home_teaser_inputs_v1")
         self.assertEqual(teasers["observations"]["count"], 1)
@@ -188,7 +186,7 @@ class HomeExecutiveSummaryV1Tests(unittest.TestCase):
         self.assertTrue(slim.get("stripped_for_home_slim_transport"))
         self.assertEqual(hes["governance"]["sprint"], "home_stabilization_v1")
 
-    def test_observation_empty_summary_copy(self) -> None:
+    def test_observation_empty_omitted_from_paint(self) -> None:
         hes = build_home_executive_summary_v1(
             {
                 "observation_reality_validation_v1": {
@@ -199,9 +197,11 @@ class HomeExecutiveSummaryV1Tests(unittest.TestCase):
             },
             environ={"CARTFLOW_HOME_EXECUTIVE_SUMMARY_V1": "1"},
         )
-        obs = next(s for s in hes["sections"] if s["id"] == "observations")
-        self.assertTrue(obs["empty"])
-        self.assertEqual(obs["summary_ar"], OBS_EMPTY_AR)
+        self.assertNotIn(
+            "observations", [s["id"] for s in hes["sections"]]
+        )
+        # Stub / empty-state copy still used by ORV home strip.
+        self.assertEqual(OBS_EMPTY_AR, "لا يوجد منتج يستحق انتباهك الآن.")
 
     def test_surface_mode_set_even_when_attach_builds_empty_shell(self) -> None:
         out = attach_home_executive_summary_to_summary_v1(

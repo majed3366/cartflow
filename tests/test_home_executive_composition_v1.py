@@ -33,7 +33,7 @@ class HomeExecutiveCompositionV1Tests(unittest.TestCase):
             or "مستقر" in health["summary_ar"]
             or "يتحسّن" in health["summary_ar"]
         )
-        self.assertEqual(health["view_details_href"], "#carts")
+        self.assertEqual(health["view_details_href"], "#workspace")
         self.assertNotIn("count", health)
 
     def test_quiet_store_omits_count(self) -> None:
@@ -70,6 +70,8 @@ class HomeExecutiveCompositionV1Tests(unittest.TestCase):
         self.assertTrue(
             "تواصل العملاء" in comm["summary_ar"]
             or "متابعة العملاء" in comm["summary_ar"]
+            or "متابعة بعض العملاء" in comm["summary_ar"]
+            or "معلومات التواصل" in comm["summary_ar"]
         )
         self.assertNotIn("بلا رقم", carts["summary_ar"])
         self.assertNotIn("بلا رقم", comm["summary_ar"])
@@ -112,13 +114,19 @@ class HomeExecutiveCompositionV1Tests(unittest.TestCase):
         self.assertEqual(dec["summary_ar"], "راجع تكلفة الشحن.")
         self.assertFalse(dec["empty"])
 
-    def test_observation_constitutional_empty(self) -> None:
+    def test_observation_constitutional_empty_omitted(self) -> None:
+        """Constitution §9 — omit empty product slot; keep Health + Decisions."""
         hes = build_home_executive_summary_v1(
             {},
             environ={"CARTFLOW_HOME_EXECUTIVE_SUMMARY_V1": "1"},
         )
-        obs = next(s for s in hes["sections"] if s["id"] == "observations")
-        self.assertEqual(obs["summary_ar"], OBS_EMPTY_AR)
+        ids = [s["id"] for s in hes["sections"]]
+        self.assertNotIn("observations", ids)
+        self.assertIn("health", ids)
+        self.assertIn("decisions", ids)
+        self.assertEqual(hes["title_ar"], "ماذا يجب أن أعرف الآن عن متجري؟")
+        self.assertEqual(hes.get("eyebrow_ar") or "", "")
+        self.assertEqual(hes.get("lede_ar") or "", "")
 
     def test_observation_product_line(self) -> None:
         hes = build_home_executive_summary_v1(
@@ -165,8 +173,77 @@ class HomeExecutiveCompositionV1Tests(unittest.TestCase):
     def test_ownership_map_complete(self) -> None:
         self.assertEqual(
             set(SECTION_OWNERSHIP_HREF_V1),
-            {"health", "decisions", "observations", "carts", "communication"},
+            {
+                "health",
+                "decisions",
+                "observations",
+                "situations",
+                "carts",
+                "communication",
+            },
         )
+        self.assertEqual(SECTION_OWNERSHIP_HREF_V1["health"], "#workspace")
+
+    def test_health_contact_blocked_routes_to_communication(self) -> None:
+        hes = build_home_executive_summary_v1(
+            {
+                "home_teaser_inputs_v1": {
+                    "schema": "home_teaser_inputs_v1",
+                    "health": {
+                        "needs_attention": True,
+                        "no_phone": 8,
+                        "store_connected": True,
+                        "domain_summary_ar": (
+                            "المتجر يحتاج تدخلاً عاجلاً — متابعة العملاء "
+                            "مقيدة بسبب نقص معلومات التواصل."
+                        ),
+                        "status_ar": "يحتاج تدخلاً عاجلاً",
+                    },
+                    "decisions": {"count": 0},
+                    "observations": {"count": 0},
+                    "carts": {},
+                    "communication": {"no_phone": 8, "constrained": True},
+                }
+            },
+            environ={"CARTFLOW_HOME_EXECUTIVE_SUMMARY_V1": "1"},
+        )
+        health = next(s for s in hes["sections"] if s["id"] == "health")
+        self.assertEqual(health["view_details_href"], "#communication")
+
+    def test_health_disconnected_routes_to_settings(self) -> None:
+        hes = build_home_executive_summary_v1(
+            {
+                "home_teaser_inputs_v1": {
+                    "schema": "home_teaser_inputs_v1",
+                    "health": {"store_connected": False},
+                    "decisions": {"count": 0},
+                    "observations": {"count": 0},
+                    "carts": {},
+                    "communication": {},
+                }
+            },
+            environ={"CARTFLOW_HOME_EXECUTIVE_SUMMARY_V1": "1"},
+        )
+        health = next(s for s in hes["sections"] if s["id"] == "health")
+        self.assertEqual(health["view_details_href"], "#settings")
+
+    def test_no_bare_count_badges_on_home(self) -> None:
+        hes = build_home_executive_summary_v1(
+            {
+                "merchant_nav_badge_abandoned": 3,
+                "merchant_store_cart_counts": {
+                    "waiting_total": 3,
+                    "no_phone_total": 2,
+                    "active_total": 8,
+                },
+            },
+            environ={"CARTFLOW_HOME_EXECUTIVE_SUMMARY_V1": "1"},
+        )
+        for sec in hes["sections"]:
+            self.assertNotIn("count", sec)
+            self.assertNotEqual(sec.get("status_ar"), "القرار الأهم")
+            self.assertNotEqual(sec.get("status_ar"), "منتج")
+            self.assertNotEqual(sec.get("status_ar"), "مكتمل اليوم")
 
 
 if __name__ == "__main__":
