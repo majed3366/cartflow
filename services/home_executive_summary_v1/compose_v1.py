@@ -773,7 +773,22 @@ def build_home_executive_summary_v1(
         "slim_transport": home_slim_transport_v1_enabled(environ=environ),
         "ui": True,
         "constitution": "home_constitution_v2",
-        "diagnosis_language": "home_diagnosis_language_v1",
+        "diagnosis_language": (
+            "diagnostic_reasoning_v1"
+            if isinstance(src.get("diagnostic_publication_v1"), Mapping)
+            and str(
+                (src.get("diagnostic_publication_v1") or {}).get("diagnosis_ar") or ""
+            ).strip()
+            else "home_diagnosis_language_v1"
+        ),
+        "diagnostic_reasoning": (
+            "diagnostic_reasoning_v1"
+            if isinstance(src.get("diagnostic_publication_v1"), Mapping)
+            and str(
+                (src.get("diagnostic_publication_v1") or {}).get("diagnosis_ar") or ""
+            ).strip()
+            else None
+        ),
     }
 
 

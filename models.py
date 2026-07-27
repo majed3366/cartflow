@@ -1847,3 +1847,60 @@ class EvidenceTruthShadowArtifact(Base):
     payload_json = Column(Text, nullable=False, default="{}")
     composer_version = Column(String(64), nullable=False, default="wp_et_10_6_v1")
     created_at = Column(DateTime, nullable=False, index=True)
+
+
+class DiagnosticSnapshot(Base):
+    """
+    Diagnostic Reasoning V1 — persisted diagnostic contract per store/subject/family.
+
+    Composed off-path only. Home reads ready rows; never recomposes here.
+    """
+
+    __tablename__ = "diagnostic_snapshots"
+    __table_args__ = (
+        UniqueConstraint(
+            "store_slug",
+            "subject_type",
+            "subject_id",
+            "diagnostic_family",
+            name="uq_diagnostic_snapshot_identity",
+        ),
+        Index(
+            "ix_diagnostic_snapshots_store_family",
+            "store_slug",
+            "diagnostic_family",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    diagnostic_id = Column(String(64), nullable=False, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    subject_type = Column(String(64), nullable=False, default="store")
+    subject_id = Column(String(256), nullable=False, default="store")
+    diagnostic_family = Column(String(96), nullable=False, index=True)
+    diagnosis_status = Column(String(48), nullable=False, default="insufficient_evidence")
+    confidence_level = Column(String(32), nullable=False, default="insufficient")
+    selected_diagnosis = Column(String(96), nullable=True)
+    observation_ar = Column(Text, nullable=False, default="")
+    diagnosis_ar = Column(Text, nullable=False, default="")
+    recommendation_ar = Column(Text, nullable=False, default="")
+    contract_json = Column(Text, nullable=False, default="{}")
+    publication_json = Column(Text, nullable=False, default="{}")
+    content_hash = Column(String(64), nullable=False, default="")
+    diagnostic_version = Column(String(64), nullable=False, default="diagnostic_reasoning_v1")
+    generated_at = Column(DateTime, nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=True, index=True)
+    last_good_contract_json = Column(Text, nullable=False, default="")
+    last_good_generated_at = Column(DateTime, nullable=True)
+    status = Column(String(32), nullable=False, default="active", index=True)
+    created_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )

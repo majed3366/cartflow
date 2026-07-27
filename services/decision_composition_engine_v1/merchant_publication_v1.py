@@ -596,6 +596,21 @@ def attach_merchant_publication_to_summary_v1(
         cs = pkg.get("commerce_situations_v1")
         if isinstance(cs, Mapping):
             envelope["simulation_run_id"] = _norm(cs.get("simulation_run_id"))
+    # Attach persisted primary diagnosis when available (read-only; no compose).
+    try:
+        from services.diagnostic_reasoning_v1.orchestrator_v1 import (  # noqa: PLC0415
+            attach_diagnostic_publication_from_snapshots_v1,
+        )
+
+        attach_diagnostic_publication_from_snapshots_v1(
+            summary, store_slug=_norm(store_slug or summary.get("store_slug"))
+        )
+        primary_dx = summary.get("diagnostic_publication_v1")
+        if isinstance(primary_dx, Mapping) and primary_dx.get("diagnosis_ar"):
+            envelope["primary_diagnosis"] = dict(primary_dx)
+            envelope["diagnostic_reasoning_v1"] = True
+    except Exception:  # noqa: BLE001
+        pass
     summary["merchant_publication_v1"] = envelope
     return summary
 

@@ -347,6 +347,65 @@ def finalize_dashboard_summary_payload(
         # Gate 2: stamp slug so FDE teaser count can resolve without fat MEIF.
         if store_slug and not str(body.get("store_slug") or "").strip():
             body["store_slug"] = str(store_slug).strip()
+        _slug = str(body.get("store_slug") or store_slug or "").strip()
+
+        # Diagnostic Reasoning V1 — Home reads persisted snapshots only (no compose).
+        try:
+            from services.diagnostic_reasoning_v1 import (  # noqa: PLC0415
+                attach_diagnostic_publication_from_snapshots_v1,
+            )
+
+            with dashboard_summary_profile_span("home_stage_diagnostic_snapshot_read"):
+                attach_diagnostic_publication_from_snapshots_v1(
+                    body, store_slug=_slug
+                )
+        except Exception as dx_exc:  # noqa: BLE001
+            log.warning("diagnostic_snapshot_read: %s", dx_exc)
+
+        hes_ready = body.get("home_executive_summary_v1")
+        snapshot_hes_ready = (
+            summary_source in {TRANSPORT_SNAPSHOT, TRANSPORT_CACHE}
+            and isinstance(hes_ready, dict)
+            and bool(hes_ready.get("sections"))
+            and (
+                hes_ready.get("diagnostic_reasoning") == "diagnostic_reasoning_v1"
+                or body.get("diagnostic_publication_v1")
+            )
+        )
+        if snapshot_hes_ready:
+            # Performance gate: no ORV / facts / situations / diagnosis recompose.
+            with dashboard_summary_profile_span("home_stage_hes_snapshot_passthrough"):
+                body["home_surface_mode"] = "executive_summary_v1"
+                if isinstance(hes_ready, dict):
+                    hes_ready["diagnostic_reasoning"] = "diagnostic_reasoning_v1"
+                    hes_ready["diagnosis_language"] = "diagnostic_reasoning_v1"
+            strip_heavy_home_summary_payload_v1(body)
+            return body
+
+        # Ready diagnostic snapshot without pre-painted HES — still no ORV recompose.
+        # Only on snapshot/cache Home reads — never short-circuit background LIVE compose.
+        if (
+            summary_source in {TRANSPORT_SNAPSHOT, TRANSPORT_CACHE}
+            and _slug
+            and isinstance(body.get("diagnostic_publication_v1"), dict)
+        ):
+            with dashboard_summary_profile_span("home_stage_diagnostic_hes_only"):
+                body["home_teaser_inputs_v1"] = extract_home_teaser_inputs_v1(body)
+                try:
+                    from services.home_executive_summary_v1 import (  # noqa: PLC0415
+                        attach_home_executive_summary_to_summary_v1,
+                    )
+
+                    attach_home_executive_summary_to_summary_v1(body)
+                except Exception as hes_exc:  # noqa: BLE001
+                    log.warning("hes diagnostic-only attach: %s", hes_exc)
+                hes2 = body.get("home_executive_summary_v1")
+                if isinstance(hes2, dict):
+                    hes2["diagnostic_reasoning"] = "diagnostic_reasoning_v1"
+                    hes2["diagnosis_language"] = "diagnostic_reasoning_v1"
+            strip_heavy_home_summary_payload_v1(body)
+            return body
+
         # Observation Admission Bridge — lightweight ORV only (no MEIF/Pulse).
         # Required so Product Observations teaser can admit foundation-ready findings.
         try:
@@ -354,7 +413,6 @@ def finalize_dashboard_summary_payload(
                 attach_observation_reality_validation_to_summary_v1,
             )
 
-            _slug = str(body.get("store_slug") or store_slug or "").strip()
             if _slug:
                 with dashboard_summary_profile_span("home_stage_orv_admit"):
                     attach_observation_reality_validation_to_summary_v1(body, _slug)

@@ -309,14 +309,57 @@ def _stamp(sec: dict[str, Any], diagnosis_ar: str, recommendation_ar: str) -> No
             ]
 
 
+def _apply_persisted_diagnostic_v1(
+    sections: list[dict[str, Any]],
+    dx: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """Stamp Home cards from persisted diagnostic publication (no inventing)."""
+    diagnosis = _norm(dx.get("diagnosis_ar"))
+    recommendation = _norm(dx.get("recommendation_ar"))
+    observation = _norm(dx.get("observation_ar"))
+    family = _norm(dx.get("diagnostic_family"))
+    if not diagnosis:
+        return sections
+    out: list[dict[str, Any]] = []
+    for sec in sections:
+        if not isinstance(sec, dict):
+            continue
+        sid = str(sec.get("id") or "")
+        # Primary causal / insufficiency insight owns decisions + product cards.
+        if sid in {"decisions", "situations", "observations"}:
+            if family == "contact_followup_blocked" and sid != "decisions":
+                out.append(sec)
+                continue
+            d = diagnosis
+            r = recommendation
+            if sid == "situations" and observation:
+                # Observation chip context stays in status; body is diagnosis.
+                pass
+            _stamp(sec, d, r)
+            sec["diagnosis_language"] = "diagnostic_reasoning_v1"
+        elif sid == "health" and family == "contact_followup_blocked":
+            _stamp(sec, diagnosis, recommendation)
+            sec["diagnosis_language"] = "diagnostic_reasoning_v1"
+        elif sid == "communication" and family == "contact_followup_blocked":
+            _stamp(sec, diagnosis, recommendation)
+            sec["diagnosis_language"] = "diagnostic_reasoning_v1"
+        out.append(sec)
+    return out
+
+
 def apply_home_diagnosis_language_v1(
     sections: list[dict[str, Any]],
     *,
     summary: Mapping[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     """Rewrite painted section copy into Diagnosis → Recommendation form."""
-    counts = _teaser_counts(summary)
     src = summary if isinstance(summary, Mapping) else {}
+    # Prefer persisted Diagnostic Reasoning publication — never invent causes.
+    dx = src.get("diagnostic_publication_v1")
+    if isinstance(dx, Mapping) and _norm(dx.get("diagnosis_ar")):
+        return _apply_persisted_diagnostic_v1(sections, dx)
+
+    counts = _teaser_counts(summary)
     t = src.get("home_teaser_inputs_v1")
     health_t = t.get("health") if isinstance(t, Mapping) else {}
     store_ok = (

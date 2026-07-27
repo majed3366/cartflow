@@ -179,6 +179,69 @@ def build_store_dashboard_snapshots(
 
     try:
         summary_body = _build_summary_payload(dash_store)
+        # Diagnostic Reasoning V1 — compose+persist off-path before snapshot write.
+        try:
+            import os
+
+            from services.diagnostic_reasoning_v1 import (  # noqa: PLC0415
+                materialize_diagnostics_for_store_v1,
+            )
+            from services.diagnostic_reasoning_v1.orchestrator_v1 import (  # noqa: PLC0415
+                attach_diagnostic_publication_from_snapshots_v1,
+            )
+            from services.home_executive_summary_v1 import (  # noqa: PLC0415
+                attach_home_executive_summary_to_summary_v1,
+            )
+            from services.merchant_home_experience_activation_v1 import (  # noqa: PLC0415
+                TRANSPORT_LIVE,
+                finalize_dashboard_summary_payload,
+            )
+
+            # Enable materialization in builder context when master flag unset.
+            os.environ.setdefault("CARTFLOW_DIAGNOSTIC_REASONING_V1", "1")
+            os.environ.setdefault("CARTFLOW_DIAGNOSTIC_REASONING_EXECUTE", "1")
+
+            # Background may compose packages once (not Home request).
+            summary_body = finalize_dashboard_summary_payload(
+                summary_body,
+                summary_source=TRANSPORT_LIVE,
+                store_slug=slug,
+            )
+            dx = materialize_diagnostics_for_store_v1(
+                slug,
+                dash_store=dash_store,
+                publication=(
+                    summary_body.get("merchant_publication_v1")
+                    if isinstance(summary_body.get("merchant_publication_v1"), dict)
+                    else None
+                ),
+                execute=True,
+            )
+            results["diagnostic_reasoning_v1"] = {
+                "ok": dx.get("ok"),
+                "composed": dx.get("composed"),
+                "persisted": dx.get("persisted"),
+                "duration_ms": dx.get("duration_ms"),
+            }
+            attach_diagnostic_publication_from_snapshots_v1(
+                summary_body, store_slug=slug
+            )
+            # Re-paint HES from persisted diagnosis for Home passthrough.
+            attach_home_executive_summary_to_summary_v1(summary_body)
+            if isinstance(summary_body.get("home_executive_summary_v1"), dict):
+                summary_body["home_executive_summary_v1"][
+                    "diagnostic_reasoning"
+                ] = "diagnostic_reasoning_v1"
+                summary_body["home_executive_summary_v1"][
+                    "diagnosis_language"
+                ] = "diagnostic_reasoning_v1"
+        except Exception as dx_exc:  # noqa: BLE001
+            log.warning("diagnostic_reasoning snapshot build: %s", dx_exc)
+            results["diagnostic_reasoning_v1"] = {
+                "ok": False,
+                "error": type(dx_exc).__name__,
+            }
+
         summary_outcome = write_dashboard_snapshot_guarded(
             store_id=sid,
             store_slug=slug,
