@@ -200,6 +200,9 @@ def build_store_dashboard_snapshots(
             # Enable materialization in builder context when master flag unset.
             os.environ.setdefault("CARTFLOW_DIAGNOSTIC_REASONING_V1", "1")
             os.environ.setdefault("CARTFLOW_DIAGNOSTIC_REASONING_EXECUTE", "1")
+            # Evidence Expansion V1 — internal gaps only (never merchant-facing).
+            os.environ.setdefault("CARTFLOW_EVIDENCE_EXPANSION_V1", "1")
+            os.environ.setdefault("CARTFLOW_EVIDENCE_EXPANSION_EXECUTE", "1")
 
             # Background may compose packages once (not Home request).
             summary_body = finalize_dashboard_summary_payload(
@@ -217,11 +220,22 @@ def build_store_dashboard_snapshots(
                 ),
                 execute=True,
             )
+            ee = dx.get("evidence_expansion") if isinstance(dx, dict) else None
             results["diagnostic_reasoning_v1"] = {
                 "ok": dx.get("ok"),
                 "composed": dx.get("composed"),
                 "persisted": dx.get("persisted"),
                 "duration_ms": dx.get("duration_ms"),
+                "evidence_expansion": (
+                    {
+                        "ok": ee.get("ok"),
+                        "composed": ee.get("composed"),
+                        "persisted": ee.get("persisted"),
+                        "duration_ms": ee.get("duration_ms"),
+                    }
+                    if isinstance(ee, dict)
+                    else None
+                ),
             }
             attach_diagnostic_publication_from_snapshots_v1(
                 summary_body, store_slug=slug
