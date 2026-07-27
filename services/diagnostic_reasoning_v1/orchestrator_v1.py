@@ -54,6 +54,7 @@ def materialize_diagnostics_for_store_v1(
         "errors": [],
         "publications": [],
         "primary": None,
+        "evidence_expansion": None,
         "duration_ms": 0.0,
         "path": "background_diagnostic_reasoning_v1",
     }
@@ -96,6 +97,28 @@ def materialize_diagnostics_for_store_v1(
 
     out["publications"] = pubs
     out["primary"] = pick_primary_diagnostic_publication_v1(pubs)
+
+    # Evidence Expansion V1 — internal gaps from insufficient/conflicting only.
+    # Off-path; never attached to merchant Home payloads.
+    try:
+        from services.evidence_expansion_v1 import (  # noqa: PLC0415
+            register_evidence_gaps_from_diagnostics_v1,
+        )
+
+        # Own flags gate persist; never expose gaps on merchant payloads.
+        out["evidence_expansion"] = register_evidence_gaps_from_diagnostics_v1(
+            contracts,
+            execute=True,
+            environ=environ,
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.warning("evidence expansion register failed store=%s: %s", slug, exc)
+        out["evidence_expansion"] = {
+            "ok": False,
+            "errors": [f"register:{type(exc).__name__}"],
+            "merchant_exposure": False,
+        }
+
     out["ok"] = out["composed"] > 0 or not out["errors"]
     out["duration_ms"] = round((time.perf_counter() - t0) * 1000, 2)
     return out

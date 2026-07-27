@@ -1904,3 +1904,46 @@ class DiagnosticSnapshot(Base):
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
+
+
+class EvidenceGap(Base):
+    """
+    Evidence Expansion V1 — internal Evidence Gap registry.
+
+    Engineering task only. Never expose to merchants / Home / Workspace UI.
+    """
+
+    __tablename__ = "evidence_gaps"
+    __table_args__ = (
+        Index("ix_evidence_gaps_store_status", "store_slug", "gap_status"),
+        Index("ix_evidence_gaps_family", "diagnostic_family"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    gap_id = Column(String(64), nullable=False, unique=True, index=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    diagnostic_family = Column(String(96), nullable=False, index=True)
+    diagnostic_id = Column(String(64), nullable=False, default="")
+    subject_type = Column(String(64), nullable=False, default="store")
+    subject_id = Column(String(256), nullable=False, default="store")
+    diagnosis_status = Column(String(48), nullable=False, default="insufficient_evidence")
+    gap_status = Column(String(48), nullable=False, default="open", index=True)
+    priority = Column(String(16), nullable=False, default="medium")
+    payload_json = Column(Text, nullable=False, default="{}")
+    content_hash = Column(String(64), nullable=False, default="")
+    evidence_expansion_version = Column(
+        String(64), nullable=False, default="evidence_expansion_v1"
+    )
+    generated_at = Column(DateTime, nullable=False, index=True)
+    internal_only = Column(Boolean, nullable=False, default=True)
+    created_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
