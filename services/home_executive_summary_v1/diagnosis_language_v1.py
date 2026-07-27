@@ -115,14 +115,14 @@ def _health_diagnosis(
     status = _norm(sec.get("status_ar"))
     if store_ok is False or "جاهزية" in text or "الربط" in text:
         return (
-            f"{BELIEVES_AR} جاهزية المتجر غير مكتملة لأن الربط غير مكتمل.",
+            f"{EVIDENCE_SUGGESTS_AR} أن جاهزية المتجر غير مكتملة لأن الربط غير مكتمل.",
             REC_SETTINGS_AR,
         )
     if _contact_blocked_evidence(text, no_phone=no_phone) or (
         no_phone > 0 and ("عاجل" in status or "متابعة" in status or "مقيدة" in text)
     ):
         return (
-            f"{BELIEVES_AR} متابعة العملاء مقيدة لأن كثيراً من السلال "
+            "الأدلة تشير إلى أن متابعة العملاء مقيدة لأن كثيراً من السلال "
             "لا تحتوي معلومات تواصل قابلة للاستخدام.",
             REC_COMMUNICATION_AR,
         )
@@ -141,44 +141,32 @@ def _health_diagnosis(
 
 
 def _decisions_diagnosis(sec: Mapping[str, Any]) -> tuple[str, str]:
+    """
+    Fallback when no persisted diagnostic_publication_v1 exists.
+
+    Must NOT invent subtype causes (shipping_cost etc.). Stage observations
+    stay as honest insufficiency until off-path diagnostics distinguish them.
+    """
     text = _norm(sec.get("summary_ar"))
-    subject = _product_short(
-        str(sec.get("subject_ar") or sec.get("product_name_ar") or "")
-    )
     if sec.get("empty") or not text or "لا توجد أولوية" in text:
         return DIAG_INSUFFICIENT_AR, REC_CONTINUE_EVIDENCE_AR
 
-    # Shipping friction — only when evidence language is already present.
-    if any(k in text for k in ("شحن", "تكلفة الشحن", "shipping")):
-        if subject:
-            diag = (
-                f"{BELIEVES_AR} أكبر فرصة مبيعات ضائعة اليوم هي {subject} "
-                "لأن العملاء يغادرون عند الشحن."
-            )
-        else:
-            diag = (
-                f"{EVIDENCE_SUGGESTS_AR} أن الشحن يضعف إتمام الشراء لدى العملاء."
-            )
-        return diag, REC_PURCHASE_JOURNEY_AR
-
-    # Interest / conversion / purchase journey — product-named when known.
-    if subject:
-        diag = (
-            f"{BELIEVES_AR} أكبر فرصة مبيعات ضائعة اليوم هي {subject} "
-            "لأن العملاء يغادرون مراراً قبل إتمام الشراء."
-        )
-        return diag, REC_PURCHASE_JOURNEY_AR
-
-    if _starts_with_forbidden_opener(text) or any(
-        k in text for k in ("مسار التحويل", "إتمام الشراء", "تحويل", "اهتمام")
-    ):
+    # Shipping-stage observation without a persisted distinguished cause.
+    if any(k in text for k in ("شحن", "shipping", "مسار التحويل", "إتمام الشراء")):
         return (
-            f"{EVIDENCE_SUGGESTS_AR} أن أكبر فرصة مبيعات ضائعة اليوم "
-            "هي العملاء الذين يغادرون قبل إتمام الشراء.",
-            REC_PURCHASE_JOURNEY_AR,
+            "يغادر العملاء بعد خطوة الشحن، لكن الأدلة الحالية لا تكفي لتحديد "
+            "ما إذا كان السبب تكلفة الشحن أو مدة التوصيل أو خيارات الشحن المتاحة.",
+            REC_CONTINUE_EVIDENCE_AR,
         )
 
-    # Unknown cause — do not restate an imperative action as diagnosis.
+    # Interest / conversion without distinguished cause.
+    if any(k in text for k in ("اهتمام", "تحويل", "مغادر")):
+        return (
+            "يظهر العملاء اهتماماً متكرراً، لكن الأدلة الحالية غير كافية "
+            "لتحديد سبب المغادرة.",
+            REC_CONTINUE_EVIDENCE_AR,
+        )
+
     return DIAG_INSUFFICIENT_AR, REC_CONTINUE_EVIDENCE_AR
 
 
@@ -208,22 +196,25 @@ def _product_diagnosis(sec: Mapping[str, Any]) -> tuple[str, str]:
         )
 
     if kind == "shipping_friction" or "شحن" in text:
-        diag = "يغادر العملاء بعد ظهور الشحن."
-        if product:
-            diag = f"يغادر العملاء بعد ظهور الشحن في مسار {product}."
-        return diag, REC_PURCHASE_JOURNEY_AR
+        return (
+            "يغادر العملاء بعد خطوة الشحن، لكن الأدلة الحالية لا تكفي لتحديد "
+            "ما إذا كان السبب تكلفة الشحن أو مدة التوصيل أو خيارات الشحن المتاحة.",
+            REC_CONTINUE_EVIDENCE_AR,
+        )
 
     if any(k in text for k in ("يعود", "عودة", "عدة مرات", "يرجع")):
         return (
-            "يعود العملاء عدة مرات قبل التخلي.",
-            REC_PURCHASE_JOURNEY_AR,
+            "يعود العملاء عدة مرات قبل التخلي، والأدلة الحالية غير كافية "
+            "لتحديد السبب التشغيلي.",
+            REC_CONTINUE_EVIDENCE_AR,
         )
 
     if kind == "interest_without_purchase" or any(
         k in text for k in ("اهتمام", "دون شراء", "لا يكملون", "يترددون")
     ):
         return (
-            "يظهر العملاء نية شراء متكررة، لكن CartFlow لم يؤكد بعد سبب المغادرة.",
+            "يظهر العملاء نية شراء متكررة، لكن الأدلة الحالية غير كافية "
+            "لتحديد سبب المغادرة.",
             REC_CONTINUE_EVIDENCE_AR,
         )
 
@@ -416,6 +407,8 @@ def diagnosis_opens_correctly(text: str) -> bool:
             "يغادر العملاء",
             "يعود العملاء",
             "الأدلة ما زالت",
+            "الأدلة تشير",
+            "الأدلة الحالية",
             "لا يمكن التواصل",
             "لا يستطيع CartFlow",
         )

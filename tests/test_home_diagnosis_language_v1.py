@@ -40,7 +40,10 @@ class HomeDiagnosisLanguageV1Tests(unittest.TestCase):
             environ={"CARTFLOW_HOME_EXECUTIVE_SUMMARY_V1": "1"},
         )
         health = next(s for s in hes["sections"] if s["id"] == "health")
-        self.assertTrue(health["diagnosis_ar"].startswith(BELIEVES_AR))
+        self.assertTrue(
+            health["diagnosis_ar"].startswith("الأدلة تشير")
+            or health["diagnosis_ar"].startswith(BELIEVES_AR)
+        )
         self.assertIn("معلومات تواصل", health["diagnosis_ar"])
         self.assertEqual(health["recommendation_ar"], REC_COMMUNICATION_AR)
         self.assertFalse(health["diagnosis_ar"].startswith("راجع"))
@@ -73,8 +76,10 @@ class HomeDiagnosisLanguageV1Tests(unittest.TestCase):
         )
         dec = next(s for s in hes["sections"] if s["id"] == "decisions")
         self.assertFalse(dec["diagnosis_ar"].startswith("راجع"))
-        self.assertIn("Nano 20W", dec["diagnosis_ar"])
-        self.assertEqual(dec["recommendation_ar"], REC_PURCHASE_JOURNEY_AR)
+        # Without persisted subtype evidence — honest shipping-stage insufficiency.
+        self.assertIn("خطوة الشحن", dec["diagnosis_ar"])
+        self.assertIn("لا تكفي", dec["diagnosis_ar"])
+        self.assertEqual(dec["recommendation_ar"], REC_CONTINUE_EVIDENCE_AR)
         self.assertTrue(diagnosis_opens_correctly(dec["summary_ar"]))
 
     def test_decision_empty_is_insufficient_evidence(self) -> None:
@@ -109,7 +114,7 @@ class HomeDiagnosisLanguageV1Tests(unittest.TestCase):
         )
         obs = next(s for s in hes["sections"] if s["id"] == "observations")
         self.assertIn("نية شراء", obs["diagnosis_ar"])
-        self.assertIn("لم يؤكد بعد", obs["diagnosis_ar"])
+        self.assertIn("غير كافية", obs["diagnosis_ar"])
         self.assertNotIn("اهتمام مرتفع وتحويل منخفض", obs["diagnosis_ar"])
         self.assertEqual(obs["recommendation_ar"], REC_CONTINUE_EVIDENCE_AR)
 

@@ -1072,6 +1072,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/living-store-reality-status",
         "/dev/living-store-home-review-session",
         "/dev/living-store-home-review",
+        "/dev/diagnostic-reasoning-materialize",
         "/dev/commerce-intelligence-synthesis",
         "/dev/commerce-intelligence-knowledge",
         "/dev/data-growth-measurement",
@@ -12663,6 +12664,49 @@ def dev_living_store_home_review_session() -> Any:
     except Exception as exc:  # noqa: BLE001
         return j({"ok": False, "error": f"{type(exc).__name__}:{exc}"[:400]}, 500)
     return j(payload, 200)
+
+
+@app.post("/dev/diagnostic-reasoning-materialize")
+def dev_diagnostic_reasoning_materialize(
+    store: Optional[str] = None,
+    store_slug: Optional[str] = None,
+) -> Any:
+    """
+    Off-path Diagnostic Reasoning V1 materialize (Living Store / demo).
+
+    Never called from Home request finalize — probe/CLI/builder only.
+    """
+    import os
+
+    from services.diagnostic_reasoning_v1 import (  # noqa: PLC0415
+        materialize_diagnostics_for_store_v1,
+    )
+
+    slug = (store or store_slug or "demo").strip() or "demo"
+    os.environ.setdefault("CARTFLOW_DIAGNOSTIC_REASONING_V1", "1")
+    os.environ.setdefault("CARTFLOW_DIAGNOSTIC_REASONING_EXECUTE", "1")
+    # Prefer publication-aware bags when merchant_publication exists on a light summary.
+    publication = None
+    try:
+        from services.decision_composition_engine_v1.merchant_publication_v1 import (  # noqa: PLC0415
+            compose_merchant_publication_v1,
+        )
+        from services.commerce_situations_v1 import (  # noqa: PLC0415
+            build_commerce_situations_package_v1,
+        )
+
+        sit = build_commerce_situations_package_v1(slug)
+        publication = compose_merchant_publication_v1(
+            {}, situations_pkg=sit, summary={"store_slug": slug}
+        )
+    except Exception:  # noqa: BLE001
+        publication = None
+    result = materialize_diagnostics_for_store_v1(
+        slug,
+        publication=publication if isinstance(publication, dict) else None,
+        execute=True,
+    )
+    return j({"ok": bool(result.get("ok")), **result}, 200)
 
 
 @app.get("/dev/living-store-home-review")
