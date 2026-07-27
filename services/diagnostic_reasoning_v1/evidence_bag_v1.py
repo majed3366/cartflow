@@ -166,6 +166,81 @@ def build_evidence_bags_from_reason_counts_v1(
     return bags[:MAX_BAGS]
 
 
+def _bags_from_publication_v1(
+    publication: Mapping[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """Synthesize bounded bags from merchant publication / situations (no history scan)."""
+    pub = publication if isinstance(publication, Mapping) else {}
+    bags: list[dict[str, Any]] = []
+    home_prod = (
+        pub.get("home_product_situation")
+        if isinstance(pub.get("home_product_situation"), Mapping)
+        else {}
+    )
+    primary = (
+        pub.get("primary_executive_decision")
+        if isinstance(pub.get("primary_executive_decision"), Mapping)
+        else {}
+    )
+    product_name = str(
+        home_prod.get("product_name_ar")
+        or home_prod.get("subject_ar")
+        or pub.get("primary_subject")
+        or primary.get("subject_ar")
+        or ""
+    ).strip()
+    product_id = str(
+        home_prod.get("situation_id") or product_name or "store"
+    ).strip()
+    kind = str(home_prod.get("situation_kind") or "").strip()
+    action = str(
+        pub.get("primary_action") or primary.get("action_ar") or ""
+    )
+    text = " ".join(
+        [
+            kind,
+            action,
+            str(home_prod.get("statement_ar") or ""),
+            str(home_prod.get("title_ar") or ""),
+        ]
+    )
+
+    if kind == "shipping_friction" or "شحن" in text or "shipping" in text.lower():
+        bags.extend(
+            build_evidence_bags_from_reason_counts_v1(
+                store_slug=str(pub.get("store_slug") or ""),
+                reason_counts={SIGNAL_SHIPPING: 1},
+                product_name_ar=product_name,
+                product_id=product_id,
+                shipping_stage_observed=True,
+                sample_n=1,
+            )
+        )
+    if kind == "interest_without_purchase" or "اهتمام" in text:
+        bags.extend(
+            build_evidence_bags_from_reason_counts_v1(
+                store_slug=str(pub.get("store_slug") or ""),
+                reason_counts={},
+                product_name_ar=product_name,
+                product_id=product_id,
+                interest_without_purchase=True,
+                sample_n=2,
+            )
+        )
+
+    cc = pub.get("communication_condition") if isinstance(pub.get("communication_condition"), Mapping) else {}
+    sc = pub.get("store_condition") if isinstance(pub.get("store_condition"), Mapping) else {}
+    if cc.get("constrained") or "تواصل" in str(sc.get("summary_ar") or ""):
+        bags.extend(
+            build_evidence_bags_from_reason_counts_v1(
+                store_slug=str(pub.get("store_slug") or ""),
+                reason_counts={},
+                no_phone=max(1, int(cc.get("no_phone") or 1)),
+            )
+        )
+    return bags[:MAX_BAGS]
+
+
 def load_bounded_evidence_bags_v1(
     store_slug: str,
     *,
@@ -213,6 +288,7 @@ def load_bounded_evidence_bags_v1(
         since = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(
             days=max(1, int(window_days))
         )
+        # store_id column may hold slug or numeric — try slug match first.
         q = (
             db.session.query(CartRecoveryReason.reason)
             .filter(CartRecoveryReason.store_id == slug)
@@ -222,26 +298,6 @@ def load_bounded_evidence_bags_v1(
         )
         for (reason,) in q.all():
             reason_counts[_normalize_reason(str(reason or ""))] += 1
-    except Exception:  # noqa: BLE001
-        pass
-
-    try:
-        from services.home_executive_summary_v1.slim_transport_v1 import (  # noqa: PLC0415
-            extract_home_teaser_inputs_v1,
-        )
-
-        # Prefer light counters when dash_store summary-like attrs unavailable.
-        if dash_store is not None:
-            summary_like = {
-                "store_slug": slug,
-                "merchant_store_cart_counts": {
-                    "no_phone_total": int(
-                        getattr(dash_store, "no_phone_total", 0) or 0
-                    )
-                },
-            }
-            # publication path supplies no_phone via teaser when attached later
-            _ = summary_like
     except Exception:  # noqa: BLE001
         pass
 
@@ -257,7 +313,7 @@ def load_bounded_evidence_bags_v1(
         # Stage observation without subtype rows — still emit bag for honest insufficiency.
         reason_counts[SIGNAL_SHIPPING] = 1
 
-    return build_evidence_bags_from_reason_counts_v1(
+    bags = build_evidence_bags_from_reason_counts_v1(
         store_slug=slug,
         reason_counts=dict(reason_counts),
         product_name_ar=product_name,
@@ -267,6 +323,19 @@ def load_bounded_evidence_bags_v1(
         shipping_stage_observed=shipping_stage,
         window_days=window_days,
     )
+    if not bags:
+        bags = _bags_from_publication_v1(pub)
+    # Always merge publication-derived contact/shipping bags when absent.
+    if bags and not any(
+        b.get("diagnostic_family") == FAMILY_CHECKOUT_AFTER_SHIPPING for b in bags
+    ):
+        extra = _bags_from_publication_v1(pub)
+        for b in extra:
+            if b.get("diagnostic_family") not in {
+                x.get("diagnostic_family") for x in bags
+            }:
+                bags.append(b)
+    return bags[:MAX_BAGS]
 
 
 __all__ = [
