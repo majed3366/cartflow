@@ -1,0 +1,86 @@
+{
+  "generated_at_utc": "2026-07-27T23:02:27.849918+00:00",
+  "environment": "production",
+  "base": "https://smartreplyai.net",
+  "foundation": "evidence_expansion_v1",
+  "expected_merge_commit": "1a95fb33cd29fab590a6efd606c407145b26c670",
+  "github_deploy": {
+    "environment": "authentic-motivation / production",
+    "sha": "1a95fb33cd29fab590a6efd606c407145b26c670",
+    "status_contexts": [
+      "authentic-motivation - smart-reply-ai: Success",
+      "authentic-motivation - cartflow: Success"
+    ]
+  },
+  "scope": "home_smoke_no_collectors",
+  "review_session": {
+    "http": 200,
+    "ok": true,
+    "store_slug": "demo",
+    "email": "cf.living.store.review@smartreplyai.net"
+  },
+  "home_samples": [
+    {
+      "label": "desktop",
+      "nav_ms": 8183.5,
+      "http": 200,
+      "api_ms": 3327,
+      "store_slug": "demo",
+      "diagnostic_snapshot_read_ms": "13.84",
+      "has_diagnostic_publication": true,
+      "has_hes": true,
+      "hes_diagnostic_reasoning": "diagnostic_reasoning_v1",
+      "banned_key_hits": [],
+      "top_level_has_evidence_expansion": false,
+      "payload_bytes": 38917,
+      "screenshot": "docs\\product\\evidence_expansion_v1\\prod_smoke_desktop_home.png"
+    },
+    {
+      "label": "mobile",
+      "nav_ms": 7862.7,
+      "http": 200,
+      "api_ms": 3297,
+      "store_slug": "demo",
+      "diagnostic_snapshot_read_ms": "13.2",
+      "has_diagnostic_publication": true,
+      "has_hes": true,
+      "hes_diagnostic_reasoning": "diagnostic_reasoning_v1",
+      "banned_key_hits": [],
+      "top_level_has_evidence_expansion": false,
+      "payload_bytes": 38916,
+      "screenshot": "docs\\product\\evidence_expansion_v1\\prod_smoke_mobile_home.png"
+    }
+  ],
+  "materialize_probe": {
+    "http": 200,
+    "ms": 624,
+    "ok": true,
+    "composed": 2,
+    "persisted": 0,
+    "evidence_expansion": {
+      "ok": true,
+      "enabled": false,
+      "execute": false,
+      "candidates": 0,
+      "composed": 0,
+      "persisted": 0,
+      "touched": 0,
+      "skipped": 0,
+      "errors": [
+        "evidence_expansion_disabled"
+      ],
+      "gap_ids": [],
+      "duration_ms": 0.02,
+      "path": "background_evidence_expansion_v1",
+      "merchant_exposure": false
+    },
+    "primary_status": "insufficient_evidence"
+  },
+  "checks": {
+    "home_payload_no_evidence_gap_fields": true,
+    "home_summary_ok_demo": true,
+    "materialize_still_ok": true,
+    "railway_github_status_success": true
+  },
+  "verdict": "PASS_EVIDENCE_EXPANSION_SMOKE"
+}
