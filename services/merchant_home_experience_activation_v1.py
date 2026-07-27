@@ -375,6 +375,16 @@ def finalize_dashboard_summary_payload(
         if snapshot_hes_ready:
             # Performance gate: no ORV / facts / situations / diagnosis recompose.
             with dashboard_summary_profile_span("home_stage_hes_snapshot_passthrough"):
+                try:
+                    from services.home_performance_hardening_v1 import (  # noqa: PLC0415
+                        home_perf_note,
+                    )
+
+                    home_perf_note(
+                        f"exit=hes_snapshot_passthrough source={summary_source}"
+                    )
+                except Exception:  # noqa: BLE001
+                    pass
                 body["home_surface_mode"] = "executive_summary_v1"
                 if isinstance(hes_ready, dict):
                     hes_ready["diagnostic_reasoning"] = "diagnostic_reasoning_v1"
@@ -390,6 +400,16 @@ def finalize_dashboard_summary_payload(
             and isinstance(body.get("diagnostic_publication_v1"), dict)
         ):
             with dashboard_summary_profile_span("home_stage_diagnostic_hes_only"):
+                try:
+                    from services.home_performance_hardening_v1 import (  # noqa: PLC0415
+                        home_perf_note,
+                    )
+
+                    home_perf_note(
+                        f"exit=diagnostic_hes_only source={summary_source}"
+                    )
+                except Exception:  # noqa: BLE001
+                    pass
                 body["home_teaser_inputs_v1"] = extract_home_teaser_inputs_v1(body)
                 try:
                     from services.home_executive_summary_v1 import (  # noqa: PLC0415
@@ -414,6 +434,17 @@ def finalize_dashboard_summary_payload(
             )
 
             if _slug:
+                try:
+                    from services.home_performance_hardening_v1 import (  # noqa: PLC0415
+                        home_perf_note,
+                    )
+
+                    home_perf_note(
+                        f"exit=observation_admission_bridge source={summary_source} "
+                        f"(HES passthrough missed)"
+                    )
+                except Exception:  # noqa: BLE001
+                    pass
                 with dashboard_summary_profile_span("home_stage_orv_admit"):
                     attach_observation_reality_validation_to_summary_v1(body, _slug)
                 # Business Facts → Business Themes (canonical commercial truths).

@@ -338,23 +338,52 @@ def build_summary_from_snapshot(
         TRANSPORT_SNAPSHOT,
         finalize_dashboard_summary_payload,
     )
+    from services.home_performance_hardening_v1 import (  # noqa: PLC0415
+        home_perf_enabled,
+        home_perf_note,
+        home_perf_stage,
+    )
 
     wall0 = time.perf_counter()
     with dashboard_api_snapshot_request_scope(path=path):
-        body = read_dashboard_snapshot_payload(
-            store_slug=store_slug,
-            snapshot_type=SNAPSHOT_TYPE_SUMMARY,
-            degraded_builder=_degraded_summary_payload,
-            t0=wall0,
-            endpoint="summary",
+        with home_perf_stage("snapshot_read_payload"):
+            body = read_dashboard_snapshot_payload(
+                store_slug=store_slug,
+                snapshot_type=SNAPSHOT_TYPE_SUMMARY,
+                degraded_builder=_degraded_summary_payload,
+                t0=wall0,
+                endpoint="summary",
+            )
+        # Home Performance Hardening V1:
+        # Stale/freshness flags must NOT force TRANSPORT_DEGRADED composition.
+        # A real persisted snapshot row (even stale) uses SNAPSHOT so HES
+        # passthrough can skip ORV→facts→situations on the Home request path.
+        # Only synthetic miss/empty degraded stubs use TRANSPORT_DEGRADED.
+        snap_meta = (
+            body.get("_snapshot") if isinstance(body.get("_snapshot"), dict) else {}
         )
-        source = TRANSPORT_DEGRADED if body.get("snapshot_degraded") else TRANSPORT_SNAPSHOT
-        body = finalize_dashboard_summary_payload(
-            body,
-            summary_source=source,
-            store_slug=store_slug,
-        )
-        return enforce_route_budget(body, wall0=wall0, endpoint="summary")
+        has_persisted_row = bool(snap_meta.get("generated_at")) or int(
+            snap_meta.get("version") or 0
+        ) > 0
+        source = TRANSPORT_SNAPSHOT if has_persisted_row else TRANSPORT_DEGRADED
+        if home_perf_enabled():
+            hes = body.get("home_executive_summary_v1")
+            home_perf_note(
+                f"finalize#1 source={source} "
+                f"has_persisted_row={has_persisted_row} "
+                f"stale={bool(body.get('snapshot_stale'))} "
+                f"degraded_flag={bool(body.get('snapshot_degraded'))} "
+                f"hes_sections={bool(isinstance(hes, dict) and hes.get('sections'))} "
+                f"reason={str(body.get('snapshot_reason') or '')[:64]}"
+            )
+        with home_perf_stage("finalize_dashboard_summary_payload#1"):
+            body = finalize_dashboard_summary_payload(
+                body,
+                summary_source=source,
+                store_slug=store_slug,
+            )
+        with home_perf_stage("enforce_route_budget"):
+            return enforce_route_budget(body, wall0=wall0, endpoint="summary")
 
 
 def build_normal_carts_from_snapshot(

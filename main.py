@@ -18892,30 +18892,86 @@ def api_dashboard_summary(request: Request):
         )
 
         if dashboard_snapshot_mode_enabled():
-            slug = resolve_merchant_store_slug_for_snapshot()
-            payload = serve_enforced_snapshot_response(
-                path="/api/dashboard/summary",
-                build_from_snapshot=build_summary_from_snapshot,
-                degraded_builder=_degraded_summary_payload,
-                store_slug=slug,
-            )
-            from services.merchant_home_experience_activation_v1 import (  # noqa: PLC0415
-                TRANSPORT_SNAPSHOT,
-                finalize_dashboard_summary_payload,
-            )
-            from services.dashboard_summary_json_safe_v1 import (  # noqa: PLC0415
-                preflight_utf8_json_payload,
-                sanitize_dashboard_summary_payload,
+            from services.home_performance_hardening_v1 import (  # noqa: PLC0415
+                home_perf_attach_to_payload,
+                home_perf_begin,
+                home_perf_end,
+                home_perf_note,
+                home_perf_stage,
+                home_perf_wants_from_request,
             )
 
-            payload = finalize_dashboard_summary_payload(
-                payload,
-                summary_source=TRANSPORT_SNAPSHOT,
-                store_slug=slug,
-            )
-            payload = sanitize_dashboard_summary_payload(payload)
-            preflight_utf8_json_payload(payload)
-            return j(payload)
+            want_home_perf = home_perf_wants_from_request(request)
+            if want_home_perf:
+                home_perf_begin(label="home_summary_snapshot")
+            try:
+                with home_perf_stage("resolve_merchant_store_slug"):
+                    slug = resolve_merchant_store_slug_for_snapshot()
+                with home_perf_stage("serve_enforced_snapshot_response"):
+                    payload = serve_enforced_snapshot_response(
+                        path="/api/dashboard/summary",
+                        build_from_snapshot=build_summary_from_snapshot,
+                        degraded_builder=_degraded_summary_payload,
+                        store_slug=slug,
+                    )
+                from services.merchant_home_experience_activation_v1 import (  # noqa: PLC0415
+                    TRANSPORT_SNAPSHOT,
+                    finalize_dashboard_summary_payload,
+                )
+                from services.dashboard_summary_json_safe_v1 import (  # noqa: PLC0415
+                    preflight_utf8_json_payload,
+                    sanitize_dashboard_summary_payload,
+                )
+
+                # Skip redundant finalize#2 when #1 already completed Home exit
+                # (passthrough / diagnostic-hes-only). Still sanitize below.
+                already_finalized = (
+                    isinstance(payload, dict)
+                    and payload.get("home_surface_mode") == "executive_summary_v1"
+                    and isinstance(payload.get("home_executive_summary_v1"), dict)
+                    and bool(
+                        (payload.get("home_executive_summary_v1") or {}).get("sections")
+                    )
+                )
+                home_perf_note(
+                    "finalize#2 "
+                    f"skip={already_finalized} "
+                    f"stale={bool((payload or {}).get('snapshot_stale'))} "
+                    f"degraded={bool((payload or {}).get('snapshot_degraded'))}"
+                )
+                if already_finalized:
+                    with home_perf_stage("finalize_dashboard_summary_payload#2_skipped"):
+                        pass
+                else:
+                    with home_perf_stage("finalize_dashboard_summary_payload#2"):
+                        payload = finalize_dashboard_summary_payload(
+                            payload,
+                            summary_source=TRANSPORT_SNAPSHOT,
+                            store_slug=slug,
+                        )
+                with home_perf_stage("sanitize_dashboard_summary_payload"):
+                    payload = sanitize_dashboard_summary_payload(payload)
+                with home_perf_stage("preflight_utf8_json_payload"):
+                    preflight_utf8_json_payload(payload)
+                if want_home_perf and isinstance(payload, dict):
+                    with home_perf_stage("json_serialize_measure"):
+                        import json as _json
+
+                        _raw = _json.dumps(payload, ensure_ascii=False)
+                        home_perf_note(
+                            f"json_chars={len(_raw)} "
+                            f"json_utf8_bytes={len(_raw.encode('utf-8'))}"
+                        )
+                    report = home_perf_end()
+                    home_perf_attach_to_payload(payload, report)
+                return j(payload)
+            except Exception:
+                if want_home_perf:
+                    try:
+                        home_perf_end()
+                    except Exception:  # noqa: BLE001
+                        pass
+                raise
     cookies = dict(request.cookies)
     wall0 = time.perf_counter()
     dashboard_summary_profile_begin()

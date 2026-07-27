@@ -90,15 +90,8 @@ def _stack_get() -> List[Dict[str, Any]]:
 
 
 @contextmanager
-def dashboard_summary_profile_span(fn: str) -> Iterator[None]:
-    """
-    Stack-based exclusive attribution: child inclusive query/wall time is subtracted
-    from the parent span; parent accumulates nested inclusive into nested_*.
-    """
-    if not dashboard_summary_query_profiling_active():
-        yield
-        return
-
+def _dashboard_summary_query_span_body(fn: str) -> Iterator[None]:
+    """Inner query/wall attribution (requires profiling active)."""
     q0 = _peek_query_count()
     t0 = time.perf_counter()
     frame: Dict[str, Any] = {
@@ -140,6 +133,45 @@ def dashboard_summary_profile_span(fn: str) -> Iterator[None]:
         if parent is not None:
             parent["nested_inc_q"] = int(parent.get("nested_inc_q") or 0) + inc_q
             parent["nested_wall_ms"] = float(parent.get("nested_wall_ms") or 0.0) + wall_ms
+
+
+@contextmanager
+def dashboard_summary_profile_span(fn: str) -> Iterator[None]:
+    """
+    Stack-based exclusive attribution: child inclusive query/wall time is subtracted
+    from the parent span; parent accumulates nested inclusive into nested_*.
+
+    Also feeds Home Performance Hardening timeline when ``home_perf`` is active.
+    """
+    use_query = dashboard_summary_query_profiling_active()
+    use_home = False
+    home_perf_stage = None
+    try:
+        from services.home_performance_hardening_v1 import (  # noqa: PLC0415
+            home_perf_enabled,
+            home_perf_stage as _hps,
+        )
+
+        use_home = bool(home_perf_enabled())
+        home_perf_stage = _hps
+    except Exception:  # noqa: BLE001
+        use_home = False
+
+    label = str(fn or "span")
+    if use_home and use_query and home_perf_stage is not None:
+        with home_perf_stage(label):
+            with _dashboard_summary_query_span_body(label):
+                yield
+        return
+    if use_home and home_perf_stage is not None:
+        with home_perf_stage(label):
+            yield
+        return
+    if use_query:
+        with _dashboard_summary_query_span_body(label):
+            yield
+        return
+    yield
 
 
 def _emit_dashboard_summary_profile_reports() -> None:
