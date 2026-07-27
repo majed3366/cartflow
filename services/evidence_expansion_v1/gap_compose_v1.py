@@ -141,12 +141,14 @@ def compose_evidence_gap_from_diagnostic_v1(
             ],
             "priority": _priority_for(contract, len(missing)),
             "gap_status": GAP_STATUS_OPEN,
-            "observation_ar": str(contract.get("observation_ar") or ""),
-            "subject_type": str(contract.get("subject_type") or ""),
-            "subject_id": str(contract.get("subject_id") or ""),
+            # Governance copy only — truncate; never store phones/emails/PII blobs.
+            "observation_ar": str(contract.get("observation_ar") or "")[:240],
+            "subject_type": str(contract.get("subject_type") or "")[:64],
+            "subject_id": str(contract.get("subject_id") or "")[:128],
             "generated_at": _utc_iso(),
             "merchant_safe": False,
             "internal_only": True,
+            "reopen_reason": "",
         }
     )
     ok, errors = validate_evidence_gap_v1(gap)

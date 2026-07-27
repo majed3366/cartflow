@@ -17,6 +17,8 @@ from services.evidence_expansion_v1.contract_v1 import (
     GAP_STATUS_OPEN,
     GAP_STATUS_RESOLVED,
     GAP_STATUS_SUPERSEDED,
+    GAP_STATUS_SUPPRESSED,
+    resolve_gap_status_transition_v1,
     validate_evidence_gap_v1,
 )
 from services.evidence_expansion_v1.gap_compose_v1 import (
@@ -245,6 +247,51 @@ class EvidenceExpansionV1Tests(unittest.TestCase):
             "storefront_events_v1.py",
         ):
             self.assertNotIn(forbidden, names)
+
+    def test_terminal_gaps_do_not_silently_reopen(self) -> None:
+        for terminal in (
+            GAP_STATUS_RESOLVED,
+            GAP_STATUS_SUPERSEDED,
+            GAP_STATUS_SUPPRESSED,
+        ):
+            status, note = resolve_gap_status_transition_v1(
+                existing_status=terminal,
+                incoming_status=GAP_STATUS_OPEN,
+                reopen_reason="",
+            )
+            self.assertEqual(status, terminal)
+            self.assertEqual(note, "terminal_preserved_no_reopen_reason")
+
+        status, note = resolve_gap_status_transition_v1(
+            existing_status=GAP_STATUS_RESOLVED,
+            incoming_status=GAP_STATUS_OPEN,
+            reopen_reason="new_competing_cause_set_after_catalog_change",
+        )
+        self.assertEqual(status, GAP_STATUS_OPEN)
+        self.assertEqual(note, "reopened_with_reason")
+
+    def test_gap_payload_avoids_sensitive_customer_fields(self) -> None:
+        bag = {
+            "signals": {"shipping": 4, "shipping_stage_observed": 1},
+            "sample_n": 4,
+            "minimum_sample": 3,
+            "product_identity_ok": True,
+        }
+        c = compose_diagnostic_contract_v1(
+            store_slug="demo",
+            family=FAMILY_CHECKOUT_AFTER_SHIPPING,
+            evidence_bag=bag,
+        )
+        # Inject accidental PII-shaped keys on the contract — must not land on gap.
+        c["customer_phone"] = "+966500000000"
+        c["customer_email"] = "x@example.com"
+        gap = compose_evidence_gap_from_diagnostic_v1(c)
+        assert gap is not None
+        blob = str(gap)
+        self.assertNotIn("+966500000000", blob)
+        self.assertNotIn("x@example.com", blob)
+        self.assertNotIn("customer_phone", gap)
+        self.assertNotIn("customer_email", gap)
 
 
 if __name__ == "__main__":

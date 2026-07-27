@@ -21,8 +21,13 @@ A gap is composed when a diagnostic contract has:
 | `possible_future_observables` | Keys from the governed catalog |
 | `priority` | `high` / `medium` / `low` |
 | `gap_status` | `open` → `partially_filled` → `resolved` / `superseded` / `suppressed` |
+| `reopen_reason` | Required to move terminal → `open`; empty reason preserves terminal |
 | `internal_only` | Always `true` |
 | `merchant_safe` | Always `false` |
+
+### Lifecycle rule
+
+`resolved` / `superseded` / `suppressed` must **not** silently reopen on rematerialization. Upsert calls `resolve_gap_status_transition_v1`; terminal → `open` requires a non-empty `reopen_reason`.
 
 ## Storage
 

@@ -55,6 +55,9 @@ def upsert_evidence_gap_v1(gap: Mapping[str, Any]) -> dict[str, Any]:
     from extensions import db
     from models import EvidenceGap
     from schema_evidence_expansion_v1 import ensure_evidence_expansion_schema
+    from services.evidence_expansion_v1.contract_v1 import (  # noqa: PLC0415
+        resolve_gap_status_transition_v1,
+    )
 
     ensure_evidence_expansion_schema(db)
     slug = str(gap.get("store_slug") or "").strip()
@@ -65,7 +68,6 @@ def upsert_evidence_gap_v1(gap: Mapping[str, Any]) -> dict[str, Any]:
 
     ch = _content_hash(gap)
     generated = _parse_iso(gap.get("generated_at")) or _utc_naive()
-    payload_json = json.dumps(dict(gap), ensure_ascii=False)
 
     row = (
         db.session.query(EvidenceGap)
@@ -77,10 +79,28 @@ def upsert_evidence_gap_v1(gap: Mapping[str, Any]) -> dict[str, Any]:
         db.session.commit()
         return {"ok": True, "mode": "touch", "gap_id": gap_id}
 
+    incoming_status = str(gap.get("gap_status") or "open")
+    existing_status = str(row.gap_status or "open") if row is not None else "open"
+    effective_status, transition = resolve_gap_status_transition_v1(
+        existing_status=existing_status,
+        incoming_status=incoming_status,
+        reopen_reason=str(gap.get("reopen_reason") or ""),
+    )
+
+    # Persist effective lifecycle; never silently reopen terminal gaps.
+    payload = dict(gap)
+    payload["gap_status"] = effective_status
+    if transition == "terminal_preserved_no_reopen_reason":
+        payload["lifecycle_note"] = transition
+    payload_json = json.dumps(payload, ensure_ascii=False)
+
     if row is None:
         row = EvidenceGap(gap_id=gap_id, store_slug=slug, diagnostic_family=family)
         db.session.add(row)
         mode = "insert"
+    elif transition == "terminal_preserved_no_reopen_reason":
+        # Refresh metadata hash/payload but keep terminal status.
+        mode = "terminal_preserved"
     else:
         mode = "update"
 
@@ -90,7 +110,7 @@ def upsert_evidence_gap_v1(gap: Mapping[str, Any]) -> dict[str, Any]:
     row.subject_type = str(gap.get("subject_type") or "")
     row.subject_id = str(gap.get("subject_id") or "")
     row.diagnosis_status = str(gap.get("diagnosis_status") or "")
-    row.gap_status = str(gap.get("gap_status") or "open")
+    row.gap_status = effective_status
     row.priority = str(gap.get("priority") or "medium")
     row.payload_json = payload_json
     row.content_hash = ch
@@ -101,7 +121,13 @@ def upsert_evidence_gap_v1(gap: Mapping[str, Any]) -> dict[str, Any]:
     row.internal_only = True
     row.updated_at = _utc_naive()
     db.session.commit()
-    return {"ok": True, "mode": mode, "gap_id": gap_id}
+    return {
+        "ok": True,
+        "mode": mode,
+        "gap_id": gap_id,
+        "gap_status": effective_status,
+        "transition": transition,
+    }
 
 
 def list_open_evidence_gaps_v1(

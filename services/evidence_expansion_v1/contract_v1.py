@@ -27,6 +27,15 @@ GAP_STATUSES = frozenset(
     }
 )
 
+# Terminal statuses must not silently reopen to open without reopen_reason.
+TERMINAL_GAP_STATUSES = frozenset(
+    {
+        GAP_STATUS_RESOLVED,
+        GAP_STATUS_SUPERSEDED,
+        GAP_STATUS_SUPPRESSED,
+    }
+)
+
 PRIORITY_HIGH = "high"
 PRIORITY_MEDIUM = "medium"
 PRIORITY_LOW = "low"
@@ -86,6 +95,30 @@ def validate_evidence_gap_v1(raw: Mapping[str, Any] | None) -> tuple[bool, list[
     return (len(errors) == 0), errors
 
 
+def resolve_gap_status_transition_v1(
+    *,
+    existing_status: str,
+    incoming_status: str,
+    reopen_reason: str = "",
+) -> tuple[str, str]:
+    """
+    Governed lifecycle transition.
+
+    Returns (effective_status, transition_note).
+    Terminal → open requires non-empty reopen_reason; otherwise terminal is preserved.
+    """
+    existing = str(existing_status or "").strip() or GAP_STATUS_OPEN
+    incoming = str(incoming_status or "").strip() or GAP_STATUS_OPEN
+    reason = str(reopen_reason or "").strip()
+    if existing in TERMINAL_GAP_STATUSES and incoming == GAP_STATUS_OPEN and not reason:
+        return existing, "terminal_preserved_no_reopen_reason"
+    if existing in TERMINAL_GAP_STATUSES and incoming == GAP_STATUS_OPEN and reason:
+        return GAP_STATUS_OPEN, "reopened_with_reason"
+    if incoming not in GAP_STATUSES:
+        return existing if existing in GAP_STATUSES else GAP_STATUS_OPEN, "invalid_incoming_preserved"
+    return incoming, "applied"
+
+
 __all__ = [
     "EVIDENCE_EXPANSION_VERSION_V1",
     "EVIDENCE_GAP_SCHEMA_V1",
@@ -99,6 +132,8 @@ __all__ = [
     "PRIORITY_HIGH",
     "PRIORITY_LOW",
     "PRIORITY_MEDIUM",
+    "TERMINAL_GAP_STATUSES",
     "empty_evidence_gap_v1",
+    "resolve_gap_status_transition_v1",
     "validate_evidence_gap_v1",
 ]
