@@ -109,11 +109,12 @@ def main() -> int:
             ctx = browser.new_context(viewport={"width": w, "height": h}, locale="ar-SA")
             ctx.add_cookies([cookie])
             page = ctx.new_page()
-            page.goto(f"{BASE}/dashboard#settings", timeout=120000)
-            page.wait_for_timeout(7000)
+            page.goto(f"{BASE}/dashboard#home", timeout=120000)
+            page.wait_for_timeout(5000)
             # Open identity panel
             page.click("#ma-gtb-account-btn")
-            page.wait_for_timeout(2500)
+            page.wait_for_selector("#ma-account-identity-panel:not([hidden])", timeout=15000)
+            page.wait_for_timeout(2000)
             page.screenshot(
                 path=str(OUT / f"prod_{mode}_identity_panel.png"), full_page=False
             )
@@ -133,25 +134,26 @@ def main() -> int:
                   };
                 }"""
             )
-            # VIP threshold from settings page (same session)
             page.keyboard.press("Escape")
-            page.wait_for_timeout(500)
+            page.wait_for_timeout(400)
+            # VIP minimum lives on VIP carts settings (same session / same account)
+            page.goto(f"{BASE}/dashboard#vip", timeout=120000)
+            page.wait_for_timeout(6500)
+            try:
+                page.wait_for_selector("#ma-vip-threshold", timeout=20000)
+            except Exception:
+                pass
             vip = page.evaluate(
                 """() => {
-                  const el = document.getElementById('ma-vip-threshold')
-                    || document.querySelector('[name="vip_cart_threshold"]')
-                    || document.getElementById('vip_cart_threshold');
-                  const val = el ? (el.value || el.textContent || '') : '';
-                  const text = (document.body && document.body.innerText) || '';
-                  const m = text.match(/عتبة[^\\d]*([\\d,]+)/);
-                  return {
-                    input: String(val).trim(),
-                    text_hit: m ? m[1] : '',
-                  };
+                  const el = document.getElementById('ma-vip-threshold');
+                  const disp = document.getElementById('ma-vip-threshold-display');
+                  const input = el ? String(el.value || '').trim() : '';
+                  const display = disp ? String(disp.textContent || '').trim() : '';
+                  return { input: input, display: display };
                 }"""
             )
             page.screenshot(
-                path=str(OUT / f"prod_{mode}_settings_vip.png"), full_page=False
+                path=str(OUT / f"prod_{mode}_vip_threshold.png"), full_page=False
             )
             fingerprints[mode] = {
                 "identity": identity,
@@ -183,10 +185,11 @@ def main() -> int:
         (mi.get("consistency") or {}).get("ok")
     )
 
-    vip_d = (d.get("vip") or {}).get("input") or (d.get("vip") or {}).get("text_hit")
-    vip_m = (m.get("vip") or {}).get("input") or (m.get("vip") or {}).get("text_hit")
+    vip_d = (d.get("vip") or {}).get("input") or (d.get("vip") or {}).get("display")
+    vip_m = (m.get("vip") or {}).get("input") or (m.get("vip") or {}).get("display")
     identity_same = email_ok and store_ok and mid_ok
-    vip_same = str(vip_d or "") == str(vip_m or "")
+    vip_present = bool(str(vip_d or "").strip()) or bool(str(vip_m or "").strip())
+    vip_same = str(vip_d or "").strip() == str(vip_m or "").strip()
 
     flags = {
         "email_ok": email_ok,
@@ -195,6 +198,7 @@ def main() -> int:
         "no_simulation_run_id": no_sim,
         "consistency_ok": consistent,
         "identity_same_desktop_mobile": identity_same,
+        "vip_present": vip_present,
         "vip_same_desktop_mobile": vip_same,
         "vip_desktop": vip_d,
         "vip_mobile": vip_m,
@@ -212,8 +216,14 @@ def main() -> int:
         and consistent
         and identity_same
     ):
-        if vip_same:
+        if vip_present and vip_same:
             report["verdict"] = "PASS_IDENTITY_AND_VIP"
+        elif not vip_present:
+            report["verdict"] = "PASS_IDENTITY_VIP_UNREADABLE"
+            report["note"] = (
+                "Identity matches Desktop/Mobile; VIP threshold field was empty "
+                "or not loaded — re-check VIP page manually if needed."
+            )
         else:
             report["verdict"] = "PASS_IDENTITY_VIP_DIFFERS"
             report["note"] = (

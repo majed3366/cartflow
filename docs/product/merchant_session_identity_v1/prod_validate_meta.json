@@ -1,0 +1,114 @@
+{
+  "generated_at_utc": "2026-07-27T00:03:56.722479+00:00",
+  "environment": "production",
+  "verdict": "PASS_IDENTITY_AND_VIP",
+  "deploy": {
+    "deployed": true,
+    "attempt": 1,
+    "last": [
+      {
+        "n": 1,
+        "hit": true
+      }
+    ]
+  },
+  "review_session": {
+    "http": 200,
+    "email": "cf.living.store.review@smartreplyai.net",
+    "store_slug": "demo",
+    "merchant_user_id": 429
+  },
+  "flags": {
+    "email_ok": true,
+    "store_ok": true,
+    "merchant_id_ok": true,
+    "no_simulation_run_id": true,
+    "consistency_ok": true,
+    "identity_same_desktop_mobile": true,
+    "vip_present": true,
+    "vip_same_desktop_mobile": true,
+    "vip_desktop": "300",
+    "vip_mobile": "300",
+    "merchant_id": 429
+  },
+  "fingerprints": {
+    "desktop": {
+      "identity": {
+        "payload": {
+          "ok": true,
+          "authenticated": true,
+          "merchant_name": "Living Store Review",
+          "merchant_email": "cf.living.store.review@smartreplyai.net",
+          "merchant_id": 429,
+          "store_name": "Living Store Review",
+          "store_slug": "demo",
+          "commerce_provider": "Living Store",
+          "connection_status": "جلسة مراجعة نشطة",
+          "connection_status_key": "living_store_review",
+          "environment": "production",
+          "session_fingerprint": "sess_6ea42e8c78b9",
+          "last_sign_in_at": "2026-07-27 00:04 UTC",
+          "last_sign_in_label_ar": "وقت بدء الجلسة الحالية",
+          "review_label_ar": "هذا هو الحساب قيد المراجعة حالياً",
+          "is_living_store_review": true,
+          "consistency": {
+            "ok": true,
+            "status": "consistent",
+            "message_ar": "✓ أنت تعرض نفس التاجر والمتجر عبر هذه الجلسة.",
+            "action_ar": "",
+            "action_href": ""
+          },
+          "platform_connected": false
+        },
+        "panel_visible": true,
+        "has_email": true,
+        "has_demo": true,
+        "has_review_label": true,
+        "has_sim_run": false
+      },
+      "vip": {
+        "input": "300",
+        "display": "300 ريال"
+      }
+    },
+    "mobile": {
+      "identity": {
+        "payload": {
+          "ok": true,
+          "authenticated": true,
+          "merchant_name": "Living Store Review",
+          "merchant_email": "cf.living.store.review@smartreplyai.net",
+          "merchant_id": 429,
+          "store_name": "Living Store Review",
+          "store_slug": "demo",
+          "commerce_provider": "Living Store",
+          "connection_status": "جلسة مراجعة نشطة",
+          "connection_status_key": "living_store_review",
+          "environment": "production",
+          "session_fingerprint": "sess_6ea42e8c78b9",
+          "last_sign_in_at": "2026-07-27 00:04 UTC",
+          "last_sign_in_label_ar": "وقت بدء الجلسة الحالية",
+          "review_label_ar": "هذا هو الحساب قيد المراجعة حالياً",
+          "is_living_store_review": true,
+          "consistency": {
+            "ok": true,
+            "status": "consistent",
+            "message_ar": "✓ أنت تعرض نفس التاجر والمتجر عبر هذه الجلسة.",
+            "action_ar": "",
+            "action_href": ""
+          },
+          "platform_connected": false
+        },
+        "panel_visible": true,
+        "has_email": true,
+        "has_demo": true,
+        "has_review_label": true,
+        "has_sim_run": false
+      },
+      "vip": {
+        "input": "300",
+        "display": "300 ريال"
+      }
+    }
+  }
+}

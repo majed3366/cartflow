@@ -1,7 +1,8 @@
 # Merchant Session Identity Panel V1
 
-**Status:** Implemented  
-**Date (UTC):** 2026-07-26
+**Status:** Implemented + production validated (`PASS_IDENTITY_AND_VIP`)  
+**Date (UTC):** 2026-07-26  
+**Prod:** email `cf.living.store.review@smartreplyai.net` · store `demo` · merchant `429` · VIP `300` Desktop=Mobile
 
 ## Purpose
 
