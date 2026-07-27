@@ -300,39 +300,43 @@ def _stamp(sec: dict[str, Any], diagnosis_ar: str, recommendation_ar: str) -> No
             ]
 
 
-def _apply_persisted_diagnostic_v1(
+def _apply_persisted_diagnostics_v1(
     sections: list[dict[str, Any]],
-    dx: Mapping[str, Any],
+    *,
+    primary: Mapping[str, Any],
+    all_pubs: list[Mapping[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Stamp Home cards from persisted diagnostic publication (no inventing)."""
-    diagnosis = _norm(dx.get("diagnosis_ar"))
-    recommendation = _norm(dx.get("recommendation_ar"))
-    observation = _norm(dx.get("observation_ar"))
-    family = _norm(dx.get("diagnostic_family"))
-    if not diagnosis:
-        return sections
+    """Stamp Home cards from persisted publications by family (no inventing)."""
+    by_family = {
+        str(p.get("diagnostic_family") or ""): p
+        for p in all_pubs
+        if isinstance(p, Mapping) and p.get("diagnosis_ar")
+    }
+    checkout = by_family.get("checkout_abandonment_after_shipping") or primary
+    interest = by_family.get("interest_without_purchase")
+    contact = by_family.get("contact_followup_blocked")
+    product_dx = checkout if _norm(checkout.get("diagnosis_ar")) else interest
+
     out: list[dict[str, Any]] = []
     for sec in sections:
         if not isinstance(sec, dict):
             continue
         sid = str(sec.get("id") or "")
-        # Primary causal / insufficiency insight owns decisions + product cards.
-        if sid in {"decisions", "situations", "observations"}:
-            if family == "contact_followup_blocked" and sid != "decisions":
-                out.append(sec)
-                continue
-            d = diagnosis
-            r = recommendation
-            if sid == "situations" and observation:
-                # Observation chip context stays in status; body is diagnosis.
-                pass
-            _stamp(sec, d, r)
+        if sid in {"decisions", "situations", "observations"} and isinstance(
+            product_dx, Mapping
+        ) and _norm(product_dx.get("diagnosis_ar")):
+            _stamp(
+                sec,
+                _norm(product_dx.get("diagnosis_ar")),
+                _norm(product_dx.get("recommendation_ar")),
+            )
             sec["diagnosis_language"] = "diagnostic_reasoning_v1"
-        elif sid == "health" and family == "contact_followup_blocked":
-            _stamp(sec, diagnosis, recommendation)
-            sec["diagnosis_language"] = "diagnostic_reasoning_v1"
-        elif sid == "communication" and family == "contact_followup_blocked":
-            _stamp(sec, diagnosis, recommendation)
+        elif sid in {"health", "communication"} and isinstance(contact, Mapping):
+            _stamp(
+                sec,
+                _norm(contact.get("diagnosis_ar")),
+                _norm(contact.get("recommendation_ar")),
+            )
             sec["diagnosis_language"] = "diagnostic_reasoning_v1"
         out.append(sec)
     return out
@@ -347,8 +351,16 @@ def apply_home_diagnosis_language_v1(
     src = summary if isinstance(summary, Mapping) else {}
     # Prefer persisted Diagnostic Reasoning publication — never invent causes.
     dx = src.get("diagnostic_publication_v1")
+    all_pubs = src.get("diagnostic_publications_v1")
+    pubs = (
+        [p for p in all_pubs if isinstance(p, Mapping)]
+        if isinstance(all_pubs, list)
+        else ([dx] if isinstance(dx, Mapping) else [])
+    )
     if isinstance(dx, Mapping) and _norm(dx.get("diagnosis_ar")):
-        return _apply_persisted_diagnostic_v1(sections, dx)
+        return _apply_persisted_diagnostics_v1(
+            sections, primary=dx, all_pubs=pubs or [dx]
+        )
 
     counts = _teaser_counts(summary)
     t = src.get("home_teaser_inputs_v1")

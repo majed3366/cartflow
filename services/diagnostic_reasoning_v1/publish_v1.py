@@ -44,12 +44,36 @@ def publish_diagnostic_for_merchant_v1(
 def pick_primary_diagnostic_publication_v1(
     publications: list[Mapping[str, Any]],
 ) -> Optional[dict[str, Any]]:
-    """Prefer supported causal diagnosis; else first honest insufficiency."""
+    """
+    Executive primary prefers product/checkout families over store ops.
+
+    Contact follow-up is real but must not erase the shipping-stage story
+    on Today's Decision / Featured Product.
+    """
+    from services.diagnostic_reasoning_v1.contract_v1 import (  # noqa: PLC0415
+        FAMILY_CHECKOUT_AFTER_SHIPPING,
+        FAMILY_CONTACT_FOLLOWUP_BLOCKED,
+        FAMILY_INTEREST_WITHOUT_PURCHASE,
+        FAMILY_PAYMENT_FRICTION,
+    )
+
     pubs = [dict(p) for p in publications if isinstance(p, Mapping)]
+    if not pubs:
+        return None
+    priority = (
+        FAMILY_CHECKOUT_AFTER_SHIPPING,
+        FAMILY_PAYMENT_FRICTION,
+        FAMILY_INTEREST_WITHOUT_PURCHASE,
+        FAMILY_CONTACT_FOLLOWUP_BLOCKED,
+    )
+    for family in priority:
+        for p in pubs:
+            if str(p.get("diagnostic_family") or "") == family:
+                return p
     for p in pubs:
         if p.get("diagnosis_status") == DIAGNOSIS_STATUS_SUPPORTED:
             return p
-    return pubs[0] if pubs else None
+    return pubs[0]
 
 
 __all__ = [
