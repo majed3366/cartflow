@@ -45,17 +45,18 @@ class HomePerfTimelineTests(unittest.TestCase):
 
 
 class StaleSnapshotCompositionTests(unittest.TestCase):
-    def test_degraded_transport_skips_passthrough_and_hits_orv(self) -> None:
-        """BEFORE root cause: TRANSPORT_DEGRADED with ready HES still ran ORV."""
+    def test_degraded_miss_no_longer_runs_orv_on_home(self) -> None:
+        """Prod-proven: snapshot/degraded Home must not run ORV (~3.3s)."""
         body = {
             "ok": True,
             "store_slug": "demo",
             "snapshot_degraded": True,
-            "snapshot_stale": True,
-            "home_executive_summary_v1": _ready_hes(),
+            "snapshot_reason": "no_snapshot",
+            "home_executive_summary_v1": {"ok": True, "sections": []},
             "diagnostic_publication_v1": {
                 "diagnosis_status": "insufficient_evidence",
                 "diagnosis_ar": "x",
+                "recommendation_ar": "y",
             },
         }
         called = {"orv": 0}
@@ -72,12 +73,16 @@ class StaleSnapshotCompositionTests(unittest.TestCase):
                 "services.diagnostic_reasoning_v1.attach_diagnostic_publication_from_snapshots_v1",
                 side_effect=lambda s, store_slug="": s,
             ):
-                finalize_dashboard_summary_payload(
+                out = finalize_dashboard_summary_payload(
                     body,
                     summary_source=TRANSPORT_DEGRADED,
                     store_slug="demo",
                 )
-        self.assertGreaterEqual(called["orv"], 1)
+        self.assertEqual(called["orv"], 0)
+        self.assertEqual(
+            (out.get("home_executive_summary_v1") or {}).get("diagnostic_reasoning"),
+            "diagnostic_reasoning_v1",
+        )
 
     def test_snapshot_transport_passthrough_skips_orv(self) -> None:
         """AFTER path: TRANSPORT_SNAPSHOT + ready HES must not admit ORV."""

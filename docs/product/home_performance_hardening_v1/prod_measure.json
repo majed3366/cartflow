@@ -1,0 +1,678 @@
+{
+  "generated_at_utc": "2026-07-27T23:33:56.500634+00:00",
+  "foundation": "home_performance_hardening_v1",
+  "base": "https://smartreplyai.net",
+  "baseline_before_ms": {
+    "source": "evidence_expansion_v1/prod_smoke_after_merge.json",
+    "desktop_api_ms": 3327,
+    "mobile_api_ms": 3297,
+    "diagnostic_snapshot_read_ms": 13.8
+  },
+  "samples": [
+    {
+      "http": 200,
+      "api_ms": 3584,
+      "store_slug": "demo",
+      "diagnostic_snapshot_read_ms": "14.77",
+      "snapshot_stale": "False",
+      "snapshot_degraded": "True",
+      "snapshot_read_ms": "7.8",
+      "snapshot_route_ms": "3396.6",
+      "home_surface_mode": "executive_summary_v1",
+      "hes_diagnostic_reasoning": "diagnostic_reasoning_v1",
+      "has_evidence_gap_fields": false,
+      "timeline": {
+        "total_ms": 3397.62,
+        "top_stages": [
+          {
+            "stage": "serve_enforced_snapshot_response",
+            "start_ms": 0.078,
+            "end_ms": 3396.772,
+            "duration_ms": 3396.693,
+            "error": null,
+            "pct_of_total": 99.97
+          },
+          {
+            "stage": "finalize_dashboard_summary_payload#1",
+            "start_ms": 8.122,
+            "end_ms": 3396.699,
+            "duration_ms": 3388.577,
+            "error": null,
+            "pct_of_total": 99.73
+          },
+          {
+            "stage": "home_stage_orv_admit",
+            "start_ms": 22.226,
+            "end_ms": 3336.832,
+            "duration_ms": 3314.606,
+            "error": null,
+            "pct_of_total": 97.56
+          },
+          {
+            "stage": "home_stage_reality_validation_identity",
+            "start_ms": 3352.308,
+            "end_ms": 3379.793,
+            "duration_ms": 27.485,
+            "error": null,
+            "pct_of_total": 0.81
+          },
+          {
+            "stage": "home_stage_merchant_publication",
+            "start_ms": 3379.83,
+            "end_ms": 3396.247,
+            "duration_ms": 16.417,
+            "error": null,
+            "pct_of_total": 0.48
+          },
+          {
+            "stage": "home_stage_commerce_situations",
+            "start_ms": 3337.184,
+            "end_ms": 3352.277,
+            "duration_ms": 15.093,
+            "error": null,
+            "pct_of_total": 0.44
+          },
+          {
+            "stage": "home_stage_diagnostic_snapshot_read",
+            "start_ms": 8.177,
+            "end_ms": 22.2,
+            "duration_ms": 14.023,
+            "error": null,
+            "pct_of_total": 0.41
+          },
+          {
+            "stage": "snapshot_read_payload",
+            "start_ms": 0.1,
+            "end_ms": 8.103,
+            "duration_ms": 8.004,
+            "error": null,
+            "pct_of_total": 0.24
+          },
+          {
+            "stage": "preflight_utf8_json_payload",
+            "start_ms": 3397.05,
+            "end_ms": 3397.394,
+            "duration_ms": 0.345,
+            "error": null,
+            "pct_of_total": 0.01
+          },
+          {
+            "stage": "home_stage_hes_attach",
+            "start_ms": 3396.369,
+            "end_ms": 3396.644,
+            "duration_ms": 0.275,
+            "error": null,
+            "pct_of_total": 0.01
+          }
+        ],
+        "notes": [
+          "home_summary_snapshot",
+          "finalize#1 source=degraded has_persisted_row=False stale=False degraded_flag=True hes_sections=False reason=no_snapshot",
+          "exit=observation_admission_bridge source=degraded (HES passthrough missed)",
+          "finalize#2 skip=True stale=False degraded=True",
+          "json_chars=32630 json_utf8_bytes=38917"
+        ],
+        "stage_count": 18
+      },
+      "label": "desktop_cold",
+      "wall_ms": 3706.3
+    },
+    {
+      "http": 200,
+      "api_ms": 3449,
+      "store_slug": "demo",
+      "diagnostic_snapshot_read_ms": "14.32",
+      "snapshot_stale": "False",
+      "snapshot_degraded": "True",
+      "snapshot_read_ms": "7.3",
+      "snapshot_route_ms": "3282.1",
+      "home_surface_mode": "executive_summary_v1",
+      "hes_diagnostic_reasoning": "diagnostic_reasoning_v1",
+      "has_evidence_gap_fields": false,
+      "timeline": {
+        "total_ms": 3283.457,
+        "top_stages": [
+          {
+            "stage": "serve_enforced_snapshot_response",
+            "start_ms": 0.056,
+            "end_ms": 3282.262,
+            "duration_ms": 3282.206,
+            "error": null,
+            "pct_of_total": 99.96
+          },
+          {
+            "stage": "finalize_dashboard_summary_payload#1",
+            "start_ms": 7.584,
+            "end_ms": 3282.196,
+            "duration_ms": 3274.612,
+            "error": null,
+            "pct_of_total": 99.73
+          },
+          {
+            "stage": "home_stage_orv_admit",
+            "start_ms": 22.145,
+            "end_ms": 3224.082,
+            "duration_ms": 3201.937,
+            "error": null,
+            "pct_of_total": 97.52
+          },
+          {
+            "stage": "home_stage_reality_validation_identity",
+            "start_ms": 3238.499,
+            "end_ms": 3266.163,
+            "duration_ms": 27.664,
+            "error": null,
+            "pct_of_total": 0.84
+          },
+          {
+            "stage": "home_stage_merchant_publication",
+            "start_ms": 3266.201,
+            "end_ms": 3281.8,
+            "duration_ms": 15.599,
+            "error": null,
+            "pct_of_total": 0.48
+          },
+          {
+            "stage": "home_stage_diagnostic_snapshot_read",
+            "start_ms": 7.834,
+            "end_ms": 22.11,
+            "duration_ms": 14.276,
+            "error": null,
+            "pct_of_total": 0.43
+          },
+          {
+            "stage": "home_stage_commerce_situations",
+            "start_ms": 3224.444,
+            "end_ms": 3238.466,
+            "duration_ms": 14.021,
+            "error": null,
+            "pct_of_total": 0.43
+          },
+          {
+            "stage": "snapshot_read_payload",
+            "start_ms": 0.074,
+            "end_ms": 7.561,
+            "duration_ms": 7.487,
+            "error": null,
+            "pct_of_total": 0.23
+          },
+          {
+            "stage": "preflight_utf8_json_payload",
+            "start_ms": 3282.547,
+            "end_ms": 3283.142,
+            "duration_ms": 0.595,
+            "error": null,
+            "pct_of_total": 0.02
+          },
+          {
+            "stage": "json_serialize_measure",
+            "start_ms": 3283.152,
+            "end_ms": 3283.45,
+            "duration_ms": 0.298,
+            "error": null,
+            "pct_of_total": 0.01
+          }
+        ],
+        "notes": [
+          "home_summary_snapshot",
+          "finalize#1 source=degraded has_persisted_row=False stale=False degraded_flag=True hes_sections=False reason=no_snapshot",
+          "exit=observation_admission_bridge source=degraded (HES passthrough missed)",
+          "finalize#2 skip=True stale=False degraded=True",
+          "json_chars=32630 json_utf8_bytes=38917"
+        ],
+        "stage_count": 18
+      },
+      "label": "desktop_warm",
+      "wall_ms": 3464.5
+    },
+    {
+      "http": 200,
+      "api_ms": 3466,
+      "store_slug": "demo",
+      "diagnostic_snapshot_read_ms": "14.55",
+      "snapshot_stale": "False",
+      "snapshot_degraded": "True",
+      "snapshot_read_ms": "8.0",
+      "snapshot_route_ms": "3298.7",
+      "home_surface_mode": "executive_summary_v1",
+      "hes_diagnostic_reasoning": "diagnostic_reasoning_v1",
+      "has_evidence_gap_fields": false,
+      "timeline": {
+        "total_ms": 3300.162,
+        "top_stages": [
+          {
+            "stage": "serve_enforced_snapshot_response",
+            "start_ms": 0.067,
+            "end_ms": 3298.891,
+            "duration_ms": 3298.824,
+            "error": null,
+            "pct_of_total": 99.96
+          },
+          {
+            "stage": "finalize_dashboard_summary_payload#1",
+            "start_ms": 8.25,
+            "end_ms": 3298.826,
+            "duration_ms": 3290.576,
+            "error": null,
+            "pct_of_total": 99.71
+          },
+          {
+            "stage": "home_stage_orv_admit",
+            "start_ms": 26.362,
+            "end_ms": 3241.185,
+            "duration_ms": 3214.822,
+            "error": null,
+            "pct_of_total": 97.41
+          },
+          {
+            "stage": "home_stage_reality_validation_identity",
+            "start_ms": 3255.596,
+            "end_ms": 3282.571,
+            "duration_ms": 26.975,
+            "error": null,
+            "pct_of_total": 0.82
+          },
+          {
+            "stage": "home_stage_diagnostic_snapshot_read",
+            "start_ms": 8.311,
+            "end_ms": 26.326,
+            "duration_ms": 18.015,
+            "error": null,
+            "pct_of_total": 0.55
+          },
+          {
+            "stage": "home_stage_merchant_publication",
+            "start_ms": 3282.598,
+            "end_ms": 3298.413,
+            "duration_ms": 15.815,
+            "error": null,
+            "pct_of_total": 0.48
+          },
+          {
+            "stage": "home_stage_commerce_situations",
+            "start_ms": 3241.721,
+            "end_ms": 3255.576,
+            "duration_ms": 13.855,
+            "error": null,
+            "pct_of_total": 0.42
+          },
+          {
+            "stage": "snapshot_read_payload",
+            "start_ms": 0.091,
+            "end_ms": 8.232,
+            "duration_ms": 8.141,
+            "error": null,
+            "pct_of_total": 0.25
+          },
+          {
+            "stage": "preflight_utf8_json_payload",
+            "start_ms": 3299.204,
+            "end_ms": 3299.833,
+            "duration_ms": 0.629,
+            "error": null,
+            "pct_of_total": 0.02
+          },
+          {
+            "stage": "home_stage_business_facts",
+            "start_ms": 3241.213,
+            "end_ms": 3241.576,
+            "duration_ms": 0.362,
+            "error": null,
+            "pct_of_total": 0.01
+          }
+        ],
+        "notes": [
+          "home_summary_snapshot",
+          "finalize#1 source=degraded has_persisted_row=False stale=False degraded_flag=True hes_sections=False reason=no_snapshot",
+          "exit=observation_admission_bridge source=degraded (HES passthrough missed)",
+          "finalize#2 skip=True stale=False degraded=True",
+          "json_chars=32630 json_utf8_bytes=38917"
+        ],
+        "stage_count": 18
+      },
+      "label": "desktop_repeat",
+      "wall_ms": 3483.9
+    },
+    {
+      "http": 200,
+      "api_ms": 3952,
+      "store_slug": "demo",
+      "diagnostic_snapshot_read_ms": "14.32",
+      "snapshot_stale": "False",
+      "snapshot_degraded": "True",
+      "snapshot_read_ms": "8.0",
+      "snapshot_route_ms": "3572.7",
+      "home_surface_mode": "executive_summary_v1",
+      "hes_diagnostic_reasoning": "diagnostic_reasoning_v1",
+      "has_evidence_gap_fields": false,
+      "timeline": {
+        "total_ms": 3573.794,
+        "top_stages": [
+          {
+            "stage": "serve_enforced_snapshot_response",
+            "start_ms": 0.058,
+            "end_ms": 3572.871,
+            "duration_ms": 3572.814,
+            "error": null,
+            "pct_of_total": 99.97
+          },
+          {
+            "stage": "finalize_dashboard_summary_payload#1",
+            "start_ms": 8.429,
+            "end_ms": 3572.781,
+            "duration_ms": 3564.352,
+            "error": null,
+            "pct_of_total": 99.74
+          },
+          {
+            "stage": "home_stage_orv_admit",
+            "start_ms": 26.883,
+            "end_ms": 3513.86,
+            "duration_ms": 3486.977,
+            "error": null,
+            "pct_of_total": 97.57
+          },
+          {
+            "stage": "home_stage_reality_validation_identity",
+            "start_ms": 3529.082,
+            "end_ms": 3556.632,
+            "duration_ms": 27.55,
+            "error": null,
+            "pct_of_total": 0.77
+          },
+          {
+            "stage": "home_stage_diagnostic_snapshot_read",
+            "start_ms": 8.546,
+            "end_ms": 26.858,
+            "duration_ms": 18.312,
+            "error": null,
+            "pct_of_total": 0.51
+          },
+          {
+            "stage": "home_stage_merchant_publication",
+            "start_ms": 3556.665,
+            "end_ms": 3572.414,
+            "duration_ms": 15.75,
+            "error": null,
+            "pct_of_total": 0.44
+          },
+          {
+            "stage": "home_stage_commerce_situations",
+            "start_ms": 3514.21,
+            "end_ms": 3529.052,
+            "duration_ms": 14.842,
+            "error": null,
+            "pct_of_total": 0.42
+          },
+          {
+            "stage": "snapshot_read_payload",
+            "start_ms": 0.078,
+            "end_ms": 8.394,
+            "duration_ms": 8.316,
+            "error": null,
+            "pct_of_total": 0.23
+          },
+          {
+            "stage": "json_serialize_measure",
+            "start_ms": 3573.475,
+            "end_ms": 3573.791,
+            "duration_ms": 0.316,
+            "error": null,
+            "pct_of_total": 0.01
+          },
+          {
+            "stage": "preflight_utf8_json_payload",
+            "start_ms": 3573.157,
+            "end_ms": 3573.472,
+            "duration_ms": 0.315,
+            "error": null,
+            "pct_of_total": 0.01
+          }
+        ],
+        "notes": [
+          "home_summary_snapshot",
+          "finalize#1 source=degraded has_persisted_row=False stale=False degraded_flag=True hes_sections=False reason=no_snapshot",
+          "exit=observation_admission_bridge source=degraded (HES passthrough missed)",
+          "finalize#2 skip=True stale=False degraded=True",
+          "json_chars=32630 json_utf8_bytes=38917"
+        ],
+        "stage_count": 18
+      },
+      "label": "mobile_cold",
+      "wall_ms": 4045.8
+    },
+    {
+      "http": 200,
+      "api_ms": 3545,
+      "store_slug": "demo",
+      "diagnostic_snapshot_read_ms": "14.59",
+      "snapshot_stale": "False",
+      "snapshot_degraded": "True",
+      "snapshot_read_ms": "8.2",
+      "snapshot_route_ms": "3376.7",
+      "home_surface_mode": "executive_summary_v1",
+      "hes_diagnostic_reasoning": "diagnostic_reasoning_v1",
+      "has_evidence_gap_fields": false,
+      "timeline": {
+        "total_ms": 3377.701,
+        "top_stages": [
+          {
+            "stage": "serve_enforced_snapshot_response",
+            "start_ms": 0.067,
+            "end_ms": 3376.819,
+            "duration_ms": 3376.751,
+            "error": null,
+            "pct_of_total": 99.97
+          },
+          {
+            "stage": "finalize_dashboard_summary_payload#1",
+            "start_ms": 8.515,
+            "end_ms": 3376.735,
+            "duration_ms": 3368.22,
+            "error": null,
+            "pct_of_total": 99.72
+          },
+          {
+            "stage": "home_stage_orv_admit",
+            "start_ms": 24.561,
+            "end_ms": 3316.437,
+            "duration_ms": 3291.876,
+            "error": null,
+            "pct_of_total": 97.46
+          },
+          {
+            "stage": "home_stage_reality_validation_identity",
+            "start_ms": 3331.348,
+            "end_ms": 3360.375,
+            "duration_ms": 29.027,
+            "error": null,
+            "pct_of_total": 0.86
+          },
+          {
+            "stage": "home_stage_merchant_publication",
+            "start_ms": 3360.409,
+            "end_ms": 3376.352,
+            "duration_ms": 15.943,
+            "error": null,
+            "pct_of_total": 0.47
+          },
+          {
+            "stage": "home_stage_diagnostic_snapshot_read",
+            "start_ms": 8.578,
+            "end_ms": 24.277,
+            "duration_ms": 15.699,
+            "error": null,
+            "pct_of_total": 0.46
+          },
+          {
+            "stage": "home_stage_commerce_situations",
+            "start_ms": 3316.802,
+            "end_ms": 3331.316,
+            "duration_ms": 14.514,
+            "error": null,
+            "pct_of_total": 0.43
+          },
+          {
+            "stage": "snapshot_read_payload",
+            "start_ms": 0.094,
+            "end_ms": 8.479,
+            "duration_ms": 8.385,
+            "error": null,
+            "pct_of_total": 0.25
+          },
+          {
+            "stage": "preflight_utf8_json_payload",
+            "start_ms": 3377.114,
+            "end_ms": 3377.481,
+            "duration_ms": 0.367,
+            "error": null,
+            "pct_of_total": 0.01
+          },
+          {
+            "stage": "sanitize_dashboard_summary_payload",
+            "start_ms": 3376.837,
+            "end_ms": 3377.105,
+            "duration_ms": 0.268,
+            "error": null,
+            "pct_of_total": 0.01
+          }
+        ],
+        "notes": [
+          "home_summary_snapshot",
+          "finalize#1 source=degraded has_persisted_row=False stale=False degraded_flag=True hes_sections=False reason=no_snapshot",
+          "exit=observation_admission_bridge source=degraded (HES passthrough missed)",
+          "finalize#2 skip=True stale=False degraded=True",
+          "json_chars=32630 json_utf8_bytes=38917"
+        ],
+        "stage_count": 18
+      },
+      "label": "mobile_warm",
+      "wall_ms": 3569.4
+    },
+    {
+      "http": 200,
+      "api_ms": 3579,
+      "store_slug": "demo",
+      "diagnostic_snapshot_read_ms": "14.61",
+      "snapshot_stale": "False",
+      "snapshot_degraded": "True",
+      "snapshot_read_ms": "8.2",
+      "snapshot_route_ms": "3398.3",
+      "home_surface_mode": "executive_summary_v1",
+      "hes_diagnostic_reasoning": "diagnostic_reasoning_v1",
+      "has_evidence_gap_fields": false,
+      "timeline": {
+        "total_ms": 3399.375,
+        "top_stages": [
+          {
+            "stage": "serve_enforced_snapshot_response",
+            "start_ms": 0.062,
+            "end_ms": 3398.478,
+            "duration_ms": 3398.415,
+            "error": null,
+            "pct_of_total": 99.97
+          },
+          {
+            "stage": "finalize_dashboard_summary_payload#1",
+            "start_ms": 8.438,
+            "end_ms": 3398.41,
+            "duration_ms": 3389.972,
+            "error": null,
+            "pct_of_total": 99.72
+          },
+          {
+            "stage": "home_stage_orv_admit",
+            "start_ms": 24.23,
+            "end_ms": 3339.191,
+            "duration_ms": 3314.961,
+            "error": null,
+            "pct_of_total": 97.52
+          },
+          {
+            "stage": "home_stage_reality_validation_identity",
+            "start_ms": 3354.084,
+            "end_ms": 3381.931,
+            "duration_ms": 27.847,
+            "error": null,
+            "pct_of_total": 0.82
+          },
+          {
+            "stage": "home_stage_merchant_publication",
+            "start_ms": 3381.971,
+            "end_ms": 3398.01,
+            "duration_ms": 16.039,
+            "error": null,
+            "pct_of_total": 0.47
+          },
+          {
+            "stage": "home_stage_diagnostic_snapshot_read",
+            "start_ms": 8.513,
+            "end_ms": 24.196,
+            "duration_ms": 15.682,
+            "error": null,
+            "pct_of_total": 0.46
+          },
+          {
+            "stage": "home_stage_commerce_situations",
+            "start_ms": 3339.611,
+            "end_ms": 3354.058,
+            "duration_ms": 14.447,
+            "error": null,
+            "pct_of_total": 0.42
+          },
+          {
+            "stage": "snapshot_read_payload",
+            "start_ms": 0.089,
+            "end_ms": 8.414,
+            "duration_ms": 8.325,
+            "error": null,
+            "pct_of_total": 0.24
+          },
+          {
+            "stage": "preflight_utf8_json_payload",
+            "start_ms": 3398.784,
+            "end_ms": 3399.139,
+            "duration_ms": 0.355,
+            "error": null,
+            "pct_of_total": 0.01
+          },
+          {
+            "stage": "sanitize_dashboard_summary_payload",
+            "start_ms": 3398.496,
+            "end_ms": 3398.782,
+            "duration_ms": 0.286,
+            "error": null,
+            "pct_of_total": 0.01
+          }
+        ],
+        "notes": [
+          "home_summary_snapshot",
+          "finalize#1 source=degraded has_persisted_row=False stale=False degraded_flag=True hes_sections=False reason=no_snapshot",
+          "exit=observation_admission_bridge source=degraded (HES passthrough missed)",
+          "finalize#2 skip=True stale=False degraded=True",
+          "json_chars=32630 json_utf8_bytes=38917"
+        ],
+        "stage_count": 18
+      },
+      "label": "mobile_repeat",
+      "wall_ms": 3610.2
+    }
+  ],
+  "review_session": {
+    "http": 200,
+    "ok": true,
+    "store_slug": "demo"
+  },
+  "summary": {
+    "api_ms_min": 3449,
+    "api_ms_max": 3952,
+    "api_ms_avg": 3595.8,
+    "timelines_present": 6
+  },
+  "checks": {
+    "home_perf_timeline_present": true,
+    "warm_faster_than_baseline_3_3s": false,
+    "no_evidence_gap_fields": true
+  },
+  "verdict": "FAIL_HOME_PERFORMANCE_HARDENING_V1"
+}
