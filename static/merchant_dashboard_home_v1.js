@@ -166,7 +166,7 @@
       '<div class="ma-ecc-skel__metrics">' +
       "<span></span><span></span><span></span><span></span>" +
       "</div>" +
-      '<p class="ma-ecc-whisper">نجهّز ملخص عملك اليومي…</p>' +
+      '<p class="ma-ecc-whisper">جاري تحميل الملخص…</p>' +
       "</div>"
     );
   }

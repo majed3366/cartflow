@@ -1,0 +1,146 @@
+{
+  "generated_at_utc": "2026-07-27T09:08:54.047106+00:00",
+  "environment": "production",
+  "base": "https://smartreplyai.net",
+  "constitution": "home_constitution_v2",
+  "scope": "home_only",
+  "review_session": {
+    "http": 200,
+    "ok": true,
+    "store_slug": "demo",
+    "email": "cf.living.store.review@smartreplyai.net",
+    "password_issued": true
+  },
+  "desktop": {
+    "http": 200,
+    "store_slug": "demo",
+    "home_surface_mode": "executive_summary_v1",
+    "constitution": "home_constitution_v2",
+    "title_ar": "ماذا يجب أن أعرف الآن عن متجري؟",
+    "eyebrow_ar": null,
+    "lede_ar": null,
+    "section_ids": [
+      "health",
+      "decisions",
+      "situations",
+      "communication"
+    ],
+    "sections": [
+      {
+        "id": "health",
+        "title_ar": "حالة المتجر",
+        "summary_ar": "المتجر يحتاج تدخلاً عاجلاً — متابعة العملاء مقيدة بسبب نقص معلومات التواصل.",
+        "status_ar": "يحتاج تدخلاً عاجلاً",
+        "has_count": false,
+        "view_details_href": "#communication",
+        "empty": true
+      },
+      {
+        "id": "decisions",
+        "title_ar": "أهم قرار اليوم",
+        "summary_ar": "راجع مسار التحويل لـ Nano 20W — رأس شحن سريع USB‑PD.",
+        "status_ar": null,
+        "has_count": false,
+        "view_details_href": "#workspace",
+        "empty": true
+      },
+      {
+        "id": "situations",
+        "title_ar": "أبرز المنتجات",
+        "summary_ar": "Nano 20W — رأس شحن سريع USB‑PD يحظى باهتمام واضح، لكن العملاء يترددون أو يعودون دون الشراء.",
+        "status_ar": "يتطلب متابعة",
+        "has_count": false,
+        "view_details_href": "#workspace",
+        "empty": true
+      },
+      {
+        "id": "communication",
+        "title_ar": "التواصل",
+        "summary_ar": "متابعة بعض العملاء مقيدة بسبب نقص معلومات التواصل.",
+        "status_ar": "يتطلب متابعة",
+        "has_count": false,
+        "view_details_href": "#communication",
+        "empty": true
+      }
+    ],
+    "page_purpose": "ماذا يجب أن أعرف الآن عن متجري؟",
+    "greeting_present": false,
+    "ui": {
+      "count_badges": 0,
+      "eyebrow_nodes": 0,
+      "lede_nodes": 0,
+      "ownership_footer": 0,
+      "situation_item_ctas": 0,
+      "section_view_details": 4,
+      "root_text": "حالة المتجر\nيحتاج تدخلاً عاجلاً\n\nالمتجر يحتاج تدخلاً عاجلاً — متابعة العملاء مقيدة بسبب نقص معلومات التواصل.\n\nعرض التفاصيل ←\n\nأهم قرار اليوم\n\nراجع مسار التحويل لـ Nano 20W — رأس شحن سريع USB‑PD.\n\nعرض التفاصيل ←\n\nأبرز المنتجات\nيتطلب متابعة\n\nNano 20W: اهتمام مرتفع دون شراء\n\nNano 20W — رأس شحن سريع USB‑PD يحظى باهتمام واضح، لكن العملاء يترددون أو يعودون دون الشراء.\n\nعرض التفاصيل ←\n\nالتواصل\nيتطلب متابعة\n\nمتابعة بعض العملاء مقيدة بسبب نقص معلومات التواصل.\n\nعرض التفاصيل ←"
+    },
+    "screenshot": "docs\\product\\home_constitution_v2\\prod_desktop_home.png"
+  },
+  "mobile": {
+    "http": 200,
+    "store_slug": "demo",
+    "home_surface_mode": "executive_summary_v1",
+    "constitution": "home_constitution_v2",
+    "title_ar": "ماذا يجب أن أعرف الآن عن متجري؟",
+    "eyebrow_ar": null,
+    "lede_ar": null,
+    "section_ids": [
+      "health",
+      "decisions",
+      "situations",
+      "communication"
+    ],
+    "sections": [
+      {
+        "id": "health",
+        "title_ar": "حالة المتجر",
+        "summary_ar": "المتجر يحتاج تدخلاً عاجلاً — متابعة العملاء مقيدة بسبب نقص معلومات التواصل.",
+        "status_ar": "يحتاج تدخلاً عاجلاً",
+        "has_count": false,
+        "view_details_href": "#communication",
+        "empty": true
+      },
+      {
+        "id": "decisions",
+        "title_ar": "أهم قرار اليوم",
+        "summary_ar": "راجع مسار التحويل لـ Nano 20W — رأس شحن سريع USB‑PD.",
+        "status_ar": null,
+        "has_count": false,
+        "view_details_href": "#workspace",
+        "empty": true
+      },
+      {
+        "id": "situations",
+        "title_ar": "أبرز المنتجات",
+        "summary_ar": "Nano 20W — رأس شحن سريع USB‑PD يحظى باهتمام واضح، لكن العملاء يترددون أو يعودون دون الشراء.",
+        "status_ar": "يتطلب متابعة",
+        "has_count": false,
+        "view_details_href": "#workspace",
+        "empty": true
+      },
+      {
+        "id": "communication",
+        "title_ar": "التواصل",
+        "summary_ar": "متابعة بعض العملاء مقيدة بسبب نقص معلومات التواصل.",
+        "status_ar": "يتطلب متابعة",
+        "has_count": false,
+        "view_details_href": "#communication",
+        "empty": true
+      }
+    ],
+    "page_purpose": "ماذا يجب أن أعرف الآن عن متجري؟",
+    "greeting_present": false,
+    "ui": {
+      "count_badges": 0,
+      "eyebrow_nodes": 0,
+      "lede_nodes": 0,
+      "ownership_footer": 0,
+      "situation_item_ctas": 0,
+      "section_view_details": 4,
+      "root_text": "حالة المتجر\nيحتاج تدخلاً عاجلاً\n\nالمتجر يحتاج تدخلاً عاجلاً — متابعة العملاء مقيدة بسبب نقص معلومات التواصل.\n\nعرض التفاصيل ←\n\nأهم قرار اليوم\n\nراجع مسار التحويل لـ Nano 20W — رأس شحن سريع USB‑PD.\n\nعرض التفاصيل ←\n\nأبرز المنتجات\nيتطلب متابعة\n\nNano 20W: اهتمام مرتفع دون شراء\n\nNano 20W — رأس شحن سريع USB‑PD يحظى باهتمام واضح، لكن العملاء يترددون أو يعودون دون الشراء.\n\nعرض التفاصيل ←\n\nالتواصل\nيتطلب متابعة\n\nمتابعة بعض العملاء مقيدة بسبب نقص معلومات التواصل.\n\nعرض التفاصيل ←"
+    },
+    "screenshot": "docs\\product\\home_constitution_v2\\prod_mobile_home.png"
+  },
+  "flags": [],
+  "verdict": "PASS_HOME_CONSTITUTION_V2"
+}
