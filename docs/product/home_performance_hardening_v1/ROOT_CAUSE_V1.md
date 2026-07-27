@@ -11,41 +11,31 @@ Living Store production smoke (2026-07-27, Evidence Expansion pack):
 
 Diagnostic read was never the bottleneck.
 
-## Root cause (proven in code + unit tests)
+## Root cause (production timeline — Living Store)
 
-`build_summary_from_snapshot` selected:
-
-```text
-source = TRANSPORT_DEGRADED if body.get("snapshot_degraded") else TRANSPORT_SNAPSHOT
-```
-
-`read_dashboard_snapshot_payload` sets `snapshot_degraded=True` whenever the row is **stale** (TTL expired), **while still returning the full persisted payload** (including pre-painted HES).
-
-`finalize_dashboard_summary_payload` allows HES passthrough only for `TRANSPORT_SNAPSHOT` / `TRANSPORT_CACHE`.
-
-Therefore:
+`?home_perf=1` on production after first fix attempt:
 
 ```text
-stale snapshot (common)
-  → TRANSPORT_DEGRADED
-  → HES passthrough skipped
-  → Observation Admission Bridge (ORV → facts → themes → situations → publication → HES)
-  → multi-second Home request
+finalize#1 source=degraded has_persisted_row=False
+reason=no_snapshot hes_sections=False
+exit=observation_admission_bridge
+home_stage_orv_admit ≈ 3314 ms (97.56% of total)
 ```
 
-Unit proof:
+Dominant bottleneck = **Observation Admission Bridge on the Home request** when
+`dashboard_snapshots` has **no summary row** for the resolved store.
 
-- `test_degraded_transport_skips_passthrough_and_hits_orv` — DEGRADED + ready HES still calls ORV
-- `test_snapshot_transport_passthrough_skips_orv` — SNAPSHOT + ready HES skips ORV
-- `test_persisted_row_selects_snapshot_source_even_when_stale` — composition source is SNAPSHOT when a persisted row exists
+Diagnostic snapshot read remained ~14 ms (not the bottleneck).
+
+Contributing factor (also fixed): stale rows previously forced `TRANSPORT_DEGRADED`,
+which skipped HES passthrough even when a persisted snapshot existed.
 
 ## Implementation
 
-1. **Composition transport** uses `TRANSPORT_SNAPSHOT` whenever a persisted snapshot row exists (`generated_at` or `version > 0`), even if stale/degraded freshness flags remain for UI.
-2. **Timeline instrumentation** (`?home_perf=1`) records every Home stage with duration + % of total.
-3. **Skip finalize#2** when finalize#1 already completed executive Home exit.
-
-Freshness flags (`snapshot_stale` / `snapshot_degraded`) are unchanged for merchant visibility — only composition path is fixed.
+1. **Never run ORV→facts→situations→publication on SNAPSHOT/CACHE/DEGRADED Home reads.** LIVE builder only.
+2. **DEGRADED + diagnostic publication** → `diagnostic_hes_only` (paint HES without ORV).
+3. **Persisted stale rows** still use SNAPSHOT composition when a row exists.
+4. **Timeline** via `?home_perf=1`; skip redundant finalize#2 when Home exit already done.
 
 ## What we did not do
 

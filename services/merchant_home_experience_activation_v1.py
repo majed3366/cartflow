@@ -364,7 +364,8 @@ def finalize_dashboard_summary_payload(
 
         hes_ready = body.get("home_executive_summary_v1")
         snapshot_hes_ready = (
-            summary_source in {TRANSPORT_SNAPSHOT, TRANSPORT_CACHE}
+            summary_source
+            in {TRANSPORT_SNAPSHOT, TRANSPORT_CACHE, TRANSPORT_DEGRADED}
             and isinstance(hes_ready, dict)
             and bool(hes_ready.get("sections"))
             and (
@@ -393,9 +394,11 @@ def finalize_dashboard_summary_payload(
             return body
 
         # Ready diagnostic snapshot without pre-painted HES — still no ORV recompose.
-        # Only on snapshot/cache Home reads — never short-circuit background LIVE compose.
+        # Includes DEGRADED (e.g. no_snapshot miss): paint HES from diagnostics only.
+        # Never short-circuit background LIVE compose.
         if (
-            summary_source in {TRANSPORT_SNAPSHOT, TRANSPORT_CACHE}
+            summary_source
+            in {TRANSPORT_SNAPSHOT, TRANSPORT_CACHE, TRANSPORT_DEGRADED}
             and _slug
             and isinstance(body.get("diagnostic_publication_v1"), dict)
         ):
@@ -426,8 +429,42 @@ def finalize_dashboard_summary_payload(
             strip_heavy_home_summary_payload_v1(body)
             return body
 
-        # Observation Admission Bridge — lightweight ORV only (no MEIF/Pulse).
-        # Required so Product Observations teaser can admit foundation-ready findings.
+        # Home Performance Hardening V1 (prod-proven):
+        # Snapshot/cache/degraded Home reads must NEVER run Observation Admission
+        # Bridge (ORV→facts→themes→situations→publication). That path was ~97% of
+        # Living Store latency when dashboard_snapshots missed (reason=no_snapshot).
+        # Background builder (TRANSPORT_LIVE) paints HES into snapshots off-path.
+        if summary_source in {
+            TRANSPORT_SNAPSHOT,
+            TRANSPORT_CACHE,
+            TRANSPORT_DEGRADED,
+        }:
+            try:
+                from services.home_performance_hardening_v1 import (  # noqa: PLC0415
+                    home_perf_note,
+                )
+
+                home_perf_note(
+                    f"exit=snapshot_path_no_orv source={summary_source} "
+                    f"reason={str(body.get('snapshot_reason') or '')[:64]}"
+                )
+            except Exception:  # noqa: BLE001
+                pass
+            with dashboard_summary_profile_span("home_stage_teaser_extract"):
+                body["home_teaser_inputs_v1"] = extract_home_teaser_inputs_v1(body)
+            try:
+                from services.home_executive_summary_v1 import (  # noqa: PLC0415
+                    attach_home_executive_summary_to_summary_v1,
+                )
+
+                with dashboard_summary_profile_span("home_stage_hes_attach"):
+                    attach_home_executive_summary_to_summary_v1(body)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("home_executive_summary_v1 attach: %s", exc)
+            strip_heavy_home_summary_payload_v1(body)
+            return body
+
+        # LIVE only (background snapshot builder) — Observation Admission Bridge.
         try:
             from services.observation_foundation_v1.merchant_findings_v1 import (  # noqa: PLC0415
                 attach_observation_reality_validation_to_summary_v1,
@@ -441,13 +478,12 @@ def finalize_dashboard_summary_payload(
 
                     home_perf_note(
                         f"exit=observation_admission_bridge source={summary_source} "
-                        f"(HES passthrough missed)"
+                        f"(LIVE builder path)"
                     )
                 except Exception:  # noqa: BLE001
                     pass
                 with dashboard_summary_profile_span("home_stage_orv_admit"):
                     attach_observation_reality_validation_to_summary_v1(body, _slug)
-                # Business Facts → Business Themes (canonical commercial truths).
                 try:
                     from services.business_facts_v1 import (  # noqa: PLC0415
                         attach_business_facts_to_summary_v1,
@@ -507,7 +543,6 @@ def finalize_dashboard_summary_payload(
             log.warning("observation_admission slim attach: %s", exc)
         with dashboard_summary_profile_span("home_stage_teaser_extract"):
             body["home_teaser_inputs_v1"] = extract_home_teaser_inputs_v1(body)
-        # Skip MEIF / ACF / Pulse attach — never load page-owned heavy payloads for Home.
         try:
             from services.home_executive_summary_v1 import (  # noqa: PLC0415
                 attach_home_executive_summary_to_summary_v1,
