@@ -1,7 +1,8 @@
 /**
- * Home Executive Summary — Home Constitution V2.
+ * Home Executive Summary — Home Constitution V2 + Diagnosis Language V1.
  * Merchant-safe: no identity diagnostics, no situation_id, no run stamps.
  * Question appears once in #pagePurpose — not duplicated here.
+ * Card body: Diagnosis → Recommendation (never Observation → Recommendation).
  */
 (function () {
   "use strict";
@@ -25,22 +26,30 @@
     }
   }
 
-  function renderSituationItems(items) {
-    if (!Array.isArray(items) || !items.length) return "";
-    var html = '<ul class="hes-situation-list" data-hes-situations="1">';
-    for (var i = 0; i < items.length; i++) {
-      var it = items[i] || {};
-      html +=
-        '<li class="hes-situation-card">' +
-        '<p class="hes-situation-card__title">' +
-        esc(it.title_ar || it.product_name_ar || "") +
-        "</p>" +
-        '<p class="hes-situation-card__statement">' +
-        esc(it.statement_ar || "") +
-        "</p></li>";
+  function renderDiagnosisBody(sec) {
+    var diagnosis = String(sec.diagnosis_ar || "").trim();
+    var recommendation = String(sec.recommendation_ar || "").trim();
+    if (diagnosis || recommendation) {
+      var html = "";
+      if (diagnosis) {
+        html +=
+          '<p class="hes-section__diagnosis" data-hes-diagnosis="1">' +
+          esc(diagnosis) +
+          "</p>";
+      }
+      if (recommendation) {
+        html +=
+          '<p class="hes-section__recommendation" data-hes-recommendation="1">' +
+          esc(recommendation) +
+          "</p>";
+      }
+      return html;
     }
-    html += "</ul>";
-    return html;
+    return (
+      '<p class="hes-section__summary" data-hes-summary="1">' +
+      esc(sec.summary_ar || "") +
+      "</p>"
+    );
   }
 
   function renderSection(sec) {
@@ -51,19 +60,14 @@
         esc(sec.status_ar) +
         "</span>"
       : "";
-    var body = "";
-    if (sec.id === "situations" && Array.isArray(sec.items) && sec.items.length) {
-      body = renderSituationItems(sec.items);
-    } else {
-      body =
-        '<p class="hes-section__summary" data-hes-summary="1">' +
-        esc(sec.summary_ar || "") +
-        "</p>";
-      if (sec.id === "carts" && sec.cart_level_action_ar && !sec.empty) {
+    var body = renderDiagnosisBody(sec);
+    if (sec.id === "carts" && sec.cart_level_action_ar && !sec.empty) {
+      // Cart ops note only when it is not a duplicate recommendation.
+      var note = String(sec.cart_level_action_ar || "").trim();
+      var rec = String(sec.recommendation_ar || "").trim();
+      if (note && note !== rec) {
         body +=
-          '<p class="hes-section__note">' +
-          esc(sec.cart_level_action_ar) +
-          "</p>";
+          '<p class="hes-section__note">' + esc(note) + "</p>";
       }
     }
     var dominant = sec.dominant || sec.id === "decisions" ? ' data-hes-dominant="1"' : "";
@@ -77,7 +81,7 @@
       (sec.executive_rank
         ? ' data-hes-rank="' + esc(String(sec.executive_rank)) + '"'
         : "") +
-      ">" +
+      ' data-diagnosis="home_diagnosis_language_v1">' +
       '<div class="hes-section__head">' +
       "<h3>" +
       esc(sec.title_ar || "") +
@@ -106,7 +110,7 @@
       ? String(pkg.lede_ar || "تعذّر تحميل الملخص — أعد المحاولة.")
       : "";
     var html =
-      '<section class="hes-surface" data-hes="1" data-hes-stabilization="1" data-executive-control="1" data-constitution="home_constitution_v2" aria-label="' +
+      '<section class="hes-surface" data-hes="1" data-hes-stabilization="1" data-executive-control="1" data-constitution="home_constitution_v2" data-diagnosis-language="home_diagnosis_language_v1" aria-label="' +
       esc(pkg.title_ar || HOME_QUESTION_AR) +
       '">';
     if (errLede && !sections.length) {

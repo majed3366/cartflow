@@ -5,8 +5,6 @@ from __future__ import annotations
 import unittest
 
 from services.home_executive_summary_v1.compose_v1 import (
-    DECISIONS_EMPTY_AR,
-    OBS_EMPTY_AR,
     SECTION_OWNERSHIP_HREF_V1,
     build_home_executive_summary_v1,
 )
@@ -27,12 +25,14 @@ class HomeExecutiveCompositionV1Tests(unittest.TestCase):
         health = next(s for s in hes["sections"] if s["id"] == "health")
         self.assertEqual(health["title_ar"], "حالة المتجر")
         self.assertNotEqual(health["title_ar"], "صحة العمل")
-        # Gate 2E — business condition language (not queue counters).
+        # Diagnosis Language V1 — calm store is evidence-backed, not a queue report.
         self.assertTrue(
-            "طبيعي" in health["summary_ar"]
-            or "مستقر" in health["summary_ar"]
-            or "يتحسّن" in health["summary_ar"]
+            "مستقر" in (health.get("status_ar") or "")
+            or "دون مشكلة تشغيلية" in health["summary_ar"]
+            or "بثقة كافية" in health["summary_ar"]
         )
+        self.assertTrue(health.get("diagnosis_ar"))
+        self.assertFalse(str(health["diagnosis_ar"]).startswith("راجع"))
         self.assertEqual(health["view_details_href"], "#workspace")
         self.assertNotIn("count", health)
 
@@ -60,19 +60,11 @@ class HomeExecutiveCompositionV1Tests(unittest.TestCase):
         carts = next(s for s in hes["sections"] if s["id"] == "carts")
         comm = next(s for s in hes["sections"] if s["id"] == "communication")
         health = next(s for s in hes["sections"] if s["id"] == "health")
-        # Gate 2X — store understanding (not queue-count reports).
-        self.assertTrue(
-            "سلال العملاء" in carts["summary_ar"]
-            or "قيد المتابعة مع العملاء" in carts["summary_ar"]
-            or "مقيدة حالياً" in carts["summary_ar"]
-        )
+        # Diagnosis Language V1 — cause + recommendation, not queue counts.
+        self.assertTrue(carts.get("diagnosis_ar"))
+        self.assertFalse(str(carts["diagnosis_ar"]).startswith("راجع"))
         self.assertFalse(str(carts["summary_ar"])[:1].isdigit())
-        self.assertTrue(
-            "تواصل العملاء" in comm["summary_ar"]
-            or "متابعة العملاء" in comm["summary_ar"]
-            or "متابعة بعض العملاء" in comm["summary_ar"]
-            or "معلومات التواصل" in comm["summary_ar"]
-        )
+        self.assertIn("رقم الهاتف", comm.get("diagnosis_ar") or "")
         self.assertNotIn("بلا رقم", carts["summary_ar"])
         self.assertNotIn("بلا رقم", comm["summary_ar"])
         self.assertNotEqual(health["summary_ar"], carts["summary_ar"])
@@ -88,9 +80,10 @@ class HomeExecutiveCompositionV1Tests(unittest.TestCase):
             environ={"CARTFLOW_HOME_EXECUTIVE_SUMMARY_V1": "1"},
         )
         dec = next(s for s in hes["sections"] if s["id"] == "decisions")
-        self.assertEqual(dec["summary_ar"], DECISIONS_EMPTY_AR)
+        self.assertIn("بثقة كافية", dec["diagnosis_ar"])
         self.assertTrue(dec["empty"])
         self.assertEqual(dec["view_details_href"], "#workspace")
+        self.assertFalse(str(dec["diagnosis_ar"]).startswith("راجع"))
 
     def test_decision_title_when_evidence_present(self) -> None:
         hes = build_home_executive_summary_v1(
@@ -111,7 +104,8 @@ class HomeExecutiveCompositionV1Tests(unittest.TestCase):
             environ={"CARTFLOW_HOME_EXECUTIVE_SUMMARY_V1": "1"},
         )
         dec = next(s for s in hes["sections"] if s["id"] == "decisions")
-        self.assertEqual(dec["summary_ar"], "راجع تكلفة الشحن.")
+        self.assertIn("شحن", dec["diagnosis_ar"])
+        self.assertFalse(str(dec["diagnosis_ar"]).startswith("راجع"))
         self.assertFalse(dec["empty"])
 
     def test_observation_constitutional_empty_omitted(self) -> None:
@@ -150,7 +144,8 @@ class HomeExecutiveCompositionV1Tests(unittest.TestCase):
             environ={"CARTFLOW_HOME_EXECUTIVE_SUMMARY_V1": "1"},
         )
         obs = next(s for s in hes["sections"] if s["id"] == "observations")
-        self.assertIn("زيت الورد", obs["summary_ar"])
+        self.assertTrue(obs.get("diagnosis_ar"))
+        self.assertIn("نية شراء", obs["diagnosis_ar"])
         self.assertNotIn("recommended_action", str(obs))
         self.assertEqual(obs["view_details_href"], "#workspace")
 

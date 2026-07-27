@@ -11,6 +11,9 @@ from __future__ import annotations
 import re
 from typing import Any, Mapping, Optional
 
+from services.home_executive_summary_v1.diagnosis_language_v1 import (
+    apply_home_diagnosis_language_v1,
+)
 from services.home_executive_summary_v1.editorial_exclusivity_v1 import (
     apply_editorial_exclusivity_v1,
     editorial_brief_audit_v1,
@@ -82,6 +85,7 @@ GOVERNANCE_V1 = {
     "merchant_understanding": True,
     "page_question": HOME_QUESTION_AR,
     "constitution": "home_constitution_v2",
+    "diagnosis_language": "home_diagnosis_language_v1",
     "executive_editorial_exclusivity": True,
     "morning_brief": True,
 }
@@ -186,8 +190,11 @@ def _health_view_details_href(
     if store_ok is False:
         return "#settings"
     text = summary_ar or ""
-    if "نقص معلومات التواصل" in text or (
-        no_phone > 0 and "مقيدة" in text
+    if (
+        "نقص معلومات التواصل" in text
+        or "معلومات تواصل" in text
+        or "رقم الهاتف" in text
+        or (no_phone > 0 and ("مقيدة" in text or "متابعة العملاء" in text))
     ):
         return "#communication"
     return SECTION_OWNERSHIP_HREF_V1["health"]
@@ -287,6 +294,7 @@ def _situations_portfolio_section(summary: Mapping[str, Any]) -> Optional[dict[s
             "product_name_ar": str(
                 i.get("product_name_ar") or i.get("subject_ar") or ""
             ).strip(),
+            "situation_kind": str(i.get("situation_kind") or "").strip(),
             "href": "#workspace",
         }
         for i in items
@@ -729,6 +737,24 @@ def build_home_executive_summary_v1(
         suppressions = list(sections[0].pop("_editorial_suppressions", []) or [])
     audit = editorial_brief_audit_v1(sections)
     audit["suppressions"] = suppressions
+    # Diagnosis Language V1 — Observation → Diagnosis → Recommendation.
+    sections = apply_home_diagnosis_language_v1(sections, summary=src)
+    # Re-resolve Health ownership after diagnosis rewrite (contact / settings).
+    health_t = _teasers(src).get("health")
+    health_t = health_t if isinstance(health_t, Mapping) else {}
+    for sec in sections:
+        if isinstance(sec, dict) and sec.get("id") == "health":
+            href = _health_view_details_href(
+                store_ok=health_t.get("store_connected"),
+                summary_ar=str(sec.get("summary_ar") or ""),
+                no_phone=_as_int(health_t.get("no_phone")),
+            )
+            sec["view_details_href"] = href
+            sec["owner_page"] = {
+                "#settings": "settings",
+                "#communication": "communication",
+                "#workspace": "decision_workspace",
+            }.get(href, "decision_workspace")
     sections = _paint_home_sections_v1(sections)
     return {
         "ok": True,
@@ -747,6 +773,7 @@ def build_home_executive_summary_v1(
         "slim_transport": home_slim_transport_v1_enabled(environ=environ),
         "ui": True,
         "constitution": "home_constitution_v2",
+        "diagnosis_language": "home_diagnosis_language_v1",
     }
 
 
