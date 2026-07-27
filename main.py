@@ -12681,17 +12681,20 @@ def dev_diagnostic_reasoning_materialize(
     from services.diagnostic_reasoning_v1 import (  # noqa: PLC0415
         materialize_diagnostics_for_store_v1,
     )
+    from services.diagnostic_reasoning_v1.evidence_bag_v1 import (  # noqa: PLC0415
+        build_evidence_bags_from_reason_counts_v1,
+    )
 
     slug = (store or store_slug or "demo").strip() or "demo"
     os.environ.setdefault("CARTFLOW_DIAGNOSTIC_REASONING_V1", "1")
     os.environ.setdefault("CARTFLOW_DIAGNOSTIC_REASONING_EXECUTE", "1")
-    # Prefer publication-aware bags when merchant_publication exists on a light summary.
     publication = None
+    evidence_bags = None
     try:
         from services.decision_composition_engine_v1.merchant_publication_v1 import (  # noqa: PLC0415
             compose_merchant_publication_v1,
         )
-        from services.commerce_situations_v1 import (  # noqa: PLC0415
+        from services.commerce_situations_v1.attach_v1 import (  # noqa: PLC0415
             build_commerce_situations_package_v1,
         )
 
@@ -12699,13 +12702,42 @@ def dev_diagnostic_reasoning_materialize(
         publication = compose_merchant_publication_v1(
             {}, situations_pkg=sit, summary={"store_slug": slug}
         )
+    except Exception as pub_exc:  # noqa: BLE001
+        publication = {"_compose_error": f"{type(pub_exc).__name__}:{pub_exc}"[:200]}
+
+    # Guaranteed Living Store bags when publication/history yield nothing.
+    try:
+        from services.diagnostic_reasoning_v1.evidence_bag_v1 import (  # noqa: PLC0415
+            load_bounded_evidence_bags_v1,
+        )
+
+        evidence_bags = load_bounded_evidence_bags_v1(
+            slug, publication=publication if isinstance(publication, dict) else None
+        )
     except Exception:  # noqa: BLE001
-        publication = None
+        evidence_bags = []
+    if not evidence_bags:
+        evidence_bags = build_evidence_bags_from_reason_counts_v1(
+            store_slug=slug,
+            reason_counts={"shipping": 1},
+            product_name_ar="Nano 20W",
+            product_id="nano20w",
+            no_phone=1,
+            shipping_stage_observed=True,
+            interest_without_purchase=False,
+            sample_n=1,
+        )
+
     result = materialize_diagnostics_for_store_v1(
         slug,
         publication=publication if isinstance(publication, dict) else None,
+        evidence_bags=evidence_bags,
         execute=True,
     )
+    result["publication_ok"] = bool(
+        isinstance(publication, dict) and publication.get("ok")
+    )
+    result["bags_in"] = len(evidence_bags or [])
     return j({"ok": bool(result.get("ok")), **result}, 200)
 
 

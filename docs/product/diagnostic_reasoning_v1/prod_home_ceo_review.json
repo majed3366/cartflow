@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-07-27T17:37:33.997641+00:00",
+  "generated_at_utc": "2026-07-27T17:52:00.774621+00:00",
   "environment": "production",
   "base": "https://smartreplyai.net",
   "foundation": "diagnostic_reasoning_v1",
@@ -12,9 +12,9 @@
   },
   "desktop": {
     "http": 200,
-    "api_ms": 7169,
+    "api_ms": 6521,
     "store_slug": "demo",
-    "diagnostic_snapshot_read_ms": "12.72",
+    "diagnostic_snapshot_read_ms": "12.98",
     "diagnostic_publication": {
       "diagnosis_ar": null,
       "recommendation_ar": null,
@@ -47,14 +47,14 @@
       }
     ],
     "root_text": "حالة المتجر\nيحتاج تدخلاً عاجلاً\n\nالأدلة تشير إلى أن متابعة العملاء مقيدة لأن كثيراً من السلال لا تحتوي معلومات تواصل قابلة للاستخدام.\n\nراجع التواصل.\n\nعرض التفاصيل ←\n\nأهم قرار اليوم\n\nيغادر العملاء بعد خطوة الشحن، لكن الأدلة الحالية لا تكفي لتحديد ما إذا كان السبب تكلفة الشحن أو مدة التوصيل أو خيارات الشحن المتاحة.\n\nواصل جمع الأدلة.\n\nعرض التفاصيل ←\n\nأبرز المنتجات\nيتطلب متابعة\n\nيغادر العملاء بعد خطوة الشحن، لكن الأدلة الحالية لا تكفي لتحديد ما إذا كان السبب تكلفة الشحن أو مدة التوصيل أو خيارات الشحن المتاحة.\n\nواصل جمع الأدلة.\n\nعرض التفاصيل ←\n\nالتواصل\nيتطلب متابعة\n\nلا يمكن التواصل مع بعض العملاء لأن رقم الهاتف غير متاح.\n\nراجع التواصل.\n\nعرض التفاصيل ←",
-    "nav_ms": 76504.7,
+    "nav_ms": 64381.7,
     "screenshot": "docs\\product\\diagnostic_reasoning_v1\\prod_desktop_home.png"
   },
   "mobile": {
     "http": 200,
-    "api_ms": 7420,
+    "api_ms": 7219,
     "store_slug": "demo",
-    "diagnostic_snapshot_read_ms": "13.81",
+    "diagnostic_snapshot_read_ms": "14.71",
     "diagnostic_publication": {
       "diagnosis_ar": null,
       "recommendation_ar": null,
@@ -87,15 +87,15 @@
       }
     ],
     "root_text": "حالة المتجر\nيحتاج تدخلاً عاجلاً\n\nالأدلة تشير إلى أن متابعة العملاء مقيدة لأن كثيراً من السلال لا تحتوي معلومات تواصل قابلة للاستخدام.\n\nراجع التواصل.\n\nعرض التفاصيل ←\n\nأهم قرار اليوم\n\nيغادر العملاء بعد خطوة الشحن، لكن الأدلة الحالية لا تكفي لتحديد ما إذا كان السبب تكلفة الشحن أو مدة التوصيل أو خيارات الشحن المتاحة.\n\nواصل جمع الأدلة.\n\nعرض التفاصيل ←\n\nأبرز المنتجات\nيتطلب متابعة\n\nيغادر العملاء بعد خطوة الشحن، لكن الأدلة الحالية لا تكفي لتحديد ما إذا كان السبب تكلفة الشحن أو مدة التوصيل أو خيارات الشحن المتاحة.\n\nواصل جمع الأدلة.\n\nعرض التفاصيل ←\n\nالتواصل\nيتطلب متابعة\n\nلا يمكن التواصل مع بعض العملاء لأن رقم الهاتف غير متاح.\n\nراجع التواصل.\n\nعرض التفاصيل ←",
-    "nav_ms": 12637.0,
+    "nav_ms": 11430.4,
     "screenshot": "docs\\product\\diagnostic_reasoning_v1\\prod_mobile_home.png"
   },
   "flags": [],
   "latency": {
-    "desktop_api_ms": 7169,
-    "mobile_api_ms": 7420,
-    "desktop_diagnostic_read_ms": "12.72",
-    "mobile_diagnostic_read_ms": "13.81"
+    "desktop_api_ms": 6521,
+    "mobile_api_ms": 7219,
+    "desktop_diagnostic_read_ms": "12.98",
+    "mobile_diagnostic_read_ms": "14.71"
   },
   "verdict": "PASS_DIAGNOSTIC_REASONING_V1"
 }
