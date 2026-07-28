@@ -544,6 +544,18 @@ body[data-ma-page="workspace"] .ma-content-root {
 #page-workspace .cw-ops--operational .cw-card__field-value--commitment {
   font-weight: 650;
 }
+#page-workspace .cw-card__story-observation {
+  margin: 0.35rem 0 0.55rem;
+  display: block;
+}
+#page-workspace .cw-card__story-decision {
+  margin: 0.15rem 0 0.5rem;
+  display: block;
+  font-weight: 650;
+}
+#page-workspace .cw-ops--storytelling .cw-card__field-label {
+  display: none;
+}
 #page-products .cs-continuity {
   margin: 0 0 0.85rem;
   color: var(--v2-ink-whisper, #8b95a8);

@@ -1,6 +1,6 @@
 /**
- * Cart Workspace Decision Card — Operational Language V1.
- * Face: Observation → Meaning → Guidance → Execution (when ready).
+ * Cart Workspace Decision Card — Decision Storytelling face (DIF V1).
+ * Face: Priority → Observation → Decision → Action (READY only).
  */
 (function (global) {
   "use strict";
@@ -152,52 +152,39 @@
 
   function constitutionFaceHtml(card) {
     var isPrimary = !!card.is_primary_decision;
-    var compact = !isPrimary || card.face_mode === "next_compact";
-    var identityLabel = String(
-      card.card_identity_label_ar || card.priority_rank_label_ar || ""
-    ).trim();
-    if (!identityLabel) {
-      identityLabel = isPrimary ? "ملاحظة" : "توجيه";
+    var rankLabel = String(card.priority_rank_label_ar || "").trim();
+    if (!rankLabel) {
+      rankLabel = isPrimary ? "الأولوية الأولى" : "بعدها";
     }
 
     var observation = String(
       card.observation_ar ||
         card.diagnosis_ar ||
         card.business_meaning_ar ||
-        card.decision_ar ||
-        card.title_ar ||
         ""
-    );
-    var meaning = String(
-      card.operational_meaning_ar ||
-        card.why_believe_ar ||
-        card.reasoning_ar ||
-        ""
-    );
-    if (meaning && observation && meaning === observation) {
-      meaning = "";
-    }
-    var guidance = String(
-      card.operational_guidance_ar ||
+    ).trim();
+    var decision = String(
+      card.decision_sentence_ar ||
+        card.operational_guidance_ar ||
         card.commitment_ar ||
         ""
-    );
-    var priority = String(card.priority_reason_ar || "").trim();
-    var continues = String(card.cartflow_continues_ar || "").trim();
-    var execReady =
-      card.execution_available === true ||
-      String(card.execution_readiness || "") === "READY" ||
-      String(card.execution_readiness || "") === "EXTERNAL_DEPENDENCY";
-    var whatExec = String(
-      card.execution_what_ar || (execReady ? guidance : "") || ""
     ).trim();
-    var whereExec = String(card.execution_where_ar || "").trim();
-    var howExec = String(card.execution_how_ar || "").trim();
-    var expected = String(card.expected_outcome_ar || "").trim();
+    var priority = String(card.priority_reason_ar || "").trim();
+    var actionReady =
+      card.execution_available === true ||
+      String(card.execution_readiness || "") === "READY";
     var href2 = String(card.view_details_href || "").trim();
     var detailsLabel = String(card.view_details_ar || "").trim();
     var execDomain = String(card.execution_domain || "").trim();
-    var identity = String(card.card_identity || "").trim();
+
+    // Never paint engine crumbs
+    if (/^cs:/i.test(observation) || /diagnostic:/i.test(observation)) {
+      observation = observation
+        .replace(/\bcs:[A-Za-z0-9_\-:.]+/gi, "")
+        .replace(/\bdiagnostic:[A-Za-z0-9_\-:.]+/gi, "")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+    }
 
     var rows = [];
     rows.push(
@@ -205,79 +192,47 @@
         (isPrimary ? " cw-card__rank--primary" : " cw-card__rank--next") +
         '" data-exec-domain="' +
         esc(execDomain) +
-        '" data-card-identity="' +
-        esc(identity) +
-        '" data-operational-language="1">' +
-        esc(identityLabel) +
+        '" data-storytelling-face="1">' +
+        esc(rankLabel) +
         "</p>"
     );
 
+    // 1. Priority (Primary) — no report headings
     if (isPrimary && priority) {
       rows.push(
-        '<p class="cw-card__priority" data-priority-context="1">' +
+        '<p class="cw-card__priority" data-story-beat="priority">' +
           esc(priority) +
           "</p>"
       );
     }
 
-    if (compact && !isPrimary) {
+    // 2. Observation — plain story line (never label "ملاحظة")
+    if (observation) {
       rows.push(
-        fieldRow("الملاحظة", observation, "cw-card__field-value--decision")
+        '<p class="cw-card__field-value cw-card__field-value--decision cw-card__story-observation" data-story-beat="observation">' +
+          esc(observation) +
+          "</p>"
       );
-      rows.push(
-        fieldRow("التوجيه", guidance, "cw-card__field-value--commitment")
-      );
-    } else {
-      // Operational Language — Observation first, never action first.
-      rows.push(
-        fieldRow("الملاحظة", observation, "cw-card__field-value--decision")
-      );
-      if (meaning) {
-        rows.push(fieldRow("المعنى التشغيلي", meaning));
-      }
-      rows.push(
-        fieldRow("التوجيه", guidance, "cw-card__field-value--commitment")
-      );
-
-      if (execReady) {
-        rows.push('<div class="cw-card__exec-block" data-execution="1">');
-        rows.push(
-          '<p class="cw-card__exec-title">التنفيذ</p>'
-        );
-        if (whatExec) {
-          rows.push(fieldRow("ماذا", whatExec));
-        }
-        if (whereExec) {
-          rows.push(fieldRow("أين", whereExec));
-        }
-        if (howExec) {
-          rows.push(fieldRow("كيف", howExec));
-        }
-        if (expected) {
-          rows.push(fieldRow("النتيجة المتوقعة", expected));
-        }
-        rows.push("</div>");
-      } else if (continues) {
-        rows.push(
-          fieldRow("ما يواصل CartFlow فعله", continues)
-        );
-      }
     }
 
+    // 3. Decision — one sentence (never "المعنى التشغيلي" / "التوجيه")
+    if (decision) {
+      rows.push(
+        '<p class="cw-card__field-value cw-card__field-value--commitment cw-card__story-decision" data-story-beat="decision">' +
+          esc(decision) +
+          "</p>"
+      );
+    }
+
+    // 4. Action — READY only; otherwise nothing
     var dest = "";
-    // WP7 — no artificial CTA when execution is not ready.
-    if (execReady && href2) {
+    if (actionReady && href2) {
       dest =
-        '<p class="cw-card__dest"><a class="cw-card__dest-link cw-card__commit-link" href="' +
+        '<p class="cw-card__dest" data-story-beat="action"><a class="cw-card__dest-link cw-card__commit-link" href="' +
         esc(href2) +
         '">' +
-        esc(detailsLabel || "افتح للتنفيذ") +
+        esc(detailsLabel || "ابدأ") +
         "</a></p>";
-    } else if (execReady && detailsLabel && !href2) {
-      dest =
-        '<p class="cw-card__dest cw-card__dest--note">' +
-        esc(detailsLabel) +
-        "</p>";
     }
 
     return rows.join("") + dest;
@@ -353,10 +308,10 @@
 
     if (mode === "quiet") {
       return (
-        '<article class="cw-card cw-card--quiet" data-cw-quiet="1" data-band="no_decision_supported" data-operational-language="1">' +
-        '<p class="cw-card__band cw-card__band--none">لا إجراء مطلوب الآن</p>' +
+        '<article class="cw-card cw-card--quiet" data-cw-quiet="1" data-band="no_decision_supported" data-storytelling-face="1">' +
+        '<p class="cw-card__band cw-card__band--none">راقب</p>' +
         '<div class="cw-card__head">' +
-        '<h3 class="cw-card__title">لا توجد ملاحظة تشغيلية تحتاج انتباهك الآن.</h3></div>' +
+        '<h3 class="cw-card__title">لا يوجد قرار يحتاج انتباهك الآن.</h3></div>' +
         "</article>"
       );
     }
@@ -411,7 +366,7 @@
         esc(card.decision_status || "") +
         '" data-constitution="1"' +
         ' data-dw-v2="1"' +
-        ' data-operational-language="1"' +
+        ' data-storytelling-face="1"' +
         primaryAttr +
         (sitAttr ? ' data-commerce-situation="1"' : "") +
         ">" +
