@@ -112,14 +112,43 @@
     setStatus("");
   }
 
+  function workspacePerfWanted() {
+    try {
+      return /(?:\?|&)workspace_perf=1\b/.test(String(location.search || ""));
+    } catch (e) {
+      return false;
+    }
+  }
+
   function fetchProjection() {
-    return fetch("/api/cart-workspace/v1/projection", {
+    var url = "/api/cart-workspace/v1/projection";
+    if (workspacePerfWanted()) url += "?workspace_perf=1";
+    var t0 =
+      typeof performance !== "undefined" && performance.now
+        ? performance.now()
+        : Date.now();
+    return fetch(url, {
       credentials: "same-origin",
       headers: { Accept: "application/json" },
     }).then(function (r) {
       return r.json().then(function (data) {
         if (!r.ok || !data.ok) {
           throw new Error((data && data.error) || "projection_failed");
+        }
+        var t1 =
+          typeof performance !== "undefined" && performance.now
+            ? performance.now()
+            : Date.now();
+        if (workspacePerfWanted()) {
+          try {
+            global.__CW_WORKSPACE_PERF_V1 = {
+              client_fetch_ms: Math.round(t1 - t0),
+              server: data._workspace_perf_timeline_v1 || null,
+              cache_hit: !!data.workspace_paint_cache_hit,
+            };
+          } catch (e2) {
+            /* ignore */
+          }
         }
         return data.projection;
       });
@@ -128,12 +157,25 @@
 
   function load() {
     setStatus("");
+    var paintT0 =
+      typeof performance !== "undefined" && performance.now
+        ? performance.now()
+        : Date.now();
     return fetchProjection()
       .then(function (proj) {
         if (global.CartWorkspaceRenderControllerV1) {
           global.CartWorkspaceRenderControllerV1.resetForTests();
         }
         paint(proj || { zone_a: [], zone_b: [], quiet: true });
+        if (workspacePerfWanted() && global.__CW_WORKSPACE_PERF_V1) {
+          var paintT1 =
+            typeof performance !== "undefined" && performance.now
+              ? performance.now()
+              : Date.now();
+          global.__CW_WORKSPACE_PERF_V1.client_paint_ms = Math.round(
+            paintT1 - paintT0
+          );
+        }
       })
       .catch(function (err) {
         /* Reality Validation: never hard-fail Workspace — paint quiet + retry. */

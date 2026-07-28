@@ -151,8 +151,8 @@
   }
 
   function constitutionFaceHtml(card) {
-    var ex = explanationOf(card);
     var isPrimary = !!card.is_primary_decision;
+    var compact = !isPrimary || card.face_mode === "next_compact";
     var primaryLabel = String(card.priority_rank_label_ar || "").trim();
     if (isPrimary) {
       primaryLabel = primaryLabel || "القرار الذي تلتزم به الآن";
@@ -165,46 +165,36 @@
         card.business_meaning_ar ||
         card.decision_ar ||
         card.title_ar ||
-        "هناك موقف تجاري يحتاج قرارك الآن."
+        "هناك موقف تجاري يحتاج قراراً الآن."
     );
-    var reasoning = String(
-      card.reasoning_ar || card.why_ar || ex.why_here || ""
+    var why = String(
+      card.why_believe_ar || card.reasoning_ar || card.why_ar || ""
     );
-    if (!reasoning) {
-      reasoning = "CartFlow يرى هذا الموقف بناءً على ملاحظات المتجر الحالية.";
+    if (!why) {
+      why = "هذا الاستنتاج مبني على ملاحظات المتجر الحالية.";
     }
-    var evidence = String(card.evidence_summary || "");
-    if (
-      !evidence &&
-      Array.isArray(card.supporting_facts_ar) &&
-      card.supporting_facts_ar.length
-    ) {
-      evidence = card.supporting_facts_ar.slice(0, 5).join(" · ");
-    }
-    if (!evidence) {
-      evidence = INSUFFICIENT_EVIDENCE_AR;
-    }
+    var confidence = String(
+      card.confidence_ar || "الثقة الحالية تُقيَّم من أدلة CartFlow."
+    );
     var consequence = String(
       card.business_consequence_ar ||
         card.ignore_consequence_ar ||
-        card.business_impact_ar ||
-        "إذا لم يُتخذ قرار، قد يستمر التأثير على المتجر دون معالجة واضحة."
+        "إذا لم يُحسم الأمر، يستمر الأثر دون قرار واضح."
+    );
+    var cartflowRole = String(
+      card.cartflow_responsibility_ar ||
+        "CartFlow يتولى الملاحظة والأدلة والتشخيص."
     );
     var commitment = String(
       card.commitment_ar ||
-        card.first_step_ar ||
-        card.required_merchant_action ||
-        card.action_label_ar ||
-        "حدّد إجراءً واحداً واضحاً بناءً على التشخيص."
+        "اتخذ قراراً تجارياً واحداً — أو أرجئه بوعي."
     );
     var outcome = String(
       card.expected_outcome_ar ||
-        card.expected_business_impact ||
-        ex.expected_after ||
-        "بعد الالتزام، يصبح الإجراء التالي واضحاً وقابلاً للتنفيذ."
+        "بعد قرارك، ينتقل التنفيذ دون إعادة فتح التشخيص."
     );
-    var href2 = String(card.view_details_href || "").trim() || "#products";
-    var detailsLabel = String(card.view_details_ar || "تنفيذ الالتزام");
+    var href2 = String(card.view_details_href || "").trim();
+    var detailsLabel = String(card.view_details_ar || "متابعة التنفيذ");
 
     var rows = [];
     rows.push(
@@ -214,25 +204,38 @@
         esc(primaryLabel) +
         "</p>"
     );
-    // Decision Cards Constitution V1 sequence — diagnosis always leads.
-    rows.push(
-      fieldRow("ما الذي يحدث؟", diagnosis, "cw-card__field-value--decision")
-    );
-    rows.push(fieldRow("لماذا يعتقد CartFlow ذلك؟", reasoning));
-    rows.push(fieldRow("الأدلة", evidence));
-    rows.push(fieldRow("ماذا يحدث إن لم يتغير شيء؟", consequence));
-    rows.push(
-      fieldRow("التزامك", commitment, "cw-card__field-value--commitment")
-    );
-    rows.push(fieldRow("النتيجة المتوقعة", outcome));
 
-    // One continuity destination — not a menu of competing pages.
-    var dest =
-      '<p class="cw-card__dest"><a class="cw-card__dest-link cw-card__commit-link" href="' +
-      esc(href2) +
-      '">' +
-      esc(detailsLabel) +
-      "</a></p>";
+    if (compact && !isPrimary) {
+      rows.push(
+        fieldRow("ما الذي يحدث؟", diagnosis, "cw-card__field-value--decision")
+      );
+      rows.push(
+        fieldRow("التزامك", commitment, "cw-card__field-value--commitment")
+      );
+    } else {
+      // Refinement V1 narrative — advisor conversation, diagnosis leads.
+      rows.push(
+        fieldRow("ما الذي يحدث؟", diagnosis, "cw-card__field-value--decision")
+      );
+      rows.push(fieldRow("لماذا نعتقد ذلك؟", why));
+      rows.push(fieldRow("مستوى الثقة الآن", confidence));
+      rows.push(fieldRow("إن لم يتغير شيء", consequence));
+      rows.push(fieldRow("ما يتولاه CartFlow", cartflowRole));
+      rows.push(
+        fieldRow("التزامك", commitment, "cw-card__field-value--commitment")
+      );
+      rows.push(fieldRow("النتيجة المتوقعة", outcome));
+    }
+
+    var dest = "";
+    if (href2) {
+      dest =
+        '<p class="cw-card__dest"><a class="cw-card__dest-link cw-card__commit-link" href="' +
+        esc(href2) +
+        '">' +
+        esc(detailsLabel) +
+        "</a></p>";
+    }
 
     return rows.join("") + dest;
   }

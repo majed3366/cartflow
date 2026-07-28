@@ -88,23 +88,29 @@ def _subject_name(s: Mapping[str, Any]) -> str:
 
 
 def _situation_action_ar(s: Mapping[str, Any]) -> str:
-    """Product-specific merchant action — never a generic checkout loop."""
+    """
+    Merchant commercial commitment — never CartFlow investigative work.
+
+    Refinement V1: forbid Review/Investigate/Collect openers.
+    """
     kind = _norm(s.get("situation_kind"))
     name = _subject_name(s)
     short = name.split("—")[0].strip() if name else ""
     short = short or name or "المنتج"
     explicit = _norm(s.get("merchant_action_ar"))
+    soft = ("راجع", "تحقق", "اجمع", "اكتشف", "افحص")
     if explicit and "إتمام الشراء ومتابعة" not in explicit:
-        return explicit
+        if not any(explicit.startswith(p) for p in soft):
+            return explicit
     if kind == "interest_without_purchase":
-        return f"راجع مسار شراء {short}."
+        return f"قرّر الموقف التجاري بخصوص {short} بناءً على التشخيص."
     if kind == "shipping_friction":
-        return f"راجع تكلفة الشحن لمنتج {short}."
+        return f"قرّر إن كنت ستعدّل سياسة الشحن لـ {short} أم تبقيها."
     if kind == "product_demand":
-        return f"راجع أدلة الطلب لـ {short}."
+        return f"قرّر أولوية {short} في العرض والتسعير."
     if kind == "recovery_opportunity":
-        return "راجع متابعة السلال المؤهلة للاستعادة."
-    return explicit or f"راجع {short}."
+        return "قرّر أولوية استعادة السلال المؤهلة مقابل الإبقاء على المسار الحالي."
+    return f"اتخذ قراراً تجارياً واحداً بخصوص {short}."
 
 
 def _truth_version_v1(
@@ -166,7 +172,7 @@ def _merchant_situation_row(s: Mapping[str, Any], *, primary: bool = False) -> d
     elif short and kind == "product_demand":
         title = f"{short}: طلب المنتج"
         if not statement or short not in statement:
-            statement = f"طلب واضح على {short} — راجع جودة الأدلة قبل التوسع."
+            statement = f"طلب واضح على {short} — القرار التجاري يحتاج ثقة أدلة أعلى قبل التوسع."
     return {
         "situation_id": sid,  # transport / linking only — never paint on merchant UI
         "situation_kind": kind,
@@ -305,9 +311,9 @@ def compose_merchant_publication_v1(
         if primary_sit:
             primary_action = _situation_action_ar(primary_sit)
         elif missing_contact:
-            primary_action = "راجع آلية جمع رقم العميل قبل مغادرة المتجر."
+            primary_action = "قرّر أولوية إصلاح التقاط وسيلة التواصل قبل مغادرة المتجر."
         else:
-            primary_action = "راجع حالات الشراء التي تحتاج تدخلك."
+            primary_action = "قرّر أي حالات الشراء تستحق تدخلك الآن."
 
     primary_decision_id = _norm((primary_dec or {}).get("decision_id"))
     primary_executive_decision = {

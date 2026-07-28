@@ -1,6 +1,6 @@
 /**
- * Cart Workspace Grid — Decision Workspace V2.
- * One Primary Decision + ≤3 Next. No KPI walls. No Home repeat.
+ * Cart Workspace Grid — Decision Workspace Refinement V1.
+ * One Primary (full narrative) + ≤3 Next (compact). No KPI walls.
  */
 (function (global) {
   "use strict";
@@ -24,16 +24,6 @@
     var render = cardRenderer();
     if (!render || !card) return "";
     return render(card, { mode: mode || "decision" });
-  }
-
-  function isV2(projection) {
-    if (projection && projection.decision_workspace_v2) return true;
-    try {
-      if (global.CARTFLOW_DECISION_WORKSPACE_V2 === false) return false;
-    } catch (e) {
-      /* ignore */
-    }
-    return true;
   }
 
   function splitPrimaryNext(zoneB) {
@@ -65,24 +55,15 @@
     }
 
     var zoneB = Array.isArray(projection.zone_b) ? projection.zone_b : [];
-    var mission = String(
-      projection.mission_question || "ما القرار الذي يجب أن أتخذه الآن، ولماذا؟"
-    );
-    var v2 = isV2(projection);
     var split = splitPrimaryNext(zoneB);
     var hasDecisions = !!(split.primary || (split.next && split.next.length));
 
     var html = [];
     html.push(
-      '<div class="cw-ops cw-ops--decisions-only cw-ops--v2" dir="rtl" data-open-count="' +
+      '<div class="cw-ops cw-ops--decisions-only cw-ops--v2 cw-ops--refinement" dir="rtl" data-open-count="' +
         esc(hasDecisions ? 1 + split.next.length : 0) +
-        '" data-dw-v2="' +
-        (v2 ? "1" : "0") +
-        '">'
+        '" data-dw-v2="1" data-dw-refinement="1">'
     );
-
-    // Page question lives once in #cw-constitution-question (no duplicate mission header).
-    void mission;
 
     if (!hasDecisions) {
       html.push('<div class="cw-grid cw-grid--decisions cw-grid--v2">');
@@ -98,7 +79,7 @@
       if (split.next.length) {
         html.push(
           '<section class="cw-next-slot" aria-label="القرارات التالية">' +
-            '<p class="cw-next-slot__label">بعد الالتزام — القرارات التالية</p>' +
+            '<p class="cw-next-slot__label">بعد هذا الالتزام</p>' +
             '<div class="cw-grid cw-grid--next">'
         );
         split.next.forEach(function (c) {

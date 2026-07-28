@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Decision Workspace V2 — constitutional prototype (merchant surface)."""
+"""Decision Workspace V2 — constitutional prototype + Refinement V1."""
 
 from services.decision_workspace_v2.flag_v1 import (
     FLAG_DECISION_WORKSPACE_V2,

@@ -1,32 +1,32 @@
 # -*- coding: utf-8 -*-
 """
-Decision Workspace V2 budget — Information Budget + Cards Constitution.
+Decision Workspace V2 budget — Refinement V1 narrative.
 
-- Exactly one Primary Decision
-- ≤3 Next Decisions
-- No KPI landscape / band counts in paint payload
-- Card fields: Diagnosis → Reasoning → Evidence → Consequence → Commitment → Outcome
+Primary face:
+Diagnosis → Why → Confidence → Consequence → CartFlow responsibility
+→ Merchant commitment → Expected outcome
+
+- Exactly one Primary + ≤3 Next (Next = compact)
+- Prefer diagnostic publication as Primary (Home continuity)
 """
 from __future__ import annotations
 
 from typing import Any, Mapping
 
 from services.decision_workspace_v2.flag_v1 import decision_workspace_v2_enabled
+from services.decision_workspace_v2.narrative_v1 import (
+    card_from_diagnostic_publication_v1,
+    cartflow_responsibility_ar_v1,
+    commitment_ar_v1,
+    confidence_ar_v1,
+    consequence_ar_v1,
+    destination_for_commitment_v1,
+    diagnosis_ar_v1,
+    expected_outcome_ar_v1,
+    why_believe_ar_v1,
+)
 
 MAX_NEXT_DECISIONS_V2 = 3
-
-_SOFT_OPENERS = (
-    "راجع",
-    "حسّن",
-    "حسن",
-    "تحقق",
-    "فكّر",
-    "فكر",
-    "review",
-    "improve",
-    "check",
-    "consider",
-)
 
 
 def _norm(v: Any) -> str:
@@ -47,174 +47,84 @@ def _is_constitution_card(card: Mapping[str, Any]) -> bool:
     }
 
 
-def _looks_like_soft_opener(text: str) -> bool:
-    t = _norm(text).casefold()
-    if not t:
-        return False
-    for p in _SOFT_OPENERS:
-        if t.startswith(p.casefold()):
-            return True
-    return False
-
-
-def _evidence_text(card: Mapping[str, Any]) -> str:
-    ev = _norm(card.get("evidence_summary"))
-    if ev:
-        return ev
-    facts = card.get("supporting_facts_ar")
-    if isinstance(facts, list):
-        parts = [_norm(x) for x in facts if _norm(x)]
-        if parts:
-            return " · ".join(parts[:5])
-    if card.get("has_decision") is False:
-        return "لا توجد أدلة كافية لإصدار قرار."
-    return ""
-
-
-def _diagnosis_text(card: Mapping[str, Any]) -> str:
-    for key in (
-        "diagnosis_ar",
-        "business_meaning_ar",
-        "situation_summary_ar",
-        "observation_ar",
-    ):
-        v = _norm(card.get(key))
-        if v and not _looks_like_soft_opener(v):
-            return v
-    subject = _norm(
-        card.get("subject_ar")
-        or card.get("affected_area_ar")
-        or card.get("product_name_ar")
-    )
-    why = _norm(card.get("why_ar") or (card.get("explanation") or {}).get("why_here"))
-    if subject and why:
-        return f"{subject}: {why}" if not why.startswith(subject) else why
-    if why and not _looks_like_soft_opener(why):
-        return why
-    if subject:
-        return f"هناك قرار مطلوب بخصوص {subject}."
-    decision = _norm(
-        card.get("decision_ar") or card.get("title_ar") or card.get("merchant_decision")
-    )
-    if decision and not _looks_like_soft_opener(decision):
-        # Prefer not to use pure action text as diagnosis when commitment matches.
-        commitment = _norm(
-            card.get("commitment_ar")
-            or card.get("first_step_ar")
-            or card.get("required_merchant_action")
-        )
-        if commitment and decision == commitment:
-            return "هناك موقف تجاري يحتاج قرارك الآن."
-        return decision
-    return "هناك موقف تجاري يحتاج قرارك الآن."
-
-
-def _reasoning_text(card: Mapping[str, Any], diagnosis: str) -> str:
-    why = _norm(card.get("why_ar") or (card.get("explanation") or {}).get("why_here"))
-    why_now = _norm(card.get("why_now_ar"))
-    # Prefer why; use why_now only when it adds distinct belief (not Home repeat).
-    if why and why != diagnosis:
-        return why
-    if why_now and why_now != diagnosis and why_now != why:
-        return why_now
-    if why:
-        return why
-    return "CartFlow يرى هذا الموقف بناءً على ملاحظات المتجر الحالية."
-
-
-def _consequence_text(card: Mapping[str, Any]) -> str:
-    for key in (
-        "ignore_consequence_ar",
-        "business_consequence_ar",
-        "business_impact_ar",
-        "expected_business_impact",
-    ):
-        v = _norm(card.get(key))
-        if v:
-            return v
-    return "إذا لم يُتخذ قرار، قد يستمر التأثير على المتجر دون معالجة واضحة."
-
-
-def _commitment_text(card: Mapping[str, Any]) -> str:
-    for key in (
-        "commitment_ar",
-        "first_step_ar",
-        "required_merchant_action",
-        "action_label_ar",
-        "recommended_action",
-    ):
-        v = _norm(card.get(key))
-        if v:
-            return v
-    if card.get("has_decision") is False:
-        return "انتظر حتى تتوفر أدلة كافية — لا تلتزم بإجراء غير مدعوم."
-    return "حدّد إجراءً واحداً واضحاً بناءً على التشخيص."
-
-
-def _outcome_text(card: Mapping[str, Any]) -> str:
-    for key in ("expected_outcome_ar", "expected_business_impact"):
-        v = _norm(card.get(key))
-        if v:
-            return v
-    ex = card.get("explanation") if isinstance(card.get("explanation"), Mapping) else {}
-    return _norm(ex.get("expected_after")) or "بعد الالتزام، يصبح الإجراء التالي واضحاً وقابلاً للتنفيذ."
-
-
-def _destination_href(card: Mapping[str, Any]) -> str:
-    href = _norm(card.get("view_details_href"))
-    if href:
-        return href
-    domain = _norm(card.get("business_domain") or card.get("decision_category")).casefold()
-    if "product" in domain or "منتج" in domain:
-        return "#products"
-    if "communicat" in domain or "تواصل" in domain or "whatsapp" in domain:
-        return "#communication"
-    if "cart" in domain or "recover" in domain or "سلّ" in domain or "سلال" in domain:
-        return "#carts"
-    if "ship" in domain or "شحن" in domain or "pricing" in domain or "سعر" in domain:
-        return "#products"
-    return "#products"
-
-
 def hydrate_decision_card_v2(card: dict[str, Any], *, is_primary: bool) -> dict[str, Any]:
-    """Stamp constitutional face fields; preserve underlying ids."""
+    """Stamp Refinement V1 narrative fields."""
     out = dict(card)
-    diagnosis = _diagnosis_text(out)
-    commitment = _commitment_text(out)
+    diagnosis = diagnosis_ar_v1(out)
+    why = why_believe_ar_v1(out, diagnosis)
+    consequence = consequence_ar_v1(out)
+    commitment = commitment_ar_v1(out)
+    outcome = expected_outcome_ar_v1(out, consequence)
+    href, label = destination_for_commitment_v1(out)
+
     out["diagnosis_ar"] = diagnosis
-    out["reasoning_ar"] = _reasoning_text(out, diagnosis)
-    out["evidence_summary"] = _evidence_text(out) or "لا توجد أدلة كافية لإصدار قرار."
-    out["ignore_consequence_ar"] = _consequence_text(out)
-    out["business_consequence_ar"] = out["ignore_consequence_ar"]
+    out["reasoning_ar"] = why
+    out["why_believe_ar"] = why
+    out["confidence_ar"] = confidence_ar_v1(out)
+    out["ignore_consequence_ar"] = consequence
+    out["business_consequence_ar"] = consequence
+    out["cartflow_responsibility_ar"] = cartflow_responsibility_ar_v1(out)
     out["commitment_ar"] = commitment
     out["first_step_ar"] = commitment
     out["required_merchant_action"] = commitment
-    out["expected_outcome_ar"] = _outcome_text(out)
+    out["expected_outcome_ar"] = outcome
+    out["view_details_href"] = href
+    out["view_details_ar"] = label
     out["decision_workspace_v2"] = True
+    out["decision_workspace_refinement_v1"] = True
     out["is_primary_decision"] = bool(is_primary)
+    out["face_mode"] = "primary" if is_primary else "next_compact"
     if is_primary:
         out["priority_rank_label_ar"] = "القرار الذي تلتزم به الآن"
         out["priority_rank_role"] = "primary"
     else:
         out["priority_rank_label_ar"] = "القرار التالي"
         out["priority_rank_role"] = "next"
-    href = _destination_href(out)
-    out["view_details_href"] = href
-    out["view_details_ar"] = "تنفيذ الالتزام"
-    # Do not keep action text as the leading diagnosis fields.
+        # Compact next: stake only
+        out["next_stake_ar"] = consequence
     if _norm(out.get("decision_ar")) == commitment:
         out["decision_ar"] = diagnosis
     if _norm(out.get("title_ar")) == commitment:
         out["title_ar"] = diagnosis
-    if _norm(out.get("merchant_decision")) == commitment:
-        out["merchant_decision"] = diagnosis
     return out
+
+
+def _inject_diagnostic_primary(
+    constitution: list[dict[str, Any]],
+    store_slug: str,
+) -> list[dict[str, Any]]:
+    """Home continuity: diagnostic publication wins Primary when present."""
+    try:
+        from services.diagnostic_reasoning_v1.snapshot_store_v1 import (  # noqa: PLC0415
+            read_primary_diagnostic_publication_v1,
+        )
+
+        pub = read_primary_diagnostic_publication_v1(store_slug)
+    except Exception:  # noqa: BLE001
+        pub = None
+    if not isinstance(pub, Mapping) or not _norm(pub.get("diagnosis_ar") or pub.get("observation_ar")):
+        return constitution
+
+    diag_card = card_from_diagnostic_publication_v1(pub)
+    diag_id = _norm(diag_card.get("decision_id"))
+    rest: list[dict[str, Any]] = []
+    for c in constitution:
+        cid = _norm(c.get("decision_id"))
+        if cid == diag_id:
+            continue
+        # Avoid duplicate shipping/product story as competing primary.
+        c2 = dict(c)
+        c2["is_primary_decision"] = False
+        rest.append(c2)
+    return [diag_card] + rest
 
 
 def apply_decision_workspace_v2_budget(
     projection: dict[str, Any] | None,
+    *,
+    store_slug: str | None = None,
 ) -> dict[str, Any]:
-    """Enforce 1 Primary + ≤3 Next; strip KPI chrome from paint payload."""
+    """Enforce 1 Primary + ≤3 Next; Refinement V1 narrative; diagnostic continuity."""
     if not isinstance(projection, dict):
         return {}
     if not decision_workspace_v2_enabled():
@@ -225,8 +135,11 @@ def apply_decision_workspace_v2_budget(
 
     constitution = [c for c in zone_b if _is_constitution_card(c)]
     if not constitution:
-        # Fall back to any zone_b / zone_a business-ish cards.
         constitution = list(zone_b) or list(zone_a)
+
+    slug = _norm(store_slug or projection.get("store_slug"))
+    if slug:
+        constitution = _inject_diagnostic_primary(constitution, slug)
 
     primary: dict[str, Any] | None = None
     rest: list[dict[str, Any]] = []
@@ -256,14 +169,17 @@ def apply_decision_workspace_v2_budget(
 
     projection["mission_question"] = "ما القرار الذي يجب أن أتخذه الآن، ولماذا؟"
     projection["decision_workspace_v2"] = True
+    projection["decision_workspace_refinement_v1"] = True
     projection["decision_workspace_v2_budget"] = {
         "primary": 1 if painted else 0,
         "next": max(0, len(painted) - 1),
         "max_next": MAX_NEXT_DECISIONS_V2,
         "future_waiting": max(0, len(rest) - MAX_NEXT_DECISIONS_V2),
+        "diagnostic_primary": bool(
+            painted and painted[0].get("gate_diagnostic_continuity_v1")
+        ),
     }
 
-    # Strip KPI / report chrome from composition paint helpers.
     comp = projection.get("decision_composition_v1")
     if isinstance(comp, dict):
         comp = dict(comp)

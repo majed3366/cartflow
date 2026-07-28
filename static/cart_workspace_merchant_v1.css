@@ -518,3 +518,13 @@ body[data-ma-page="workspace"] .ma-content-root {
   color: var(--cw-ink-whisper);
   font-weight: 550;
 }
+#page-workspace .cw-ops--refinement .cw-card__field-value--decision {
+  font-size: clamp(1.05rem, 2vw, 1.2rem);
+  line-height: 1.45;
+}
+#page-products .cs-continuity {
+  margin: 0 0 0.85rem;
+  color: var(--v2-ink-whisper, #8b95a8);
+  font-size: var(--ma-type-sm, 13px);
+  line-height: 1.45;
+}

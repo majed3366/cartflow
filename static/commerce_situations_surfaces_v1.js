@@ -54,9 +54,19 @@
         '<p class="cs-empty">لا توجد منتجات تستحق انتباهاً خاصاً حالياً.</p></section>';
       return;
     }
+    // Continuity: arriving from Workspace commitment = execution surface,
+    // not a second explanation of the same diagnosis.
+    var fromWorkspace = !!focusId;
     var html =
       '<section class="cs-surface" data-cs-surface="products">' +
-      "<h2>المنتجات التي تستحق انتباهك</h2>" +
+      "<h2>" +
+      (fromWorkspace
+        ? "تنفيذ القرار على المنتجات"
+        : "المنتجات التي تستحق انتباهك") +
+      "</h2>" +
+      (fromWorkspace
+        ? '<p class="cs-continuity">وصلت إلى هنا لمتابعة التنفيذ — التشخيص اكتمل في مساحة القرار.</p>'
+        : "") +
       '<ul class="cs-list">';
     for (var i = 0; i < rows.length; i++) {
       var it = rows[i] || {};
@@ -72,13 +82,18 @@
         '<p class="cs-card__title">' +
         esc(it.title_ar || "") +
         "</p>" +
-        '<p class="cs-card__body">' +
-        esc(it.why_it_matters_ar || names.join(" · ") || "") +
-        "</p>" +
+        (fromWorkspace
+          ? '<p class="cs-card__body">' +
+            esc(names.join(" · ") || "المنتج المرتبط بالتزامك.") +
+            "</p>"
+          : '<p class="cs-card__body">' +
+            esc(it.why_it_matters_ar || names.join(" · ") || "") +
+            "</p>") +
         '<p class="cs-card__links">' +
-        '<a href="#workspace">عرض التفاصيل ←</a>' +
-        "</p></li>";
-    }
+        (fromWorkspace
+          ? '<a href="#workspace">العودة لمساحة القرار</a>'
+          : '<a href="#workspace">افتح القرار ←</a>') +
+        "</p></li>";    }
     html += "</ul></section>";
     root.innerHTML = html;
   }

@@ -235,7 +235,10 @@ def _enrich_via_composition_engine_v1(
         decisions_to_workspace_cards_v1,
     )
 
-    pkg = compose_decisions_v1(slug, use_cache=True, allow_sync_miss=True)
+    # Prefer cache; sync-compose only when portfolio empty (Workspace perf).
+    pkg = compose_decisions_v1(slug, use_cache=True, allow_sync_miss=False)
+    if not list(pkg.get("portfolio") or pkg.get("decisions") or []):
+        pkg = compose_decisions_v1(slug, use_cache=True, allow_sync_miss=True)
     portfolio = list(pkg.get("portfolio") or pkg.get("decisions") or [])
     composed_cards = decisions_to_workspace_cards_v1(portfolio)
 
@@ -642,7 +645,10 @@ def _enrich_via_composition_engine_v1(
         )
 
         if decision_workspace_v2_enabled():
-            projection = apply_decision_workspace_v2_budget(projection)
+            projection["store_slug"] = slug
+            projection = apply_decision_workspace_v2_budget(
+                projection, store_slug=slug
+            )
             zone_b = list(projection.get("zone_b") or [])
             zone_a = list(projection.get("zone_a") or [])
             projection["decision_card_count"] = len(zone_a) + len(zone_b)
