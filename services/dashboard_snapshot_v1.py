@@ -446,9 +446,14 @@ def is_snapshot_build_eligible_store(
     merchant_user_id: Optional[int],
     is_active: bool,
 ) -> tuple[bool, str]:
-    """Active merchant-owned store eligible for dashboard snapshot builder."""
-    from services.recovery_store_lookup import is_widget_recovery_zid
+    """
+    Active merchant-owned store eligible for dashboard snapshot builder.
 
+    Living Store / certified review uses ``demo`` with a bound ``merchant_user_id``.
+    Unowned sandbox placeholders (no merchant) stay excluded via ``no_merchant_user``.
+    Do **not** blanket-exclude widget recovery zids once a merchant owns the store —
+    that was the first divergence causing Home ``reason=no_snapshot`` for Living Store.
+    """
     slug = canonical_snapshot_store_slug(store_slug=zid_store_id)
     if not slug:
         return False, "missing_slug"
@@ -456,8 +461,6 @@ def is_snapshot_build_eligible_store(
         return False, "inactive"
     if merchant_user_id is None:
         return False, "no_merchant_user"
-    if is_widget_recovery_zid(slug):
-        return False, "widget_placeholder_slug"
     lower = slug.casefold()
     for prefix in _SNAPSHOT_BUILD_EXCLUDED_PREFIXES:
         if lower.startswith(prefix):
@@ -545,9 +548,10 @@ def list_store_slugs_for_snapshot_build(*, limit: int = 10) -> list[tuple[int, s
 
     Coverage rules (not ``updated_at`` on Store — audit scripts bump test rows):
     - ``merchant_user_id`` present, ``is_active``, canonical ``zid_store_id``
-    - Exclude widget placeholders (demo/demo2/default) and audit prefixes
+    - Exclude audit prefixes (``stuckj-`` / ``stuckaudit-``)
+    - Merchant-bound Living Store ``demo`` is eligible (unowned sandbox stays out)
     - Priority: missing/stale normal_carts → missing summary → stale summary → rotation
-  """
+    """
     from models import Store
 
     cap = max(1, int(limit))
