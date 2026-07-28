@@ -343,6 +343,8 @@ def compose_merchant_publication_v1(
         ):
             continue
         secondary_decision_ids.append(did)
+        if len(secondary_decision_ids) >= 3:
+            break
 
     suppressed_dupes = [
         dict(r)
@@ -647,16 +649,18 @@ def apply_publication_priority_to_decisions_v1(
         )
         if is_primary:
             d["is_primary_decision"] = True
-            d["priority_rank_label_ar"] = "القرار الأهم"
+            d["priority_rank_label_ar"] = "القرار الذي تلتزم به الآن"
             d["portfolio_rank"] = 1
+            # Commitment only — Diagnosis fields stay situational / meaning text.
             if primary_action:
-                d["merchant_decision"] = primary_action
-                d["title"] = primary_action
-                d["executive_decision_ar"] = primary_action
+                d["commitment_ar"] = primary_action
                 d["required_merchant_action"] = primary_action
+                d["first_step_ar"] = _norm(d.get("first_step_ar")) or primary_action
+                d["action_label_ar"] = primary_action
+                d["executive_decision_ar"] = primary_action
         elif did in secondary_ids or (sid and sid != primary_sit):
             d["is_primary_decision"] = False
-            d["priority_rank_label_ar"] = "قرار ثانوي"
+            d["priority_rank_label_ar"] = "القرار التالي"
             if not d.get("portfolio_rank"):
                 d["portfolio_rank"] = 2
         else:

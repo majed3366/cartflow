@@ -1,6 +1,6 @@
 /**
- * Cart Workspace Grid — Gate 2A Constitution.
- * Decisions only. No operational status chrome.
+ * Cart Workspace Grid — Decision Workspace V2.
+ * One Primary Decision + ≤3 Next. No KPI walls. No Home repeat.
  */
 (function (global) {
   "use strict";
@@ -26,18 +26,32 @@
     return render(card, { mode: mode || "decision" });
   }
 
-  function followingVipCards() {
+  function isV2(projection) {
+    if (projection && projection.decision_workspace_v2) return true;
     try {
-      if (
-        global.CartWorkspaceMerchantV1 &&
-        typeof global.CartWorkspaceMerchantV1.getFollowingVip === "function"
-      ) {
-        return global.CartWorkspaceMerchantV1.getFollowingVip() || [];
-      }
+      if (global.CARTFLOW_DECISION_WORKSPACE_V2 === false) return false;
     } catch (e) {
       /* ignore */
     }
-    return [];
+    return true;
+  }
+
+  function splitPrimaryNext(zoneB) {
+    var primary = null;
+    var next = [];
+    (zoneB || []).forEach(function (c) {
+      if (!c || typeof c !== "object") return;
+      if (c.is_primary_decision && !primary) {
+        primary = c;
+      } else {
+        next.push(c);
+      }
+    });
+    if (!primary && zoneB && zoneB.length) {
+      primary = zoneB[0];
+      next = zoneB.slice(1);
+    }
+    return { primary: primary, next: next.slice(0, 3) };
   }
 
   function renderGridHtml(projection) {
@@ -46,97 +60,55 @@
         zone_a: [],
         zone_b: [],
         quiet: true,
-        mission_question: "ماذا يجب أن أقرر الآن، ولماذا؟",
+        mission_question: "ما القرار الذي يجب أن أتخذه الآن، ولماذا؟",
       };
     }
 
-    var zoneA = Array.isArray(projection.zone_a) ? projection.zone_a : [];
     var zoneB = Array.isArray(projection.zone_b) ? projection.zone_b : [];
-    var following = followingVipCards();
-    var openCount = zoneA.length + zoneB.length;
-    var hasDecisions = openCount > 0;
     var mission = String(
-      projection.mission_question || "ماذا يجب أن أقرر الآن، ولماذا؟"
+      projection.mission_question || "ما القرار الذي يجب أن أتخذه الآن، ولماذا؟"
     );
+    var v2 = isV2(projection);
+    var split = splitPrimaryNext(zoneB);
+    var hasDecisions = !!(split.primary || (split.next && split.next.length));
 
     var html = [];
-    var comp = projection.decision_composition_v1 || {};
-    var needsN = Number(comp.needs_action_now || 0);
-    var monitorN = Number(comp.monitor || 0);
-    var landscape = Array.isArray(comp.category_landscape)
-      ? comp.category_landscape
-      : [];
-
     html.push(
-      '<div class="cw-ops cw-ops--decisions-only cw-ops--portfolio" dir="rtl" data-open-count="' +
-        esc(openCount) +
-        '" data-gate2a="1" data-gate2b="1" data-gate2c="1">'
+      '<div class="cw-ops cw-ops--decisions-only cw-ops--v2" dir="rtl" data-open-count="' +
+        esc(hasDecisions ? 1 + split.next.length : 0) +
+        '" data-dw-v2="' +
+        (v2 ? "1" : "0") +
+        '">'
     );
 
-    html.push(
-      '<header class="cw-ops__hdr">' +
-        '<div class="cw-ops__hdr-main">' +
-        '<p class="cw-ops__name">مساحة القرار</p>' +
-        '<h2 class="cw-ops__mission">' +
-        esc(mission) +
-        "</h2>" +
-        '<p class="cw-ops__subtitle">مساعد تنفيذي للمتجر — ماذا يستحق انتباهك في العمل اليوم؟</p>' +
-        (hasDecisions
-          ? '<p class="cw-ops__bands">' +
-            "يحتاج إجراء الآن: <strong>" +
-            esc(needsN || openCount) +
-            "</strong>" +
-            (monitorN
-              ? " · راقب: <strong>" + esc(monitorN) + "</strong>"
-              : "") +
-            "</p>"
-          : '<p class="cw-ops__bands">لا قرار مدعوم حالياً</p>') +
-        "</div>" +
-        '<p class="cw-ops__count" role="status" aria-live="polite">' +
-        "يحتاج قرارك: <strong class=\"cw-ops__count-n\">" +
-        esc(openCount) +
-        "</strong></p>" +
-        "</header>"
-    );
+    // Page question lives once in #cw-constitution-question (no duplicate mission header).
+    void mission;
 
-    if (landscape.length) {
-      html.push('<section class="cw-landscape" aria-label="فئات القرارات">');
-      landscape.forEach(function (row) {
-        if (!row || typeof row !== "object") return;
-        var healthy = !!row.no_action_required;
-        html.push(
-          '<div class="cw-landscape__item' +
-            (healthy ? " cw-landscape__item--healthy" : "") +
-            '">' +
-            '<span class="cw-landscape__cat">' +
-            esc(row.category_ar || row.category || "") +
-            "</span>" +
-            '<span class="cw-landscape__status">' +
-            esc(row.status_ar || row.summary_ar || "") +
-            "</span></div>"
-        );
-      });
-      html.push("</section>");
-    }
-
-    html.push('<div class="cw-grid cw-grid--decisions">');
-
-    if (!hasDecisions && !following.length) {
+    if (!hasDecisions) {
+      html.push('<div class="cw-grid cw-grid--decisions cw-grid--v2">');
       html.push(renderCard({ quiet: true }, "quiet"));
+      html.push("</div>");
     } else {
-      zoneA.forEach(function (c) {
-        html.push(renderCard(c, "decision"));
-      });
-      zoneB.forEach(function (c) {
-        html.push(renderCard(c, "decision"));
-      });
-      following.forEach(function (c) {
-        html.push(renderCard(c, "following"));
-      });
+      html.push('<section class="cw-primary-slot" aria-label="القرار الأساسي">');
+      if (split.primary) {
+        html.push(renderCard(split.primary, "decision"));
+      }
+      html.push("</section>");
+
+      if (split.next.length) {
+        html.push(
+          '<section class="cw-next-slot" aria-label="القرارات التالية">' +
+            '<p class="cw-next-slot__label">بعد الالتزام — القرارات التالية</p>' +
+            '<div class="cw-grid cw-grid--next">'
+        );
+        split.next.forEach(function (c) {
+          html.push(renderCard(c, "decision"));
+        });
+        html.push("</div></section>");
+      }
     }
 
-    html.push("</div>"); /* .cw-grid */
-    html.push("</div>"); /* .cw-ops */
+    html.push("</div>");
     return html.join("");
   }
 

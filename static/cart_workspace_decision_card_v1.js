@@ -1,6 +1,6 @@
 /**
- * Cart Workspace Decision Card — Gate 2A Constitution.
- * Decision · Why · Evidence · Confidence · Action · View Details.
+ * Cart Workspace Decision Card — Decision Workspace V2 / Decision Cards Constitution V1.
+ * Diagnosis → Reasoning → Evidence → Consequence → Commitment → Expected Outcome.
  */
 (function (global) {
   "use strict";
@@ -152,108 +152,87 @@
 
   function constitutionFaceHtml(card) {
     var ex = explanationOf(card);
-    var situationId = String(card.situation_id || "").trim();
     var isPrimary = !!card.is_primary_decision;
     var primaryLabel = String(card.priority_rank_label_ar || "").trim();
-    if (isPrimary) primaryLabel = primaryLabel || "القرار الأهم";
-    else if (!primaryLabel && (card.gate_commerce_situations || situationId)) {
-      primaryLabel = "قرار ثانوي";
+    if (isPrimary) {
+      primaryLabel = primaryLabel || "القرار الذي تلتزم به الآن";
+    } else {
+      primaryLabel = primaryLabel || "القرار التالي";
     }
 
-    var decision = String(
-      card.decision_ar ||
+    var diagnosis = String(
+      card.diagnosis_ar ||
+        card.business_meaning_ar ||
+        card.decision_ar ||
         card.title_ar ||
-        card.merchant_decision ||
-        "قرار يحتاج مراجعتك"
+        "هناك موقف تجاري يحتاج قرارك الآن."
     );
-    var why = String(card.why_ar || ex.why_here || "");
-    var whyNow = String(card.why_now_ar || "");
-    var subject = String(
-      card.subject_ar ||
-        card.affected_area_ar ||
-        card.product_name_ar ||
-        card.affected_area ||
-        ""
-    ).trim();
+    var reasoning = String(
+      card.reasoning_ar || card.why_ar || ex.why_here || ""
+    );
+    if (!reasoning) {
+      reasoning = "CartFlow يرى هذا الموقف بناءً على ملاحظات المتجر الحالية.";
+    }
     var evidence = String(card.evidence_summary || "");
     if (
       !evidence &&
       Array.isArray(card.supporting_facts_ar) &&
       card.supporting_facts_ar.length
     ) {
-      evidence = card.supporting_facts_ar.join(" · ");
+      evidence = card.supporting_facts_ar.slice(0, 5).join(" · ");
     }
-    if (!evidence && card.has_decision === false) {
+    if (!evidence) {
       evidence = INSUFFICIENT_EVIDENCE_AR;
     }
-    var action = String(
-      card.required_merchant_action ||
-        card.action_label_ar ||
-        card.recommended_action ||
-        "لا إجراء مطلوب حالياً"
+    var consequence = String(
+      card.business_consequence_ar ||
+        card.ignore_consequence_ar ||
+        card.business_impact_ar ||
+        "إذا لم يُتخذ قرار، قد يستمر التأثير على المتجر دون معالجة واضحة."
     );
-    var firstStep = String(card.first_step_ar || action || "");
+    var commitment = String(
+      card.commitment_ar ||
+        card.first_step_ar ||
+        card.required_merchant_action ||
+        card.action_label_ar ||
+        "حدّد إجراءً واحداً واضحاً بناءً على التشخيص."
+    );
     var outcome = String(
       card.expected_outcome_ar ||
         card.expected_business_impact ||
-        card.business_impact_ar ||
         ex.expected_after ||
-        ""
+        "بعد الالتزام، يصبح الإجراء التالي واضحاً وقابلاً للتنفيذ."
     );
-    var href2 = String(card.view_details_href || "").trim();
-    if (!href2 && card.gate_commerce_situations) {
-      href2 = "#products";
-    }
-    var detailsLabel = String(card.view_details_ar || "عرض التفاصيل التشغيلية");
+    var href2 = String(card.view_details_href || "").trim() || "#products";
+    var detailsLabel = String(card.view_details_ar || "تنفيذ الالتزام");
 
     var rows = [];
-    if (primaryLabel) {
-      rows.push(
-        '<p class="cw-card__rank' +
-          (isPrimary ? " cw-card__rank--primary" : "") +
-          '">' +
-          esc(primaryLabel) +
-          "</p>"
-      );
-    }
-    // Executive Control order: decision → why priority → subject → evidence → action → impact
     rows.push(
-      fieldRow(
-        isPrimary ? "القرار الأهم" : "القرار",
-        decision,
-        "cw-card__field-value--decision"
-      )
-    );
-    rows.push(
-      fieldRow(
-        "لماذا هو الأولوية؟",
-        whyNow || why || "هذا القرار يقود انتباه المتجر اليوم."
-      )
-    );
-    if (subject) {
-      rows.push(fieldRow("المنتج / المجال المتأثر", subject));
-    }
-    rows.push(fieldRow("الأدلة", evidence || INSUFFICIENT_EVIDENCE_AR));
-    rows.push(fieldRow("الإجراء الأول", firstStep || action));
-    rows.push(fieldRow("الأثر المتوقع", outcome));
-
-    var dest = "";
-    if (href2) {
-      dest =
-        '<p class="cw-card__dest"><a class="cw-card__dest-link" href="' +
-        esc(href2) +
+      '<p class="cw-card__rank' +
+        (isPrimary ? " cw-card__rank--primary" : " cw-card__rank--next") +
         '">' +
-        esc(detailsLabel) +
-        "</a>" +
-        ' · <a class="cw-card__dest-link" href="#carts">السلال</a>' +
-        ' · <a class="cw-card__dest-link" href="#communication">التواصل</a></p>';
-    } else {
-      dest =
-        '<p class="cw-card__dest">' +
-        '<a class="cw-card__dest-link" href="#products">المنتجات</a> · ' +
-        '<a class="cw-card__dest-link" href="#carts">السلال</a> · ' +
-        '<a class="cw-card__dest-link" href="#communication">التواصل</a></p>';
-    }
+        esc(primaryLabel) +
+        "</p>"
+    );
+    // Decision Cards Constitution V1 sequence — diagnosis always leads.
+    rows.push(
+      fieldRow("ما الذي يحدث؟", diagnosis, "cw-card__field-value--decision")
+    );
+    rows.push(fieldRow("لماذا يعتقد CartFlow ذلك؟", reasoning));
+    rows.push(fieldRow("الأدلة", evidence));
+    rows.push(fieldRow("ماذا يحدث إن لم يتغير شيء؟", consequence));
+    rows.push(
+      fieldRow("التزامك", commitment, "cw-card__field-value--commitment")
+    );
+    rows.push(fieldRow("النتيجة المتوقعة", outcome));
+
+    // One continuity destination — not a menu of competing pages.
+    var dest =
+      '<p class="cw-card__dest"><a class="cw-card__dest-link cw-card__commit-link" href="' +
+      esc(href2) +
+      '">' +
+      esc(detailsLabel) +
+      "</a></p>";
 
     return rows.join("") + dest;
   }
@@ -372,6 +351,8 @@
       var sitAttr = String(card.situation_id || "").trim();
       var primaryAttr = card.is_primary_decision ? ' data-primary-decision="1"' : "";
       if (card.is_primary_decision) mods.push("cw-card--primary");
+      else mods.push("cw-card--next");
+      // V2: full constitutional face only — no duplicate "مزيد" report drawer.
       return (
         '<article class="' +
         mods.join(" ") +
@@ -384,11 +365,11 @@
         '" data-decision-status="' +
         esc(card.decision_status || "") +
         '" data-constitution="1"' +
+        ' data-dw-v2="1"' +
         primaryAttr +
         (sitAttr ? ' data-commerce-situation="1"' : "") +
         ">" +
         constitutionFaceHtml(card) +
-        detailsHtml(card, id, extraDetails) +
         "</article>"
       );
     }

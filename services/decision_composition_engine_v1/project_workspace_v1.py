@@ -23,13 +23,23 @@ def decision_to_workspace_card_v1(decision: Mapping[str, Any]) -> dict[str, Any]
         "decision_status": "DECISION",
         "title_ar": _norm(decision.get("title") or decision.get("merchant_decision")),
         "decision_ar": _norm(decision.get("merchant_decision") or decision.get("title")),
+        "diagnosis_ar": _norm(
+            decision.get("diagnosis_ar")
+            or decision.get("business_meaning_ar")
+            or decision.get("why")
+        ),
         "why_ar": _norm(decision.get("why")),
         "why_now_ar": _norm(decision.get("why_now")),
+        "reasoning_ar": _norm(decision.get("why")),
         "evidence_summary": _norm(decision.get("evidence_summary")),
         "evidence_refs": list(decision.get("evidence_refs") or []),
         "ignore_consequence_ar": _norm(decision.get("ignore_consequence")),
+        "business_consequence_ar": _norm(decision.get("ignore_consequence")),
         "required_merchant_action": _norm(decision.get("recommended_action")),
         "action_label_ar": _norm(decision.get("recommended_action")),
+        "commitment_ar": _norm(
+            decision.get("first_step") or decision.get("recommended_action")
+        ),
         "first_step_ar": _norm(decision.get("first_step")),
         "expected_outcome_ar": _norm(decision.get("expected_outcome")),
         "expected_business_impact": _norm(decision.get("expected_outcome")),

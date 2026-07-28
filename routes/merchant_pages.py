@@ -53,6 +53,9 @@ def dashboard(request: Request):
     from services.cart_workspace.business_findings_enrichment_v1 import (  # noqa: PLC0415
         decision_dual_stack_v1_enabled,
     )
+    from services.decision_workspace_v2.flag_v1 import (  # noqa: PLC0415
+        decision_workspace_v2_enabled,
+    )
     from services.product_data.merchant_experience_integration_flag_v1 import (  # noqa: PLC0415
         merchant_experience_integration_v1_enabled,
     )
@@ -73,6 +76,7 @@ def dashboard(request: Request):
             "merchant_pulse_ui_v1": merchant_pulse_ui_v1_enabled(),
             "merchant_experience_integration_v1": _meif_on,
             "merchant_cart_workspace_v1": _cw_on,
+            "decision_workspace_v2": bool(decision_workspace_v2_enabled()),
             "decision_dual_stack_v1": _dual,
             "merchant_cart_workspace_silent_success": (
                 _cw_on and cart_workspace_silent_success_enabled()

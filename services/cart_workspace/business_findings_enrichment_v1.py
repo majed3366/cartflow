@@ -500,20 +500,23 @@ def _enrich_via_composition_engine_v1(
             if primary_subject and not str(card.get("subject_ar") or "").strip():
                 card["subject_ar"] = primary_subject
                 card["product_name_ar"] = primary_subject.split("—")[0].strip() or primary_subject
+            # Commitment only — never overwrite Diagnosis with the action text.
             if primary_action:
-                card["merchant_decision"] = primary_action
-                card["title_ar"] = primary_action
+                card["commitment_ar"] = primary_action
                 card["required_merchant_action"] = primary_action
                 card["first_step_ar"] = primary_action
+                card["action_label_ar"] = primary_action
             break
         # Deduplicate workspace cards that share the same recommended action text.
         seen_actions: set[str] = set()
         deduped_b: list[dict[str, Any]] = []
         for card in zone_b:
             action = str(
-                card.get("merchant_decision")
-                or card.get("title_ar")
+                card.get("commitment_ar")
                 or card.get("required_merchant_action")
+                or card.get("first_step_ar")
+                or card.get("merchant_decision")
+                or card.get("title_ar")
                 or ""
             ).strip()
             key = " ".join(action.split()).casefold()
@@ -539,7 +542,7 @@ def _enrich_via_composition_engine_v1(
         projection["attention_focus_decision_id"] = zone_b[0].get("decision_id")
     else:
         projection["attention_focus_decision_id"] = None
-    projection["mission_question"] = "ماذا يجب أن أقرر الآن، ولماذا؟"
+    projection["mission_question"] = "ما القرار الذي يجب أن أتخذه الآن، ولماذا؟"
     projection["gate_2_single_decision_owner"] = True
     projection["gate_2a_decision_workspace_completion"] = True
     projection["gate_2b_decision_composition_engine"] = True
@@ -630,6 +633,22 @@ def _enrich_via_composition_engine_v1(
     projection["communication_condition"] = (publication or {}).get(
         "communication_condition"
     )
+
+    # Decision Workspace V2 — last: constitutional budget (1 Primary + ≤3 Next).
+    try:
+        from services.decision_workspace_v2 import (  # noqa: PLC0415
+            apply_decision_workspace_v2_budget,
+            decision_workspace_v2_enabled,
+        )
+
+        if decision_workspace_v2_enabled():
+            projection = apply_decision_workspace_v2_budget(projection)
+            zone_b = list(projection.get("zone_b") or [])
+            zone_a = list(projection.get("zone_a") or [])
+            projection["decision_card_count"] = len(zone_a) + len(zone_b)
+    except Exception:  # noqa: BLE001
+        pass
+
     return projection
 
 

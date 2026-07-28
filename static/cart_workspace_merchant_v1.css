@@ -415,3 +415,106 @@ body[data-ma-page="workspace"] .ma-content-root {
     white-space: normal;
   }
 }
+
+/* —— Decision Workspace V2 —— calm meeting, one focal Primary —— */
+#page-workspace .cw-ops--v2 {
+  max-width: 42rem;
+  margin: 0 auto;
+}
+#page-workspace .cw-ops__hdr--v2 {
+  border-bottom: 0;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0;
+}
+#page-workspace .cw-ops--v2 .cw-ops__mission {
+  margin: 0;
+  font-size: clamp(1.15rem, 2.4vw, 1.45rem);
+  font-weight: 750;
+  line-height: 1.35;
+  color: var(--cw-ink);
+}
+#page-workspace .cw-ops--v2 .cw-ops__bands,
+#page-workspace .cw-ops--v2 .cw-ops__count,
+#page-workspace .cw-ops--v2 .cw-ops__subtitle,
+#page-workspace .cw-ops--v2 .cw-ops__name,
+#page-workspace .cw-ops--v2 .cw-landscape {
+  display: none !important;
+}
+#page-workspace .cw-primary-slot {
+  margin: 0 0 1.75rem;
+}
+#page-workspace .cw-primary-slot .cw-card--primary {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: 0 8px 32px rgba(11, 18, 32, 0.06);
+  padding: 1.25rem 1.35rem 1.4rem;
+  background: var(--cw-surface);
+  border-radius: var(--cw-radius);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+#page-workspace .cw-card__field-value--commitment {
+  font-size: var(--ma-type-md, 15px);
+  font-weight: 750;
+  color: var(--cw-ink);
+}
+#page-workspace .cw-card__commit-link {
+  display: inline-block;
+  margin-top: 0.35rem;
+  padding: 0.55rem 0.95rem;
+  border-radius: 10px;
+  background: var(--cw-ink);
+  color: #fff !important;
+  font-weight: 700;
+  text-decoration: none !important;
+}
+#page-workspace .cw-card__commit-link:hover {
+  opacity: 0.92;
+  text-decoration: none !important;
+}
+#page-workspace .cw-next-slot {
+  margin: 0;
+  padding-top: 0.5rem;
+  opacity: 0.92;
+}
+#page-workspace .cw-next-slot__label {
+  margin: 0 0 0.65rem;
+  font-size: var(--ma-type-xs, 12px);
+  font-weight: 700;
+  color: var(--cw-ink-whisper);
+  letter-spacing: 0.01em;
+}
+#page-workspace .cw-grid--next {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+#page-workspace .cw-card--next {
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--cw-border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: none;
+  gap: 0.45rem;
+}
+#page-workspace .cw-card--next .cw-card__field-value--decision {
+  font-size: var(--ma-type-md, 15px);
+}
+#page-workspace .cw-card--next .cw-card__commit-link {
+  padding: 0.4rem 0.75rem;
+  font-size: var(--ma-type-sm, 13px);
+  background: transparent;
+  color: var(--cw-accent-deep) !important;
+  border: 1px solid rgba(13, 148, 136, 0.35);
+}
+#page-workspace .cw-card__rank--next {
+  font-weight: 650;
+  color: var(--cw-ink-whisper);
+}
+#page-workspace .ma-workspace-question {
+  max-width: 42rem;
+  margin-left: auto;
+  margin-right: auto;
+  color: var(--cw-ink-whisper);
+  font-weight: 550;
+}
