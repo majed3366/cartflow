@@ -1,6 +1,6 @@
 # Decision Playbooks Constitution V1
 
-**Status:** Constitutional product foundation — no UI · no production copy · no Workspace redesign.  
+**Status:** **FROZEN** — included in [Decision Intelligence Framework V1](../decision_intelligence_framework_v1/) production baseline.  
 **Date (UTC):** 2026-07-28  
 **Mission:** CartFlow generates executable business playbooks — not recommendations, advice, or analysis reports.
 
@@ -30,6 +30,7 @@
 - Execution Methodology V1 (**EM-001** readiness · Types A/B/C · **EM-002** validation loop)  
 - Diagnostic Reasoning Foundation V1 · Home Constitution V2  
 
-## Approval gate
+## Freeze
 
-Constitutional approval required **before** any playbook engine, catalog code, or surface-specific recommendation language.
+Approved under **Decision Intelligence Framework V1**.  
+No further Playbooks constitutional amendments except DIF exception gate.

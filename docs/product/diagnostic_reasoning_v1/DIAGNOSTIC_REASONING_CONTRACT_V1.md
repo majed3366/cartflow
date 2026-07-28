@@ -1,6 +1,6 @@
 # Diagnostic Reasoning Contract V1
 
-**Status:** Implemented  
+**Status:** Implemented · **FROZEN** under [Decision Intelligence Framework V1](../decision_intelligence_framework_v1/)  
 **Version:** `diagnostic_reasoning_v1`
 
 ## Chain
