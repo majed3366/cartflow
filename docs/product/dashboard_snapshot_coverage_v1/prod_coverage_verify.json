@@ -1,0 +1,79 @@
+{
+  "generated_at_utc": "2026-07-28T00:21:09.613080+00:00",
+  "foundation": "dashboard_snapshot_coverage_v1",
+  "base": "https://smartreplyai.net",
+  "phase": "after_or_verify",
+  "review_session": {
+    "http": 200,
+    "ok": true,
+    "store_slug": "demo",
+    "email": "cf.living.store.review@smartreplyai.net",
+    "merchant_id": null
+  },
+  "snapshot_truth": {
+    "http": 400,
+    "body": {
+      "ok": false,
+      "error": "store_slug_or_cart_id_or_recovery_key_required"
+    }
+  },
+  "waited_for_builder_s": 0,
+  "samples": [
+    {
+      "label": "immediate",
+      "http": 200,
+      "api_ms": 192,
+      "store_slug": "demo",
+      "snapshot_reason": "None",
+      "snapshot_degraded": "False",
+      "snapshot_stale": "False",
+      "snapshot_version": "1",
+      "snapshot_generated_at": "2026-07-28T00:21:33.566207",
+      "snapshot_read_ms": "7.9",
+      "has_persisted_row": true,
+      "home_surface_mode": "executive_summary_v1",
+      "hes_ok": true,
+      "timeline_notes": [
+        "home_summary_snapshot",
+        "finalize#1 source=snapshot has_persisted_row=True stale=False degraded_flag=False hes_sections=True reason=",
+        "exit=hes_snapshot_passthrough source=snapshot",
+        "finalize#2 skip=True stale=False degraded=False",
+        "json_chars=51572 json_utf8_bytes=61242"
+      ],
+      "timeline_total_ms": 24.26,
+      "top_stage": "serve_enforced_snapshot_response"
+    },
+    {
+      "label": "repeat",
+      "http": 200,
+      "api_ms": 181,
+      "store_slug": "demo",
+      "snapshot_reason": "None",
+      "snapshot_degraded": "False",
+      "snapshot_stale": "False",
+      "snapshot_version": "1",
+      "snapshot_generated_at": "2026-07-28T00:21:33.566207",
+      "snapshot_read_ms": "7.7",
+      "has_persisted_row": true,
+      "home_surface_mode": "executive_summary_v1",
+      "hes_ok": true,
+      "timeline_notes": [
+        "home_summary_snapshot",
+        "finalize#1 source=snapshot has_persisted_row=True stale=False degraded_flag=False hes_sections=True reason=",
+        "exit=hes_snapshot_passthrough source=snapshot",
+        "finalize#2 skip=True stale=False degraded=False",
+        "json_chars=51572 json_utf8_bytes=61242"
+      ],
+      "timeline_total_ms": 24.538,
+      "top_stage": "serve_enforced_snapshot_response"
+    }
+  ],
+  "checks": {
+    "living_store_demo": true,
+    "has_persisted_summary_row": true,
+    "not_no_snapshot": true,
+    "home_still_fast_or_ok": true,
+    "hes_present": true
+  },
+  "verdict": "PASS_SNAPSHOT_COVERAGE_V1"
+}
