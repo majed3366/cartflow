@@ -31,6 +31,7 @@ SNAPSHOT_TYPE_DASHBOARD_CARDS = "dashboard_cards"
 SNAPSHOT_TYPE_REFRESH_STATE = "refresh_state"
 SNAPSHOT_TYPE_WIDGET_PANEL = "widget_panel"
 SNAPSHOT_TYPE_STORE_CONNECTION = "store_connection"
+SNAPSHOT_TYPE_DECISION_WORKSPACE = "decision_workspace"
 
 STATUS_ACTIVE = "active"
 STATUS_STALE = "stale"
@@ -131,12 +132,14 @@ def snapshot_ttl_seconds(snapshot_type: str) -> int:
         SNAPSHOT_TYPE_WHATSAPP_READINESS: 60,
         SNAPSHOT_TYPE_MONTHLY_SUMMARY: 120,
         SNAPSHOT_TYPE_ABANDONED_CANDIDATES: 45,
+        SNAPSHOT_TYPE_DECISION_WORKSPACE: 60,
     }
     return int(defaults.get(snapshot_type or "", 60))
 
 
 _DEFAULT_SNAPSHOT_JSON_CAP = 65_000
 _NORMAL_CARTS_SNAPSHOT_JSON_CAP = 512_000
+_DECISION_WORKSPACE_SNAPSHOT_JSON_CAP = 256_000
 
 
 def snapshot_payload_json_cap(snapshot_type: str) -> int:
@@ -150,6 +153,16 @@ def snapshot_payload_json_cap(snapshot_type: str) -> int:
             except (TypeError, ValueError):
                 pass
         return _NORMAL_CARTS_SNAPSHOT_JSON_CAP
+    if stype == SNAPSHOT_TYPE_DECISION_WORKSPACE:
+        raw = (
+            os.environ.get("CARTFLOW_DECISION_WORKSPACE_SNAPSHOT_JSON_CAP") or ""
+        ).strip()
+        if raw:
+            try:
+                return max(_DEFAULT_SNAPSHOT_JSON_CAP, min(2_000_000, int(raw)))
+            except (TypeError, ValueError):
+                pass
+        return _DECISION_WORKSPACE_SNAPSHOT_JSON_CAP
     raw = (os.environ.get("CARTFLOW_DASHBOARD_SNAPSHOT_JSON_CAP") or "").strip()
     if raw:
         try:
@@ -619,6 +632,7 @@ __all__ = [
     "ENV_SNAPSHOT_MODE",
     "SNAPSHOT_TYPE_ABANDONED_CANDIDATES",
     "SNAPSHOT_TYPE_DASHBOARD_CARDS",
+    "SNAPSHOT_TYPE_DECISION_WORKSPACE",
     "SNAPSHOT_TYPE_MONTHLY_SUMMARY",
     "SNAPSHOT_TYPE_NORMAL_CARTS",
     "SNAPSHOT_TYPE_REFRESH_STATE",
