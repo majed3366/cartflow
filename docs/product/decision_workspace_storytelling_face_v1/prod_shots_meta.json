@@ -1,0 +1,60 @@
+{
+  "generated_at_utc": "2026-07-28T23:28:35.855046+00:00",
+  "foundation": "decision_workspace_storytelling_face_v1",
+  "base": "https://smartreplyai.net",
+  "review_session": {
+    "http": 200,
+    "ok": true,
+    "store_slug": "demo"
+  },
+  "samples": [
+    {
+      "mode": "desktop",
+      "http": 200,
+      "ok": true,
+      "storytelling": true,
+      "readiness": "NEEDS_MORE_EVIDENCE",
+      "action_ready": false,
+      "href": null,
+      "priority": "مرحلة الشحن لـ |DEMO-CHARGER:demo هي أكبر اختناق ظاهر في رحلة العميل اليوم.",
+      "observation": "يغادر العملاء بعد خطوة الشحن في مسار Nano 20W.",
+      "decision": "لا تغيّر سياسة الشحن الآن.",
+      "has_mulahaza": false,
+      "has_meaning": false,
+      "has_continues": false,
+      "has_cs": false,
+      "has_diagnostic": false,
+      "has_priority_rank": true,
+      "text_sample": "الأولوية الأولى\n\nمرحلة الشحن لـ |DEMO-CHARGER:demo هي أكبر اختناق ظاهر في رحلة العميل اليوم.\n\nيغادر العملاء بعد خطوة الشحن في مسار Nano 20W.\n\nلا تغيّر سياسة الشحن الآن.\n\nبعده\n\nبعدها\n\nTrueSound — سماعة لاسلكية يحظى باهتمام واضح، لكن العملاء يترددون أو يعودون دون الشراء.\n\nقرّر الموقف التجاري بخصوص TrueSound بناءً على التشخيص.\n\nبعدها\n\nفرص استرجاع الإيرادات تتأثر عندما يتعذّر إكمال مسار المتابعة.\n\nافتح حالات بلا تواصل وحدد أين ينقطع التقاط الرقم في مسار الشراء.\n\nافتح السلال\n\nبعدها\n\nيبدو أن الشحن يضعف إتمام الشراء لـ TrueSound — سماعة لاسلكية.\n\nراجع تجربة الشحن عند شراء TrueSound — سماعة لاسلكية."
+    },
+    {
+      "mode": "mobile",
+      "http": 200,
+      "ok": true,
+      "storytelling": true,
+      "readiness": "NEEDS_MORE_EVIDENCE",
+      "action_ready": false,
+      "href": null,
+      "priority": "مرحلة الشحن لـ |DEMO-CHARGER:demo هي أكبر اختناق ظاهر في رحلة العميل اليوم.",
+      "observation": "يغادر العملاء بعد خطوة الشحن في مسار Nano 20W.",
+      "decision": "لا تغيّر سياسة الشحن الآن.",
+      "has_mulahaza": false,
+      "has_meaning": false,
+      "has_continues": false,
+      "has_cs": false,
+      "has_diagnostic": false,
+      "has_priority_rank": true,
+      "text_sample": "الأولوية الأولى\n\nمرحلة الشحن لـ |DEMO-CHARGER:demo هي أكبر اختناق ظاهر في رحلة العميل اليوم.\n\nيغادر العملاء بعد خطوة الشحن في مسار Nano 20W.\n\nلا تغيّر سياسة الشحن الآن.\n\nبعده\n\nبعدها\n\nTrueSound — سماعة لاسلكية يحظى باهتمام واضح، لكن العملاء يترددون أو يعودون دون الشراء.\n\nقرّر الموقف التجاري بخصوص TrueSound بناءً على التشخيص.\n\nبعدها\n\nفرص استرجاع الإيرادات تتأثر عندما يتعذّر إكمال مسار المتابعة.\n\nافتح حالات بلا تواصل وحدد أين ينقطع التقاط الرقم في مسار الشراء.\n\nافتح السلال\n\nبعدها\n\nيبدو أن الشحن يضعف إتمام الشراء لـ TrueSound — سماعة لاسلكية.\n\nراجع تجربة الشحن عند شراء TrueSound — سماعة لاسلكية."
+    }
+  ],
+  "checks": {
+    "all_ok": true,
+    "storytelling": true,
+    "no_report_labels": true,
+    "no_engine_ids": true,
+    "priority_rank": true,
+    "no_fake_action_when_waiting": true,
+    "all_pass": true
+  },
+  "verdict": "PASS_WORKSPACE_STORYTELLING_FACE_V1_SHOTS"
+}
