@@ -1,6 +1,9 @@
 # Decision Workspace Refinement V2 — CEO Review Pack
 
-**Status:** Awaiting CEO visual review after production deploy.  
+**Status:** Deployed — awaiting CEO visual review.  
+**Deployed SHA:** `dbf1a32632c58ba08122d057d48759e39b7290e7`  
+**PR:** [#120](https://github.com/majed3366/cartflow/pull/120)  
+**Railway:** Success (cartflow + smart-reply-ai)  
 **Date (UTC):** 2026-07-28  
 **Scope:** Refine only — no new features / engines / architecture expansion.
 
@@ -50,12 +53,14 @@ Never another report.
 
 ## Production artifacts
 
-Screenshots after deploy:
+Living Store measure: `PASS_WORKSPACE_REFINEMENT_V2_SHOTS` (`prod_shots_meta.json`)
 
 - `prod_desktop_workspace.png` / `prod_desktop_home.png`  
 - `prod_mobile_workspace.png` / `prod_mobile_home.png`  
 
-Script: `scripts/_gate2a_decision_workspace_prod_shots_v1.py` (or refinement V2 shot script if present).
+Observed primary (Living Store): `execution_readiness=NEEDS_MORE_EVIDENCE` → CTA `#home` (no Products dump, no Workspace loop). Methodology rows present in UI (`جاهزية التنفيذ`, `كيف يتحقق`).
+
+Script: `scripts/_workspace_refinement_v2_prod_shots_v1.py`
 
 ---
 
