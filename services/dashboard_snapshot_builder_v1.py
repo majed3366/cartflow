@@ -14,6 +14,7 @@ from typing import Any, Optional
 
 from services.dashboard_snapshot_v1 import (
     SNAPSHOT_TYPE_DASHBOARD_CARDS,
+    SNAPSHOT_TYPE_DECISION_WORKSPACE,
     SNAPSHOT_TYPE_NORMAL_CARTS,
     SNAPSHOT_TYPE_REFRESH_STATE,
     SNAPSHOT_TYPE_STORE_CONNECTION,
@@ -280,6 +281,34 @@ def build_store_dashboard_snapshots(
             )
             _record_mode(cards_outcome.mode)
             results["types"][SNAPSHOT_TYPE_DASHBOARD_CARDS] = cards_outcome.mode
+
+        # Gate 0 — Decision Workspace durable paint (Home parity: off-request).
+        try:
+            from services.decision_workspace_v2.snapshot_serve_v1 import (  # noqa: PLC0415
+                materialize_decision_workspace_snapshot_v1,
+            )
+
+            ws_mat = materialize_decision_workspace_snapshot_v1(
+                store_id=sid, store_slug=slug
+            )
+            results["types"][SNAPSHOT_TYPE_DECISION_WORKSPACE] = ws_mat.get("mode") or (
+                "ok" if ws_mat.get("ok") else "error"
+            )
+            results["decision_workspace_v1"] = {
+                "ok": ws_mat.get("ok"),
+                "duration_ms": ws_mat.get("duration_ms"),
+                "decision_card_count": ws_mat.get("decision_card_count"),
+                "error": ws_mat.get("error"),
+            }
+            if ws_mat.get("mode") in {"write", "touch", "skip"}:
+                _record_mode(str(ws_mat.get("mode")))
+        except Exception as ws_exc:  # noqa: BLE001
+            log.warning("decision_workspace snapshot build: %s", ws_exc)
+            results["types"][SNAPSHOT_TYPE_DECISION_WORKSPACE] = "error"
+            results["decision_workspace_v1"] = {
+                "ok": False,
+                "error": type(ws_exc).__name__,
+            }
 
         from services.dashboard_snapshot_normal_carts_parity_v1 import (  # noqa: PLC0415
             build_and_guard_normal_carts_snapshot_write,

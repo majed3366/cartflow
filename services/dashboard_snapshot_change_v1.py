@@ -39,6 +39,7 @@ from services.dashboard_snapshot_generation_metrics_v1 import (
 from services.dashboard_snapshot_v1 import (
     SNAPSHOT_TYPE_ABANDONED_CANDIDATES,
     SNAPSHOT_TYPE_DASHBOARD_CARDS,
+    SNAPSHOT_TYPE_DECISION_WORKSPACE,
     SNAPSHOT_TYPE_MONTHLY_SUMMARY,
     SNAPSHOT_TYPE_NORMAL_CARTS,
     SNAPSHOT_TYPE_REFRESH_STATE,
@@ -172,6 +173,16 @@ _POLICIES: dict[str, SnapshotGenerationPolicy] = {
     SNAPSHOT_TYPE_DASHBOARD_CARDS: SnapshotGenerationPolicy(
         snapshot_type=SNAPSHOT_TYPE_DASHBOARD_CARDS,
         importance="operational",
+        trigger_mode="hybrid",
+        change_gate_enabled=True,
+        freshness_touch_enabled=True,
+        max_staleness_s=60,
+        failsafe_age_s=300,
+        derived_from=SNAPSHOT_TYPE_SUMMARY,
+    ),
+    SNAPSHOT_TYPE_DECISION_WORKSPACE: SnapshotGenerationPolicy(
+        snapshot_type=SNAPSHOT_TYPE_DECISION_WORKSPACE,
+        importance="critical",
         trigger_mode="hybrid",
         change_gate_enabled=True,
         freshness_touch_enabled=True,

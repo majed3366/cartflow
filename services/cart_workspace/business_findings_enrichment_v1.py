@@ -224,6 +224,52 @@ def enrich_projection_with_fde_v1(
     return _enrich_legacy_gate_2a_v1(projection, slug)
 
 
+def _situation_card_from_od_v1(od: Mapping[str, Any]) -> dict[str, Any]:
+    from services.decision_composition_engine_v1.project_workspace_v1 import (  # noqa: PLC0415
+        decision_to_workspace_card_v1,
+    )
+
+    card = decision_to_workspace_card_v1(
+        {
+            "decision_id": od.get("decision_id"),
+            "decision_type": "commerce_situation",
+            "title": od.get("title") or od.get("merchant_decision"),
+            "merchant_decision": od.get("merchant_decision"),
+            "why": od.get("why"),
+            "why_now": od.get("why_now"),
+            "evidence_summary": od.get("evidence"),
+            "recommended_action": od.get("recommended_action") or "",
+            "first_step": od.get("first_step") or "",
+            "expected_outcome": od.get("business_impact_ar"),
+            "ignore_consequence": od.get("business_impact_ar"),
+            "confidence": od.get("confidence") or "medium",
+            "priority": int(od.get("priority") or 65),
+            "priority_band": "needs_action",
+            "decision_category": "products",
+            "decision_category_ar": "المنتجات",
+            "business_domain": od.get("business_domain") or "products",
+            "business_meaning_ar": od.get("business_meaning_ar"),
+            "business_impact_ar": od.get("business_impact_ar"),
+            "source_truth_types": ["commerce_situations_v1"],
+            "published": True,
+        }
+    )
+    card["gate_commerce_situations"] = True
+    card["situation_id"] = od.get("situation_id")
+    card["situation_kind"] = od.get("situation_kind")
+    card["product_name_ar"] = od.get("product_name_ar")
+    card["supporting_fact_ids"] = od.get("supporting_fact_ids")
+    card["supporting_facts_ar"] = od.get("supporting_facts_ar")
+    card["affected_products"] = od.get("affected_products")
+    card["affected_carts"] = od.get("affected_carts")
+    card["affected_customers"] = od.get("affected_customers")
+    card["view_details_href"] = (
+        f"#products?situation_id={od.get('situation_id') or ''}"
+    )
+    card["view_details_ar"] = "المنتجات المشاركة"
+    return card
+
+
 def _enrich_via_composition_engine_v1(
     projection: dict[str, Any],
     slug: str,
@@ -232,17 +278,66 @@ def _enrich_via_composition_engine_v1(
         compose_decisions_v1,
     )
     from services.decision_composition_engine_v1.project_workspace_v1 import (  # noqa: PLC0415
+        decision_to_workspace_card_v1,
         decisions_to_workspace_cards_v1,
     )
 
-    # Prefer cache; sync-compose only when portfolio empty (Workspace perf).
-    pkg = compose_decisions_v1(slug, use_cache=True, allow_sync_miss=False)
-    if not list(pkg.get("portfolio") or pkg.get("decisions") or []):
-        pkg = compose_decisions_v1(slug, use_cache=True, allow_sync_miss=True)
-    portfolio = list(pkg.get("portfolio") or pkg.get("decisions") or [])
-    composed_cards = decisions_to_workspace_cards_v1(portfolio)
+    try:
+        from services.decision_workspace_v2.perf_timeline_v1 import (  # noqa: PLC0415
+            workspace_perf_enabled,
+            workspace_perf_meta,
+            workspace_perf_note,
+            workspace_perf_stage,
+        )
+    except Exception:  # noqa: BLE001
+        workspace_perf_enabled = lambda: False  # noqa: E731
+        workspace_perf_meta = lambda **_k: None  # noqa: E731
+        workspace_perf_note = lambda _m: None  # noqa: E731
 
-    # Business Themes V1 — one card per theme (not per fact / observation).
+        class _NullStage:
+            def __enter__(self):
+                return None
+
+            def __exit__(self, *a):
+                return False
+
+        workspace_perf_stage = lambda *_a, **_k: _NullStage()  # noqa: E731
+
+    # Prefer DCE cache; sync-compose only on true miss (never when package reusable).
+    with workspace_perf_stage("dce_compose_or_cache"):
+        pkg = compose_decisions_v1(slug, use_cache=True, allow_sync_miss=False)
+        cache_meta = dict(pkg.get("_cache") or {}) if isinstance(pkg, dict) else {}
+        has_content = bool(
+            list(pkg.get("portfolio") or pkg.get("decisions") or [])
+            or (
+                isinstance(pkg.get("commerce_situations_v1"), dict)
+                and pkg["commerce_situations_v1"].get("ok")
+            )
+            or (
+                isinstance(pkg.get("merchant_publication_v1"), dict)
+                and pkg["merchant_publication_v1"].get("ok")
+            )
+        )
+        if not has_content and (
+            cache_meta.get("empty_placeholder") or not cache_meta.get("hit")
+        ):
+            workspace_perf_note("dce_sync_miss_compose")
+            pkg = compose_decisions_v1(slug, use_cache=True, allow_sync_miss=True)
+            cache_meta = dict(pkg.get("_cache") or {}) if isinstance(pkg, dict) else {}
+        workspace_perf_meta(
+            dce_cache=(
+                "hit"
+                if cache_meta.get("hit")
+                else ("sync_miss" if cache_meta.get("sync_miss_ms") else "miss")
+            )
+        )
+
+    portfolio = list(pkg.get("portfolio") or pkg.get("decisions") or [])
+    with workspace_perf_stage("project_composed_cards"):
+        composed_cards = decisions_to_workspace_cards_v1(portfolio)
+
+    # Gate 0: reuse DCE-composed facts/situations — never rebuild ORV on paint path
+    # when the composition package already holds them (Home parity).
     obs_cards: list[dict[str, Any]] = []
     obs_recon: dict[str, Any] = {}
     try:
@@ -256,29 +351,58 @@ def _enrich_via_composition_engine_v1(
             commerce_situations_v1_enabled,
             workspace_cards_from_commerce_situations_v1,
         )
-        from services.decision_composition_engine_v1.project_workspace_v1 import (  # noqa: PLC0415
-            decision_to_workspace_card_v1,
-        )
-        from services.observation_foundation_v1.merchant_findings_v1 import (  # noqa: PLC0415
-            build_observation_reality_validation_v1,
-        )
 
-        orv = build_observation_reality_validation_v1(slug)
-        obs_recon = dict(orv.get("admission_reconciliation") or {})
+        bf_pkg = (
+            pkg.get("business_facts_v1")
+            if isinstance(pkg.get("business_facts_v1"), dict)
+            else None
+        )
+        cs_pkg = (
+            pkg.get("commerce_situations_v1")
+            if isinstance(pkg.get("commerce_situations_v1"), dict)
+            else None
+        )
+        package_reuse = bool(
+            (bf_pkg and bf_pkg.get("ok")) or (cs_pkg and cs_pkg.get("ok"))
+        )
+        orv: dict[str, Any] | None = None
+        orv_rebuilt = False
+        facts_rebuilt = False
+        situations_rebuilt = False
+
         if commerce_situations_v1_enabled() and business_facts_v1_enabled():
-            bf_pkg = build_business_facts_package_v1(
-                slug,
-                orv_package=orv if isinstance(orv, dict) else None,
-                domains_pkg=pkg.get("business_domains_v1")
-                if isinstance(pkg, dict)
-                else None,
-                store_executive_pkg=pkg.get("store_executive_understanding_v1")
-                if isinstance(pkg, dict)
-                else None,
-            )
-            cs_pkg = build_commerce_situations_package_v1(
-                slug, facts_package=bf_pkg
-            )
+            if not (cs_pkg and cs_pkg.get("ok") and bf_pkg and bf_pkg.get("ok")):
+                # Incomplete package only — last-resort rebuild (builder / cold miss).
+                with workspace_perf_stage("orv_facts_situations_rebuild"):
+                    from services.observation_foundation_v1.merchant_findings_v1 import (  # noqa: PLC0415
+                        build_observation_reality_validation_v1,
+                    )
+
+                    orv = build_observation_reality_validation_v1(slug)
+                    orv_rebuilt = True
+                    bf_pkg = build_business_facts_package_v1(
+                        slug,
+                        orv_package=orv if isinstance(orv, dict) else None,
+                        domains_pkg=pkg.get("business_domains_v1")
+                        if isinstance(pkg, dict)
+                        else None,
+                        store_executive_pkg=pkg.get("store_executive_understanding_v1")
+                        if isinstance(pkg, dict)
+                        else None,
+                    )
+                    facts_rebuilt = True
+                    cs_pkg = build_commerce_situations_package_v1(
+                        slug, facts_package=bf_pkg
+                    )
+                    situations_rebuilt = True
+                    package_reuse = False
+            else:
+                with workspace_perf_stage("package_reuse_situations", cache="hit"):
+                    package_reuse = True
+
+            bf_pkg = bf_pkg if isinstance(bf_pkg, dict) else {}
+            cs_pkg = cs_pkg if isinstance(cs_pkg, dict) else {}
+            obs_recon = dict((orv or {}).get("admission_reconciliation") or {})
             projection["business_facts_v1"] = {
                 "ok": bool(bf_pkg.get("ok")),
                 "counts": bf_pkg.get("counts"),
@@ -289,49 +413,11 @@ def _enrich_via_composition_engine_v1(
                 "counts": cs_pkg.get("counts"),
                 "published": len(cs_pkg.get("published_situations") or []),
             }
-            sit_cards = workspace_cards_from_commerce_situations_v1(cs_pkg)
-            for od in sit_cards:
-                if not isinstance(od, dict):
-                    continue
-                card = decision_to_workspace_card_v1(
-                    {
-                        "decision_id": od.get("decision_id"),
-                        "decision_type": "commerce_situation",
-                        "title": od.get("title") or od.get("merchant_decision"),
-                        "merchant_decision": od.get("merchant_decision"),
-                        "why": od.get("why"),
-                        "why_now": od.get("why_now"),
-                        "evidence_summary": od.get("evidence"),
-                        "recommended_action": od.get("recommended_action") or "",
-                        "first_step": od.get("first_step") or "",
-                        "expected_outcome": od.get("business_impact_ar"),
-                        "ignore_consequence": od.get("business_impact_ar"),
-                        "confidence": od.get("confidence") or "medium",
-                        "priority": int(od.get("priority") or 65),
-                        "priority_band": "needs_action",
-                        "decision_category": "products",
-                        "decision_category_ar": "المنتجات",
-                        "business_domain": od.get("business_domain") or "products",
-                        "business_meaning_ar": od.get("business_meaning_ar"),
-                        "business_impact_ar": od.get("business_impact_ar"),
-                        "source_truth_types": ["commerce_situations_v1"],
-                        "published": True,
-                    }
-                )
-                card["gate_commerce_situations"] = True
-                card["situation_id"] = od.get("situation_id")
-                card["situation_kind"] = od.get("situation_kind")
-                card["product_name_ar"] = od.get("product_name_ar")
-                card["supporting_fact_ids"] = od.get("supporting_fact_ids")
-                card["supporting_facts_ar"] = od.get("supporting_facts_ar")
-                card["affected_products"] = od.get("affected_products")
-                card["affected_carts"] = od.get("affected_carts")
-                card["affected_customers"] = od.get("affected_customers")
-                card["view_details_href"] = (
-                    f"#products?situation_id={od.get('situation_id') or ''}"
-                )
-                card["view_details_ar"] = "المنتجات المشاركة"
-                obs_cards.append(card)
+            with workspace_perf_stage("project_situation_cards"):
+                sit_cards = workspace_cards_from_commerce_situations_v1(cs_pkg)
+                for od in sit_cards:
+                    if isinstance(od, dict):
+                        obs_cards.append(_situation_card_from_od_v1(od))
             try:
                 from services.commerce_situations_v1 import (  # noqa: PLC0415
                     surface_projection_v1,
@@ -344,37 +430,49 @@ def _enrich_via_composition_engine_v1(
                 }
             except Exception:  # noqa: BLE001
                 pass
-            try:
-                from services.reality_validation_context_v1 import (  # noqa: PLC0415
-                    stamp_reality_validation_identity_from_summary_v1,
-                )
+            if projection.get("reality_validation_identity_v1") is None:
+                try:
+                    from services.reality_validation_context_v1 import (  # noqa: PLC0415
+                        stamp_reality_validation_identity_from_summary_v1,
+                    )
 
-                stamp_holder = {
-                    "observation_reality_validation_v1": orv
-                    if isinstance(orv, dict)
-                    else {},
-                    "business_facts_v1": bf_pkg,
-                    "commerce_situations_v1": cs_pkg,
-                }
-                stamp_reality_validation_identity_from_summary_v1(
-                    stamp_holder, store_slug=slug
-                )
-                projection["reality_validation_identity_v1"] = stamp_holder.get(
-                    "reality_validation_identity_v1"
-                )
-            except Exception:  # noqa: BLE001
-                pass
+                    stamp_holder = {
+                        "observation_reality_validation_v1": orv
+                        if isinstance(orv, dict)
+                        else {},
+                        "business_facts_v1": bf_pkg,
+                        "commerce_situations_v1": cs_pkg,
+                    }
+                    stamp_reality_validation_identity_from_summary_v1(
+                        stamp_holder, store_slug=slug
+                    )
+                    projection["reality_validation_identity_v1"] = stamp_holder.get(
+                        "reality_validation_identity_v1"
+                    )
+                except Exception:  # noqa: BLE001
+                    pass
         elif business_facts_v1_enabled():
-            bf_pkg = build_business_facts_package_v1(
-                slug,
-                orv_package=orv if isinstance(orv, dict) else None,
-                domains_pkg=pkg.get("business_domains_v1")
-                if isinstance(pkg, dict)
-                else None,
-                store_executive_pkg=pkg.get("store_executive_understanding_v1")
-                if isinstance(pkg, dict)
-                else None,
-            )
+            if not (bf_pkg and bf_pkg.get("ok")):
+                with workspace_perf_stage("orv_facts_rebuild"):
+                    from services.observation_foundation_v1.merchant_findings_v1 import (  # noqa: PLC0415
+                        build_observation_reality_validation_v1,
+                    )
+
+                    orv = build_observation_reality_validation_v1(slug)
+                    orv_rebuilt = True
+                    bf_pkg = build_business_facts_package_v1(
+                        slug,
+                        orv_package=orv if isinstance(orv, dict) else None,
+                        domains_pkg=pkg.get("business_domains_v1")
+                        if isinstance(pkg, dict)
+                        else None,
+                        store_executive_pkg=pkg.get("store_executive_understanding_v1")
+                        if isinstance(pkg, dict)
+                        else None,
+                    )
+                    facts_rebuilt = True
+                    package_reuse = False
+            bf_pkg = bf_pkg if isinstance(bf_pkg, dict) else {}
             projection["business_facts_v1"] = {
                 "ok": bool(bf_pkg.get("ok")),
                 "counts": bf_pkg.get("counts"),
@@ -411,7 +509,16 @@ def _enrich_via_composition_engine_v1(
                 card["product_name_ar"] = od.get("product_name_ar")
                 obs_cards.append(card)
         else:
-            for od in orv.get("workspace_decisions") or []:
+            # Legacy ORV workspace_decisions only when facts/situations flags off.
+            with workspace_perf_stage("orv_legacy_rebuild"):
+                from services.observation_foundation_v1.merchant_findings_v1 import (  # noqa: PLC0415
+                    build_observation_reality_validation_v1,
+                )
+
+                orv = build_observation_reality_validation_v1(slug)
+                orv_rebuilt = True
+            obs_recon = dict((orv or {}).get("admission_reconciliation") or {})
+            for od in (orv or {}).get("workspace_decisions") or []:
                 if not isinstance(od, dict):
                     continue
                 card = decision_to_workspace_card_v1(
@@ -442,8 +549,18 @@ def _enrich_via_composition_engine_v1(
                 card["gate_observation_admission"] = True
                 card["product_name_ar"] = od.get("product_name_ar")
                 obs_cards.append(card)
+
+        workspace_perf_meta(
+            package_reuse=package_reuse,
+            orv_rebuilt=orv_rebuilt,
+            facts_rebuilt=facts_rebuilt,
+            situations_rebuilt=situations_rebuilt,
+        )
+        if workspace_perf_enabled() and package_reuse:
+            workspace_perf_note("reuse_dce_facts_situations_no_orv_rebuild")
     except Exception:  # noqa: BLE001
         obs_cards = []
+        workspace_perf_note("situation_project_failed")
 
     zone_a = list(projection.get("zone_a") or [])
     zone_b_existing = list(projection.get("zone_b") or [])
@@ -479,56 +596,66 @@ def _enrich_via_composition_engine_v1(
             compose_merchant_publication_v1,
         )
 
-        if not publication.get("ok"):
-            publication = compose_merchant_publication_v1(
-                pkg,
-                situations_pkg=projection.get("commerce_situations_v1")
-                if isinstance(projection.get("commerce_situations_v1"), Mapping)
-                else pkg.get("commerce_situations_v1"),
-                identity_pkg=projection.get("reality_validation_identity_v1")
-                if isinstance(projection.get("reality_validation_identity_v1"), Mapping)
-                else None,
-            )
-        zone_b = apply_publication_priority_to_decisions_v1(zone_b, publication)
-        # Stamp primary subject onto the lead card for Workspace Part 4.
-        primary_subject = str((publication or {}).get("primary_subject") or "").strip()
-        primary_action = str(
-            (publication or {}).get("primary_action")
-            or (publication or {}).get("primary_business_action")
-            or ""
-        ).strip()
-        for card in zone_b:
-            if not card.get("is_primary_decision"):
-                continue
-            if primary_subject and not str(card.get("subject_ar") or "").strip():
-                card["subject_ar"] = primary_subject
-                card["product_name_ar"] = primary_subject.split("—")[0].strip() or primary_subject
-            # Commitment only — never overwrite Diagnosis with the action text.
-            if primary_action:
-                card["commitment_ar"] = primary_action
-                card["required_merchant_action"] = primary_action
-                card["first_step_ar"] = primary_action
-                card["action_label_ar"] = primary_action
-            break
-        # Deduplicate workspace cards that share the same recommended action text.
-        seen_actions: set[str] = set()
-        deduped_b: list[dict[str, Any]] = []
-        for card in zone_b:
-            action = str(
-                card.get("commitment_ar")
-                or card.get("required_merchant_action")
-                or card.get("first_step_ar")
-                or card.get("merchant_decision")
-                or card.get("title_ar")
+        with workspace_perf_stage(
+            "publication_apply",
+            cache="hit" if publication.get("ok") else "miss",
+        ):
+            if not publication.get("ok"):
+                publication = compose_merchant_publication_v1(
+                    pkg,
+                    situations_pkg=pkg.get("commerce_situations_v1")
+                    if isinstance(pkg.get("commerce_situations_v1"), Mapping)
+                    else None,
+                    identity_pkg=projection.get("reality_validation_identity_v1")
+                    if isinstance(
+                        projection.get("reality_validation_identity_v1"), Mapping
+                    )
+                    else None,
+                )
+            zone_b = apply_publication_priority_to_decisions_v1(zone_b, publication)
+            # Stamp primary subject onto the lead card for Workspace Part 4.
+            primary_subject = str(
+                (publication or {}).get("primary_subject") or ""
+            ).strip()
+            primary_action = str(
+                (publication or {}).get("primary_action")
+                or (publication or {}).get("primary_business_action")
                 or ""
             ).strip()
-            key = " ".join(action.split()).casefold()
-            if key and key in seen_actions and not card.get("is_primary_decision"):
-                continue
-            if key:
-                seen_actions.add(key)
-            deduped_b.append(card)
-        zone_b = deduped_b
+            for card in zone_b:
+                if not card.get("is_primary_decision"):
+                    continue
+                if primary_subject and not str(card.get("subject_ar") or "").strip():
+                    card["subject_ar"] = primary_subject
+                    card["product_name_ar"] = (
+                        primary_subject.split("—")[0].strip() or primary_subject
+                    )
+                # Commitment only — never overwrite Diagnosis with the action text.
+                if primary_action:
+                    card["commitment_ar"] = primary_action
+                    card["required_merchant_action"] = primary_action
+                    card["first_step_ar"] = primary_action
+                    card["action_label_ar"] = primary_action
+                break
+            # Deduplicate workspace cards that share the same recommended action text.
+            seen_actions: set[str] = set()
+            deduped_b: list[dict[str, Any]] = []
+            for card in zone_b:
+                action = str(
+                    card.get("commitment_ar")
+                    or card.get("required_merchant_action")
+                    or card.get("first_step_ar")
+                    or card.get("merchant_decision")
+                    or card.get("title_ar")
+                    or ""
+                ).strip()
+                key = " ".join(action.split()).casefold()
+                if key and key in seen_actions and not card.get("is_primary_decision"):
+                    continue
+                if key:
+                    seen_actions.add(key)
+                deduped_b.append(card)
+            zone_b = deduped_b
     except Exception:  # noqa: BLE001
         publication = publication if isinstance(publication, dict) else {}
 
@@ -645,13 +772,14 @@ def _enrich_via_composition_engine_v1(
         )
 
         if decision_workspace_v2_enabled():
-            projection["store_slug"] = slug
-            projection = apply_decision_workspace_v2_budget(
-                projection, store_slug=slug
-            )
-            zone_b = list(projection.get("zone_b") or [])
-            zone_a = list(projection.get("zone_a") or [])
-            projection["decision_card_count"] = len(zone_a) + len(zone_b)
+            with workspace_perf_stage("v2_budget_hydrate"):
+                projection["store_slug"] = slug
+                projection = apply_decision_workspace_v2_budget(
+                    projection, store_slug=slug
+                )
+                zone_b = list(projection.get("zone_b") or [])
+                zone_a = list(projection.get("zone_a") or [])
+                projection["decision_card_count"] = len(zone_a) + len(zone_b)
     except Exception:  # noqa: BLE001
         pass
 
