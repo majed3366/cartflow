@@ -1,6 +1,6 @@
 /**
- * Cart Workspace Decision Card — Reality UX V1 / Executive Compression.
- * Merchant face: What → Why → Can I act now → Where (when applicable).
+ * Cart Workspace Decision Card — Operational Language V1.
+ * Face: Observation → Meaning → Guidance → Execution (when ready).
  */
 (function (global) {
   "use strict";
@@ -153,39 +153,51 @@
   function constitutionFaceHtml(card) {
     var isPrimary = !!card.is_primary_decision;
     var compact = !isPrimary || card.face_mode === "next_compact";
-    var primaryLabel = String(card.priority_rank_label_ar || "").trim();
-    if (isPrimary) {
-      primaryLabel = primaryLabel || "قرارك الآن";
-    } else {
-      primaryLabel = primaryLabel || "بعده";
+    var identityLabel = String(
+      card.card_identity_label_ar || card.priority_rank_label_ar || ""
+    ).trim();
+    if (!identityLabel) {
+      identityLabel = isPrimary ? "ملاحظة" : "توجيه";
     }
 
-    var diagnosis = String(
-      card.diagnosis_ar ||
+    var observation = String(
+      card.observation_ar ||
+        card.diagnosis_ar ||
         card.business_meaning_ar ||
         card.decision_ar ||
         card.title_ar ||
         ""
     );
-    var why = String(
-      card.why_believe_ar || card.reasoning_ar || card.why_ar || ""
+    var meaning = String(
+      card.operational_meaning_ar ||
+        card.why_believe_ar ||
+        card.reasoning_ar ||
+        ""
     );
-    if (!why) {
-      why = diagnosis || "ملاحظات المتجر تدعم هذا القرار.";
+    if (meaning && observation && meaning === observation) {
+      meaning = "";
     }
-    var actNow = String(
-      card.act_now_ar ||
-        card.execution_readiness_ar ||
-        "ليس الآن."
+    var guidance = String(
+      card.operational_guidance_ar ||
+        card.commitment_ar ||
+        ""
     );
+    var priority = String(card.priority_reason_ar || "").trim();
+    var continues = String(card.cartflow_continues_ar || "").trim();
+    var execReady =
+      card.execution_available === true ||
+      String(card.execution_readiness || "") === "READY" ||
+      String(card.execution_readiness || "") === "EXTERNAL_DEPENDENCY";
+    var whatExec = String(
+      card.execution_what_ar || (execReady ? guidance : "") || ""
+    ).trim();
     var whereExec = String(card.execution_where_ar || "").trim();
-    var commitment = String(
-      card.commitment_ar ||
-        "اتخذ قراراً تجارياً واحداً — أو أرجئه بوعي."
-    );
+    var howExec = String(card.execution_how_ar || "").trim();
+    var expected = String(card.expected_outcome_ar || "").trim();
     var href2 = String(card.view_details_href || "").trim();
-    var detailsLabel = String(card.view_details_ar || "متابعة التنفيذ");
+    var detailsLabel = String(card.view_details_ar || "").trim();
     var execDomain = String(card.execution_domain || "").trim();
+    var identity = String(card.card_identity || "").trim();
 
     var rows = [];
     rows.push(
@@ -193,37 +205,75 @@
         (isPrimary ? " cw-card__rank--primary" : " cw-card__rank--next") +
         '" data-exec-domain="' +
         esc(execDomain) +
-        '" data-reality-ux="1">' +
-        esc(primaryLabel) +
+        '" data-card-identity="' +
+        esc(identity) +
+        '" data-operational-language="1">' +
+        esc(identityLabel) +
         "</p>"
     );
 
+    if (isPrimary && priority) {
+      rows.push(
+        '<p class="cw-card__priority" data-priority-context="1">' +
+          esc(priority) +
+          "</p>"
+      );
+    }
+
     if (compact && !isPrimary) {
       rows.push(
-        fieldRow("ماذا أفعل؟", commitment, "cw-card__field-value--commitment")
+        fieldRow("الملاحظة", observation, "cw-card__field-value--decision")
       );
-      rows.push(fieldRow("هل الآن؟", actNow));
-    } else {
-      // Reality UX — Executive Compression only (no system self-explanation).
       rows.push(
-        fieldRow("ماذا أفعل؟", commitment, "cw-card__field-value--commitment")
+        fieldRow("التوجيه", guidance, "cw-card__field-value--commitment")
       );
-      rows.push(fieldRow("لماذا؟", why, "cw-card__field-value--decision"));
-      rows.push(fieldRow("هل أتصرف الآن؟", actNow));
-      if (whereExec) {
-        rows.push(fieldRow("أين؟", whereExec));
+    } else {
+      // Operational Language — Observation first, never action first.
+      rows.push(
+        fieldRow("الملاحظة", observation, "cw-card__field-value--decision")
+      );
+      if (meaning) {
+        rows.push(fieldRow("المعنى التشغيلي", meaning));
+      }
+      rows.push(
+        fieldRow("التوجيه", guidance, "cw-card__field-value--commitment")
+      );
+
+      if (execReady) {
+        rows.push('<div class="cw-card__exec-block" data-execution="1">');
+        rows.push(
+          '<p class="cw-card__exec-title">التنفيذ</p>'
+        );
+        if (whatExec) {
+          rows.push(fieldRow("ماذا", whatExec));
+        }
+        if (whereExec) {
+          rows.push(fieldRow("أين", whereExec));
+        }
+        if (howExec) {
+          rows.push(fieldRow("كيف", howExec));
+        }
+        if (expected) {
+          rows.push(fieldRow("النتيجة المتوقعة", expected));
+        }
+        rows.push("</div>");
+      } else if (continues) {
+        rows.push(
+          fieldRow("ما يواصل CartFlow فعله", continues)
+        );
       }
     }
 
     var dest = "";
-    if (href2) {
+    // WP7 — no artificial CTA when execution is not ready.
+    if (execReady && href2) {
       dest =
         '<p class="cw-card__dest"><a class="cw-card__dest-link cw-card__commit-link" href="' +
         esc(href2) +
         '">' +
-        esc(detailsLabel) +
+        esc(detailsLabel || "افتح للتنفيذ") +
         "</a></p>";
-    } else if (detailsLabel) {
+    } else if (execReady && detailsLabel && !href2) {
       dest =
         '<p class="cw-card__dest cw-card__dest--note">' +
         esc(detailsLabel) +
@@ -303,10 +353,10 @@
 
     if (mode === "quiet") {
       return (
-        '<article class="cw-card cw-card--quiet" data-cw-quiet="1" data-band="no_decision_supported" data-reality-ux="1">' +
-        '<p class="cw-card__band cw-card__band--none">لا قرار مطلوب الآن</p>' +
+        '<article class="cw-card cw-card--quiet" data-cw-quiet="1" data-band="no_decision_supported" data-operational-language="1">' +
+        '<p class="cw-card__band cw-card__band--none">لا إجراء مطلوب الآن</p>' +
         '<div class="cw-card__head">' +
-        '<h3 class="cw-card__title">لا يوجد قرار تنفيذي جاهز الآن.</h3></div>' +
+        '<h3 class="cw-card__title">لا توجد ملاحظة تشغيلية تحتاج انتباهك الآن.</h3></div>' +
         "</article>"
       );
     }
@@ -361,6 +411,7 @@
         esc(card.decision_status || "") +
         '" data-constitution="1"' +
         ' data-dw-v2="1"' +
+        ' data-operational-language="1"' +
         primaryAttr +
         (sitAttr ? ' data-commerce-situation="1"' : "") +
         ">" +
