@@ -1,6 +1,6 @@
 /**
- * Cart Workspace Decision Card — Decision Workspace V2 / Decision Cards Constitution V1.
- * Diagnosis → Reasoning → Evidence → Consequence → Commitment → Expected Outcome.
+ * Cart Workspace Decision Card — Reality UX V1 / Executive Compression.
+ * Merchant face: What → Why → Can I act now → Where (when applicable).
  */
 (function (global) {
   "use strict";
@@ -155,9 +155,9 @@
     var compact = !isPrimary || card.face_mode === "next_compact";
     var primaryLabel = String(card.priority_rank_label_ar || "").trim();
     if (isPrimary) {
-      primaryLabel = primaryLabel || "القرار الذي تلتزم به الآن";
+      primaryLabel = primaryLabel || "قرارك الآن";
     } else {
-      primaryLabel = primaryLabel || "بعده مباشرة";
+      primaryLabel = primaryLabel || "بعده";
     }
 
     var diagnosis = String(
@@ -165,48 +165,23 @@
         card.business_meaning_ar ||
         card.decision_ar ||
         card.title_ar ||
-        "هناك موقف تجاري يحتاج قراراً الآن."
+        ""
     );
     var why = String(
       card.why_believe_ar || card.reasoning_ar || card.why_ar || ""
     );
     if (!why) {
-      why = "لأن ملاحظات المتجر الحالية تدعم هذا التشخيص.";
+      why = diagnosis || "ملاحظات المتجر تدعم هذا القرار.";
     }
-    var confidence = String(
-      card.confidence_ar || "لذلك يمكن البناء على التشخيص بحذر مناسب."
+    var actNow = String(
+      card.act_now_ar ||
+        card.execution_readiness_ar ||
+        "ليس الآن."
     );
-    var readiness = String(
-      card.execution_readiness_ar ||
-        "جاهزية التنفيذ تُحدد قبل أي توجيه للتنفيذ."
-    );
-    var consequence = String(
-      card.business_consequence_ar ||
-        card.ignore_consequence_ar ||
-        "إذا بقي الأمر معلّقاً، يستمر ضغط الإيراد دون قرار واضح."
-    );
-    var cartflowRole = String(
-      card.cartflow_responsibility_ar ||
-        "CartFlow يتولى الملاحظة والأدلة والتشخيص وجاهزية التنفيذ."
-    );
-    var whereExec = String(
-      card.execution_where_ar || "وجهة التنفيذ تُحدد حسب مجال التنفيذ."
-    );
-    var howExec = String(
-      card.execution_how_ar || "خطوات التنفيذ تتبع مجال التنفيذ وجاهزيته."
-    );
-    var avoid = String(
-      card.execution_avoid_ar ||
-        "تجنّب إعادة التشخيص وتنفيذ عدة تغييرات دفعة واحدة."
-    );
+    var whereExec = String(card.execution_where_ar || "").trim();
     var commitment = String(
       card.commitment_ar ||
         "اتخذ قراراً تجارياً واحداً — أو أرجئه بوعي."
-    );
-    var verify = String(
-      card.execution_verify_ar ||
-        card.expected_outcome_ar ||
-        "بعد التنفيذ يقارن CartFlow قبل/بعد ويحدّث حالة القرار."
     );
     var href2 = String(card.view_details_href || "").trim();
     var detailsLabel = String(card.view_details_ar || "متابعة التنفيذ");
@@ -218,36 +193,26 @@
         (isPrimary ? " cw-card__rank--primary" : " cw-card__rank--next") +
         '" data-exec-domain="' +
         esc(execDomain) +
-        '">' +
+        '" data-reality-ux="1">' +
         esc(primaryLabel) +
         "</p>"
     );
 
     if (compact && !isPrimary) {
-      // Compact next — continues the meeting, not a second report.
       rows.push(
-        fieldRow("ثم هذا", diagnosis, "cw-card__field-value--decision")
+        fieldRow("ماذا أفعل؟", commitment, "cw-card__field-value--commitment")
       );
-      rows.push(
-        fieldRow("التزامك التالي", commitment, "cw-card__field-value--commitment")
-      );
+      rows.push(fieldRow("هل الآن؟", actNow));
     } else {
-      // Refinement V2 — one executive conversation (methodology integrated).
+      // Reality UX — Executive Compression only (no system self-explanation).
       rows.push(
-        fieldRow("ما يحدث الآن", diagnosis, "cw-card__field-value--decision")
+        fieldRow("ماذا أفعل؟", commitment, "cw-card__field-value--commitment")
       );
-      rows.push(fieldRow("لماذا هذا التشخيص", why));
-      rows.push(fieldRow("ولذلك", confidence));
-      rows.push(fieldRow("جاهزية التنفيذ", readiness));
-      rows.push(fieldRow("إن لم تحسم الآن", consequence));
-      rows.push(fieldRow("ما أنجزه CartFlow", cartflowRole));
-      rows.push(fieldRow("أين تنفّذ", whereExec));
-      rows.push(fieldRow("كيف تنفّذ", howExec));
-      rows.push(fieldRow("ما يجب تجنّبه", avoid));
-      rows.push(
-        fieldRow("قرارك التجاري", commitment, "cw-card__field-value--commitment")
-      );
-      rows.push(fieldRow("كيف يتحقق CartFlow", verify));
+      rows.push(fieldRow("لماذا؟", why, "cw-card__field-value--decision"));
+      rows.push(fieldRow("هل أتصرف الآن؟", actNow));
+      if (whereExec) {
+        rows.push(fieldRow("أين؟", whereExec));
+      }
     }
 
     var dest = "";
@@ -259,7 +224,6 @@
         esc(detailsLabel) +
         "</a></p>";
     } else if (detailsLabel) {
-      // Business / no-nav commitments — no circular empty link.
       dest =
         '<p class="cw-card__dest cw-card__dest--note">' +
         esc(detailsLabel) +
@@ -339,11 +303,10 @@
 
     if (mode === "quiet") {
       return (
-        '<article class="cw-card cw-card--quiet" data-cw-quiet="1" data-band="no_decision_supported">' +
-        '<p class="cw-card__band cw-card__band--none">لا التزام مطلوب الآن</p>' +
+        '<article class="cw-card cw-card--quiet" data-cw-quiet="1" data-band="no_decision_supported" data-reality-ux="1">' +
+        '<p class="cw-card__band cw-card__band--none">لا قرار مطلوب الآن</p>' +
         '<div class="cw-card__head">' +
-        '<h3 class="cw-card__title">لا يوجد قرار تنفيذي جاهز في هذه اللحظة.</h3></div>' +
-        '<p class="cw-card__line">CartFlow يواصل الملاحظة — عد عند ظهور التزام واضح.</p>' +
+        '<h3 class="cw-card__title">لا يوجد قرار تنفيذي جاهز الآن.</h3></div>' +
         "</article>"
       );
     }

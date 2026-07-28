@@ -1,13 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Decision Workspace V2 budget — Refinement V1 narrative.
+Decision Workspace Reality UX V1 — Executive Compression face.
 
-Primary face:
-Diagnosis → Why → Confidence → Consequence → CartFlow responsibility
-→ Merchant commitment → Expected outcome
-
-- Exactly one Primary + ≤3 Next (Next = compact)
-- Prefer diagnostic publication as Primary (Home continuity)
+Merchant-visible: What → Why → Can I act now → Where (when applicable).
+One Primary + ≤3 Next. Diagnostic Primary for Home continuity.
 """
 from __future__ import annotations
 
@@ -15,6 +11,7 @@ from typing import Any, Mapping
 
 from services.decision_workspace_v2.flag_v1 import decision_workspace_v2_enabled
 from services.decision_workspace_v2.narrative_v1 import (
+    act_now_ar_v1,
     avoid_ar_v1,
     card_from_diagnostic_publication_v1,
     cartflow_responsibility_ar_v1,
@@ -27,7 +24,6 @@ from services.decision_workspace_v2.narrative_v1 import (
     execution_readiness_v1,
     expected_outcome_ar_v1,
     how_execute_ar_v1,
-    readiness_ar_v1,
     verify_ar_v1,
     where_execute_ar_v1,
     why_believe_ar_v1,
@@ -55,16 +51,21 @@ def _is_constitution_card(card: Mapping[str, Any]) -> bool:
 
 
 def hydrate_decision_card_v2(card: dict[str, Any], *, is_primary: bool) -> dict[str, Any]:
-    """Stamp Refinement V2 executive conversation + methodology fields."""
+    """Stamp Reality UX compressed fields (internals kept for compat, not painted)."""
     out = dict(card)
     diagnosis = diagnosis_ar_v1(out)
     why = why_believe_ar_v1(out, diagnosis)
+    # Trust from precision: prefer store-specific diagnosis when why is generic.
+    if why.startswith("لأن ملاحظات المتجر") and diagnosis:
+        why = diagnosis
     consequence = consequence_ar_v1(out)
     readiness = execution_readiness_v1(out)
     domain = execution_domain_v1(out)
     commitment = commitment_ar_v1(out)
     outcome = expected_outcome_ar_v1(out, consequence)
     href, label = destination_for_commitment_v1(out)
+    act_now = act_now_ar_v1(out, readiness)
+    where = where_execute_ar_v1(out, domain, readiness)
 
     out["diagnosis_ar"] = diagnosis
     out["reasoning_ar"] = why
@@ -74,9 +75,10 @@ def hydrate_decision_card_v2(card: dict[str, Any], *, is_primary: bool) -> dict[
     out["business_consequence_ar"] = consequence
     out["cartflow_responsibility_ar"] = cartflow_responsibility_ar_v1(out)
     out["execution_readiness"] = readiness
-    out["execution_readiness_ar"] = readiness_ar_v1(out, readiness)
+    out["execution_readiness_ar"] = act_now
+    out["act_now_ar"] = act_now
     out["execution_domain"] = domain
-    out["execution_where_ar"] = where_execute_ar_v1(out, domain, readiness)
+    out["execution_where_ar"] = where
     out["execution_how_ar"] = how_execute_ar_v1(out, domain, readiness)
     out["execution_avoid_ar"] = avoid_ar_v1(out, readiness)
     out["execution_verify_ar"] = verify_ar_v1(out, readiness)
@@ -89,13 +91,14 @@ def hydrate_decision_card_v2(card: dict[str, Any], *, is_primary: bool) -> dict[
     out["decision_workspace_v2"] = True
     out["decision_workspace_refinement_v1"] = True
     out["decision_workspace_refinement_v2"] = True
+    out["decision_workspace_reality_ux_v1"] = True
     out["is_primary_decision"] = bool(is_primary)
     out["face_mode"] = "primary" if is_primary else "next_compact"
     if is_primary:
-        out["priority_rank_label_ar"] = "القرار الذي تلتزم به الآن"
+        out["priority_rank_label_ar"] = "قرارك الآن"
         out["priority_rank_role"] = "primary"
     else:
-        out["priority_rank_label_ar"] = "بعده مباشرة"
+        out["priority_rank_label_ar"] = "بعده"
         out["priority_rank_role"] = "next"
         out["next_stake_ar"] = consequence
     if _norm(out.get("decision_ar")) == commitment:
@@ -183,12 +186,11 @@ def apply_decision_workspace_v2_budget(
     else:
         projection["attention_focus_decision_id"] = None
 
-    projection["mission_question"] = (
-        "ما القرار الذي تلتزم به الآن — وأين وكيف يتحقق CartFlow من النتيجة؟"
-    )
+    projection["mission_question"] = "ما الذي يجب أن أفعله الآن؟"
     projection["decision_workspace_v2"] = True
     projection["decision_workspace_refinement_v1"] = True
     projection["decision_workspace_refinement_v2"] = True
+    projection["decision_workspace_reality_ux_v1"] = True
     projection["decision_workspace_v2_budget"] = {
         "primary": 1 if painted else 0,
         "next": max(0, len(painted) - 1),

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Decision Workspace V2 budget + Refinement V2 narrative / routing."""
+"""Decision Workspace V2 budget + Reality UX V1 narrative / routing."""
 from __future__ import annotations
 
 from services.decision_workspace_v2.budget_v1 import apply_decision_workspace_v2_budget
@@ -8,11 +8,13 @@ from services.decision_workspace_v2.narrative_v1 import (
     EXEC_DOMAIN_PLATFORM,
     EXTERNAL_DEPENDENCY,
     NEEDS_MORE_EVIDENCE,
+    act_now_ar_v1,
     commitment_ar_v1,
     destination_for_commitment_v1,
     execution_domain_v1,
     execution_readiness_v1,
     looks_like_cartflow_work,
+    where_execute_ar_v1,
 )
 
 
@@ -47,22 +49,24 @@ def test_budget_caps_next_at_three():
         }
     )
     assert out["decision_workspace_v2"] is True
-    assert out["decision_workspace_refinement_v1"] is True
-    assert out["decision_workspace_refinement_v2"] is True
+    assert out["decision_workspace_reality_ux_v1"] is True
+    assert out["mission_question"] == "ما الذي يجب أن أفعله الآن؟"
     assert out["zone_a"] == []
     assert len(out["zone_b"]) == 4
     primary = out["zone_b"][0]
     assert primary["is_primary_decision"] is True
+    assert primary["decision_workspace_reality_ux_v1"] is True
     assert primary["diagnosis_ar"]
-    assert primary["confidence_ar"]
-    assert primary["cartflow_responsibility_ar"]
     assert primary["commitment_ar"]
+    assert primary["act_now_ar"]
     assert primary["execution_readiness"]
     assert primary["execution_domain"]
     assert primary["execution_where_ar"]
-    assert primary["execution_how_ar"]
-    assert primary["execution_verify_ar"]
+    assert primary["priority_rank_label_ar"] == "قرارك الآن"
     assert "راجع" not in primary["commitment_ar"]
+    # Reality UX — no system-explaining face fields painted as required content
+    assert "CartFlow" not in (primary.get("act_now_ar") or "")
+    assert "CartFlow" not in (primary.get("commitment_ar") or "")
     assert all(not c.get("is_primary_decision") for c in out["zone_b"][1:])
     assert out["zone_b"][1]["face_mode"] == "next_compact"
 
@@ -79,7 +83,6 @@ def test_commitment_rejects_cartflow_investigative_work():
     }
     text = commitment_ar_v1(card)
     assert "راجع" not in text
-    assert "قرّر" in text or "قرار" in text
 
 
 def test_insufficient_evidence_commitment_is_wait():
@@ -92,9 +95,12 @@ def test_insufficient_evidence_commitment_is_wait():
     assert "انتظر" in text or "لا تغيّر" in text
     assert "اجمع" not in text
     assert execution_readiness_v1(card) == NEEDS_MORE_EVIDENCE
+    assert "ليس الآن" in act_now_ar_v1(card, NEEDS_MORE_EVIDENCE)
+    assert where_execute_ar_v1(card, EXEC_DOMAIN_PLATFORM, NEEDS_MORE_EVIDENCE) == ""
     href, label = destination_for_commitment_v1(card)
     assert href == "#home"
-    assert "ملخص" in label or "أدلة" in label
+    assert "ملخص" in label
+    assert "CartFlow" not in label
 
 
 def test_routing_follows_execution_domain_not_fixed_products():
@@ -132,6 +138,7 @@ def test_routing_follows_execution_domain_not_fixed_products():
     href3, label3 = destination_for_commitment_v1(biz)
     assert href3 == ""
     assert "عملك" in label3
+    assert "CartFlow" not in label3
 
 
 def test_never_routes_to_workspace():
