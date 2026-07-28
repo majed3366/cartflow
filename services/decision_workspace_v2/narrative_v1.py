@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Decision Workspace Reality UX V1 — help the merchant decide.
+Decision Workspace Operational Language V1.
 
+Observation → Operational Meaning → Operational Guidance → Execution (when ready).
 Consumes Diagnostic Reasoning, Execution Methodology, Decision Playbooks,
-and Executive Compression. Does not invent engines or expose internals.
-
-Merchant-visible answers only: What / Why / Can I act now / Where (when applicable).
+Executive Compression. No new engines. No constitution expansion.
 """
 from __future__ import annotations
 
@@ -22,41 +21,61 @@ NEEDS_MORE_EVIDENCE = "NEEDS_MORE_EVIDENCE"
 BLOCKED = "BLOCKED"
 EXTERNAL_DEPENDENCY = "EXTERNAL_DEPENDENCY"
 
-_SOFT_OPENERS = (
-    "راجع",
-    "حسّن",
-    "حسن",
-    "تحقق",
-    "افحص",
-    "اجمع",
-    "اكتشف",
-    "حقّق",
-    "حقق",
-    "حققي",
-    "فكّر",
-    "فكر",
-    "investigat",
-    "review",
-    "improve",
-    "check",
-    "consider",
-    "collect",
-    "discover",
-    "diagnos",
-)
+# Card identities (WP8)
+IDENTITY_OBSERVATION = "observation"
+IDENTITY_GUIDANCE = "guidance"
+IDENTITY_ACTION = "action"
+IDENTITY_MONITORING = "monitoring"
+IDENTITY_OPPORTUNITY = "opportunity"
+IDENTITY_RISK = "risk"
+IDENTITY_EXECUTION = "execution"
+IDENTITY_RESULT = "result"
 
-_CARTFLOW_WORK_MARKERS = (
+_IDENTITY_LABEL_AR = {
+    IDENTITY_OBSERVATION: "ملاحظة",
+    IDENTITY_GUIDANCE: "توجيه",
+    IDENTITY_ACTION: "إجراء",
+    IDENTITY_MONITORING: "مراقبة",
+    IDENTITY_OPPORTUNITY: "فرصة",
+    IDENTITY_RISK: "مخاطر",
+    IDENTITY_EXECUTION: "تنفيذ",
+    IDENTITY_RESULT: "نتيجة",
+}
+
+# Forbidden: investigative CartFlow work + management jargon
+_FORBIDDEN_GUIDANCE_MARKERS = (
     "جمع الأدل",
     "جمع المزيد",
     "مزيد من الأدل",
     "اكتشف السبب",
-    "تشخيص",
     "مسار التحويل",
     "مسار شراء",
     "أدلة الطلب",
-    "تحقق من",
     "investigat",
     "funnel",
+    "diagnos",
+    "موقفاً تجارياً",
+    "موقفا تجاريا",
+    "قراراً تجارياً",
+    "قرارا تجاريا",
+    "حكم تجاري",
+    "الحكم التجاري",
+    "بوعي",
+    "Commercial judgement",
+    "business judgement",
+    "business strategy",
+)
+
+_INVESTIGATIVE_OPENERS = (
+    "اجمع",
+    "اكتشف",
+    "فكّر",
+    "فكر",
+    "investigat",
+    "consider",
+    "collect",
+    "discover",
+    "diagnos",
 )
 
 
@@ -65,17 +84,23 @@ def _norm(v: Any) -> str:
 
 
 def looks_like_cartflow_work(text: str) -> bool:
+    """True when guidance is investigative / management jargon (forbidden)."""
     t = _norm(text)
     if not t:
         return False
     low = t.casefold()
-    for p in _SOFT_OPENERS:
+    for p in _INVESTIGATIVE_OPENERS:
         if low.startswith(p.casefold()):
             return True
-    for m in _CARTFLOW_WORK_MARKERS:
+    for m in _FORBIDDEN_GUIDANCE_MARKERS:
         if m.casefold() in low:
             return True
     return False
+
+
+def execution_is_ready_v1(readiness: str) -> bool:
+    """Execution block + destination only when merchant can act now."""
+    return readiness in {READY, EXTERNAL_DEPENDENCY}
 
 
 def _blob(card: Mapping[str, Any]) -> str:
@@ -85,11 +110,43 @@ def _blob(card: Mapping[str, Any]) -> str:
             _norm(card.get("decision_category")),
             _norm(card.get("diagnostic_family")),
             _norm(card.get("diagnosis_ar")),
+            _norm(card.get("observation_ar")),
             _norm(card.get("situation_kind")),
             _norm(card.get("decision_type")),
             _norm(card.get("card_kind")),
+            _norm(card.get("subject_ar")),
         ]
     ).casefold()
+
+
+def _subject_short(card: Mapping[str, Any]) -> str:
+    subject = _norm(
+        card.get("subject_ar")
+        or card.get("product_name_ar")
+        or card.get("affected_area_ar")
+    )
+    return subject.split("—")[0].strip() if subject else ""
+
+
+def _affected_volume_hint(card: Mapping[str, Any]) -> str:
+    for key in (
+        "affected_customers_count",
+        "customer_count",
+        "cohort_size",
+        "impact_volume",
+        "cart_count",
+        "affected_count",
+    ):
+        raw = card.get(key)
+        if raw is None:
+            continue
+        try:
+            n = int(raw)
+        except (TypeError, ValueError):
+            continue
+        if n > 0:
+            return str(n)
+    return ""
 
 
 def execution_domain_v1(card: Mapping[str, Any]) -> str:
@@ -103,7 +160,6 @@ def execution_domain_v1(card: Mapping[str, Any]) -> str:
         return EXEC_DOMAIN_BUSINESS
 
     blob = _blob(card)
-    # Type A — inside CartFlow
     if any(
         k in blob
         for k in (
@@ -122,7 +178,6 @@ def execution_domain_v1(card: Mapping[str, Any]) -> str:
         )
     ):
         return EXEC_DOMAIN_INTERNAL
-    # Type C — merchant business (not platform UI)
     if any(
         k in blob
         for k in (
@@ -141,7 +196,6 @@ def execution_domain_v1(card: Mapping[str, Any]) -> str:
         )
     ):
         return EXEC_DOMAIN_BUSINESS
-    # Type B — commerce platform (shipping, product, pricing, payment, settings)
     return EXEC_DOMAIN_PLATFORM
 
 
@@ -168,163 +222,185 @@ def execution_readiness_v1(card: Mapping[str, Any]) -> str:
 
 
 def act_now_ar_v1(card: Mapping[str, Any], readiness: str) -> str:
-    """Merchant-facing: Can I act now? — no system self-description."""
+    """Compat — not painted as a separate face row (merged into guidance/execution)."""
     if readiness == NEEDS_MORE_EVIDENCE:
-        return "ليس الآن — الأدلة غير كافية لقرار تنفيذي."
+        return "ليس الآن"
     if readiness == BLOCKED:
-        return "ليس الآن — يوجد متطلب ناقص يمنع التنفيذ."
-    if readiness == EXTERNAL_DEPENDENCY:
-        domain = execution_domain_v1(card)
-        if domain == EXEC_DOMAIN_BUSINESS:
-            return "نعم — القرار جاهز؛ التنفيذ في عملك."
-        return "نعم — القرار جاهز؛ التنفيذ في منصة المتجر."
-    return "نعم — يمكنك التصرف الآن."
+        return "ليس الآن"
+    return "نعم"
 
 
 def readiness_ar_v1(card: Mapping[str, Any], readiness: str) -> str:
-    """Alias for act-now language (Reality UX / Executive Compression)."""
     return act_now_ar_v1(card, readiness)
 
 
 def confidence_ar_v1(card: Mapping[str, Any]) -> str:
-    status = _norm(
-        card.get("diagnosis_status") or card.get("decision_status") or ""
-    ).casefold()
-    level = _norm(
-        card.get("confidence_level")
-        or card.get("decision_confidence")
-        or card.get("confidence")
-        or ""
-    ).casefold()
-    if status in {"insufficient_evidence", "insufficient"} or card.get("has_decision") is False:
-        return "لذلك لا نطلب منك تغييراً تجارياً قبل اكتمال الأدلة."
-    if status in {"conflicting_evidence", "conflicting"}:
-        return "لذلك نؤجل الالتزام بسبب تعارض الأدلة — لا تُحسم سبباً واحداً بنفسك."
-    if level in {"high", "عال", "عالية", "supported"}:
-        return "لذلك يمكن البناء على هذا التشخيص بثقة كافية لقرار واضح."
-    if level in {"low", "منخفض", "منخفضة"}:
-        return "لذلك يبقى الحكم التجاري حذراً رغم وضوح الاتجاه."
-    explicit = _norm(card.get("confidence_ar") or card.get("decision_confidence_ar"))
-    if explicit and not looks_like_cartflow_work(explicit):
-        return explicit
-    return "لذلك يمكن البناء على التشخيص بحذر مناسب."
-
-
-def cartflow_responsibility_ar_v1(card: Mapping[str, Any]) -> str:
-    """Internal/compat only — not painted on Reality UX face."""
-    readiness = execution_readiness_v1(card)
-    if readiness == NEEDS_MORE_EVIDENCE:
-        return ""
-    if readiness == BLOCKED:
-        return ""
+    """Internal/compat — not painted on operational face."""
     return ""
 
 
-def diagnosis_ar_v1(card: Mapping[str, Any]) -> str:
+def cartflow_responsibility_ar_v1(card: Mapping[str, Any]) -> str:
+    return ""
+
+
+def observation_ar_v1(card: Mapping[str, Any]) -> str:
+    """What CartFlow discovered — always first."""
     for key in (
+        "observation_ar",
         "diagnosis_ar",
         "business_meaning_ar",
         "situation_summary_ar",
-        "observation_ar",
     ):
         v = _norm(card.get(key))
         if v and not looks_like_cartflow_work(v):
             return v
     why = _norm(card.get("why_ar") or (card.get("explanation") or {}).get("why_here"))
-    subject = _norm(
-        card.get("subject_ar")
-        or card.get("product_name_ar")
-        or card.get("affected_area_ar")
-    )
+    subject = _subject_short(card)
     if why and not looks_like_cartflow_work(why):
-        if subject and subject.split("—")[0].strip() not in why:
-            return f"{subject.split('—')[0].strip()}: {why}"
+        if subject and subject not in why:
+            return f"{subject}: {why}"
         return why
     if subject:
-        return f"هناك موقف تجاري واضح حول {subject.split('—')[0].strip()}."
-    return "هناك موقف تجاري يحتاج قراراً الآن."
+        return f"نشاط غير مكتمل حول {subject}."
+    return "لوحظ نمط يؤثر على إتمام الشراء."
 
 
-def why_believe_ar_v1(card: Mapping[str, Any], diagnosis: str) -> str:
-    why = _norm(card.get("why_ar") or (card.get("explanation") or {}).get("why_here"))
-    why_now = _norm(card.get("why_now_ar") or card.get("reasoning_ar"))
-    for candidate in (why, why_now):
-        if (
-            candidate
-            and candidate != diagnosis
-            and not looks_like_cartflow_work(candidate)
-            and not candidate.endswith("؟")
-            and not candidate.endswith("?")
-        ):
-            return candidate
-    if "شحن" in diagnosis:
-        return "لأن المغادرة تتكرر عند الشحن دون سبب قابل للفصل بعد."
-    if "اهتمام" in diagnosis or "دون شراء" in diagnosis:
-        return "لأن الاهتمام بالمنتج واضح بينما إتمام الشراء لا يتحقق بنفس الوضوح."
-    if "تواصل" in diagnosis or "رقم" in diagnosis:
-        return "لأن المتابعة تتعطل عندما لا تتوفر وسيلة تواصل صالحة."
-    return "لأن ملاحظات المتجر الحالية تدعم هذا التشخيص بعد استبعاد التفسيرات الأضعف."
+def diagnosis_ar_v1(card: Mapping[str, Any]) -> str:
+    """Compat alias — observation is the discovery face."""
+    return observation_ar_v1(card)
 
 
-def consequence_ar_v1(card: Mapping[str, Any]) -> str:
+def operational_meaning_ar_v1(card: Mapping[str, Any], observation: str) -> str:
+    """Why this matters — must not repeat the observation verbatim."""
     for key in (
+        "operational_meaning_ar",
         "ignore_consequence_ar",
         "business_consequence_ar",
         "business_impact_ar",
+        "why_now_ar",
     ):
         v = _norm(card.get(key))
-        if v and v not in {
-            _norm(card.get("expected_outcome_ar")),
-            _norm(card.get("diagnosis_ar")),
-        }:
+        if (
+            v
+            and v != observation
+            and not looks_like_cartflow_work(v)
+            and not v.endswith("؟")
+            and not v.endswith("?")
+        ):
             return v
-    status = _norm(card.get("diagnosis_status") or "").casefold()
-    if status in {"insufficient_evidence", "insufficient"}:
-        return "بدون أدلة أوضح، أي تغيير تجاري الآن قد يعالج السبب الخطأ."
-    return "إذا بقي الأمر معلّقاً، يستمر ضغط الإيراد دون قرار واضح."
 
-
-def where_execute_ar_v1(card: Mapping[str, Any], domain: str, readiness: str) -> str:
-    """Where — omit when not actionable (Compression Law: only when applicable)."""
-    if readiness in {NEEDS_MORE_EVIDENCE, BLOCKED}:
-        return ""
-    if domain == EXEC_DOMAIN_INTERNAL:
-        blob = _blob(card)
-        if any(k in blob for k in ("communicat", "تواصل", "whatsapp", "محادث", "contact")):
-            return "التواصل داخل CartFlow."
-        return "السلال داخل CartFlow."
-    if domain == EXEC_DOMAIN_BUSINESS:
-        return "في عملك التشغيلي."
     blob = _blob(card)
-    if any(k in blob for k in ("ship", "شحن", "payment", "دفع", "setting")):
-        return "منصة المتجر — إعدادات الشحن أو الدفع."
-    return "منصة المتجر — المنتج أو التسعير."
+    subject = _subject_short(card)
+    if "شحن" in (observation + blob) or "ship" in blob:
+        if subject:
+            return f"هذه الخطوة تضغط على إتمام شراء {subject}."
+        return "هذه الخطوة تمثّل اختناقاً في مسار الشراء."
+    if "اهتمام" in observation or "دون شراء" in observation or "interest" in blob:
+        return "الاهتمام موجود بينما إتمام الشراء لا يتحقق."
+    if "تواصل" in observation or "رقم" in observation or "contact" in blob:
+        return "بدون وسيلة تواصل صالحة تتوقف استعادة السلات."
+    if "دفع" in observation or "payment" in blob:
+        return "تعثّر الدفع يمنع إكمال الطلبات الجاهزة للشراء."
+    if "استعاد" in observation or "recover" in blob or "رسال" in observation:
+        return "الفرصة موجودة في الرسالة لكن العودة للشراء ضعيفة."
+    status = _norm(card.get("diagnosis_status") or "").casefold()
+    if status in {"insufficient_evidence", "insufficient", "conflicting_evidence", "conflicting"}:
+        return "أي تغيير الآن قد يعالج السبب الخطأ."
+    return "تركه معلّقاً يبقي ضغط الإيراد دون معالجة واضحة."
 
 
-def how_execute_ar_v1(card: Mapping[str, Any], domain: str, readiness: str) -> str:
-    """Internal/compat — not painted on Reality UX face."""
-    return ""
+def why_believe_ar_v1(card: Mapping[str, Any], diagnosis: str) -> str:
+    """Compat — maps to operational meaning."""
+    return operational_meaning_ar_v1(card, diagnosis)
 
 
-def avoid_ar_v1(card: Mapping[str, Any], readiness: str) -> str:
-    """Internal/compat — not painted on Reality UX face."""
-    return ""
+def consequence_ar_v1(card: Mapping[str, Any]) -> str:
+    return operational_meaning_ar_v1(card, observation_ar_v1(card))
 
 
-def verify_ar_v1(card: Mapping[str, Any], readiness: str) -> str:
-    """Internal/compat — not painted on Reality UX face."""
-    return ""
+def priority_reason_ar_v1(card: Mapping[str, Any], *, is_primary: bool) -> str:
+    """
+    One sentence: why this is today's highest priority.
+    Must use store-specific evidence — not repeat diagnosis.
+    """
+    if not is_primary:
+        return ""
+    explicit = _norm(card.get("priority_reason_ar") or card.get("why_priority_ar"))
+    if explicit and not looks_like_cartflow_work(explicit):
+        return explicit
+
+    observation = observation_ar_v1(card)
+    blob = _blob(card)
+    subject = _subject_short(card)
+    vol = _affected_volume_hint(card)
+    readiness = execution_readiness_v1(card)
+    conf = _norm(
+        card.get("confidence_level")
+        or card.get("decision_confidence")
+        or card.get("confidence")
+        or ""
+    ).casefold()
+
+    if vol:
+        return f"هذا القرار يؤثر على أكبر مجموعة عملاء اليوم ({vol})."
+    if "شحن" in (observation + blob) or "ship" in blob:
+        if subject:
+            return f"مرحلة الشحن لـ {subject} هي أكبر اختناق ظاهر في رحلة العميل اليوم."
+        return "هذه المرحلة تمثّل أكبر اختناق ظاهر في رحلة العميل اليوم."
+    if any(k in blob for k in ("recover", "رسال", "whatsapp", "استعاد")):
+        return "تأخير هذا القرار قد يقلل فرص الاستعادة اليوم."
+    if "اهتمام" in observation or "دون شراء" in observation or "interest" in blob:
+        if subject:
+            return f"هذه أعلى فرصة ظاهرة اليوم لتحسين التحويل على {subject}."
+        return "هذه أعلى فرصة ظاهرة اليوم لتحسين التحويل."
+    if "تواصل" in observation or "رقم" in observation or "contact" in blob:
+        return "تأخير هذا القرار قد يقلل فرص الاستعادة اليوم."
+    if readiness == NEEDS_MORE_EVIDENCE and conf in {"high", "عال", "عالية", "supported"}:
+        return "هذا أقوى دليل متاح حالياً رغم أن التنفيذ غير جاهز بعد."
+    if conf in {"high", "عال", "عالية", "supported"}:
+        return "هذا أقوى دليل متاح حالياً لتوجيه العمل اليوم."
+    if subject:
+        return f"هذا أعلى أولوية ظاهرة اليوم بخصوص {subject}."
+    return "هذا أعلى أولوية ظاهرة من أدلة المتجر اليوم."
 
 
-def commitment_ar_v1(card: Mapping[str, Any]) -> str:
-    """Executive task (playbook face) — never investigative CartFlow work."""
+def cartflow_continues_ar_v1(card: Mapping[str, Any], readiness: str) -> str:
+    """Shown only when not executable — what CartFlow keeps doing."""
+    if execution_is_ready_v1(readiness):
+        return ""
+    if readiness == BLOCKED:
+        return "CartFlow يراقب المتطلب الناقص ولن يقترح تنفيذاً قبل اكتماله."
+    blob = _blob(card)
+    if "شحن" in blob or "ship" in blob:
+        return (
+            "CartFlow يواصل التمييز بين تكلفة الشحن ووقت التوصيل وخيارات الشحن "
+            "قبل أي توجيه تنفيذي."
+        )
+    if "payment" in blob or "دفع" in blob:
+        return "CartFlow يواصل رصد تعثّر الدفع وطرق الدفع الظاهرة عند الدفع."
+    if "interest" in blob or "product" in blob:
+        return "CartFlow يواصل ربط اهتمام المنتج بسبب المغادرة قبل الشراء."
+    if "contact" in blob or "تواصل" in blob:
+        return "CartFlow يواصل تتبع أين ينقطع التقاط وسيلة التواصل."
+    return "CartFlow يواصل جمع الأدلة حتى يصبح التوجيه التنفيذي واضحاً."
+
+
+def operational_guidance_ar_v1(card: Mapping[str, Any]) -> str:
+    """What should happen now — operational, object-specific."""
     readiness = execution_readiness_v1(card)
     if readiness == NEEDS_MORE_EVIDENCE:
-        return "لا تغيّر السياسة الآن — انتظر حتى تتضح الأدلة."
+        blob = _blob(card)
+        if "شحن" in blob or "ship" in blob:
+            return (
+                "لا تغيّر إعدادات الشحن بعد — انتظر حتى يتضح إن كانت المشكلة "
+                "في التكلفة أو وقت التوصيل أو خيارات الشحن."
+            )
+        return "لا تُجرِ تغييراً تشغيلياً الآن — الأدلة غير كافية لتحديد ماذا يُراجع."
     if readiness == BLOCKED:
         return "أرجئ التنفيذ حتى يُستكمل المتطلب الناقص."
 
     for key in (
+        "operational_guidance_ar",
         "commitment_ar",
         "merchant_commitment_ar",
         "recommended_action",
@@ -338,44 +414,170 @@ def commitment_ar_v1(card: Mapping[str, Any]) -> str:
             return v
 
     domain = execution_domain_v1(card)
-    subject = _norm(card.get("subject_ar") or card.get("product_name_ar"))
-    short = subject.split("—")[0].strip() if subject else ""
-    diagnosis = _norm(card.get("diagnosis_ar"))
+    subject = _subject_short(card)
+    diagnosis = observation_ar_v1(card)
+    blob = _blob(card)
 
     if domain == EXEC_DOMAIN_INTERNAL:
-        if "تواصل" in diagnosis or "رقم" in diagnosis or "communicat" in _blob(card):
-            return "أصلح التقاط وسيلة التواصل في مسار الشراء."
-        return "تعامل مع السلال المعنية الآن."
-    if "شحن" in (subject + diagnosis) or "ship" in _blob(card):
-        return "عدّل سياسة الشحن في المنصة — أو أبقِها بوعي."
-    if short:
-        return f"اتخذ موقفاً تجارياً بخصوص {short}."
+        if "تواصل" in diagnosis or "رقم" in diagnosis or "contact" in blob:
+            return "افتح السلال بلا أرقام وتتبّع أين ينقطع التقاط رقم الجوال."
+        if "recover" in blob or "رسال" in diagnosis:
+            return "راجع رسالة الاستعادة الأولى — العملاء يقرأونها ولا يعودون."
+        return "افتح السلال المعنية وراجع حالات الاستعادة المتوقفة."
+    if "شحن" in (subject + diagnosis + blob) or "ship" in blob:
+        if subject:
+            return f"راجع إعدادات الشحن للطلبات المرتبطة بـ {subject}."
+        return "راجع إعدادات الشحن للطلبات ذات المغادرة بعد خطوة الشحن."
+    if "دفع" in diagnosis or "payment" in blob:
+        return "راجع طرق الدفع المتاحة أثناء الدفع."
+    if "interest" in blob or "اهتمام" in diagnosis:
+        if subject:
+            return f"راجع صفحة المنتج {subject} — الاهتمام مرتفع والشراء لا يكتمل."
+        return "راجع صفحة المنتج ذات الاهتمام المرتفع دون إتمام شراء."
+    if subject:
+        return f"راجع {subject} في المنصة وحدد العنصر الذي يجب تغييره."
     if domain == EXEC_DOMAIN_BUSINESS:
-        return "نفّذ الإجراء التشغيلي المطلوب في عملك."
-    return "اتخذ قراراً تجارياً واحداً — أو أرجئه بوعي."
+        return "نفّذ الإجراء التشغيلي المطلوب خارج المنصة على العنصر المحدد."
+    return "راجع العنصر التشغيلي المحدد في المنصة."
+
+
+def commitment_ar_v1(card: Mapping[str, Any]) -> str:
+    """Compat — operational guidance is the merchant task."""
+    return operational_guidance_ar_v1(card)
+
+
+def where_execute_ar_v1(card: Mapping[str, Any], domain: str, readiness: str) -> str:
+    if not execution_is_ready_v1(readiness):
+        return ""
+    if domain == EXEC_DOMAIN_INTERNAL:
+        blob = _blob(card)
+        if any(k in blob for k in ("communicat", "تواصل", "whatsapp", "محادث", "contact")):
+            return "التواصل داخل CartFlow"
+        if any(k in blob for k in ("recover", "رسال")):
+            return "رسائل الاستعادة داخل CartFlow"
+        return "السلال داخل CartFlow"
+    if domain == EXEC_DOMAIN_BUSINESS:
+        return "العمل التشغيلي خارج المنصة"
+    blob = _blob(card)
+    if any(k in blob for k in ("ship", "شحن", "deliver", "توصيل")):
+        return "إعدادات الشحن في منصة المتجر"
+    if any(k in blob for k in ("payment", "دفع")):
+        return "إعدادات الدفع في منصة المتجر"
+    return "صفحة المنتج أو التسعير في منصة المتجر"
+
+
+def how_execute_ar_v1(card: Mapping[str, Any], domain: str, readiness: str) -> str:
+    if not execution_is_ready_v1(readiness):
+        return ""
+    explicit = _norm(card.get("execution_how_ar") or card.get("how_ar"))
+    if explicit and not looks_like_cartflow_work(explicit):
+        return explicit
+    guidance = operational_guidance_ar_v1(card)
+    blob = _blob(card)
+    if "شحن" in blob or "ship" in blob:
+        return "قارن تكلفة الشحن ووقت التوصيل وخيارات الشحن للشريحة المتأثرة."
+    if "payment" in blob or "دفع" in blob:
+        return "تحقق من تفعيل طرق الدفع الظاهرة عند الدفع وأي أخطاء تظهر للعميل."
+    if "recover" in blob or "رسال" in blob:
+        return "راجع وضوح العرض وزر العودة في رسالة الاستعادة الأولى."
+    if "contact" in blob or "تواصل" in blob:
+        return "حدد خطوة المسار التي تفقد رقم الجوال قبل المتابعة."
+    if domain == EXEC_DOMAIN_INTERNAL:
+        return "افتح الحالات المعنية ونفّذ المتابعة على السلات المحددة."
+    return f"راجع العنصر المذكور ثم غيّر ما يلزم: {guidance}"
+
+
+def avoid_ar_v1(card: Mapping[str, Any], readiness: str) -> str:
+    return ""
+
+
+def verify_ar_v1(card: Mapping[str, Any], readiness: str) -> str:
+    return expected_outcome_ar_v1(card, "") if execution_is_ready_v1(readiness) else ""
 
 
 def expected_outcome_ar_v1(card: Mapping[str, Any], consequence: str) -> str:
-    """Compat — Reality UX does not paint outcome/verify on the face."""
-    return ""
+    if not execution_is_ready_v1(execution_readiness_v1(card)):
+        return ""
+    for key in (
+        "expected_outcome_ar",
+        "reality_validation_ar",
+        "success_metric_ar",
+    ):
+        v = _norm(card.get(key))
+        if v and not looks_like_cartflow_work(v):
+            return v
+    blob = _blob(card)
+    subject = _subject_short(card)
+    if "شحن" in blob or "ship" in blob:
+        return "انخفاض المغادرة بعد خطوة الشحن وارتفاع إتمام الشراء."
+    if "payment" in blob or "دفع" in blob:
+        return "انخفاض التعثّر عند الدفع وارتفاع إكمال الطلب."
+    if "recover" in blob or "رسال" in blob:
+        return "ارتفاع العودة من رسالة الاستعادة إلى إتمام الشراء."
+    if "contact" in blob or "تواصل" in blob:
+        return "ارتفاع السلات القابلة للمتابعة برقم صالح."
+    if subject:
+        return f"ارتفاع إتمام الشراء لـ {subject}."
+    if consequence and not looks_like_cartflow_work(consequence):
+        return consequence
+    return "تحسن واضح في إتمام الشراء على المسار المتأثر."
+
+
+def execution_what_ar_v1(card: Mapping[str, Any], readiness: str) -> str:
+    """WHAT exactly should change — only when executable."""
+    if not execution_is_ready_v1(readiness):
+        return ""
+    return operational_guidance_ar_v1(card)
+
+
+def card_identity_v1(card: Mapping[str, Any], readiness: str) -> str:
+    """WP8 — not every card is forced into Decision."""
+    explicit = _norm(card.get("card_identity") or card.get("operational_identity")).casefold()
+    for key in (
+        IDENTITY_OBSERVATION,
+        IDENTITY_GUIDANCE,
+        IDENTITY_ACTION,
+        IDENTITY_MONITORING,
+        IDENTITY_OPPORTUNITY,
+        IDENTITY_RISK,
+        IDENTITY_EXECUTION,
+        IDENTITY_RESULT,
+    ):
+        if explicit == key or explicit == key[:4]:
+            return key
+
+    blob = _blob(card)
+    if readiness == NEEDS_MORE_EVIDENCE:
+        return IDENTITY_OBSERVATION
+    if readiness == BLOCKED:
+        return IDENTITY_MONITORING
+    if any(k in blob for k in ("risk", "مخاطر", "vip", "فقد")):
+        return IDENTITY_RISK
+    if any(k in blob for k in ("interest", "opportunity", "فرصة", "اهتمام")):
+        return IDENTITY_OPPORTUNITY
+    if execution_is_ready_v1(readiness):
+        return IDENTITY_EXECUTION if readiness == READY else IDENTITY_ACTION
+    return IDENTITY_GUIDANCE
+
+
+def card_identity_label_ar_v1(identity: str) -> str:
+    return _IDENTITY_LABEL_AR.get(identity, "توجيه")
 
 
 def destination_for_commitment_v1(card: Mapping[str, Any]) -> tuple[str, str]:
     """
-    Route by execution domain — never fixed Products, never #workspace loops.
-    Empty href = no in-app navigation (business wait / business ops).
+    Route by execution domain — never #workspace loops.
+    NEEDS_MORE_EVIDENCE / BLOCKED → no destination (WP7).
     """
     readiness = execution_readiness_v1(card)
     if readiness == NEEDS_MORE_EVIDENCE:
-        return "#home", "العودة للملخص"
+        return "", ""
     if readiness == BLOCKED:
-        return "#settings", "أكمل المتطلب الناقص"
+        return "", ""
 
     domain = execution_domain_v1(card)
     blob = _blob(card)
     inbound = _norm(card.get("view_details_href"))
-
-    # Never loop into Workspace explanation.
     if inbound.startswith("#workspace"):
         inbound = ""
 
@@ -384,26 +586,19 @@ def destination_for_commitment_v1(card: Mapping[str, Any]) -> tuple[str, str]:
             k in blob
             for k in ("communicat", "تواصل", "whatsapp", "محادث", "contact", "followup")
         ):
-            href = "#communication"
-            if inbound.startswith("#communication"):
-                href = inbound
+            href = inbound if inbound.startswith("#communication") else "#communication"
             return href, "افتح التواصل"
-        href = "#carts"
-        if inbound.startswith("#carts"):
-            href = inbound
+        href = inbound if inbound.startswith("#carts") else "#carts"
         return href, "افتح السلال"
 
     if domain == EXEC_DOMAIN_BUSINESS:
         return "", "نفّذ في عملك"
 
-    # Platform
     if any(k in blob for k in ("ship", "شحن", "payment", "دفع", "deliver", "توصيل")):
-        href = "#settings"
-        if inbound.startswith("#settings"):
-            href = inbound
-        return href, "افتح إعدادات المنصة"
+        href = inbound if inbound.startswith("#settings") else "#settings"
+        return href, "افتح إعدادات الشحن أو الدفع"
     if inbound.startswith("#products") or inbound.startswith("#settings"):
-        return inbound, "افتح منصة المتجر"
+        return inbound, "افتح العنصر في المنصة"
     return "#products", "افتح صفحة المنتج"
 
 
@@ -441,7 +636,7 @@ def card_from_diagnostic_publication_v1(pub: Mapping[str, Any]) -> dict[str, Any
         "has_decision": status not in {"insufficient_evidence", "conflicting_evidence"},
         "diagnosis_status": status,
         "diagnosis_ar": diagnosis,
-        "observation_ar": _norm(p.get("observation_ar")),
+        "observation_ar": _norm(p.get("observation_ar")) or diagnosis,
         "why_ar": _norm(p.get("observation_ar")),
         "confidence_level": _norm(p.get("confidence_level")),
         "recommendation_ar": _norm(p.get("recommendation_ar")),
@@ -464,11 +659,22 @@ __all__ = [
     "EXEC_DOMAIN_INTERNAL",
     "EXEC_DOMAIN_PLATFORM",
     "EXTERNAL_DEPENDENCY",
+    "IDENTITY_ACTION",
+    "IDENTITY_EXECUTION",
+    "IDENTITY_GUIDANCE",
+    "IDENTITY_MONITORING",
+    "IDENTITY_OBSERVATION",
+    "IDENTITY_OPPORTUNITY",
+    "IDENTITY_RESULT",
+    "IDENTITY_RISK",
     "NEEDS_MORE_EVIDENCE",
     "READY",
     "act_now_ar_v1",
     "avoid_ar_v1",
     "card_from_diagnostic_publication_v1",
+    "card_identity_label_ar_v1",
+    "card_identity_v1",
+    "cartflow_continues_ar_v1",
     "cartflow_responsibility_ar_v1",
     "commitment_ar_v1",
     "confidence_ar_v1",
@@ -476,10 +682,16 @@ __all__ = [
     "destination_for_commitment_v1",
     "diagnosis_ar_v1",
     "execution_domain_v1",
+    "execution_is_ready_v1",
     "execution_readiness_v1",
+    "execution_what_ar_v1",
     "expected_outcome_ar_v1",
     "how_execute_ar_v1",
     "looks_like_cartflow_work",
+    "observation_ar_v1",
+    "operational_guidance_ar_v1",
+    "operational_meaning_ar_v1",
+    "priority_reason_ar_v1",
     "readiness_ar_v1",
     "verify_ar_v1",
     "where_execute_ar_v1",

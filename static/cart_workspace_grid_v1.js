@@ -1,6 +1,6 @@
 /**
- * Cart Workspace Grid — Reality UX V1.
- * One Primary (What/Why/Now/Where) + ≤3 Next. No KPI walls.
+ * Cart Workspace Grid — Operational Language V1.
+ * One Primary (Observation→Guidance→Execution) + ≤3 Next.
  */
 (function (global) {
   "use strict";
@@ -50,7 +50,7 @@
         zone_a: [],
         zone_b: [],
         quiet: true,
-        mission_question: "ما الذي يجب أن أفعله الآن؟",
+        mission_question: "ما الذي يحتاج انتباهك الآن؟",
       };
     }
 
@@ -60,9 +60,9 @@
 
     var html = [];
     html.push(
-      '<div class="cw-ops cw-ops--decisions-only cw-ops--v2 cw-ops--refinement cw-ops--r2 cw-ops--reality-ux" dir="rtl" data-open-count="' +
+      '<div class="cw-ops cw-ops--decisions-only cw-ops--v2 cw-ops--refinement cw-ops--r2 cw-ops--reality-ux cw-ops--operational" dir="rtl" data-open-count="' +
         esc(hasDecisions ? 1 + split.next.length : 0) +
-        '" data-dw-v2="1" data-dw-refinement="1" data-dw-r2="1" data-dw-reality-ux="1">'
+        '" data-dw-v2="1" data-dw-refinement="1" data-dw-r2="1" data-dw-reality-ux="1" data-dw-operational="1">'
     );
 
     if (!hasDecisions) {
@@ -70,7 +70,7 @@
       html.push(renderCard({ quiet: true }, "quiet"));
       html.push("</div>");
     } else {
-      html.push('<section class="cw-primary-slot" aria-label="قرارك الآن">');
+      html.push('<section class="cw-primary-slot" aria-label="الأولوية الآن">');
       if (split.primary) {
         html.push(renderCard(split.primary, "decision"));
       }

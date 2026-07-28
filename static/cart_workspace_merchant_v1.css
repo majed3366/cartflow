@@ -522,6 +522,28 @@ body[data-ma-page="workspace"] .ma-content-root {
   font-size: clamp(1.05rem, 2vw, 1.2rem);
   line-height: 1.45;
 }
+#page-workspace .cw-card__priority {
+  margin: 0.15rem 0 0.65rem;
+  color: var(--cw-ink-whisper, #8b95a8);
+  font-size: clamp(0.92rem, 1.6vw, 1.02rem);
+  line-height: 1.4;
+  font-weight: 550;
+}
+#page-workspace .cw-card__exec-block {
+  margin-top: 0.75rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(139, 149, 168, 0.22);
+}
+#page-workspace .cw-card__exec-title {
+  margin: 0 0 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--cw-ink-whisper, #8b95a8);
+}
+#page-workspace .cw-ops--operational .cw-card__field-value--commitment {
+  font-weight: 650;
+}
 #page-products .cs-continuity {
   margin: 0 0 0.85rem;
   color: var(--v2-ink-whisper, #8b95a8);
