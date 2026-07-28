@@ -1,0 +1,66 @@
+{
+  "generated_at_utc": "2026-07-28T20:49:14.494287+00:00",
+  "foundation": "decision_workspace_reality_ux_v1",
+  "base": "https://smartreplyai.net",
+  "review_session": {
+    "http": 200,
+    "ok": true,
+    "store_slug": "demo"
+  },
+  "samples": [
+    {
+      "mode": "desktop",
+      "http": 200,
+      "ok": true,
+      "reality_ux": true,
+      "mission": "ما الذي يجب أن أفعله الآن؟",
+      "question_ui": "ما الذي يجب أن أفعله الآن؟",
+      "primary_readiness": "NEEDS_MORE_EVIDENCE",
+      "primary_domain": "platform",
+      "primary_href": "#home",
+      "primary_cta": "العودة للملخص",
+      "primary_act_now": "ليس الآن — الأدلة غير كافية لقرار تنفيذي.",
+      "primary_commitment": "لا تغيّر السياسة الآن — انتظر حتى تتضح الأدلة.",
+      "has_what_ui": true,
+      "has_why_ui": true,
+      "has_now_ui": true,
+      "has_system_role_ui": false,
+      "has_verify_ui": false,
+      "has_how_ui": false,
+      "loops_workspace": false,
+      "text_sample": "قرارك الآن\n\nماذا أفعل؟\n\nلا تغيّر السياسة الآن — انتظر حتى تتضح الأدلة.\n\nلماذا؟\n\nيغادر العملاء بعد خطوة الشحن في مسار Nano 20W.\n\nهل أتصرف الآن؟\n\nليس الآن — الأدلة غير كافية لقرار تنفيذي.\n\nالعودة للملخص\n\nبعده\n\nبعده\n\nماذا أفعل؟\n\nاتخذ موقفاً تجارياً بخصوص TrueSound.\n\nهل الآن؟\n\nنعم — القرار جاهز؛ التنفيذ في منصة المتجر.\n\nافتح منصة المتجر\n\nبعده\n\nماذا أفعل؟\n\nافتح حالات بلا تواصل وحدد أين ينقطع التقاط الرقم في مسار الشراء.\n\nهل الآن؟\n\nنعم — يمكنك التصرف الآن.\n\nافتح السلال\n\nبعده\n\nماذا أفعل؟\n\nعدّل سياسة الشحن في المنصة — أو أبقِها بوعي.\n\nهل الآن؟\n\nنعم — القرار جاهز؛ التنفيذ في منصة المتجر.\n\nافتح إعدادات المنصة"
+    },
+    {
+      "mode": "mobile",
+      "http": 200,
+      "ok": true,
+      "reality_ux": true,
+      "mission": "ما الذي يجب أن أفعله الآن؟",
+      "question_ui": "ما الذي يجب أن أفعله الآن؟",
+      "primary_readiness": "NEEDS_MORE_EVIDENCE",
+      "primary_domain": "platform",
+      "primary_href": "#home",
+      "primary_cta": "العودة للملخص",
+      "primary_act_now": "ليس الآن — الأدلة غير كافية لقرار تنفيذي.",
+      "primary_commitment": "لا تغيّر السياسة الآن — انتظر حتى تتضح الأدلة.",
+      "has_what_ui": true,
+      "has_why_ui": true,
+      "has_now_ui": true,
+      "has_system_role_ui": false,
+      "has_verify_ui": false,
+      "has_how_ui": false,
+      "loops_workspace": false,
+      "text_sample": "قرارك الآن\n\nماذا أفعل؟\n\nلا تغيّر السياسة الآن — انتظر حتى تتضح الأدلة.\n\nلماذا؟\n\nيغادر العملاء بعد خطوة الشحن في مسار Nano 20W.\n\nهل أتصرف الآن؟\n\nليس الآن — الأدلة غير كافية لقرار تنفيذي.\n\nالعودة للملخص\n\nبعده\n\nبعده\n\nماذا أفعل؟\n\nاتخذ موقفاً تجارياً بخصوص TrueSound.\n\nهل الآن؟\n\nنعم — القرار جاهز؛ التنفيذ في منصة المتجر.\n\nافتح منصة المتجر\n\nبعده\n\nماذا أفعل؟\n\nافتح حالات بلا تواصل وحدد أين ينقطع التقاط الرقم في مسار الشراء.\n\nهل الآن؟\n\nنعم — يمكنك التصرف الآن.\n\nافتح السلال\n\nبعده\n\nماذا أفعل؟\n\nعدّل سياسة الشحن في المنصة — أو أبقِها بوعي.\n\nهل الآن؟\n\nنعم — القرار جاهز؛ التنفيذ في منصة المتجر.\n\nافتح إعدادات المنصة"
+    }
+  ],
+  "checks": {
+    "all_ok": true,
+    "reality_ux": true,
+    "compression_face": true,
+    "no_system_explain_ui": true,
+    "no_workspace_loop": true,
+    "mission_compressed": true,
+    "all_pass": true
+  },
+  "verdict": "PASS_WORKSPACE_REALITY_UX_V1_SHOTS"
+}
