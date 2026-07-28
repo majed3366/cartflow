@@ -99,8 +99,30 @@ def looks_like_cartflow_work(text: str) -> bool:
 
 
 def execution_is_ready_v1(readiness: str) -> bool:
-    """Execution block + destination only when merchant can act now."""
+    """Compat: destination eligibility when merchant can act (READY or external)."""
     return readiness in {READY, EXTERNAL_DEPENDENCY}
+
+
+def action_is_ready_v1(readiness: str) -> bool:
+    """Storytelling Action CTA — only when EM-001 READY (CEO / DS-001)."""
+    return readiness == READY
+
+
+def sanitize_merchant_story_text_v1(text: str) -> str:
+    """Strip engine IDs / system crumbs from merchant-visible story text."""
+    import re
+
+    t = _norm(text)
+    if not t:
+        return ""
+    # Remove common internal identifiers
+    t = re.sub(r"\bcs:[A-Za-z0-9_\-:.]+\b", "", t, flags=re.IGNORECASE)
+    t = re.sub(r"\bdiagnostic:[A-Za-z0-9_\-:.]+\b", "", t, flags=re.IGNORECASE)
+    t = re.sub(r"\bdce:[A-Za-z0-9_\-:.]+\b", "", t, flags=re.IGNORECASE)
+    t = re.sub(r"\borv\b", "", t, flags=re.IGNORECASE)
+    t = re.sub(r"\bpbl-?\d+\b", "", t, flags=re.IGNORECASE)
+    t = re.sub(r"\s{2,}", " ", t).strip(" -—·|")
+    return t
 
 
 def _blob(card: Mapping[str, Any]) -> str:
@@ -244,25 +266,27 @@ def cartflow_responsibility_ar_v1(card: Mapping[str, Any]) -> str:
 
 
 def observation_ar_v1(card: Mapping[str, Any]) -> str:
-    """What CartFlow discovered — always first."""
+    """Observable reality only — no diagnosis lecture, no engine IDs."""
     for key in (
         "observation_ar",
         "diagnosis_ar",
         "business_meaning_ar",
         "situation_summary_ar",
     ):
-        v = _norm(card.get(key))
+        v = sanitize_merchant_story_text_v1(_norm(card.get(key)))
         if v and not looks_like_cartflow_work(v):
             return v
-    why = _norm(card.get("why_ar") or (card.get("explanation") or {}).get("why_here"))
-    subject = _subject_short(card)
+    why = sanitize_merchant_story_text_v1(
+        _norm(card.get("why_ar") or (card.get("explanation") or {}).get("why_here"))
+    )
+    subject = sanitize_merchant_story_text_v1(_subject_short(card))
     if why and not looks_like_cartflow_work(why):
-        if subject and subject not in why:
+        if subject and subject not in why and not subject.startswith("cs:"):
             return f"{subject}: {why}"
         return why
-    if subject:
-        return f"نشاط غير مكتمل حول {subject}."
-    return "لوحظ نمط يؤثر على إتمام الشراء."
+    if subject and not subject.startswith("cs:"):
+        return f"العملاء يتفاعلون مع {subject} دون إتمام الشراء بوضوح."
+    return "يغادر العملاء قبل إتمام الشراء."
 
 
 def diagnosis_ar_v1(card: Mapping[str, Any]) -> str:
@@ -386,20 +410,23 @@ def cartflow_continues_ar_v1(card: Mapping[str, Any], readiness: str) -> str:
 
 
 def operational_guidance_ar_v1(card: Mapping[str, Any]) -> str:
-    """What should happen now — operational, object-specific."""
+    """Decision sentence (one action) — storytelling Decision beat."""
+    return decision_sentence_ar_v1(card)
+
+
+def decision_sentence_ar_v1(card: Mapping[str, Any]) -> str:
+    """Exactly one Decision sentence — no report, no engine language."""
     readiness = execution_readiness_v1(card)
     if readiness == NEEDS_MORE_EVIDENCE:
         blob = _blob(card)
         if "شحن" in blob or "ship" in blob:
-            return (
-                "لا تغيّر إعدادات الشحن بعد — انتظر حتى يتضح إن كانت المشكلة "
-                "في التكلفة أو وقت التوصيل أو خيارات الشحن."
-            )
-        return "لا تُجرِ تغييراً تشغيلياً الآن — الأدلة غير كافية لتحديد ماذا يُراجع."
+            return "لا تغيّر سياسة الشحن الآن."
+        return "لا تُجرِ تغييراً الآن."
     if readiness == BLOCKED:
         return "أرجئ التنفيذ حتى يُستكمل المتطلب الناقص."
 
     for key in (
+        "decision_sentence_ar",
         "operational_guidance_ar",
         "commitment_ar",
         "merchant_commitment_ar",
@@ -409,41 +436,44 @@ def operational_guidance_ar_v1(card: Mapping[str, Any]) -> str:
         "action_label_ar",
         "recommendation_ar",
     ):
-        v = _norm(card.get(key))
+        v = sanitize_merchant_story_text_v1(_norm(card.get(key)))
         if v and not looks_like_cartflow_work(v):
+            # Keep one sentence
+            for sep in ("。", ". ", "۔", "\n"):
+                if sep in v:
+                    v = v.split(sep)[0].strip()
+                    break
             return v
 
     domain = execution_domain_v1(card)
-    subject = _subject_short(card)
+    subject = sanitize_merchant_story_text_v1(_subject_short(card))
     diagnosis = observation_ar_v1(card)
     blob = _blob(card)
 
     if domain == EXEC_DOMAIN_INTERNAL:
         if "تواصل" in diagnosis or "رقم" in diagnosis or "contact" in blob:
-            return "افتح السلال بلا أرقام وتتبّع أين ينقطع التقاط رقم الجوال."
+            return "افتح السلال بلا أرقام."
         if "recover" in blob or "رسال" in diagnosis:
-            return "راجع رسالة الاستعادة الأولى — العملاء يقرأونها ولا يعودون."
-        return "افتح السلال المعنية وراجع حالات الاستعادة المتوقفة."
+            return "راجع الرسالة الأولى للاسترجاع."
+        return "افتح السلال المعنية."
     if "شحن" in (subject + diagnosis + blob) or "ship" in blob:
-        if subject:
-            return f"راجع إعدادات الشحن للطلبات المرتبطة بـ {subject}."
-        return "راجع إعدادات الشحن للطلبات ذات المغادرة بعد خطوة الشحن."
+        return "افتح إعدادات الشحن في المنصة."
     if "دفع" in diagnosis or "payment" in blob:
         return "راجع طرق الدفع المتاحة أثناء الدفع."
     if "interest" in blob or "اهتمام" in diagnosis:
         if subject:
-            return f"راجع صفحة المنتج {subject} — الاهتمام مرتفع والشراء لا يكتمل."
-        return "راجع صفحة المنتج ذات الاهتمام المرتفع دون إتمام شراء."
+            return f"راجع صفحة المنتج {subject}."
+        return "راجع صفحة المنتج."
     if subject:
-        return f"راجع {subject} في المنصة وحدد العنصر الذي يجب تغييره."
+        return f"راجع {subject} في المنصة."
     if domain == EXEC_DOMAIN_BUSINESS:
-        return "نفّذ الإجراء التشغيلي المطلوب خارج المنصة على العنصر المحدد."
-    return "راجع العنصر التشغيلي المحدد في المنصة."
+        return "نفّذ الخطوة المطلوبة في عملك."
+    return "راجع العنصر المحدد في المنصة."
 
 
 def commitment_ar_v1(card: Mapping[str, Any]) -> str:
-    """Compat — operational guidance is the merchant task."""
-    return operational_guidance_ar_v1(card)
+    """Compat — Decision sentence is the merchant task."""
+    return decision_sentence_ar_v1(card)
 
 
 def where_execute_ar_v1(card: Mapping[str, Any], domain: str, readiness: str) -> str:
@@ -566,13 +596,11 @@ def card_identity_label_ar_v1(identity: str) -> str:
 
 def destination_for_commitment_v1(card: Mapping[str, Any]) -> tuple[str, str]:
     """
-    Route by execution domain — never #workspace loops.
-    NEEDS_MORE_EVIDENCE / BLOCKED → no destination (WP7).
+    Action destination — only when READY (storytelling Action beat).
+    Never #workspace loops. Never fake destinations when not READY.
     """
     readiness = execution_readiness_v1(card)
-    if readiness == NEEDS_MORE_EVIDENCE:
-        return "", ""
-    if readiness == BLOCKED:
+    if not action_is_ready_v1(readiness):
         return "", ""
 
     domain = execution_domain_v1(card)
@@ -669,6 +697,7 @@ __all__ = [
     "IDENTITY_RISK",
     "NEEDS_MORE_EVIDENCE",
     "READY",
+    "action_is_ready_v1",
     "act_now_ar_v1",
     "avoid_ar_v1",
     "card_from_diagnostic_publication_v1",
@@ -679,6 +708,7 @@ __all__ = [
     "commitment_ar_v1",
     "confidence_ar_v1",
     "consequence_ar_v1",
+    "decision_sentence_ar_v1",
     "destination_for_commitment_v1",
     "diagnosis_ar_v1",
     "execution_domain_v1",
@@ -693,6 +723,7 @@ __all__ = [
     "operational_meaning_ar_v1",
     "priority_reason_ar_v1",
     "readiness_ar_v1",
+    "sanitize_merchant_story_text_v1",
     "verify_ar_v1",
     "where_execute_ar_v1",
     "why_believe_ar_v1",
