@@ -1,6 +1,6 @@
 /**
- * Cart Workspace Grid — Decision Workspace Refinement V1.
- * One Primary (full narrative) + ≤3 Next (compact). No KPI walls.
+ * Cart Workspace Grid — Decision Workspace Refinement V2.
+ * One Primary (executive conversation) + ≤3 Next (compact). No KPI walls.
  */
 (function (global) {
   "use strict";
@@ -50,7 +50,8 @@
         zone_a: [],
         zone_b: [],
         quiet: true,
-        mission_question: "ما القرار الذي يجب أن أتخذه الآن، ولماذا؟",
+        mission_question:
+          "ما القرار الذي تلتزم به الآن — وأين وكيف يتحقق CartFlow من النتيجة؟",
       };
     }
 
@@ -60,9 +61,9 @@
 
     var html = [];
     html.push(
-      '<div class="cw-ops cw-ops--decisions-only cw-ops--v2 cw-ops--refinement" dir="rtl" data-open-count="' +
+      '<div class="cw-ops cw-ops--decisions-only cw-ops--v2 cw-ops--refinement cw-ops--r2" dir="rtl" data-open-count="' +
         esc(hasDecisions ? 1 + split.next.length : 0) +
-        '" data-dw-v2="1" data-dw-refinement="1">'
+        '" data-dw-v2="1" data-dw-refinement="1" data-dw-r2="1">'
     );
 
     if (!hasDecisions) {
@@ -70,7 +71,7 @@
       html.push(renderCard({ quiet: true }, "quiet"));
       html.push("</div>");
     } else {
-      html.push('<section class="cw-primary-slot" aria-label="القرار الأساسي">');
+      html.push('<section class="cw-primary-slot" aria-label="قرار الالتزام الآن">');
       if (split.primary) {
         html.push(renderCard(split.primary, "decision"));
       }
@@ -78,8 +79,8 @@
 
       if (split.next.length) {
         html.push(
-          '<section class="cw-next-slot" aria-label="القرارات التالية">' +
-            '<p class="cw-next-slot__label">بعد هذا الالتزام</p>' +
+          '<section class="cw-next-slot" aria-label="القرارات التالية في الاجتماع">' +
+            '<p class="cw-next-slot__label">بعد أن تلتزم بما فوق</p>' +
             '<div class="cw-grid cw-grid--next">'
         );
         split.next.forEach(function (c) {

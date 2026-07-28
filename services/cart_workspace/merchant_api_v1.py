@@ -133,6 +133,20 @@ def api_cart_workspace_projection(request: Request):
                 durable_snapshot_hit = True
                 serve_path = "durable_snapshot"
                 meta = dict(projection.pop("_workspace_snapshot_v1", None) or {})
+                # Refinement paint only — re-hydrate narrative/routing without ORV recompose.
+                try:
+                    from services.decision_workspace_v2 import (  # noqa: PLC0415
+                        apply_decision_workspace_v2_budget,
+                        decision_workspace_v2_enabled,
+                    )
+
+                    if decision_workspace_v2_enabled():
+                        with workspace_perf_stage("refine_rehydrate"):
+                            projection = apply_decision_workspace_v2_budget(
+                                projection, store_slug=auth
+                            )
+                except Exception:  # noqa: BLE001
+                    workspace_perf_note("refine_rehydrate_skipped")
                 workspace_perf_meta(
                     durable_snapshot="hit",
                     snapshot_stale=bool(meta.get("stale")),

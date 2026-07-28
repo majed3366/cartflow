@@ -1,13 +1,28 @@
 # -*- coding: utf-8 -*-
 """
-Decision Workspace Refinement V1 — ownership language + commitment redesign.
+Decision Workspace Refinement V2 — Executive Decision Room.
 
-CartFlow owns: observation, evidence, diagnosis, confidence, reality validation.
-Merchant owns: business decision, execution, commercial judgement.
+CartFlow owns: observation, evidence, diagnosis, confidence,
+execution readiness, reality validation.
+Merchant owns: commercial judgement, execution, business trade-offs.
+
+Never ask the merchant to investigate, diagnose, or collect evidence.
+Integrates Execution Methodology V1 (EM-001 / EM-002) without new engines.
 """
 from __future__ import annotations
 
 from typing import Any, Mapping
+
+# Execution domains (methodology Types A / B / C)
+EXEC_DOMAIN_INTERNAL = "internal"
+EXEC_DOMAIN_PLATFORM = "platform"
+EXEC_DOMAIN_BUSINESS = "business"
+
+# EM-001 readiness
+READY = "READY"
+NEEDS_MORE_EVIDENCE = "NEEDS_MORE_EVIDENCE"
+BLOCKED = "BLOCKED"
+EXTERNAL_DEPENDENCY = "EXTERNAL_DEPENDENCY"
 
 _SOFT_OPENERS = (
     "راجع",
@@ -65,6 +80,120 @@ def looks_like_cartflow_work(text: str) -> bool:
     return False
 
 
+def _blob(card: Mapping[str, Any]) -> str:
+    return " ".join(
+        [
+            _norm(card.get("business_domain")),
+            _norm(card.get("decision_category")),
+            _norm(card.get("diagnostic_family")),
+            _norm(card.get("diagnosis_ar")),
+            _norm(card.get("situation_kind")),
+            _norm(card.get("decision_type")),
+            _norm(card.get("card_kind")),
+        ]
+    ).casefold()
+
+
+def execution_domain_v1(card: Mapping[str, Any]) -> str:
+    """Map Decision → Internal / Platform / Business (methodology Types A/B/C)."""
+    explicit = _norm(card.get("execution_domain") or card.get("execution_type")).casefold()
+    if explicit in {"internal", "a", "type_a", "type-a"}:
+        return EXEC_DOMAIN_INTERNAL
+    if explicit in {"platform", "b", "type_b", "type-b", "external"}:
+        return EXEC_DOMAIN_PLATFORM
+    if explicit in {"business", "c", "type_c", "type-c", "ops_business"}:
+        return EXEC_DOMAIN_BUSINESS
+
+    blob = _blob(card)
+    # Type A — inside CartFlow
+    if any(
+        k in blob
+        for k in (
+            "cart",
+            "recover",
+            "سلال",
+            "سلة",
+            "communicat",
+            "تواصل",
+            "whatsapp",
+            "conversation",
+            "محادث",
+            "followup",
+            "follow_up",
+            "contact",
+        )
+    ):
+        return EXEC_DOMAIN_INTERNAL
+    # Type C — merchant business (not platform UI)
+    if any(
+        k in blob
+        for k in (
+            "packag",
+            "تغليف",
+            "photograph",
+            "تصوير",
+            "negotiat",
+            "تفاوض",
+            "contract",
+            "عقد",
+            "promotion",
+            "ترويج",
+            "policy",
+            "سياسة تشغيل",
+        )
+    ):
+        return EXEC_DOMAIN_BUSINESS
+    # Type B — commerce platform (shipping, product, pricing, payment, settings)
+    return EXEC_DOMAIN_PLATFORM
+
+
+def execution_readiness_v1(card: Mapping[str, Any]) -> str:
+    """EM-001 — one readiness state per Decision."""
+    explicit = _norm(card.get("execution_readiness") or card.get("readiness_state"))
+    if explicit in {READY, NEEDS_MORE_EVIDENCE, BLOCKED, EXTERNAL_DEPENDENCY}:
+        return explicit
+
+    status = _norm(
+        card.get("diagnosis_status") or card.get("decision_status") or ""
+    ).casefold()
+    if status in {"insufficient_evidence", "insufficient"} or card.get("has_decision") is False:
+        return NEEDS_MORE_EVIDENCE
+    if status in {"conflicting_evidence", "conflicting"}:
+        return NEEDS_MORE_EVIDENCE
+    if status in {"blocked", "prerequisite_missing"}:
+        return BLOCKED
+
+    domain = execution_domain_v1(card)
+    if domain in {EXEC_DOMAIN_PLATFORM, EXEC_DOMAIN_BUSINESS}:
+        return EXTERNAL_DEPENDENCY
+    return READY
+
+
+def readiness_ar_v1(card: Mapping[str, Any], readiness: str) -> str:
+    if readiness == NEEDS_MORE_EVIDENCE:
+        return (
+            "لست جاهزاً للتنفيذ بعد — الأدلة غير كافية. "
+            "CartFlow يكمل جمع الأدلة والتحقق."
+        )
+    if readiness == BLOCKED:
+        return (
+            "التنفيذ متوقف الآن لوجود متطلب ناقص "
+            "(إعداد أو قدرة أو دليل إلزامي)."
+        )
+    if readiness == EXTERNAL_DEPENDENCY:
+        domain = execution_domain_v1(card)
+        if domain == EXEC_DOMAIN_BUSINESS:
+            return (
+                "جاهز كحكم تجاري — التنفيذ يتم في عملك، "
+                "وليس داخل CartFlow أو لوحة التحكم فقط."
+            )
+        return (
+            "جاهز كحكم تجاري — التنفيذ يتم في منصة المتجر "
+            "(زد / سلة / Shopify)، وCartFlow يتحقق لاحقاً من النتيجة."
+        )
+    return "جاهز للتنفيذ — التشخيص والأدلة يكفيان لقرار تجاري واضح."
+
+
 def confidence_ar_v1(card: Mapping[str, Any]) -> str:
     status = _norm(
         card.get("diagnosis_status") or card.get("decision_status") or ""
@@ -76,31 +205,31 @@ def confidence_ar_v1(card: Mapping[str, Any]) -> str:
         or ""
     ).casefold()
     if status in {"insufficient_evidence", "insufficient"} or card.get("has_decision") is False:
-        return "الثقة الحالية غير كافية لتبرير تغيير تجاري."
+        return "لذلك لا نطلب منك تغييراً تجارياً قبل اكتمال الأدلة."
     if status in {"conflicting_evidence", "conflicting"}:
-        return "الأدلة متعارضة — لا يمكن تأكيد سبب واحد بثقة كافية."
+        return "لذلك نؤجل الالتزام بسبب تعارض الأدلة — لا تُحسم سبباً واحداً بنفسك."
     if level in {"high", "عال", "عالية", "supported"}:
-        return "الثقة كافية لدعم قرار تجاري واضح."
+        return "لذلك يمكن البناء على هذا التشخيص بثقة كافية لقرار واضح."
     if level in {"low", "منخفض", "منخفضة"}:
-        return "الثقة محدودة — القرار التجاري يجب أن يبقى حذراً."
+        return "لذلك يبقى الحكم التجاري حذراً رغم وضوح الاتجاه."
     explicit = _norm(card.get("confidence_ar") or card.get("decision_confidence_ar"))
     if explicit and not looks_like_cartflow_work(explicit):
         return explicit
-    return "الثقة متوسطة — يمكن البناء عليها بحذر."
+    return "لذلك يمكن البناء على التشخيص بحذر مناسب."
 
 
 def cartflow_responsibility_ar_v1(card: Mapping[str, Any]) -> str:
-    status = _norm(card.get("diagnosis_status") or "").casefold()
-    if status in {"insufficient_evidence", "insufficient"} or card.get("has_decision") is False:
+    readiness = execution_readiness_v1(card)
+    if readiness == NEEDS_MORE_EVIDENCE:
         return (
-            "CartFlow يتولى الآن توسيع الأدلة والتحقق من الواقع "
-            "حتى يصبح التشخيص جاهزاً لقرارك."
+            "CartFlow يتولى الملاحظة والأدلة والتشخيص وجاهزية التنفيذ. "
+            "لا تُحقّق ولا تجمع أدلة بنفسك."
         )
-    if status in {"conflicting_evidence", "conflicting"}:
-        return "CartFlow يعيد مقارنة الأدلة المتعارضة قبل أي توصية تجارية."
+    if readiness == BLOCKED:
+        return "CartFlow يحدد المتطلب الناقص ويُبقي التشخيص تحت المراقبة حتى يُرفع الحظر."
     return (
-        "CartFlow أكمل الملاحظة والتشخيص. "
-        "مسؤوليتك الآن حكم تجاري واحد — لا إعادة التشخيص."
+        "CartFlow أنجز الملاحظة والأدلة والتشخيص وجاهزية التنفيذ. "
+        "دورك حكم تجاري واحد — لا إعادة التشخيص."
     )
 
 
@@ -141,14 +270,13 @@ def why_believe_ar_v1(card: Mapping[str, Any], diagnosis: str) -> str:
             and not candidate.endswith("?")
         ):
             return candidate
-    # Advisor tone — never interrogate the merchant.
     if "شحن" in diagnosis:
-        return "هذا الاستنتاج مبني على مغادرة متكررة عند مرحلة الشحن دون سبب قابل للفصل بعد."
+        return "لأن المغادرة تتكرر عند الشحن دون سبب قابل للفصل بعد."
     if "اهتمام" in diagnosis or "دون شراء" in diagnosis:
-        return "الاهتمام بالمنتج واضح، لكن إتمام الشراء لا يتحقق بنفس الوضوح."
+        return "لأن الاهتمام بالمنتج واضح بينما إتمام الشراء لا يتحقق بنفس الوضوح."
     if "تواصل" in diagnosis or "رقم" in diagnosis:
-        return "مسار المتابعة يتعطل عندما لا تتوفر وسيلة تواصل صالحة."
-    return "هذا الاستنتاج مبني على ملاحظات المتجر الحالية بعد استبعاد التفسيرات الأضعف."
+        return "لأن المتابعة تتعطل عندما لا تتوفر وسيلة تواصل صالحة."
+    return "لأن ملاحظات المتجر الحالية تدعم هذا التشخيص بعد استبعاد التفسيرات الأضعف."
 
 
 def consequence_ar_v1(card: Mapping[str, Any]) -> str:
@@ -166,23 +294,86 @@ def consequence_ar_v1(card: Mapping[str, Any]) -> str:
     status = _norm(card.get("diagnosis_status") or "").casefold()
     if status in {"insufficient_evidence", "insufficient"}:
         return "بدون أدلة أوضح، أي تغيير تجاري الآن قد يعالج السبب الخطأ."
-    return "إذا لم يُحسم الأمر، يستمر الأثر على الإيراد دون قرار واضح."
+    return "إذا بقي الأمر معلّقاً، يستمر ضغط الإيراد دون قرار واضح."
+
+
+def where_execute_ar_v1(card: Mapping[str, Any], domain: str, readiness: str) -> str:
+    if readiness == NEEDS_MORE_EVIDENCE:
+        return "لا وجهة تنفيذ الآن — انتظر اكتمال الأدلة داخل CartFlow."
+    if readiness == BLOCKED:
+        return "لا وجهة تنفيذ حتى يُستكمل المتطلب الناقص."
+    if domain == EXEC_DOMAIN_INTERNAL:
+        blob = _blob(card)
+        if any(k in blob for k in ("communicat", "تواصل", "whatsapp", "محادث", "contact")):
+            return "داخل CartFlow — صفحة التواصل."
+        return "داخل CartFlow — صفحة السلال."
+    if domain == EXEC_DOMAIN_BUSINESS:
+        return "داخل عملك التشغيلي (خارج CartFlow وخارج لوحة المنصة)."
+    # platform
+    blob = _blob(card)
+    if any(k in blob for k in ("ship", "شحن", "payment", "دفع", "setting")):
+        return "في منصة المتجر — إعدادات الشحن أو الدفع أو التوصيل."
+    return "في منصة المتجر — صفحة المنتج أو التسعير أو العرض."
+
+
+def how_execute_ar_v1(card: Mapping[str, Any], domain: str, readiness: str) -> str:
+    if readiness == NEEDS_MORE_EVIDENCE:
+        return "لا خطوات تنفيذ — CartFlow يواصل الأدلة حتى تصبح جاهزية التنفيذ READY."
+    if readiness == BLOCKED:
+        return "أكمل المتطلب الناقص أولاً، ثم يعود القرار لجاهزية التنفيذ."
+    if domain == EXEC_DOMAIN_INTERNAL:
+        return (
+            "افتح الوجهة أدناه ونفّذ الالتزام التشغيلي هناك. "
+            "لا تعد إلى مساحة القرار لإعادة التشخيص."
+        )
+    if domain == EXEC_DOMAIN_BUSINESS:
+        return (
+            "نفّذ القرار في عملك (تصوير، تغليف، تفاوض، ترويج، سياسة). "
+            "CartFlow لا ينفّذ عنك — ويراقب النتيجة لاحقاً."
+        )
+    return (
+        "ادخل منصة المتجر وطبق التغيير المطلوب هناك. "
+        "CartFlow لا يتحكم في المنصة — ويتحقق من أثر القرار عبر الأدلة."
+    )
+
+
+def avoid_ar_v1(card: Mapping[str, Any], readiness: str) -> str:
+    if readiness == NEEDS_MORE_EVIDENCE:
+        return "تجنّب تغيير السياسة أو التسعير أو الشحن قبل اكتمال الأدلة."
+    if readiness == BLOCKED:
+        return "تجنّب الالتفاف على المتطلب الناقص بحلول مؤقتة غير موثوقة."
+    return (
+        "تجنّب إعادة التشخيص بنفسك، وتجنّب فتح مساحة القرار كحلقة مغلقة، "
+        "وتجنّب تنفيذ عدة تغييرات دفعة واحدة قبل التحقق."
+    )
+
+
+def verify_ar_v1(card: Mapping[str, Any], readiness: str) -> str:
+    """EM-002 — how CartFlow will know whether it worked."""
+    if readiness == NEEDS_MORE_EVIDENCE:
+        return (
+            "يتحقق CartFlow بتعزيز الأدلة أولاً، ثم يعيد تقييم جاهزية التنفيذ "
+            "قبل أي التزام تجاري."
+        )
+    if readiness == BLOCKED:
+        return "يتحقق CartFlow بزوال الحظر وظهور الأدلة الكافية لإعادة فتح التنفيذ."
+    return (
+        "بعد التنفيذ يقارن CartFlow قبل/بعد: الأدلة، التحويل، التخلي، "
+        "وقوة التشخيص — ثم يحدّث حالة القرار (محسوم / مراقبة / تصعيد)."
+    )
 
 
 def commitment_ar_v1(card: Mapping[str, Any]) -> str:
-    """
-    Merchant commitment only — never CartFlow investigative work.
-    """
-    status = _norm(card.get("diagnosis_status") or "").casefold()
-    if status in {"insufficient_evidence", "insufficient"} or card.get("has_decision") is False:
+    """Merchant commercial judgement only — never CartFlow investigative work."""
+    readiness = execution_readiness_v1(card)
+    if readiness == NEEDS_MORE_EVIDENCE:
         return (
             "لا تغيّر السياسة الآن. "
-            "انتظر حتى يُكمل CartFlow الأدلة ويقدّم توصية مدعومة."
+            "انتظر حتى يُكمل CartFlow الأدلة ويعلن جاهزية التنفيذ."
         )
-    if status in {"conflicting_evidence", "conflicting"}:
-        return "لا تعتمد سبباً واحداً بعد. أرجئ القرار التجاري حتى يحسم CartFlow التعارض."
+    if readiness == BLOCKED:
+        return "أرجئ التنفيذ حتى يُرفع الحظر — لا تفتح مسارات بديلة غير مضمونة."
 
-    # Prefer explicit commercial actions that are not CartFlow work.
     for key in (
         "commitment_ar",
         "merchant_commitment_ar",
@@ -195,51 +386,75 @@ def commitment_ar_v1(card: Mapping[str, Any]) -> str:
         if v and not looks_like_cartflow_work(v):
             return v
 
-    domain = _norm(card.get("business_domain") or card.get("decision_category")).casefold()
+    domain = execution_domain_v1(card)
     subject = _norm(card.get("subject_ar") or card.get("product_name_ar"))
     short = subject.split("—")[0].strip() if subject else ""
+    diagnosis = _norm(card.get("diagnosis_ar"))
 
-    if "ship" in domain or "شحن" in (subject + _norm(card.get("diagnosis_ar"))):
-        return "عندما تصبح الأدلة كافية: قرّر إن كنت ستعدّل سياسة الشحن أم تبقيها."
-    if "communicat" in domain or "تواصل" in _norm(card.get("diagnosis_ar")):
-        return "قرّر أولوية إصلاح التقاط وسيلة التواصل في مسار الشراء."
+    if domain == EXEC_DOMAIN_INTERNAL:
+        if "تواصل" in diagnosis or "رقم" in diagnosis or "communicat" in _blob(card):
+            return "قرّر أولوية إصلاح التقاط وسيلة التواصل في مسار الشراء."
+        return "قرّر التعامل التشغيلي المطلوب على السلال المعنية الآن."
+    if "شحن" in (subject + diagnosis) or "ship" in _blob(card):
+        return "قرّر إن كنت ستعدّل سياسة الشحن في المنصة أم تبقيها."
     if short:
         return f"قرّر الموقف التجاري بخصوص {short} بناءً على التشخيص الحالي."
+    if domain == EXEC_DOMAIN_BUSINESS:
+        return "قرّر الإجراء التشغيلي في عملك — ثم دع CartFlow يتحقق من الأثر."
     return "اتخذ قراراً تجارياً واحداً بناءً على التشخيص — أو أرجئه بوعي."
 
 
 def expected_outcome_ar_v1(card: Mapping[str, Any], consequence: str) -> str:
-    for key in ("expected_outcome_ar",):
-        v = _norm(card.get(key))
-        if v and v != consequence and not looks_like_cartflow_work(v):
-            return v
-    status = _norm(card.get("diagnosis_status") or "").casefold()
-    if status in {"insufficient_evidence", "insufficient"}:
-        return "بعد اكتمال الأدلة، ستحصل على توصية تجارية أوضح وأأمن للتنفيذ."
-    if status in {"conflicting_evidence", "conflicting"}:
-        return "بعد حسم التعارض، يصبح القرار التجاري قابلاً للتنفيذ بثقة أعلى."
-    return "بعد قرارك، ينتقل التنفيذ إلى الصفحة المناسبة دون إعادة فتح التشخيص."
+    """Kept for compatibility; verify_ar_v1 is the executive verification line."""
+    return verify_ar_v1(card, execution_readiness_v1(card))
 
 
 def destination_for_commitment_v1(card: Mapping[str, Any]) -> tuple[str, str]:
-    """Return (href, label). Empty href = no navigation (commitment is wait)."""
-    status = _norm(card.get("diagnosis_status") or "").casefold()
-    if status in {"insufficient_evidence", "insufficient", "conflicting_evidence", "conflicting"}:
-        return "#home", "العودة للملخص"
-    href = _norm(card.get("view_details_href"))
-    domain = _norm(card.get("business_domain") or card.get("decision_category")).casefold()
-    diagnosis = _norm(card.get("diagnosis_ar"))
-    if not href:
-        if "communicat" in domain or "تواصل" in diagnosis or "رقم" in diagnosis:
+    """
+    Route by execution domain — never fixed Products, never #workspace loops.
+    Empty href = no in-app navigation (business wait / business ops).
+    """
+    readiness = execution_readiness_v1(card)
+    if readiness == NEEDS_MORE_EVIDENCE:
+        return "#home", "العودة للملخص — CartFlow يكمل الأدلة"
+    if readiness == BLOCKED:
+        return "#settings", "راجع الإعدادات المطلوبة"
+
+    domain = execution_domain_v1(card)
+    blob = _blob(card)
+    inbound = _norm(card.get("view_details_href"))
+
+    # Never loop into Workspace explanation.
+    if inbound.startswith("#workspace"):
+        inbound = ""
+
+    if domain == EXEC_DOMAIN_INTERNAL:
+        if any(
+            k in blob
+            for k in ("communicat", "تواصل", "whatsapp", "محادث", "contact", "followup")
+        ):
             href = "#communication"
-        elif "cart" in domain or "recover" in domain or "سلال" in diagnosis:
-            href = "#carts"
-        else:
-            href = "#products"
-    # Avoid looping back to Workspace explanation.
-    if href.startswith("#workspace"):
-        href = "#products"
-    return href, "متابعة التنفيذ"
+            if inbound.startswith("#communication"):
+                href = inbound
+            return href, "نفّذ داخل CartFlow — التواصل"
+        href = "#carts"
+        if inbound.startswith("#carts"):
+            href = inbound
+        return href, "نفّذ داخل CartFlow — السلال"
+
+    if domain == EXEC_DOMAIN_BUSINESS:
+        # No fake Products dump — merchant acts outside the app.
+        return "", "نفّذ في عملك — CartFlow يتحقق لاحقاً"
+
+    # Platform
+    if any(k in blob for k in ("ship", "شحن", "payment", "دفع", "deliver", "توصيل")):
+        href = "#settings"
+        if inbound.startswith("#settings"):
+            href = inbound
+        return href, "نفّذ في منصة المتجر — عبر الإعدادات"
+    if inbound.startswith("#products") or inbound.startswith("#settings"):
+        return inbound, "نفّذ في منصة المتجر"
+    return "#products", "نفّذ في منصة المتجر — المنتج"
 
 
 def card_from_diagnostic_publication_v1(pub: Mapping[str, Any]) -> dict[str, Any]:
@@ -249,16 +464,24 @@ def card_from_diagnostic_publication_v1(pub: Mapping[str, Any]) -> dict[str, Any
     diagnosis = _norm(p.get("diagnosis_ar") or p.get("observation_ar"))
     family = _norm(p.get("diagnostic_family"))
     domain = "shipping"
-    href = "#products"
+    href = "#settings"
+    exec_domain = EXEC_DOMAIN_PLATFORM
     if "contact" in family or "followup" in family:
         domain = "communication"
         href = "#communication"
+        exec_domain = EXEC_DOMAIN_INTERNAL
     elif "interest" in family or "product" in family:
         domain = "products"
         href = "#products"
+        exec_domain = EXEC_DOMAIN_PLATFORM
     elif "payment" in family:
         domain = "operations"
-        href = "#products"
+        href = "#settings"
+        exec_domain = EXEC_DOMAIN_PLATFORM
+    elif "cart" in family or "recover" in family:
+        domain = "carts"
+        href = "#carts"
+        exec_domain = EXEC_DOMAIN_INTERNAL
     return {
         "decision_id": f"diagnostic:{_norm(p.get('diagnostic_id') or family or 'primary')}",
         "card_kind": "composed_decision",
@@ -274,6 +497,7 @@ def card_from_diagnostic_publication_v1(pub: Mapping[str, Any]) -> dict[str, Any
         "recommendation_ar": _norm(p.get("recommendation_ar")),
         "business_domain": domain,
         "decision_category": domain,
+        "execution_domain": exec_domain,
         "business_meaning_ar": diagnosis,
         "ignore_consequence_ar": "",
         "expected_outcome_ar": "",
@@ -285,6 +509,14 @@ def card_from_diagnostic_publication_v1(pub: Mapping[str, Any]) -> dict[str, Any
 
 
 __all__ = [
+    "BLOCKED",
+    "EXEC_DOMAIN_BUSINESS",
+    "EXEC_DOMAIN_INTERNAL",
+    "EXEC_DOMAIN_PLATFORM",
+    "EXTERNAL_DEPENDENCY",
+    "NEEDS_MORE_EVIDENCE",
+    "READY",
+    "avoid_ar_v1",
     "card_from_diagnostic_publication_v1",
     "cartflow_responsibility_ar_v1",
     "commitment_ar_v1",
@@ -292,7 +524,13 @@ __all__ = [
     "consequence_ar_v1",
     "destination_for_commitment_v1",
     "diagnosis_ar_v1",
+    "execution_domain_v1",
+    "execution_readiness_v1",
     "expected_outcome_ar_v1",
+    "how_execute_ar_v1",
     "looks_like_cartflow_work",
+    "readiness_ar_v1",
+    "verify_ar_v1",
+    "where_execute_ar_v1",
     "why_believe_ar_v1",
 ]
