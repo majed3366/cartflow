@@ -60,7 +60,7 @@ class DashboardConstitutionGuards(unittest.TestCase):
     def test_workspace_exposes_constitution_question(self) -> None:
         html = (ROOT / "templates" / "merchant_app.html").read_text(encoding="utf-8")
         self.assertIn('id="cw-constitution-question"', html)
-        self.assertIn("أي قرار يجب أن أتخذه، ولماذا؟", html)
+        self.assertIn("ما القرار الذي يجب أن أتخذه الآن، ولماذا؟", html)
 
 
 if __name__ == "__main__":

@@ -1,8 +1,10 @@
 # Decision Workspace V2 — CEO Review Pack V1
 
 **Store:** Living Store review (`cf.living.store.review@smartreplyai.net` · `demo` · merchant `429`)  
-**URL:** https://smartreplyai.net/dashboard#workspace  
-**Status:** Capture after production deploy. Do not polish based on this pack.
+**Prod:** https://smartreplyai.net  
+**Commit:** `eba623e` (+ follow-up for page-purpose string)  
+**Railway:** `authentic-motivation - cartflow: success`  
+**Status:** Captured after production deploy. **Do not polish** from this pack — wait for CEO feedback.
 
 ---
 
@@ -10,9 +12,9 @@
 
 | Asset | Path |
 |-------|------|
-| Home (arrival) | `prod_desktop_home.png` |
-| Decision Workspace | `prod_desktop_workspace.png` |
-| Target page after commitment | `prod_desktop_target.png` |
+| Home (arrival) | [`prod_desktop_home.png`](./prod_desktop_home.png) |
+| Decision Workspace | [`prod_desktop_workspace.png`](./prod_desktop_workspace.png) |
+| Target after commitment (Products) | [`prod_desktop_target.png`](./prod_desktop_target.png) |
 
 ---
 
@@ -20,20 +22,27 @@
 
 | Asset | Path |
 |-------|------|
-| Home (arrival) | `prod_mobile_home.png` |
-| Decision Workspace | `prod_mobile_workspace.png` |
-| Target page after commitment | `prod_mobile_target.png` |
+| Home (arrival) | [`prod_mobile_home.png`](./prod_mobile_home.png) |
+| Decision Workspace | [`prod_mobile_workspace.png`](./prod_mobile_workspace.png) |
+| Target after commitment (Products) | [`prod_mobile_target.png`](./prod_mobile_target.png) |
 
 ---
 
 ## 3. Primary Decision walkthrough
 
-1. Arrive from Home (View Details / مساحة القرار).  
-2. Within a few seconds: identify **القرار الذي تلتزم به الآن**.  
-3. Read sequence only:  
-   ما الذي يحدث؟ → لماذا يعتقد CartFlow؟ → الأدلة → ماذا إن لم يتغير شيء؟ → **التزامك** → النتيجة المتوقعة.  
-4. Confirm: one commitment, one destination link (تنفيذ الالتزام).  
-5. Confirm: no KPI strip, no Home summary repeat, no competing primary.
+1. Bind: `/dev/living-store-home-review` → Home.  
+2. Open **مساحة القرار**.  
+3. Within seconds: **القرار الذي تلتزم به الآن** dominates.  
+4. Sequence observed on Primary (Nano 20W interest-without-purchase):  
+   - ما الذي يحدث؟  
+   - لماذا يعتقد CartFlow ذلك؟  
+   - الأدلة  
+   - ماذا يحدث إن لم يتغير شيء؟  
+   - التزامك  
+   - النتيجة المتوقعة  
+5. One CTA: **تنفيذ الالتزام** → `#products?situation_id=…`  
+6. Below: **بعد الالتزام — القرارات التالية** (secondary; not competing).  
+7. Confirmed: no KPI landscape / band counts on Workspace.
 
 ---
 
@@ -41,26 +50,34 @@
 
 ```
 Home
-  ↓ (continue — do not re-brief)
-Decision Workspace (Primary commitment)
-  ↓ (تنفيذ الالتزام)
-Target page (Products / Carts / Communication per decision)
+  (Top Decision teaser: shipping-stage insufficient evidence)
+  ↓
+Decision Workspace
+  (Primary painted: Nano 20W interest-without-purchase)
+  ↓ تنفيذ الالتزام
+Products
+  (Nano 20W “اهتمام دون شراء” continues the product thread)
 ```
 
-Record which target the Primary commitment opens and whether the conversation feels continuous.
+**Continuity note for CEO:** Home’s “أهم قرار اليوم” names **shipping-stage insufficiency**; Workspace Primary currently elevates **Nano product interest**. Product target continues Workspace Primary cleanly; Home→Workspace thread feels discontinuous. Listed under §5 — do not fix in this stop.
 
 ---
 
 ## 5. Still confusing (do not fix yet)
 
-_Filled after production visual capture._
-
 | # | Observation | Surface |
 |---|-------------|---------|
-| | | |
+| 1 | Home Top Decision (shipping / insufficient evidence) ≠ Workspace Primary (Nano 20W) — continuity break | Home → Workspace |
+| 2 | Commitment text leads with «راجع…» (soft opener; Constitution forbids Review-led language) | Primary card |
+| 3 | Reasoning line reads as a question restating the diagnosis more than belief explanation | Primary card |
+| 4 | Expected Outcome closely repeats Business Consequence | Primary card |
+| 5 | Page question briefly showed legacy wording until `merchant_app.js` PAGE_PURPOSE aligned (cache/deploy lag possible) | Workspace chrome |
+| 6 | Next Decisions still show full ladder — may feel long after Primary (Budget prefers title + stake) | Next slot |
+| 7 | Products destination still uses “عرض التفاصيل” rather than commitment language | Products |
 
 ---
 
 ## Explicit stop
 
-Wait for CEO visual review. No redesign / polish until feedback.
+**No redesign / polish after this pack.**  
+Next iteration only from CEO visual review feedback.
