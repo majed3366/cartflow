@@ -199,7 +199,7 @@
   <nav class="ma-ctx-panel ma-sidebar-nav" data-ma-ctx="workspace" hidden aria-label="مساحة القرار">
     <p class="ma-ctx-label">مساحة القرار</p>
     <button type="button" class="nav-item active" data-nav="workspace" onclick="if(window.goTo){goTo('workspace');return false;}">ما يحتاج قرارك</button>
-    <p class="ma-ctx-hint" style="padding:8px 12px;font-size:12px;color:#71717a;line-height:1.45;">شرح القرار والأدلة — التفاصيل التشغيلية في صفحاتها.</p>
+    <p class="ma-ctx-hint" style="padding:8px 12px;font-size:12px;color:#71717a;line-height:1.45;">غرفة القرار التنفيذي — التزام واحد، منهج تنفيذ، وتحقق من النتيجة.</p>
   </nav>
   {% endif %}
   <nav class="ma-ctx-panel ma-sidebar-nav" data-ma-ctx="products" hidden aria-label="المنتجات">
@@ -356,7 +356,7 @@
 
   {% if merchant_cart_workspace_v1 %}
   <div class="page" id="page-workspace" data-ma-workspace="1" data-cw-console="1"{% if merchant_cart_workspace_silent_success %} data-cw-silent-success="1"{% endif %}>
-    <p class="ma-workspace-question" id="cw-constitution-question">ما القرار الذي يجب أن أتخذه الآن، ولماذا؟</p>
+    <p class="ma-workspace-question" id="cw-constitution-question">ما القرار الذي تلتزم به الآن — وأين وكيف يتحقق CartFlow من النتيجة؟</p>
     <div id="meif-decision-root" class="meif-decision-root" aria-live="polite"{% if not decision_dual_stack_v1 %} hidden{% endif %}></div>
     <div class="cw-workspace-shell">
       <span id="cw-merchant-status" hidden aria-live="polite"></span>
@@ -1166,8 +1166,8 @@
 {% if merchant_cart_workspace_v1 %}
 <link rel="stylesheet" href="/static/cart_workspace_merchant_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-dwr1" />
 <script defer src="/static/cart_workspace_projection_version_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-dwr1"></script>
-<script defer src="/static/cart_workspace_decision_card_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-dwr1"></script>
-<script defer src="/static/cart_workspace_grid_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-dwr1"></script>
+<script defer src="/static/cart_workspace_decision_card_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-dwr2"></script>
+<script defer src="/static/cart_workspace_grid_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-dwr2"></script>
 <script defer src="/static/cart_workspace_render_controller_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-dwr1"></script>
 <script defer src="/static/cart_workspace_merchant_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-dwr1"></script>
 {% endif %}

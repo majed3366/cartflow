@@ -15,6 +15,7 @@ from typing import Any, Mapping
 
 from services.decision_workspace_v2.flag_v1 import decision_workspace_v2_enabled
 from services.decision_workspace_v2.narrative_v1 import (
+    avoid_ar_v1,
     card_from_diagnostic_publication_v1,
     cartflow_responsibility_ar_v1,
     commitment_ar_v1,
@@ -22,7 +23,13 @@ from services.decision_workspace_v2.narrative_v1 import (
     consequence_ar_v1,
     destination_for_commitment_v1,
     diagnosis_ar_v1,
+    execution_domain_v1,
+    execution_readiness_v1,
     expected_outcome_ar_v1,
+    how_execute_ar_v1,
+    readiness_ar_v1,
+    verify_ar_v1,
+    where_execute_ar_v1,
     why_believe_ar_v1,
 )
 
@@ -48,11 +55,13 @@ def _is_constitution_card(card: Mapping[str, Any]) -> bool:
 
 
 def hydrate_decision_card_v2(card: dict[str, Any], *, is_primary: bool) -> dict[str, Any]:
-    """Stamp Refinement V1 narrative fields."""
+    """Stamp Refinement V2 executive conversation + methodology fields."""
     out = dict(card)
     diagnosis = diagnosis_ar_v1(out)
     why = why_believe_ar_v1(out, diagnosis)
     consequence = consequence_ar_v1(out)
+    readiness = execution_readiness_v1(out)
+    domain = execution_domain_v1(out)
     commitment = commitment_ar_v1(out)
     outcome = expected_outcome_ar_v1(out, consequence)
     href, label = destination_for_commitment_v1(out)
@@ -64,6 +73,13 @@ def hydrate_decision_card_v2(card: dict[str, Any], *, is_primary: bool) -> dict[
     out["ignore_consequence_ar"] = consequence
     out["business_consequence_ar"] = consequence
     out["cartflow_responsibility_ar"] = cartflow_responsibility_ar_v1(out)
+    out["execution_readiness"] = readiness
+    out["execution_readiness_ar"] = readiness_ar_v1(out, readiness)
+    out["execution_domain"] = domain
+    out["execution_where_ar"] = where_execute_ar_v1(out, domain, readiness)
+    out["execution_how_ar"] = how_execute_ar_v1(out, domain, readiness)
+    out["execution_avoid_ar"] = avoid_ar_v1(out, readiness)
+    out["execution_verify_ar"] = verify_ar_v1(out, readiness)
     out["commitment_ar"] = commitment
     out["first_step_ar"] = commitment
     out["required_merchant_action"] = commitment
@@ -72,15 +88,15 @@ def hydrate_decision_card_v2(card: dict[str, Any], *, is_primary: bool) -> dict[
     out["view_details_ar"] = label
     out["decision_workspace_v2"] = True
     out["decision_workspace_refinement_v1"] = True
+    out["decision_workspace_refinement_v2"] = True
     out["is_primary_decision"] = bool(is_primary)
     out["face_mode"] = "primary" if is_primary else "next_compact"
     if is_primary:
         out["priority_rank_label_ar"] = "القرار الذي تلتزم به الآن"
         out["priority_rank_role"] = "primary"
     else:
-        out["priority_rank_label_ar"] = "القرار التالي"
+        out["priority_rank_label_ar"] = "بعده مباشرة"
         out["priority_rank_role"] = "next"
-        # Compact next: stake only
         out["next_stake_ar"] = consequence
     if _norm(out.get("decision_ar")) == commitment:
         out["decision_ar"] = diagnosis
@@ -167,9 +183,12 @@ def apply_decision_workspace_v2_budget(
     else:
         projection["attention_focus_decision_id"] = None
 
-    projection["mission_question"] = "ما القرار الذي يجب أن أتخذه الآن، ولماذا؟"
+    projection["mission_question"] = (
+        "ما القرار الذي تلتزم به الآن — وأين وكيف يتحقق CartFlow من النتيجة؟"
+    )
     projection["decision_workspace_v2"] = True
     projection["decision_workspace_refinement_v1"] = True
+    projection["decision_workspace_refinement_v2"] = True
     projection["decision_workspace_v2_budget"] = {
         "primary": 1 if painted else 0,
         "next": max(0, len(painted) - 1),
