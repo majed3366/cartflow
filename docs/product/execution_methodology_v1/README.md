@@ -1,6 +1,6 @@
 # Execution Methodology V1
 
-**Status:** Product foundation — architecture and methodology only.  
+**Status:** **FROZEN** — included in [Decision Intelligence Framework V1](../decision_intelligence_framework_v1/) production baseline.  
 **Deliverable:** How CartFlow helps the merchant execute the correct business decision (without pretending to control systems it does not own).
 
 ## Pack contents
@@ -31,6 +31,7 @@
 - Decision Cards Constitution V1  
 - Diagnostic Reasoning Foundation V1 · Home Constitution V2  
 
-## Approval gate
+## Freeze
 
-Methodology approval (including EM-001 / EM-002) required **before** any execution UI, destination registry, or automation.
+Approved under **Decision Intelligence Framework V1**.  
+Methodology (including EM-001 / EM-002) is frozen; implementation and UX must conform. No further methodology constitutions except DIF exception gate.

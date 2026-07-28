@@ -1,6 +1,6 @@
 # Executive Compression Engine V1
 
-**Status:** Architecture only — presentation compression constitution.  
+**Status:** **FROZEN** — included in [Decision Intelligence Framework V1](../decision_intelligence_framework_v1/) production baseline.  
 **Date (UTC):** 2026-07-28  
 **Mission:** Compress CartFlow intelligence into executive decisions without losing truth.
 
@@ -34,6 +34,7 @@ The **presentation engine** that converts platform intelligence into what the me
 - Decision Workspace Constitution V1 · Information Budget V1 · Decision Cards Constitution V1  
 - Diagnostic Reasoning Foundation V1 · Home Constitution V2  
 
-## Approval gate
+## Freeze
 
-Constitutional approval required **before** any compression engine code or surface rewrite under this pack.
+Approved under **Decision Intelligence Framework V1**.  
+No further Compression constitutional amendments except DIF exception gate.

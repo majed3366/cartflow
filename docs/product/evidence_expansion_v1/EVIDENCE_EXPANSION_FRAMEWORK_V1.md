@@ -1,6 +1,6 @@
 # Evidence Expansion Framework V1
 
-**Status:** Foundations implemented — architecture review before new collectors.  
+**Status:** Foundations implemented · **FROZEN** under [Decision Intelligence Framework V1](../decision_intelligence_framework_v1/).  
 **Scope:** Internal engineering framework only.  
 **Home:** Unchanged. Home consumes published diagnoses only.
 
