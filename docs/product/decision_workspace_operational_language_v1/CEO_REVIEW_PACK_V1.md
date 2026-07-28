@@ -1,7 +1,10 @@
 # Decision Workspace Operational Language V1 — CEO Review Pack
 
-**Status:** Deploy pending → awaiting CEO visual review.  
+**Status:** Deployed — awaiting CEO visual review.  
+**Deployed SHA:** `108786b071a6f4398dd06d79382b52c4fccfead0`  
+**PR:** [#125](https://github.com/majed3366/cartflow/pull/125)  
 **Date (UTC):** 2026-07-28  
+**Living Store shots:** `PASS_WORKSPACE_OPERATIONAL_LANGUAGE_V1_SHOTS`  
 **Scope:** UX refinement — operational guidance, not reporting. Not a new engine. Not a new constitution. Not Products / Carts.
 
 ---
@@ -36,14 +39,21 @@ CEO pass path:
 
 ---
 
-## Before → After (shape)
+## Production observation (Living Store)
 
-| Before (Reality UX) | After (Operational Language) |
-|---------------------|------------------------------|
-| ماذا أفعل؟ → لماذا؟ → هل أتصرف الآن؟ | الملاحظة → المعنى التشغيلي → التوجيه → التنفيذ |
-| CTA even when waiting (`#home`) | No CTA when NEEDS_MORE_EVIDENCE |
-| “اتخذ موقفاً تجارياً…” | “راجع إعدادات الشحن…” |
-| Every card feels like “Decision” | Card identity varies |
+| Field | Value |
+|-------|--------|
+| Primary readiness | `NEEDS_MORE_EVIDENCE` |
+| Card identity | `observation` |
+| CTA | none (correct) |
+| Execution block | absent |
+| Face | الملاحظة / المعنى التشغيلي / التوجيه / ما يواصل CartFlow فعله |
+| Old face (ماذا أفعل / هل أتصرف الآن) | absent |
+| Management jargon | absent |
+
+---
+
+## Before → After
 
 See `BEFORE_AFTER_V1.md`.
 
