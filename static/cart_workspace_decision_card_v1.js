@@ -1,6 +1,6 @@
 /**
- * Cart Workspace Decision Card — Decision Storytelling face (DIF V1).
- * Face: Priority → Observation → Decision → Action (READY only).
+ * Cart Workspace Decision Card — Simplification V1.
+ * Face: Priority → Evidence → Decision → Action (or wait).
  */
 (function (global) {
   "use strict";
@@ -150,72 +150,79 @@
     );
   }
 
+  function scrubEngineText(s) {
+    return String(s || "")
+      .replace(/\bcs:[A-Za-z0-9_\-:.]+/gi, "")
+      .replace(/\bdiagnostic:[A-Za-z0-9_\-:.]+/gi, "")
+      .replace(/\bdce:[A-Za-z0-9_\-:.]+/gi, "")
+      .replace(/\bDEMO-[A-Za-z0-9_-]+/g, "")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+  }
+
   function constitutionFaceHtml(card) {
     var isPrimary = !!card.is_primary_decision;
     var rankLabel = String(card.priority_rank_label_ar || "").trim();
     if (!rankLabel) {
-      rankLabel = isPrimary ? "الأولوية الأولى" : "بعدها";
+      rankLabel = isPrimary ? "الأولوية الأولى" : "الأولوية الثانية";
     }
 
-    var observation = String(
-      card.observation_ar ||
-        card.diagnosis_ar ||
-        card.business_meaning_ar ||
-        ""
-    ).trim();
-    var decision = String(
+    var evidenceLines = [];
+    if (Array.isArray(card.evidence_lines_ar) && card.evidence_lines_ar.length) {
+      evidenceLines = card.evidence_lines_ar.map(scrubEngineText).filter(Boolean);
+    } else {
+      var fallback = scrubEngineText(
+        card.evidence_ar ||
+          card.observation_ar ||
+          card.diagnosis_ar ||
+          ""
+      );
+      if (fallback) evidenceLines = [fallback];
+    }
+
+    var decision = scrubEngineText(
       card.decision_sentence_ar ||
         card.operational_guidance_ar ||
         card.commitment_ar ||
         ""
-    ).trim();
-    var priority = String(card.priority_reason_ar || "").trim();
+    );
     var actionReady =
       card.execution_available === true ||
-      String(card.execution_readiness || "") === "READY";
+      String(card.execution_readiness || "") === "READY" ||
+      String(card.execution_readiness || "") === "EXTERNAL_DEPENDENCY";
     var href2 = String(card.view_details_href || "").trim();
-    var detailsLabel = String(card.view_details_ar || "").trim();
+    var detailsLabel = scrubEngineText(card.view_details_ar || "");
     var execDomain = String(card.execution_domain || "").trim();
-
-    // Never paint engine crumbs
-    if (/^cs:/i.test(observation) || /diagnostic:/i.test(observation)) {
-      observation = observation
-        .replace(/\bcs:[A-Za-z0-9_\-:.]+/gi, "")
-        .replace(/\bdiagnostic:[A-Za-z0-9_\-:.]+/gi, "")
-        .replace(/\s{2,}/g, " ")
-        .trim();
-    }
+    var waitLines = Array.isArray(card.action_wait_lines_ar)
+      ? card.action_wait_lines_ar
+      : ["لا يوجد إجراء حالياً.", "سيخبرك CartFlow عندما يصبح القرار جاهزاً."];
 
     var rows = [];
+    // 1. Priority (rank only)
     rows.push(
       '<p class="cw-card__rank' +
         (isPrimary ? " cw-card__rank--primary" : " cw-card__rank--next") +
         '" data-exec-domain="' +
         esc(execDomain) +
-        '" data-storytelling-face="1">' +
+        '" data-simplification="1" data-story-beat="priority">' +
         esc(rankLabel) +
         "</p>"
     );
 
-    // 1. Priority (Primary) — no report headings
-    if (isPrimary && priority) {
+    // 2. Evidence (الملاحظة)
+    if (evidenceLines.length) {
       rows.push(
-        '<p class="cw-card__priority" data-story-beat="priority">' +
-          esc(priority) +
-          "</p>"
+        '<div class="cw-card__evidence" data-story-beat="evidence">' +
+          '<p class="cw-card__evidence-label">الملاحظة</p>' +
+          '<ul class="cw-card__evidence-list">'
       );
+      evidenceLines.forEach(function (line) {
+        rows.push("<li>" + esc(line) + "</li>");
+      });
+      rows.push("</ul></div>");
     }
 
-    // 2. Observation — plain story line (never label "ملاحظة")
-    if (observation) {
-      rows.push(
-        '<p class="cw-card__field-value cw-card__field-value--decision cw-card__story-observation" data-story-beat="observation">' +
-          esc(observation) +
-          "</p>"
-      );
-    }
-
-    // 3. Decision — one sentence (never "المعنى التشغيلي" / "التوجيه")
+    // 3. Decision — one sentence
     if (decision) {
       rows.push(
         '<p class="cw-card__field-value cw-card__field-value--commitment cw-card__story-decision" data-story-beat="decision">' +
@@ -224,15 +231,29 @@
       );
     }
 
-    // 4. Action — READY only; otherwise nothing
+    // 4. Action or wait — never explain; one CTA or wait copy only
     var dest = "";
     if (actionReady && href2) {
       dest =
         '<p class="cw-card__dest" data-story-beat="action"><a class="cw-card__dest-link cw-card__commit-link" href="' +
         esc(href2) +
         '">' +
-        esc(detailsLabel || "ابدأ") +
+        esc(detailsLabel || "افتح") +
         "</a></p>";
+    } else if (actionReady && detailsLabel) {
+      dest =
+        '<p class="cw-card__dest cw-card__dest--plain" data-story-beat="action">' +
+        esc(detailsLabel) +
+        "</p>";
+    } else if (!actionReady) {
+      dest =
+        '<div class="cw-card__action-wait" data-story-beat="action-wait">' +
+        "<p>" +
+        esc(waitLines[0] || "لا يوجد إجراء حالياً.") +
+        "</p>" +
+        "<p>" +
+        esc(waitLines[1] || "سيخبرك CartFlow عندما يصبح القرار جاهزاً.") +
+        "</p></div>";
     }
 
     return rows.join("") + dest;
@@ -367,6 +388,7 @@
         '" data-constitution="1"' +
         ' data-dw-v2="1"' +
         ' data-storytelling-face="1"' +
+        ' data-simplification="1"' +
         primaryAttr +
         (sitAttr ? ' data-commerce-situation="1"' : "") +
         ">" +
