@@ -43,7 +43,7 @@
     <!-- LP-02 Hero -->
     <section class="cf-sec cf-sec--hero" id="hero" data-lp-view="hero_visible" data-lp-section="hero" aria-labelledby="hero-title">
       <div class="cf-sec__inner cf-hero">
-        <div class="cf-hero__copy">
+        <div class="cf-hero__copy cf-reveal">
           <h1 class="cf-h1" id="hero-title">استعِد ما فات من المبيعات<br />وابدأ ترى ما يمنع إتمام الشراء</h1>
           <p class="cf-lead">
             CartFlow يساعد متجرك على استعادة العملاء المترددين، ويبني فهمًا أوضح لما يحدث قبل الشراء — بهدوء ووضوح.
@@ -53,15 +53,38 @@
             <a href="/login" class="cf-btn cf-btn--secondary" data-lp-cta="login">دخول</a>
           </div>
         </div>
-        <aside class="cf-hero__preview" aria-label="معاينة منتج تابعة للعنوان">
-          <img
-            src="/static/img/landing_v1/home.png"
-            alt="معاينة من لوحة المتجر في CartFlow"
-            width="960"
-            height="600"
-            loading="eager"
-            decoding="async"
-          />
+        <aside class="cf-hero__stage" aria-label="معاينة منتج تابعة للعنوان">
+          <div class="cf-hero__glow" aria-hidden="true"></div>
+          <div class="cf-browser cf-browser--hero cf-float">
+            <div class="cf-browser__chrome" aria-hidden="true">
+              <span class="cf-browser__dot"></span>
+              <span class="cf-browser__dot"></span>
+              <span class="cf-browser__dot"></span>
+              <span class="cf-browser__url">app.cartflow</span>
+            </div>
+            <div class="cf-browser__viewport">
+              <img
+                src="/static/img/landing_v1/dashboard.png"
+                alt="معاينة من لوحة المتجر في CartFlow"
+                width="1600"
+                height="1000"
+                loading="eager"
+                decoding="async"
+              />
+            </div>
+          </div>
+          <div class="cf-device cf-device--hero cf-float-delay" aria-hidden="true">
+            <div class="cf-device__bezel">
+              <img
+                src="/static/img/landing_v1/home.png"
+                alt=""
+                width="390"
+                height="844"
+                loading="eager"
+                decoding="async"
+              />
+            </div>
+          </div>
           <p class="cf-hero__preview-cap">معاينة منتج — تابعة للعنوان</p>
         </aside>
       </div>
@@ -75,10 +98,10 @@
           قد يعود العميل أكثر من مرة دون شراء. قد يضيف المنتج ويتوقف. قد يرد على واتساب ثم يغادر. الخصم لا يغيّر النتيجة دائمًا.
         </p>
         <div class="cf-beats" role="list">
-          <div class="cf-beat" role="listitem">يعود دون إتمام</div>
-          <div class="cf-beat" role="listitem">تردّد متكرر</div>
-          <div class="cf-beat" role="listitem">واتساب بلا إغلاق</div>
-          <div class="cf-beat" role="listitem">دليل غير كافٍ بعد</div>
+          <div class="cf-beat" role="listitem"><span class="cf-ico" aria-hidden="true"></span><span>يعود دون إتمام</span></div>
+          <div class="cf-beat" role="listitem"><span class="cf-ico" aria-hidden="true"></span><span>تردّد متكرر</span></div>
+          <div class="cf-beat" role="listitem"><span class="cf-ico" aria-hidden="true"></span><span>واتساب بلا إغلاق</span></div>
+          <div class="cf-beat" role="listitem"><span class="cf-ico" aria-hidden="true"></span><span>دليل غير كافٍ بعد</span></div>
         </div>
       </div>
     </section>
@@ -106,12 +129,12 @@
       <div class="cf-sec__inner cf-stack">
         <h2 class="cf-h2" id="journey-title">كيف يعمل CartFlow — مسار متصل، لا خطوات معزولة</h2>
         <div class="cf-steps" role="list">
-          <div class="cf-step" role="listitem"><span class="cf-step__n">01</span><p class="cf-step__t">نلاحظ حركة العميل</p></div>
-          <div class="cf-step" role="listitem"><span class="cf-step__n">02</span><p class="cf-step__t">نفهم التردد المبكر</p></div>
-          <div class="cf-step" role="listitem"><span class="cf-step__n">03</span><p class="cf-step__t">نبدأ الاستعادة</p></div>
-          <div class="cf-step" role="listitem"><span class="cf-step__n">04</span><p class="cf-step__t">نواصل الرحلة عند الحاجة</p></div>
-          <div class="cf-step" role="listitem"><span class="cf-step__n">05</span><p class="cf-step__t">نتابع العودة والشراء</p></div>
-          <div class="cf-step" role="listitem"><span class="cf-step__n">06</span><p class="cf-step__t">نحوّل ما حدث إلى معرفة — أو نصرّح بأن الدليل غير كافٍ</p></div>
+          <div class="cf-step" role="listitem"><span class="cf-step__n">01</span><span class="cf-step__ico" aria-hidden="true"></span><p class="cf-step__t">نلاحظ حركة العميل</p></div>
+          <div class="cf-step" role="listitem"><span class="cf-step__n">02</span><span class="cf-step__ico" aria-hidden="true"></span><p class="cf-step__t">نفهم التردد المبكر</p></div>
+          <div class="cf-step" role="listitem"><span class="cf-step__n">03</span><span class="cf-step__ico" aria-hidden="true"></span><p class="cf-step__t">نبدأ الاستعادة</p></div>
+          <div class="cf-step" role="listitem"><span class="cf-step__n">04</span><span class="cf-step__ico" aria-hidden="true"></span><p class="cf-step__t">نواصل الرحلة عند الحاجة</p></div>
+          <div class="cf-step" role="listitem"><span class="cf-step__n">05</span><span class="cf-step__ico" aria-hidden="true"></span><p class="cf-step__t">نتابع العودة والشراء</p></div>
+          <div class="cf-step" role="listitem"><span class="cf-step__n">06</span><span class="cf-step__ico" aria-hidden="true"></span><p class="cf-step__t">نحوّل ما حدث إلى معرفة — أو نصرّح بأن الدليل غير كافٍ</p></div>
         </div>
         <p class="cf-muted">التفاصيل تظهر بالدليل في الأقسام التالية — لا جولة طبقات هنا.</p>
       </div>
@@ -126,14 +149,24 @@
           <p class="cf-muted" style="color:var(--cf-secondary);font-weight:500;">أول دليل منتج حقيقي في الصفحة.</p>
         </div>
         <figure class="cf-shot cf-shot--tall">
-          <img
-            src="/static/img/landing_v1/widget.png"
-            alt="أداة داخل المتجر — فهم التردد المبكر في CartFlow"
-            width="1200"
-            height="800"
-            loading="lazy"
-            decoding="async"
-          />
+          <div class="cf-browser cf-browser--evidence">
+            <div class="cf-browser__chrome" aria-hidden="true">
+              <span class="cf-browser__dot"></span>
+              <span class="cf-browser__dot"></span>
+              <span class="cf-browser__dot"></span>
+              <span class="cf-browser__url">widget · storefront</span>
+            </div>
+            <div class="cf-browser__viewport">
+              <img
+                src="/static/img/landing_v1/widget.png"
+                alt="أداة داخل المتجر — فهم التردد المبكر في CartFlow"
+                width="1200"
+                height="800"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+          </div>
           <figcaption class="cf-shot__cap">دليل منتج — الأداة داخل المتجر</figcaption>
         </figure>
       </div>
@@ -164,14 +197,24 @@
           <p class="cf-lead">يجمع الانتباه، وما حدث في الاستعادة، وحركة العميل، وما يجدر معرفته الآن.</p>
         </div>
         <figure class="cf-shot cf-shot--dash">
-          <img
-            src="/static/img/landing_v1/dashboard.png"
-            alt="لوحة المتجر في CartFlow — نظرة تشغيلية يومية"
-            width="1600"
-            height="1000"
-            loading="lazy"
-            decoding="async"
-          />
+          <div class="cf-browser cf-browser--dash cf-float">
+            <div class="cf-browser__chrome" aria-hidden="true">
+              <span class="cf-browser__dot"></span>
+              <span class="cf-browser__dot"></span>
+              <span class="cf-browser__dot"></span>
+              <span class="cf-browser__url">dashboard · CartFlow</span>
+            </div>
+            <div class="cf-browser__viewport">
+              <img
+                src="/static/img/landing_v1/dashboard.png"
+                alt="لوحة المتجر في CartFlow — نظرة تشغيلية يومية"
+                width="1600"
+                height="1000"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+          </div>
           <figcaption class="cf-shot__cap">لوحة المتجر — محور الفحص في الصفحة</figcaption>
         </figure>
       </div>
