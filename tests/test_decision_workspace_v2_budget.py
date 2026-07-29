@@ -159,3 +159,27 @@ def test_evidence_has_products_and_confidence():
     assert any("41%" in x for x in lines)
     assert any("Nano" in x or "TrueSound" in x for x in lines)
     assert any("مرتفع" in x for x in lines)
+
+
+def test_rejects_demo_slug_and_diagnostic_jargon():
+    lines = evidence_lines_ar_v1(
+        {
+            "observation_ar": "يغادر العملاء بعد خطوة الشحن.",
+            "subject_ar": "demo",
+            "business_domain": "shipping",
+            "confidence_level": "low",
+        }
+    )
+    assert not any("demo" in x.casefold() for x in lines)
+    text = decision_sentence_ar_v1(
+        {
+            "diagnosis_status": "supported",
+            "first_step_ar": "قرّر الموقف التجاري بخصوص TrueSound بناءً على التشخيص.",
+            "subject_ar": "TrueSound",
+            "business_domain": "products",
+            "observation_ar": "اهتمام مرتفع دون شراء.",
+            "execution_readiness": READY,
+        }
+    )
+    assert "التشخيص" not in text
+    assert "الموقف التجاري" not in text
