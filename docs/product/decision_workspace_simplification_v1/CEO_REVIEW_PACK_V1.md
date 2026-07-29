@@ -1,8 +1,11 @@
 # Decision Workspace Simplification V1 — CEO Review Pack
 
-**Status:** Awaiting deploy + Living Store shots.  
+**Status:** Deployed — awaiting CEO visual review.  
+**Deployed SHA:** `1d836c67b3474ac1e80c3f8970360e9b18f43c0b`  
+**PR:** [#130](https://github.com/majed3366/cartflow/pull/130)  
 **Date (UTC):** 2026-07-29  
-**Branch:** `feat/workspace-simplification-v1`
+**Living Store shots:** `PASS_WORKSPACE_SIMPLIFICATION_V1_SHOTS`  
+**Railway:** Success (cartflow + smart-reply-ai)
 
 ---
 
@@ -11,7 +14,10 @@
 1. **Priority** — الأولوية الأولى / الثانية / راقب / لاحقاً  
 2. **Evidence (الملاحظة)** — facts only (%, products, confidence)  
 3. **Decision** — one sentence, ≤2 lines  
-4. **Action** — one CTA when actionable; otherwise wait copy only  
+4. **Action** — one CTA when actionable; otherwise:
+
+   - لا يوجد إجراء حالياً.  
+   - سيخبرك CartFlow عندما يصبح القرار جاهزاً.
 
 ## Removed (merchant-facing)
 
@@ -19,16 +25,22 @@
 - المعنى التشغيلي  
 - ما يواصل CartFlow فعله  
 - كيف يتحقق CartFlow  
-- ماذا بعد  
-- كيف تنفذ  
-- Engine IDs (`cs:`, `DEMO-*`, diagnostic:, pipeline ids)  
+- ماذا بعد / كيف تنفذ  
+- Engine IDs (`cs:`, `DEMO-*`, diagnostic:, pipeline ids)
 
-## Acceptance
+## Living Store (primary)
 
-CEO understands every card in &lt;5 seconds.  
-Merchant never asks: ماذا يقصد؟ / ماذا أفعل؟ / لماذا يعرض لي هذا؟
+| Field | Value |
+|-------|--------|
+| Rank | الأولوية الأولى |
+| Evidence | الملاحظة — facts + confidence |
+| Decision | لا تغيّر سياسة الشحن حتى تتضح الأدلة. |
+| Readiness | `NEEDS_MORE_EVIDENCE` |
+| Action | wait copy (correct) |
+| Removed sections | absent |
+| Engine IDs | absent |
 
-## Evidence (after deploy)
+## Evidence
 
 | Artifact | Path |
 |----------|------|

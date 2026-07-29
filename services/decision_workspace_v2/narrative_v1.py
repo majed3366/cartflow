@@ -56,10 +56,14 @@ _FORBIDDEN_GUIDANCE_MARKERS = (
     "diagnos",
     "موقفاً تجارياً",
     "موقفا تجاريا",
+    "الموقف التجاري",
+    "موقف تجاري",
     "قراراً تجارياً",
     "قرارا تجاريا",
     "حكم تجاري",
     "الحكم التجاري",
+    "بناءً على التشخيص",
+    "بناء على التشخيص",
     "بوعي",
     "Commercial judgement",
     "business judgement",
@@ -147,8 +151,32 @@ def _confidence_label_ar_v1(card: Mapping[str, Any]) -> str:
     return ""
 
 
+def _is_merchant_product_name_v1(name: str) -> bool:
+    n = _norm(name)
+    if not n or len(n) < 2:
+        return False
+    low = n.casefold()
+    if low in {"demo", "store", "unknown", "n/a", "na", "null", "none"}:
+        return False
+    if low.startswith("cs:") or low.startswith("demo-") or low.startswith("diagnostic:"):
+        return False
+    return True
+
+
 def _product_names_ar_v1(card: Mapping[str, Any]) -> list[str]:
     names: list[str] = []
+    seen: set[str] = set()
+
+    def _add(raw: Any) -> None:
+        n = sanitize_merchant_story_text_v1(_norm(raw)).split("—")[0].strip()
+        if not _is_merchant_product_name_v1(n):
+            return
+        key = n.casefold()
+        if key in seen:
+            return
+        seen.add(key)
+        names.append(n)
+
     for key in (
         "product_name_ar",
         "subject_ar",
@@ -158,26 +186,17 @@ def _product_names_ar_v1(card: Mapping[str, Any]) -> list[str]:
         raw = card.get(key)
         if isinstance(raw, (list, tuple)):
             for item in raw:
-                n = sanitize_merchant_story_text_v1(_norm(item))
-                if n and n not in names and not n.startswith("cs:"):
-                    names.append(n.split("—")[0].strip())
+                _add(item)
         else:
-            n = sanitize_merchant_story_text_v1(_norm(raw))
-            if n and n not in names and not n.startswith("cs:"):
-                names.append(n.split("—")[0].strip())
-    # Secondary products list
+            _add(raw)
     extra = card.get("related_products") or card.get("products")
     if isinstance(extra, (list, tuple)):
         for item in extra:
             if isinstance(item, Mapping):
-                n = sanitize_merchant_story_text_v1(
-                    _norm(item.get("name_ar") or item.get("name") or item.get("title"))
-                )
+                _add(item.get("name_ar") or item.get("name") or item.get("title"))
             else:
-                n = sanitize_merchant_story_text_v1(_norm(item))
-            if n and n not in names:
-                names.append(n.split("—")[0].strip())
-    return [n for n in names if n][:3]
+                _add(item)
+    return names[:3]
 
 
 def _rate_hint_v1(card: Mapping[str, Any]) -> str:
