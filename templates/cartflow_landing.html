@@ -3,704 +3,365 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CartFlow — يفهم سبب التردد ويشرح ما حدث</title>
-  <meta name="description" content="CartFlow نظام سلوك وتردد واسترجاع وتوضيح: يفهم لماذا يتردد العميل، يختار الإجراء المناسب، ويعرض للتاجر ما حدث في لوحة السلال." />
+  <title>CartFlow — استعِد ما فات وابدأ ترى ما يمنع إتمام الشراء</title>
+  <meta name="description" content="CartFlow يساعد متجرك على استعادة العملاء المترددين، ويبني فهمًا أوضح لما يحدث قبل الشراء — بهدوء ووضوح." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet" />
-  <style>
-    :root {
-      --green: #166534;
-      --green-mid: #16a34a;
-      --green-soft: #dcfce7;
-      --green-bg: #f0fdf4;
-      --bg: #f8fafc;
-      --surface: #ffffff;
-      --border: #e2e8f0;
-      --text: #0f172a;
-      --muted: #64748b;
-      --max: 68rem;
-      --radius: 12px;
-    }
-
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    html { scroll-behavior: smooth; }
-
-    body {
-      font-family: "Tajawal", "IBM Plex Sans Arabic", sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.65;
-    }
-
-    a { color: inherit; text-decoration: none; }
-
-    .wrap {
-      max-width: var(--max);
-      margin: 0 auto;
-      padding: 0 1.125rem;
-    }
-
-    /* Header */
-    .hdr {
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .hdr__in {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.75rem;
-      min-height: 3.75rem;
-    }
-
-    .logo {
-      font-weight: 800;
-      font-size: 1.0625rem;
-      color: var(--green);
-    }
-
-    .hdr__nav {
-      display: none;
-      gap: 1.25rem;
-      list-style: none;
-      font-size: 0.8125rem;
-      color: var(--muted);
-    }
-
-    @media (min-width: 900px) { .hdr__nav { display: flex; } }
-
-    .hdr__nav a:hover { color: var(--green-mid); }
-
-    .hdr__acts { display: flex; gap: 0.5rem; }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0.5rem 1rem;
-      border-radius: 8px;
-      font-family: inherit;
-      font-size: 0.8125rem;
-      font-weight: 700;
-      border: 1px solid transparent;
-    }
-
-    .btn--p {
-      background: var(--green-mid);
-      color: #fff;
-    }
-
-    .btn--g {
-      background: var(--surface);
-      color: var(--green);
-      border-color: var(--border);
-    }
-
-    .btn--lg {
-      padding: 0.75rem 1.375rem;
-      font-size: 0.9375rem;
-    }
-
-    /* Hero */
-    .hero {
-      padding: 2.5rem 0 2rem;
-      background: linear-gradient(180deg, var(--green-bg) 0%, var(--surface) 100%);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .hero__tag {
-      display: inline-block;
-      margin-bottom: 0.75rem;
-      padding: 0.25rem 0.625rem;
-      border-radius: 999px;
-      background: var(--green-soft);
-      color: var(--green);
-      font-size: 0.75rem;
-      font-weight: 700;
-    }
-
-    .hero h1 {
-      font-size: clamp(1.625rem, 4.5vw, 2.375rem);
-      font-weight: 800;
-      line-height: 1.3;
-      color: var(--green);
-      margin-bottom: 1rem;
-      max-width: 36rem;
-    }
-
-    .hero__story {
-      display: grid;
-      gap: 0.5rem;
-      max-width: 36rem;
-      margin-bottom: 1.5rem;
-      font-size: 0.9375rem;
-    }
-
-    .hero__story li {
-      list-style: none;
-      padding-right: 1rem;
-      border-right: 3px solid var(--green-mid);
-      color: var(--muted);
-    }
-
-    .hero__story strong { color: var(--text); }
-
-    .hero__lead {
-      max-width: 36rem;
-      color: var(--muted);
-      font-size: 0.9375rem;
-      margin-bottom: 1.25rem;
-    }
-
-    .hero__btns {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.625rem;
-    }
-
-    /* Sections — tighter vertical rhythm for product assets */
-    .sec {
-      padding: 1.5rem 0;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .sec--alt { background: var(--surface); }
-
-    .sec__head {
-      margin-bottom: 0.875rem;
-      max-width: 40rem;
-    }
-
-    .sec__head h2 {
-      font-size: clamp(1.25rem, 3vw, 1.625rem);
-      font-weight: 800;
-      color: var(--green);
-      margin-bottom: 0.375rem;
-    }
-
-    .sec__head p {
-      color: var(--muted);
-      font-size: 0.9375rem;
-    }
-
-    .sec__grid {
-      display: grid;
-      gap: 1rem;
-      align-items: center;
-    }
-
-    @media (min-width: 900px) {
-      .sec__grid--2 { grid-template-columns: 1fr 1fr; }
-    }
-
-    .flow {
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-      max-width: 28rem;
-    }
-
-    .flow__step {
-      position: relative;
-      padding: 0.75rem 1rem;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      font-size: 0.875rem;
-      font-weight: 600;
-    }
-
-    .flow__step + .flow__step { margin-top: 0.5rem; }
-
-    .flow__step::after {
-      content: "↓";
-      display: block;
-      text-align: center;
-      color: var(--green-mid);
-      font-size: 0.875rem;
-      margin-top: 0.5rem;
-      font-weight: 700;
-    }
-
-    .flow__step:last-child::after { display: none; }
-
-    .pill-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      list-style: none;
-      margin-top: 0.75rem;
-    }
-
-    .pill-list li {
-      padding: 0.35rem 0.75rem;
-      border-radius: 999px;
-      background: var(--green-soft);
-      color: var(--green);
-      font-size: 0.8125rem;
-      font-weight: 600;
-    }
-
-    .stages {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 0.5rem;
-      margin-top: 0.75rem;
-      font-size: 0.875rem;
-      font-weight: 700;
-    }
-
-    .stages span {
-      padding: 0.35rem 0.75rem;
-      border-radius: 8px;
-      background: var(--green-soft);
-      color: var(--green);
-    }
-
-    .stages em {
-      font-style: normal;
-      color: var(--green-mid);
-    }
-
-    .cols {
-      display: grid;
-      gap: 0.5rem;
-      margin-top: 0.75rem;
-    }
-
-    @media (min-width: 480px) {
-      .cols { grid-template-columns: repeat(2, 1fr); }
-    }
-
-    .col-chip {
-      padding: 0.5rem 0.75rem;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      background: var(--surface);
-      font-size: 0.8125rem;
-      font-weight: 600;
-    }
-
-    .col-chip small {
-      display: block;
-      font-weight: 400;
-      color: var(--muted);
-      font-size: 0.6875rem;
-      margin-top: 0.15rem;
-    }
-
-    .shot {
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      overflow: hidden;
-      background: var(--surface);
-      box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
-    }
-
-    .sec__grid--2 .shot {
-      align-self: center;
-      width: 100%;
-    }
-
-    .shot img {
-      display: block;
-      width: 100%;
-      height: auto;
-      vertical-align: top;
-    }
-
-    .comps .shot {
-      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
-    }
-
-    .comps .comp p {
-      margin-bottom: 0.5rem;
-    }
-
-    .shot figcaption {
-      padding: 0.5rem 0.75rem;
-      font-size: 0.6875rem;
-      color: var(--muted);
-      border-top: 1px solid var(--border);
-      background: var(--bg);
-    }
-
-    .comps {
-      display: grid;
-      gap: 1rem;
-    }
-
-    @media (min-width: 768px) {
-      .comps { grid-template-columns: repeat(3, 1fr); }
-    }
-
-    .comp h3 {
-      font-size: 0.875rem;
-      font-weight: 700;
-      margin-bottom: 0.375rem;
-      color: var(--green);
-    }
-
-    .comp p {
-      font-size: 0.8125rem;
-      color: var(--muted);
-      margin-bottom: 0.625rem;
-    }
-
-    .beta {
-      padding: 1rem 0;
-      text-align: center;
-      font-size: 0.8125rem;
-      color: var(--muted);
-      background: var(--green-bg);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .faq { max-width: 40rem; margin: 0 auto; }
-
-    .faq details {
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background: var(--surface);
-      margin-bottom: 0.5rem;
-      padding: 0.75rem 1rem;
-    }
-
-    .faq summary {
-      font-weight: 700;
-      font-size: 0.875rem;
-      cursor: pointer;
-      color: var(--green);
-    }
-
-    .faq p {
-      margin-top: 0.5rem;
-      font-size: 0.8125rem;
-      color: var(--muted);
-    }
-
-    .cta {
-      padding: 2.5rem 0;
-      text-align: center;
-      background: var(--green);
-      color: #fff;
-    }
-
-    .cta h2 {
-      font-size: clamp(1.25rem, 3vw, 1.625rem);
-      font-weight: 800;
-      margin-bottom: 0.5rem;
-    }
-
-    .cta p {
-      opacity: 0.9;
-      margin-bottom: 1.25rem;
-      font-size: 0.9375rem;
-    }
-
-    .cta .btn--p {
-      background: #fff;
-      color: var(--green);
-    }
-
-    .foot {
-      padding: 1rem 0 1.5rem;
-      text-align: center;
-      font-size: 0.75rem;
-      color: var(--muted);
-    }
-
-    .foot a { color: var(--green-mid); font-weight: 600; }
-  </style>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/cartflow_landing_v1.css" />
 </head>
-<body>
+<body class="cf-lp">
 
-  <header class="hdr">
-    <div class="wrap hdr__in">
-      <a href="/" class="logo">CartFlow</a>
-      <ul class="hdr__nav">
-        <li><a href="#think">كيف يفكر</a></li>
-        <li><a href="#objections">أسباب التردد</a></li>
-        <li><a href="#recovery">مسار الاسترجاع</a></li>
-        <li><a href="#visibility">لوحة السلال</a></li>
-        <li><a href="#components">المكوّنات</a></li>
+  <!-- LP-01 Navigation -->
+  <header class="cf-nav" id="nav">
+    <div class="cf-nav__in">
+      <a href="/" class="cf-nav__brand">CartFlow</a>
+      <div class="cf-nav__spacer" aria-hidden="true"></div>
+      <ul class="cf-nav__links" aria-label="التنقل">
+        <li><a href="#journey">كيف يعمل</a></li>
+        <li><a href="#dashboard">ما ستراه</a></li>
+        <li><a href="#trust">الثقة</a></li>
         <li><a href="#faq">الأسئلة</a></li>
       </ul>
-      <div class="hdr__acts">
-        <a href="/login" class="btn btn--g">تسجيل الدخول</a>
-        <a href="/signup" class="btn btn--p">ابدأ الآن</a>
+      <div class="cf-nav__acts">
+        <a href="/login" class="cf-btn cf-btn--ghost" data-lp-cta="login">دخول</a>
+        <a href="/signup" class="cf-btn cf-btn--primary" data-lp-cta="signup">ابدأ</a>
+        <button type="button" class="cf-nav__menu" id="cf-nav-menu" aria-expanded="false" aria-controls="cf-nav-drawer" aria-label="فتح القائمة">☰</button>
       </div>
     </div>
+    <nav class="cf-nav__drawer" id="cf-nav-drawer" hidden>
+      <a href="#journey">كيف يعمل</a>
+      <a href="#dashboard">ما ستراه</a>
+      <a href="#trust">الثقة</a>
+      <a href="#faq">الأسئلة</a>
+      <a href="/login" data-lp-cta="login">دخول</a>
+      <a href="/signup" data-lp-cta="signup">ابدأ</a>
+    </nav>
   </header>
 
   <main>
-    <!-- Hero -->
-    <section class="hero">
-      <div class="wrap">
-        <span class="hero__tag">سلوك · تردد · استرجاع · توضيح</span>
-        <h1>CartFlow ليس مجرد رسائل واتساب — يفهم لماذا يتردد العميل</h1>
-        <ul class="hero__story" aria-label="قصة CartFlow">
-          <li><strong>العميل يتردد</strong> — يضيف للسلة ويتوقف.</li>
-          <li><strong>CartFlow يفهم السبب</strong> — سعر، شحن، ثقة، أو سبب آخر.</li>
-          <li><strong>CartFlow يساعد</strong> — ودجيت أولاً، ثم متابعة عند الحاجة.</li>
-          <li><strong>CartFlow يشرح النتيجة</strong> — ماذا حدث؟ ماذا فعل النظام؟ ما التالي؟</li>
-        </ul>
-        <p class="hero__lead">
-          نظام يربط سلوك العميل بأسباب التردد، ومسار استرجاع متدرّج، ولوحة تشرح كل خطوة للتاجر — بدون وعود ROI أو أرقام وهمية.
+    <!-- LP-02 Hero -->
+    <section class="cf-sec cf-sec--hero" id="hero" data-lp-view="hero_visible" data-lp-section="hero" aria-labelledby="hero-title">
+      <div class="cf-sec__inner cf-hero">
+        <div class="cf-hero__copy">
+          <h1 class="cf-h1" id="hero-title">استعِد ما فات من المبيعات<br />وابدأ ترى ما يمنع إتمام الشراء</h1>
+          <p class="cf-lead">
+            CartFlow يساعد متجرك على استعادة العملاء المترددين، ويبني فهمًا أوضح لما يحدث قبل الشراء — بهدوء ووضوح.
+          </p>
+          <div class="cf-cta-row">
+            <a href="/signup" class="cf-btn cf-btn--primary" data-lp-cta="hero_signup">ابدأ مع متجرك</a>
+            <a href="/login" class="cf-btn cf-btn--secondary" data-lp-cta="login">دخول</a>
+          </div>
+        </div>
+        <aside class="cf-hero__preview" aria-label="معاينة منتج تابعة للعنوان">
+          <img
+            src="/static/img/landing_v1/home.png"
+            alt="معاينة من لوحة المتجر في CartFlow"
+            width="960"
+            height="600"
+            loading="eager"
+            decoding="async"
+          />
+          <p class="cf-hero__preview-cap">معاينة منتج — تابعة للعنوان</p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- LP-03 Problem -->
+    <section class="cf-sec" id="problem" data-lp-view="problem_section_viewed" data-lp-section="problem" aria-labelledby="problem-title">
+      <div class="cf-sec__inner cf-stack">
+        <h2 class="cf-h2" id="problem-title">السلة المتروكة ظاهرة. ما حولها غالبًا غير مرئي.</h2>
+        <p class="cf-lead">
+          قد يعود العميل أكثر من مرة دون شراء. قد يضيف المنتج ويتوقف. قد يرد على واتساب ثم يغادر. الخصم لا يغيّر النتيجة دائمًا.
         </p>
-        <div class="hero__btns">
-          <a href="/signup" class="btn btn--p btn--lg">ابدأ الآن مجاناً</a>
-          <a href="/login" class="btn btn--g btn--lg">تسجيل الدخول</a>
+        <div class="cf-beats" role="list">
+          <div class="cf-beat" role="listitem">يعود دون إتمام</div>
+          <div class="cf-beat" role="listitem">تردّد متكرر</div>
+          <div class="cf-beat" role="listitem">واتساب بلا إغلاق</div>
+          <div class="cf-beat" role="listitem">دليل غير كافٍ بعد</div>
         </div>
       </div>
     </section>
 
-    <!-- Section 1: How CartFlow thinks -->
-    <section class="sec sec--alt" id="think">
-      <div class="wrap sec__grid sec__grid--2">
-        <div class="sec__head">
-          <h2>كيف يفكر CartFlow؟</h2>
-          <p>مسار واحد من السلة إلى قرار واضح للتاجر — ليس «أرسل رسالة» فقط.</p>
-          <div class="flow" aria-label="مسار التفكير">
-            <div class="flow__step">العميل يضيف للسلة</div>
-            <div class="flow__step">العميل يتردد</div>
-            <div class="flow__step">CartFlow يفهم السبب</div>
-            <div class="flow__step">CartFlow يختار الإجراء المناسب</div>
-            <div class="flow__step">النتيجة تظهر للتاجر</div>
+    <!-- LP-04 Reframe -->
+    <section class="cf-sec cf-sec--alt" id="reframe" aria-labelledby="reframe-title">
+      <div class="cf-sec__inner cf-stack">
+        <h2 class="cf-h2" id="reframe-title">إجراء الاستعادة لا يكفي وحده لفهم ما حدث.</h2>
+        <div class="cf-contrast">
+          <div class="cf-contrast__card">
+            <h3>إجراء استعادة</h3>
+            <p>إرسال تذكير أو خصم — مفيد أحيانًا، لكنه لا يفسّر ما منع الشراء قبل وبعد الإرسال.</p>
+          </div>
+          <div class="cf-contrast__card cf-contrast__card--focus">
+            <h3>فهم ما حدث</h3>
+            <p>رؤية الحركة والتردد والعودة — لمعرفة ما يستحق الانتباه، ومتى الدليل غير كافٍ.</p>
           </div>
         </div>
-        <figure class="shot">
+        <p class="cf-muted">الاستعادة مفيدة. الفهم يجعلها أوضح — دون مهاجمة أدواتك الحالية.</p>
+      </div>
+    </section>
+
+    <!-- LP-05 Journey -->
+    <section class="cf-sec" id="journey" aria-labelledby="journey-title">
+      <div class="cf-sec__inner cf-stack">
+        <h2 class="cf-h2" id="journey-title">كيف يعمل CartFlow — مسار متصل، لا خطوات معزولة</h2>
+        <div class="cf-steps" role="list">
+          <div class="cf-step" role="listitem"><span class="cf-step__n">01</span><p class="cf-step__t">نلاحظ حركة العميل</p></div>
+          <div class="cf-step" role="listitem"><span class="cf-step__n">02</span><p class="cf-step__t">نفهم التردد المبكر</p></div>
+          <div class="cf-step" role="listitem"><span class="cf-step__n">03</span><p class="cf-step__t">نبدأ الاستعادة</p></div>
+          <div class="cf-step" role="listitem"><span class="cf-step__n">04</span><p class="cf-step__t">نواصل الرحلة عند الحاجة</p></div>
+          <div class="cf-step" role="listitem"><span class="cf-step__n">05</span><p class="cf-step__t">نتابع العودة والشراء</p></div>
+          <div class="cf-step" role="listitem"><span class="cf-step__n">06</span><p class="cf-step__t">نحوّل ما حدث إلى معرفة — أو نصرّح بأن الدليل غير كافٍ</p></div>
+        </div>
+        <p class="cf-muted">التفاصيل تظهر بالدليل في الأقسام التالية — لا جولة طبقات هنا.</p>
+      </div>
+    </section>
+
+    <!-- LP-06 Widget -->
+    <section class="cf-sec" id="widget" data-lp-view="widget_section_viewed" data-lp-section="widget" aria-labelledby="widget-title">
+      <div class="cf-sec__inner cf-evidence">
+        <div class="cf-evidence__copy">
+          <h2 class="cf-h2 cf-h2--lg" id="widget-title">فهم التردد مبكرًا داخل المتجر</h2>
+          <p class="cf-lead">فرصة مبكرة لفهم التردد والاستجابة قبل أن يختفي العميل — ليست مجرد سطح عروض.</p>
+          <p class="cf-muted" style="color:var(--cf-secondary);font-weight:500;">أول دليل منتج حقيقي في الصفحة.</p>
+        </div>
+        <figure class="cf-shot cf-shot--tall">
           <img
-            src="/static/img/landing/carts_dashboard.png"
-            alt="لقطة من لوحة السلال — قيمة السلة، سبب التردد، الحالة، والخطوة التالية"
-            width="447"
-            height="200"
+            src="/static/img/landing_v1/widget.png"
+            alt="أداة داخل المتجر — فهم التردد المبكر في CartFlow"
+            width="1200"
+            height="800"
             loading="lazy"
             decoding="async"
           />
-          <figcaption>من لوحة السلال الفعلية — كل سلة تروي قصة: سبب، حالة، وخطوة تالية.</figcaption>
+          <figcaption class="cf-shot__cap">دليل منتج — الأداة داخل المتجر</figcaption>
         </figure>
       </div>
     </section>
 
-    <!-- Section 2: Objection reasons -->
-    <section class="sec" id="objections">
-      <div class="wrap sec__grid sec__grid--2">
-        <figure class="shot">
-          <img
-            src="/static/img/landing/objection_reasons.png"
-            alt="صفحة أسباب التردد — توزيع أسباب ترك السلة"
-            width="447"
-            height="540"
-            loading="lazy"
-            decoding="async"
-          />
-          <figcaption>لقطة حقيقية من صفحة «أسباب التردد» في لوحة التاجر.</figcaption>
-        </figure>
-        <div class="sec__head">
-          <h2>لماذا يتردد العملاء؟</h2>
-          <p>
-            CartFlow يساعد التاجر على فهم <strong>لماذا</strong> توقف العميل — ليس فقط أنه توقف.
-            الأسباب تُجمع من الودجيت وتظهر في لوحة التاجر.
-          </p>
-          <ul class="pill-list" aria-label="أسباب التردد في النظام">
-            <li>السعر</li>
-            <li>الشحن</li>
-            <li>يفكر في القرار</li>
-            <li>الثقة بالمتجر</li>
-            <li>أخرى</li>
-          </ul>
-          <p style="margin-top:1rem;font-size:0.8125rem;color:var(--muted);">
-            التوزيع والتوصيات في اللوحة تعكس بيانات متجرك — لا نعرض نسباً تسويقية عامة على صفحة الهبوط.
+    <!-- LP-07 WhatsApp placeholder -->
+    <section class="cf-sec cf-sec--alt" id="whatsapp" data-lp-view="whatsapp_section_viewed" data-lp-section="whatsapp" aria-labelledby="whatsapp-title">
+      <div class="cf-sec__inner cf-evidence">
+        <div class="cf-evidence__copy">
+          <h2 class="cf-h2 cf-h2--lg" id="whatsapp-title">واتساب يواصل الرحلة — لا يعرّف المنتج</h2>
+          <p class="cf-lead">متابعة الرد والمتابعة والعودة والشراء — مع إيقاف الاستعادة غير الضرورية بعد الشراء.</p>
+        </div>
+        <div class="cf-shot cf-shot--tall cf-ph" role="img" aria-label="موضع محجوز لرحلة واتساب التشغيلية — يُستبدل لاحقًا دون إعادة تصميم">
+          <span class="cf-ph__badge">PLACEHOLDER — replace-only</span>
+          <p class="cf-ph__text">
+            رحلة واتساب التشغيلية<br />
+            استبدال فقط · الحفاظ على الأبعاد · بلا بيانات محادثة مُختلَقة
           </p>
         </div>
       </div>
     </section>
 
-    <!-- Section 3: Recovery journey -->
-    <section class="sec sec--alt" id="recovery">
-      <div class="wrap sec__grid sec__grid--2">
-        <div class="sec__head">
-          <h2>مسار استرجاع — وليس تكرار نفس الرسالة</h2>
-          <p>
-            قوالب الاسترجاع في CartFlow تتحرك عبر مراحل. كل مرحلة رسالة مختلفة — طمأنة، ثم عرض، ثم بديل.
+    <!-- LP-08 Dashboard -->
+    <section class="cf-sec cf-sec--dash" id="dashboard" data-lp-view="dashboard_section_viewed" data-lp-section="dashboard" aria-labelledby="dashboard-title">
+      <div class="cf-sec__inner cf-evidence cf-evidence--dash cf-stack">
+        <div class="cf-stack--sm">
+          <h2 class="cf-h2 cf-h2--lg" id="dashboard-title">ما ستراه كتاجر — بوضوح يومي</h2>
+          <p class="cf-lead">يجمع الانتباه، وما حدث في الاستعادة، وحركة العميل، وما يجدر معرفته الآن.</p>
+        </div>
+        <figure class="cf-shot cf-shot--dash">
+          <img
+            src="/static/img/landing_v1/dashboard.png"
+            alt="لوحة المتجر في CartFlow — نظرة تشغيلية يومية"
+            width="1600"
+            height="1000"
+            loading="lazy"
+            decoding="async"
+          />
+          <figcaption class="cf-shot__cap">لوحة المتجر — محور الفحص في الصفحة</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- LP-09 Knowledge placeholder -->
+    <section class="cf-sec cf-sec--mint" id="knowledge" data-lp-view="knowledge_section_viewed" data-lp-section="knowledge" aria-labelledby="knowledge-title">
+      <div class="cf-sec__inner cf-evidence">
+        <div class="cf-evidence__copy">
+          <h2 class="cf-h2 cf-h2--lg" id="knowledge-title">من النشاط المتكرر… إلى فهم أوضح للمتجر</h2>
+          <p class="cf-lead">الأنماط المتكررة قد تتشكّل من الأدلة — أو نصرّح بصراحة أن الدليل غير كافٍ. لا تخمين يملأ الفراغ.</p>
+          <p class="cf-muted" style="color:var(--cf-primary);font-weight:500;">هنا تُكتسب الهوية الأوسع — ليس قبل هذا القسم.</p>
+        </div>
+        <div class="cf-shot cf-shot--tall cf-ph" role="img" aria-label="موضع محجوز لبطاقة معرفة — يُستبدل بعد اعتماد Reality Validation">
+          <span class="cf-ph__badge">PLACEHOLDER — replace-only</span>
+          <p class="cf-ph__text">
+            بطاقة معرفة + حالة الدليل / غير كافٍ<br />
+            بلا نتائج مُختلَقة · استبدال فقط
           </p>
-          <div class="stages" aria-label="مراحل الاسترجاع">
-            <span>طمأنة</span>
-            <em>→</em>
-            <span>عرض / كود خصم</span>
-            <em>→</em>
-            <span>بديل / باقة</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- LP-10 Decision -->
+    <section class="cf-sec" id="decision" aria-labelledby="decision-title">
+      <div class="cf-sec__inner cf-stack">
+        <h2 class="cf-h2 cf-h2--lg" id="decision-title">فهم يساعدك على القرار — لا يقرر عنك</h2>
+        <ul class="cf-list">
+          <li>تعرف أين يحتاج متجرك انتباهًا</li>
+          <li>تميّز ضعف التحويل عن ضعف الزيارات</li>
+          <li>تتجنّب افتراضات ضعيفة حول الخصومات</li>
+          <li>تعرف متى لا يوجد استنتاج آمن بعد</li>
+          <li>ترتّب الأولويات بوضوح أكبر</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- LP-11 Continuous -->
+    <section class="cf-sec cf-sec--alt" id="continuous" aria-labelledby="continuous-title">
+      <div class="cf-sec__inner cf-stack">
+        <h2 class="cf-h2 cf-h2--lg" id="continuous-title">الفائدة قد تتراكم عندما تتراكم الأدلة</h2>
+        <div class="cf-progress" role="list">
+          <div class="cf-progress__item" role="listitem">رحلة تُلاحظ</div>
+          <div class="cf-progress__item" role="listitem">دليل يُضاف</div>
+          <div class="cf-progress__item" role="listitem">أنماط قد تتضح</div>
+          <div class="cf-progress__item" role="listitem">فهم أوضح مع الوقت</div>
+        </div>
+        <p class="cf-muted">لغة مشروطة فقط — لا منحنيات تعلّم مزيفة.</p>
+      </div>
+    </section>
+
+    <!-- LP-12 Trust -->
+    <section class="cf-sec" id="trust" aria-labelledby="trust-title">
+      <div class="cf-sec__inner cf-stack">
+        <h2 class="cf-h2 cf-h2--lg" id="trust-title">لا يقين مزيف حيث الدليل ضعيف</h2>
+        <ul class="cf-list">
+          <li>لا توصية دون أدلة كافية</li>
+          <li>يُصرَّح بوضوح عندما يكون الدليل غير كافٍ</li>
+          <li>الشراء يوقف الاستعادة غير الضرورية</li>
+          <li>الملاحظة ليست استنتاجًا</li>
+          <li>بيانات المتجر معزولة</li>
+          <li>حالات المنتج تُعرض بصدق</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- LP-13 Integrations -->
+    <section class="cf-sec cf-sec--alt" id="integrations" aria-labelledby="integrations-title">
+      <div class="cf-sec__inner cf-stack">
+        <h2 class="cf-h2 cf-h2--lg" id="integrations-title">ما يعمل الآن — وما هو ضمن الخطة</h2>
+        <div class="cf-stack--sm">
+          <div class="cf-row">
+            <span class="cf-row__plat">زد</span>
+            <span class="cf-row__status">مدعوم حاليًا — قد يتطلب التفعيل تدخلًا تشغيليًا</span>
           </div>
-          <p style="margin-top:1rem;font-size:0.8125rem;color:var(--muted);">
-            تختار عدد المراحل لكل سبب تردد. الرسائل تتوقف تلقائياً عند العودة أو إكمال الشراء — كما في النظام الفعلي.
-          </p>
-        </div>
-        <figure class="shot">
-          <img
-            src="/static/img/landing/recovery_templates.png"
-            alt="صفحة قوالب الاسترجاع — مراحل طمأنة وعرض وبديل"
-            width="447"
-            height="444"
-            loading="lazy"
-            decoding="async"
-          />
-          <figcaption>من «قوالب الاسترجاع» — مسار = سلسلة مراحل، وليس رسالة واحدة مكررة.</figcaption>
-        </figure>
-      </div>
-    </section>
-
-    <!-- Section 4: Merchant visibility -->
-    <section class="sec" id="visibility">
-      <div class="wrap sec__grid sec__grid--2">
-        <figure class="shot">
-          <img
-            src="/static/img/landing/cart-next-step.png"
-            alt="بطاقة سلة — الخطوة التالية: ماذا حدث، ماذا فعل النظام، ما التالي"
-            width="447"
-            height="170"
-            loading="lazy"
-            decoding="async"
-          />
-          <figcaption>من بطاقة السلة — «الخطوة التالية» تجيب: ماذا حدث؟ ماذا فعل النظام؟ ما التالي؟</figcaption>
-        </figure>
-        <div class="sec__head">
-          <h2>ماذا يرى التاجر؟</h2>
-          <p>
-            لوحة السلال تجيب على أسئلة التاجر بوضوح — بدون تخمين.
-          </p>
-          <div class="cols">
-            <div class="col-chip">
-              سبب التردد
-              <small>من الودجيت — السعر، الشحن، وغيرها</small>
-            </div>
-            <div class="col-chip">
-              الحالة
-              <small>بانتظار تفاعل، رسالة أُرسلت، مكتملة…</small>
-            </div>
-            <div class="col-chip">
-              الخطوة التالية
-              <small>ماذا حدث؟ ماذا فعل النظام؟ ما التالي؟</small>
-            </div>
-            <div class="col-chip">
-              قيمة السلة
-              <small>سياق مالي لكل فرصة — من بيانات متجرك</small>
-            </div>
+          <div class="cf-row">
+            <span class="cf-row__plat">سلة</span>
+            <span class="cf-row__status">مخطط له</span>
           </div>
-          <p style="margin-top:1rem;font-size:0.8125rem;color:var(--muted);">
-            «أرسل النظام وفق سبب التردد» — «تم إرسال ١ من ٢» — «تدخل التاجر: لا» — كلها من النظام الحقيقي.
-          </p>
+          <div class="cf-row">
+            <span class="cf-row__plat">Shopify</span>
+            <span class="cf-row__status">مخطط له</span>
+          </div>
         </div>
+        <p class="cf-muted">لا جدار شعارات. لا «يعمل مع كل المنصات».</p>
       </div>
     </section>
 
-    <!-- Section 5: Components (supporting, not hero) -->
-    <section class="sec sec--alt" id="components">
-      <div class="wrap">
-        <div class="sec__head" style="max-width:none;text-align:center;margin-inline:auto;">
-          <h2>الودجيت · واتساب · اللوحة — مكوّنات تدعم القصة</h2>
-          <p>واتساب جزء من المتابعة عند الحاجة — المحور هو فهم التردد وشرح النتيجة.</p>
-        </div>
-        <div class="comps">
-          <article class="comp">
-            <h3>الودجيت</h3>
-            <p>اسم المساعد، اللون، التفعيل، وقت الظهور، وأسباب التردد — قابل للضبط.</p>
-            <figure class="shot">
-              <img
-                src="/static/img/landing/widget_settings.png"
-                alt="إعدادات الودجيت — المظهر ووقت الظهور وأسباب التردد"
-                width="447"
-                height="370"
-                loading="lazy"
-                decoding="async"
-              />
-              <figcaption>من إعدادات الودجيت</figcaption>
-            </figure>
-          </article>
-          <article class="comp">
-            <h3>واتساب</h3>
-            <p>قواعد إرسال وتأخير — للمتابعة عندما لا يكتمل الطلب داخل الموقع.</p>
-            <figure class="shot">
-              <img
-                src="/static/img/landing/whatsapp_settings.png"
-                alt="إعدادات واتساب — قواعد الإرسال والحالة"
-                width="447"
-                height="380"
-                loading="lazy"
-                decoding="async"
-              />
-              <figcaption>من إعدادات واتساب</figcaption>
-            </figure>
-          </article>
-          <article class="comp">
-            <h3>لوحة التاجر</h3>
-            <p>السلال، أسباب التردد، قوالب الاسترجاع — قراءة تشغيلية موحّدة.</p>
-            <figure class="shot">
-              <img
-                src="/static/img/landing/objection_reasons.png"
-                alt="لوحة التاجر — أسباب التردد والتوصيات"
-                width="447"
-                height="540"
-                loading="lazy"
-                decoding="async"
-              />
-              <figcaption>من «أسباب التردد»</figcaption>
-            </figure>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <p class="beta">
-      مرحلة الإطلاق التجريبي — لا نعرض أرقاماً أو وعود ROI أو شعارات عملاء غير حقيقية على هذه الصفحة.
-    </p>
-
-    <section class="sec" id="faq">
-      <div class="wrap">
-        <div class="sec__head" style="text-align:center;margin-inline:auto;">
-          <h2>أسئلة شائعة</h2>
-        </div>
-        <div class="faq">
+    <!-- LP-14 FAQ -->
+    <section class="cf-sec" id="faq" data-lp-view="faq_section_viewed" data-lp-section="faq" aria-labelledby="faq-title">
+      <div class="cf-sec__inner">
+        <h2 class="cf-h2 cf-h2--lg" id="faq-title">أسئلة ما زالت مهمة قبل البدء</h2>
+        <div class="cf-faq">
           <details>
-            <summary>هل CartFlow يعتمد على واتساب فقط؟</summary>
-            <p>لا. المحور هو فهم سبب التردد والمساعدة داخل الموقع عبر الودجيت. واتساب للمتابعة عند الحاجة فقط.</p>
+            <summary>ما هو CartFlow فعليًا؟</summary>
+            <p>يساعد متجرك على استعادة العملاء المترددين وفهم ما يحدث قبل الشراء — من خلال الأداة داخل المتجر، ومتابعة عند الحاجة، ولوحة تشغيل واضحة.</p>
           </details>
           <details>
-            <summary>هل أحتاج تكامل رسمي الآن؟</summary>
-            <p>في المرحلة التجريبية نركز على تجربة واضحة. أي تكامل رسمي يُعلَن عند جاهزيته — لا نعد بربط مباشر قبل اكتماله.</p>
+            <summary>هل هو مجرد أداة سلال متروكة؟</summary>
+            <p>الاستعادة جزء من القصة. الأعمق هو رؤية التردد والحركة وما يتكرر — وعند نقص الدليل نصرّح بذلك بوضوح.</p>
           </details>
           <details>
-            <summary>هل النتائج مضمونة؟</summary>
-            <p>لا. لا نعرض نسب استرجاع أو ROI. CartFlow يوضّح ما حدث ويساعدك على المتابعة — النتائج تعتمد على متجرك.</p>
+            <summary>هل يستبدل أدواتي الحالية؟</summary>
+            <p>لا نطالبك باستبدال كل شيء. الهدف فهم أوضح لما يحدث حول الشراء — بما يكمّل عملك التشغيلي.</p>
           </details>
           <details>
-            <summary>هل أحتاج بطاقة ائتمان؟</summary>
-            <p>لا في المرحلة التجريبية. أنشئ حسابك من صفحة التسجيل.</p>
+            <summary>ماذا عن سرعة المتجر والأداة داخل المتجر؟</summary>
+            <p>لا ندّعي أثرًا على السرعة دون قياس. أي ادعاء أداء يُعلن فقط عند توفر دليل.</p>
+          </details>
+          <details>
+            <summary>كيف يُفعَّل واتساب؟</summary>
+            <p>التفعيل قد يتطلب جاهزية تشغيلية ومزوّد رسائل. لا نعدّ بتفعيل فوري إن لم يكن متاحًا لمتجرك.</p>
+          </details>
+          <details>
+            <summary>ماذا يحدث بعد الشراء؟</summary>
+            <p>الشراء يوقف الاستعادة غير الضرورية — لا نواصل الإزعاج بعد اكتمال الطلب.</p>
+          </details>
+          <details>
+            <summary>متى تظهر التوصيات؟</summary>
+            <p>عندما يتوفر دليل كافٍ. إن لم يكفِ الدليل، نصرّح بذلك بدل ملء الفراغ بالتخمين.</p>
+          </details>
+          <details>
+            <summary>ماذا يعني «دليل غير كافٍ»؟</summary>
+            <p>يعني أن النظام لا يملك أساسًا آمنًا لاستنتاج أو توصية — وهذه أمانة، وليست عطلًا.</p>
+          </details>
+          <details>
+            <summary>ما المنصات المدعومة؟</summary>
+            <p>زد مدعوم حاليًا وقد يتطلب تفعيلًا تشغيليًا. سلة وShopify ضمن الخطة.</p>
+          </details>
+          <details>
+            <summary>ماذا يتطلب الإعداد؟</summary>
+            <p>إنشاء حساب، ضبط الأداة داخل المتجر ومسار الاستعادة، وربط المنصة حسب الجاهزية. لا نعدّ بإعداد «خلال دقائق» إن لم ينطبق.</p>
           </details>
         </div>
       </div>
     </section>
 
-    <section class="cta" id="contact">
-      <div class="wrap">
-        <h2>ابدأ وشاهد كيف يفكر CartFlow</h2>
-        <p>أنشئ حسابك، اضبط الودجيت وقوالب الاسترجاع، وتابع السلال من لوحة التاجر.</p>
-        <a href="/signup" class="btn btn--p btn--lg">ابدأ الآن مجاناً</a>
+    <!-- LP-15 Final CTA -->
+    <section class="cf-sec cf-sec--mint" id="cta" aria-labelledby="cta-title">
+      <div class="cf-sec__inner cf-final">
+        <h2 class="cf-h2" id="cta-title">عندما تكون جاهزًا — ابدأ بهدوء</h2>
+        <p class="cf-lead" style="max-width:28rem;">خطوة مناسبة لمتجرك — بلا ضغط وبلا وعود مضمونة.</p>
+        <div class="cf-cta-row">
+          <a href="/signup" class="cf-btn cf-btn--primary" data-lp-cta="final_signup">ابدأ مع متجرك</a>
+          <a href="/login" class="cf-btn cf-btn--secondary" data-lp-cta="login">دخول</a>
+        </div>
       </div>
     </section>
   </main>
 
-  <footer class="foot">
-    <div class="wrap">
-      CartFlow © 2026 · <a href="mailto:support@smartreplyai.net">support@smartreplyai.net</a> · <a href="/login">دخول التجار</a>
+  <!-- LP-16 Footer -->
+  <footer class="cf-foot" data-lp-view="footer_reached" data-lp-section="footer">
+    <div class="cf-sec__inner">
+      <div class="cf-foot__top">
+        <span class="cf-foot__brand">CartFlow</span>
+        <div class="cf-foot__links">
+          <a href="#journey">المنتج</a>
+          <a href="/login" data-lp-cta="login">دخول</a>
+          <a href="/signup" data-lp-cta="signup">تسجيل</a>
+          <a href="mailto:support@smartreplyai.net">تواصل</a>
+        </div>
+      </div>
+      <div class="cf-foot__legal">
+        <span class="cf-ph__badge">PLACEHOLDER — Privacy</span>
+        <span class="cf-ph__badge">PLACEHOLDER — Terms</span>
+      </div>
+      <p class="cf-foot__note">روابط قانونية حقيقية تُضاف عند الجاهزية — بلا ادعاءات جديدة هنا.</p>
     </div>
   </footer>
 
+  <script>
+    (function () {
+      var btn = document.getElementById("cf-nav-menu");
+      var drawer = document.getElementById("cf-nav-drawer");
+      if (!btn || !drawer) return;
+      btn.addEventListener("click", function () {
+        var open = btn.getAttribute("aria-expanded") === "true";
+        btn.setAttribute("aria-expanded", open ? "false" : "true");
+        drawer.hidden = open;
+        drawer.classList.toggle("is-open", !open);
+      });
+      drawer.querySelectorAll("a").forEach(function (a) {
+        a.addEventListener("click", function () {
+          btn.setAttribute("aria-expanded", "false");
+          drawer.hidden = true;
+          drawer.classList.remove("is-open");
+        });
+      });
+    })();
+  </script>
+  <script src="/static/cartflow_landing_telemetry.js" defer></script>
 </body>
 </html>

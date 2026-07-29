@@ -1,19 +1,20 @@
 :root {
-  --green: #166534;
-  --green-mid: #16a34a;
-  --green-dark: #14532d;
-  --bg: #f8fafc;
+  /* Brand Foundation / Landing Production V1 — unified product palette */
+  --green: #1e6b4a;
+  --green-mid: #2da36a;
+  --green-dark: #185a3e;
+  --bg: #f6fbf8;
   --surface: #ffffff;
-  --border: #e2e8f0;
-  --text: #0f172a;
-  --muted: #64748b;
+  --border: #d0e8da;
+  --text: #344054;
+  --muted: #667085;
 }
 
 .ma-auth-body {
   margin: 0;
   min-height: 100vh;
-  font-family: "IBM Plex Sans Arabic", sans-serif;
-  background: linear-gradient(160deg, #ecfdf5 0%, var(--bg) 42%, #f1f5f9 100%);
+  font-family: "Tajawal", "IBM Plex Sans Arabic", sans-serif;
+  background: linear-gradient(160deg, #e9f7ef 0%, var(--bg) 42%, #f6fbf8 100%);
   color: var(--text);
   font-size: 14px;
 }

@@ -1,0 +1,24 @@
+﻿{
+    "evidence_id":  "EV-010",
+    "name":  "Home Dashboard",
+    "version":  1,
+    "capture_date_utc":  "2026-07-29",
+    "product_version_note":  "Strong candidate — publication scrub + landing-safe approval still required",
+    "scenario_id":  "SCN-HOME-01",
+    "source_path":  "decision_workspace_simplification_v1/prod_desktop_home.png",
+    "landing_sections":  [
+                             "LP-08"
+                         ],
+    "status":  "Ready After Fresh Capture",
+    "last_verification_utc":  "2026-07-29",
+    "replacement_history":  [
+
+                            ],
+    "retirement_history":  [
+
+                           ],
+    "sensitive_data_review":  "pending",
+    "arabic_readiness":  "pending",
+    "acceptance_result":  "pending",
+    "file":  "candidate.png"
+}

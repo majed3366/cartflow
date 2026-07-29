@@ -1947,3 +1947,25 @@ class EvidenceGap(Base):
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
+
+
+class LandingPageEventV1(Base):
+    """Anonymous landing behavioural events — Reality Validation V1. No PII."""
+
+    __tablename__ = "landing_page_events_v1"
+    __table_args__ = (
+        Index("ix_lp_events_v1_name_created", "event_name", "created_at"),
+        Index("ix_lp_events_v1_session", "session_key"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    event_name = Column(String(64), nullable=False, index=True)
+    section = Column(String(64), nullable=True)
+    device = Column(String(16), nullable=False, default="unknown")
+    session_key = Column(String(64), nullable=True)
+    created_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+        index=True,
+    )

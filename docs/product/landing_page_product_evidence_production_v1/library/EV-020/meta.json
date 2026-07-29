@@ -1,0 +1,24 @@
+﻿{
+    "evidence_id":  "EV-020",
+    "name":  "Contact Method",
+    "version":  1,
+    "capture_date_utc":  null,
+    "product_version_note":  "No candidate file ingested yet",
+    "scenario_id":  "SCN-LEG-01",
+    "source_path":  null,
+    "landing_sections":  [
+
+                         ],
+    "status":  "Production Ready",
+    "last_verification_utc":  "2026-07-29",
+    "replacement_history":  [
+
+                            ],
+    "retirement_history":  [
+
+                           ],
+    "sensitive_data_review":  "pending",
+    "arabic_readiness":  "pending",
+    "acceptance_result":  "pending",
+    "file":  null
+}

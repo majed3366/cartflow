@@ -1,0 +1,24 @@
+﻿{
+    "evidence_id":  "EV-009",
+    "name":  "Customer Return",
+    "version":  1,
+    "capture_date_utc":  null,
+    "product_version_note":  "No candidate file ingested yet",
+    "scenario_id":  "SCN-RET-01",
+    "source_path":  null,
+    "landing_sections":  [
+
+                         ],
+    "status":  "Ready After Fresh Capture",
+    "last_verification_utc":  "2026-07-29",
+    "replacement_history":  [
+
+                            ],
+    "retirement_history":  [
+
+                           ],
+    "sensitive_data_review":  "pending",
+    "arabic_readiness":  "pending",
+    "acceptance_result":  "pending",
+    "file":  null
+}
