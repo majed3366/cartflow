@@ -433,15 +433,15 @@
         <li><a href="#faq">الأسئلة</a></li>
       </ul>
       <div class="hdr__acts">
-        <a href="/login" class="btn btn--g">تسجيل الدخول</a>
-        <a href="/signup" class="btn btn--p">ابدأ الآن</a>
+        <a href="/login" class="btn btn--g" data-lp-cta="login">تسجيل الدخول</a>
+        <a href="/signup" class="btn btn--p" data-lp-cta="signup">ابدأ الآن</a>
       </div>
     </div>
   </header>
 
   <main>
     <!-- Hero -->
-    <section class="hero">
+    <section class="hero" id="hero" data-lp-view="hero_visible" data-lp-section="hero">
       <div class="wrap">
         <span class="hero__tag">سلوك · تردد · استرجاع · توضيح</span>
         <h1>CartFlow ليس مجرد رسائل واتساب — يفهم لماذا يتردد العميل</h1>
@@ -455,8 +455,8 @@
           نظام يربط سلوك العميل بأسباب التردد، ومسار استرجاع متدرّج، ولوحة تشرح كل خطوة للتاجر — بدون وعود ROI أو أرقام وهمية.
         </p>
         <div class="hero__btns">
-          <a href="/signup" class="btn btn--p btn--lg">ابدأ الآن مجاناً</a>
-          <a href="/login" class="btn btn--g btn--lg">تسجيل الدخول</a>
+          <a href="/signup" class="btn btn--p btn--lg" data-lp-cta="hero_signup">ابدأ الآن مجاناً</a>
+          <a href="/login" class="btn btn--g btn--lg" data-lp-cta="login">تسجيل الدخول</a>
         </div>
       </div>
     </section>
@@ -490,7 +490,7 @@
     </section>
 
     <!-- Section 2: Objection reasons -->
-    <section class="sec" id="objections">
+    <section class="sec" id="objections" data-lp-view="problem_section_viewed" data-lp-section="objections">
       <div class="wrap sec__grid sec__grid--2">
         <figure class="shot">
           <img
@@ -557,7 +557,7 @@
     </section>
 
     <!-- Section 4: Merchant visibility -->
-    <section class="sec" id="visibility">
+    <section class="sec" id="visibility" data-lp-view="dashboard_section_viewed" data-lp-section="visibility">
       <div class="wrap sec__grid sec__grid--2">
         <figure class="shot">
           <img
@@ -608,7 +608,7 @@
           <p>واتساب جزء من المتابعة عند الحاجة — المحور هو فهم التردد وشرح النتيجة.</p>
         </div>
         <div class="comps">
-          <article class="comp">
+          <article class="comp" data-lp-view="widget_section_viewed" data-lp-section="components_widget">
             <h3>الودجيت</h3>
             <p>اسم المساعد، اللون، التفعيل، وقت الظهور، وأسباب التردد — قابل للضبط.</p>
             <figure class="shot">
@@ -623,7 +623,7 @@
               <figcaption>من إعدادات الودجيت</figcaption>
             </figure>
           </article>
-          <article class="comp">
+          <article class="comp" data-lp-view="whatsapp_section_viewed" data-lp-section="components_whatsapp">
             <h3>واتساب</h3>
             <p>قواعد إرسال وتأخير — للمتابعة عندما لا يكتمل الطلب داخل الموقع.</p>
             <figure class="shot">
@@ -661,7 +661,7 @@
       مرحلة الإطلاق التجريبي — لا نعرض أرقاماً أو وعود ROI أو شعارات عملاء غير حقيقية على هذه الصفحة.
     </p>
 
-    <section class="sec" id="faq">
+    <section class="sec" id="faq" data-lp-view="faq_section_viewed" data-lp-section="faq">
       <div class="wrap">
         <div class="sec__head" style="text-align:center;margin-inline:auto;">
           <h2>أسئلة شائعة</h2>
@@ -691,16 +691,17 @@
       <div class="wrap">
         <h2>ابدأ وشاهد كيف يفكر CartFlow</h2>
         <p>أنشئ حسابك، اضبط الودجيت وقوالب الاسترجاع، وتابع السلال من لوحة التاجر.</p>
-        <a href="/signup" class="btn btn--p btn--lg">ابدأ الآن مجاناً</a>
+        <a href="/signup" class="btn btn--p btn--lg" data-lp-cta="final_signup">ابدأ الآن مجاناً</a>
       </div>
     </section>
   </main>
 
-  <footer class="foot">
+  <footer class="foot" data-lp-view="footer_reached" data-lp-section="footer">
     <div class="wrap">
-      CartFlow © 2026 · <a href="mailto:support@smartreplyai.net">support@smartreplyai.net</a> · <a href="/login">دخول التجار</a>
+      CartFlow © 2026 · <a href="mailto:support@smartreplyai.net">support@smartreplyai.net</a> · <a href="/login" data-lp-cta="login">دخول التجار</a>
     </div>
   </footer>
 
+  <script src="/static/cartflow_landing_telemetry.js" defer></script>
 </body>
 </html>
