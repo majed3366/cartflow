@@ -1,8 +1,10 @@
 # Landing Page Premium Visual Upgrade V1
 
-**Status:** Implementation  
-**Date (UTC):** 2026-07-29  
-**Production URL:** https://smartreplyai.net/
+**Status:** LIVE on production  
+**Date (UTC):** 2026-07-30  
+**Production URL:** https://smartreplyai.net/  
+**Merge:** `ef16e52` (`feat/landing-premium-visual-upgrade-v1` → `main`)  
+**Figma sync:** Deferred — Figma MCP unavailable during ship; capture into `fPur35ZnK96pDvKPLUGXTb` in follow-up (no redesign).
 
 ## Purpose
 
