@@ -104,8 +104,8 @@ def execution_is_ready_v1(readiness: str) -> bool:
 
 
 def action_is_ready_v1(readiness: str) -> bool:
-    """Storytelling Action CTA — only when EM-001 READY (CEO / DS-001)."""
-    return readiness == READY
+    """Action CTA when merchant can act (READY or external platform/ops)."""
+    return readiness in {READY, EXTERNAL_DEPENDENCY}
 
 
 def sanitize_merchant_story_text_v1(text: str) -> str:
@@ -115,14 +115,147 @@ def sanitize_merchant_story_text_v1(text: str) -> str:
     t = _norm(text)
     if not t:
         return ""
-    # Remove common internal identifiers
     t = re.sub(r"\bcs:[A-Za-z0-9_\-:.]+\b", "", t, flags=re.IGNORECASE)
     t = re.sub(r"\bdiagnostic:[A-Za-z0-9_\-:.]+\b", "", t, flags=re.IGNORECASE)
     t = re.sub(r"\bdce:[A-Za-z0-9_\-:.]+\b", "", t, flags=re.IGNORECASE)
+    t = re.sub(r"\bDEMO-[A-Za-z0-9_-]+\b", "", t)
     t = re.sub(r"\borv\b", "", t, flags=re.IGNORECASE)
     t = re.sub(r"\bpbl-?\d+\b", "", t, flags=re.IGNORECASE)
-    t = re.sub(r"\s{2,}", " ", t).strip(" -—·|")
+    t = re.sub(r"\bpipeline[_-][A-Za-z0-9_-]+\b", "", t, flags=re.IGNORECASE)
+    t = re.sub(r"\s{2,}", " ", t).strip(" -—·|:")
     return t
+
+
+def _confidence_label_ar_v1(card: Mapping[str, Any]) -> str:
+    level = _norm(
+        card.get("confidence_level")
+        or card.get("decision_confidence")
+        or card.get("confidence")
+        or ""
+    ).casefold()
+    status = _norm(card.get("diagnosis_status") or "").casefold()
+    if status in {"insufficient_evidence", "insufficient"}:
+        return "منخفض"
+    if status in {"conflicting_evidence", "conflicting"}:
+        return "متوسط"
+    if level in {"high", "عال", "عالية", "supported"}:
+        return "مرتفع"
+    if level in {"low", "منخفض", "منخفضة"}:
+        return "منخفض"
+    if level in {"medium", "متوسط", "متوسطة"}:
+        return "متوسط"
+    return ""
+
+
+def _product_names_ar_v1(card: Mapping[str, Any]) -> list[str]:
+    names: list[str] = []
+    for key in (
+        "product_name_ar",
+        "subject_ar",
+        "affected_products_ar",
+        "product_names_ar",
+    ):
+        raw = card.get(key)
+        if isinstance(raw, (list, tuple)):
+            for item in raw:
+                n = sanitize_merchant_story_text_v1(_norm(item))
+                if n and n not in names and not n.startswith("cs:"):
+                    names.append(n.split("—")[0].strip())
+        else:
+            n = sanitize_merchant_story_text_v1(_norm(raw))
+            if n and n not in names and not n.startswith("cs:"):
+                names.append(n.split("—")[0].strip())
+    # Secondary products list
+    extra = card.get("related_products") or card.get("products")
+    if isinstance(extra, (list, tuple)):
+        for item in extra:
+            if isinstance(item, Mapping):
+                n = sanitize_merchant_story_text_v1(
+                    _norm(item.get("name_ar") or item.get("name") or item.get("title"))
+                )
+            else:
+                n = sanitize_merchant_story_text_v1(_norm(item))
+            if n and n not in names:
+                names.append(n.split("—")[0].strip())
+    return [n for n in names if n][:3]
+
+
+def _rate_hint_v1(card: Mapping[str, Any]) -> str:
+    for key in (
+        "leave_rate_pct",
+        "abandon_rate_pct",
+        "drop_rate_pct",
+        "rate_pct",
+        "impact_rate_pct",
+    ):
+        raw = card.get(key)
+        if raw is None:
+            continue
+        try:
+            n = float(raw)
+        except (TypeError, ValueError):
+            continue
+        if n > 0:
+            if n <= 1:
+                n = n * 100
+            return str(int(round(n)))
+    return ""
+
+
+def evidence_lines_ar_v1(card: Mapping[str, Any]) -> list[str]:
+    """
+    Merchant Evidence block (الملاحظة) — facts only.
+    No diagnosis, no recommendation, no engine IDs.
+    """
+    lines: list[str] = []
+    blob = _blob(card)
+    rate = _rate_hint_v1(card)
+    obs = observation_ar_v1(card)
+    products = _product_names_ar_v1(card)
+
+    if rate and ("شحن" in (obs + blob) or "ship" in blob):
+        lines.append(f"{rate}% من العملاء غادروا بعد ظهور الشحن.")
+    elif rate:
+        lines.append(f"{rate}% من العملاء تأثروا بهذا المسار.")
+    elif obs:
+        lines.append(obs)
+    else:
+        lines.append("أكبر نسبة مغادرة اليوم حدثت قبل إتمام الشراء.")
+
+    if products:
+        if len(products) == 1:
+            lines.append(f"• حدث ذلك في {products[0]}.")
+        else:
+            lines.append("• حدث ذلك في " + " و ".join(products) + ".")
+
+    conf = _confidence_label_ar_v1(card)
+    if conf:
+        lines.append(f"• مستوى الثقة: {conf}.")
+
+    return [sanitize_merchant_story_text_v1(x) for x in lines if sanitize_merchant_story_text_v1(x)]
+
+
+def priority_rank_label_ar_v1(
+    *,
+    is_primary: bool,
+    next_index: int,
+    readiness: str,
+) -> str:
+    """Workload rank only — الأولوية الأولى / الثانية / راقب / لاحقاً."""
+    if is_primary:
+        return "الأولوية الأولى"
+    if next_index <= 0:
+        return "الأولوية الثانية"
+    if readiness in {NEEDS_MORE_EVIDENCE, BLOCKED} or not action_is_ready_v1(readiness):
+        return "راقب"
+    return "لاحقاً"
+
+
+def action_wait_lines_ar_v1() -> list[str]:
+    return [
+        "لا يوجد إجراء حالياً.",
+        "سيخبرك CartFlow عندما يصبح القرار جاهزاً.",
+    ]
 
 
 def _blob(card: Mapping[str, Any]) -> str:
@@ -414,14 +547,19 @@ def operational_guidance_ar_v1(card: Mapping[str, Any]) -> str:
     return decision_sentence_ar_v1(card)
 
 
+def _is_open_cta_ar_v1(text: str) -> bool:
+    t = _norm(text)
+    return t.startswith("افتح") or t.casefold().startswith("open ")
+
+
 def decision_sentence_ar_v1(card: Mapping[str, Any]) -> str:
-    """Exactly one Decision sentence — no report, no engine language."""
+    """Exactly one Decision sentence — ops commitment, not navigation CTA."""
     readiness = execution_readiness_v1(card)
     if readiness == NEEDS_MORE_EVIDENCE:
         blob = _blob(card)
         if "شحن" in blob or "ship" in blob:
-            return "لا تغيّر سياسة الشحن الآن."
-        return "لا تُجرِ تغييراً الآن."
+            return "لا تغيّر سياسة الشحن حتى تتضح الأدلة."
+        return "لا تُجرِ تغييراً حتى تتضح الأدلة."
     if readiness == BLOCKED:
         return "أرجئ التنفيذ حتى يُستكمل المتطلب الناقص."
 
@@ -437,8 +575,7 @@ def decision_sentence_ar_v1(card: Mapping[str, Any]) -> str:
         "recommendation_ar",
     ):
         v = sanitize_merchant_story_text_v1(_norm(card.get(key)))
-        if v and not looks_like_cartflow_work(v):
-            # Keep one sentence
+        if v and not looks_like_cartflow_work(v) and not _is_open_cta_ar_v1(v):
             for sep in ("。", ". ", "۔", "\n"):
                 if sep in v:
                     v = v.split(sep)[0].strip()
@@ -452,18 +589,18 @@ def decision_sentence_ar_v1(card: Mapping[str, Any]) -> str:
 
     if domain == EXEC_DOMAIN_INTERNAL:
         if "تواصل" in diagnosis or "رقم" in diagnosis or "contact" in blob:
-            return "افتح السلال بلا أرقام."
+            return "أكمل بيانات التواصل للسلال بلا أرقام."
         if "recover" in blob or "رسال" in diagnosis:
             return "راجع الرسالة الأولى للاسترجاع."
-        return "افتح السلال المعنية."
+        return "تابع السلال المعنية اليوم."
     if "شحن" in (subject + diagnosis + blob) or "ship" in blob:
-        return "افتح إعدادات الشحن في المنصة."
+        return "عدّل تكلفة الشحن للطلبات الصغيرة."
     if "دفع" in diagnosis or "payment" in blob:
         return "راجع طرق الدفع المتاحة أثناء الدفع."
     if "interest" in blob or "اهتمام" in diagnosis:
         if subject:
-            return f"راجع صفحة المنتج {subject}."
-        return "راجع صفحة المنتج."
+            return f"راجع عرض صفحة المنتج {subject}."
+        return "راجع عرض صفحة المنتج."
     if subject:
         return f"راجع {subject} في المنصة."
     if domain == EXEC_DOMAIN_BUSINESS:
@@ -596,8 +733,8 @@ def card_identity_label_ar_v1(identity: str) -> str:
 
 def destination_for_commitment_v1(card: Mapping[str, Any]) -> tuple[str, str]:
     """
-    Action destination — only when READY (storytelling Action beat).
-    Never #workspace loops. Never fake destinations when not READY.
+    Exactly one Action when actionable — never #workspace loops.
+    When not actionable: empty (UI shows wait copy).
     """
     readiness = execution_readiness_v1(card)
     if not action_is_ready_v1(readiness):
@@ -622,12 +759,17 @@ def destination_for_commitment_v1(card: Mapping[str, Any]) -> tuple[str, str]:
     if domain == EXEC_DOMAIN_BUSINESS:
         return "", "نفّذ في عملك"
 
-    if any(k in blob for k in ("ship", "شحن", "payment", "دفع", "deliver", "توصيل")):
+    if any(k in blob for k in ("ship", "شحن", "deliver", "توصيل")):
         href = inbound if inbound.startswith("#settings") else "#settings"
-        return href, "افتح إعدادات الشحن أو الدفع"
-    if inbound.startswith("#products") or inbound.startswith("#settings"):
-        return inbound, "افتح العنصر في المنصة"
-    return "#products", "افتح صفحة المنتج"
+        return href, "افتح إعدادات الشحن في زد"
+    if any(k in blob for k in ("payment", "دفع")):
+        href = inbound if inbound.startswith("#settings") else "#settings"
+        return href, "افتح إعدادات الدفع"
+    if inbound.startswith("#products"):
+        return inbound, "افتح المنتج"
+    if inbound.startswith("#settings"):
+        return inbound, "افتح الإعدادات"
+    return "#products", "افتح المنتج"
 
 
 def card_from_diagnostic_publication_v1(pub: Mapping[str, Any]) -> dict[str, Any]:
@@ -675,7 +817,7 @@ def card_from_diagnostic_publication_v1(pub: Mapping[str, Any]) -> dict[str, Any
         "ignore_consequence_ar": "",
         "expected_outcome_ar": "",
         "view_details_href": href,
-        "subject_ar": _norm(p.get("subject_id")),
+        "subject_ar": sanitize_merchant_story_text_v1(_norm(p.get("subject_id"))),
         "diagnostic_family": family,
         "source_truth_types": ["diagnostic_reasoning_v1"],
     }
@@ -698,6 +840,7 @@ __all__ = [
     "NEEDS_MORE_EVIDENCE",
     "READY",
     "action_is_ready_v1",
+    "action_wait_lines_ar_v1",
     "act_now_ar_v1",
     "avoid_ar_v1",
     "card_from_diagnostic_publication_v1",
@@ -711,6 +854,7 @@ __all__ = [
     "decision_sentence_ar_v1",
     "destination_for_commitment_v1",
     "diagnosis_ar_v1",
+    "evidence_lines_ar_v1",
     "execution_domain_v1",
     "execution_is_ready_v1",
     "execution_readiness_v1",
@@ -721,6 +865,7 @@ __all__ = [
     "observation_ar_v1",
     "operational_guidance_ar_v1",
     "operational_meaning_ar_v1",
+    "priority_rank_label_ar_v1",
     "priority_reason_ar_v1",
     "readiness_ar_v1",
     "sanitize_merchant_story_text_v1",

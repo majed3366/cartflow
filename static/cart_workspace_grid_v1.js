@@ -1,6 +1,6 @@
 /**
- * Cart Workspace Grid — Decision Storytelling face (DIF V1).
- * One Primary (Priority→Observation→Decision→Action) + ≤3 Next.
+ * Cart Workspace Grid — Simplification V1.
+ * One Primary (Priority→Evidence→Decision→Action) + ≤3 Next.
  */
 (function (global) {
   "use strict";
@@ -60,9 +60,9 @@
 
     var html = [];
     html.push(
-      '<div class="cw-ops cw-ops--decisions-only cw-ops--v2 cw-ops--refinement cw-ops--r2 cw-ops--reality-ux cw-ops--operational cw-ops--storytelling" dir="rtl" data-open-count="' +
+      '<div class="cw-ops cw-ops--decisions-only cw-ops--v2 cw-ops--refinement cw-ops--r2 cw-ops--reality-ux cw-ops--operational cw-ops--storytelling cw-ops--simplification" dir="rtl" data-open-count="' +
         esc(hasDecisions ? 1 + split.next.length : 0) +
-        '" data-dw-v2="1" data-dw-refinement="1" data-dw-r2="1" data-dw-reality-ux="1" data-dw-operational="1" data-dw-storytelling="1">'
+        '" data-dw-v2="1" data-dw-refinement="1" data-dw-r2="1" data-dw-reality-ux="1" data-dw-operational="1" data-dw-storytelling="1" data-dw-simplification="1">'
     );
 
     if (!hasDecisions) {

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Decision Workspace — Decision Storytelling face (DIF V1).
+Decision Workspace Simplification V1.
 
-Merchant face: Priority → Observation → Decision → Action (READY only).
+Merchant face only: Priority → Evidence → Decision → Action.
 One Primary + ≤3 Next. Diagnostic Primary for Home continuity.
 """
 from __future__ import annotations
@@ -12,27 +12,26 @@ from typing import Any, Mapping
 from services.decision_workspace_v2.flag_v1 import decision_workspace_v2_enabled
 from services.decision_workspace_v2.narrative_v1 import (
     action_is_ready_v1,
+    action_wait_lines_ar_v1,
     act_now_ar_v1,
     avoid_ar_v1,
     card_from_diagnostic_publication_v1,
     cartflow_responsibility_ar_v1,
     commitment_ar_v1,
-    confidence_ar_v1,
     consequence_ar_v1,
     decision_sentence_ar_v1,
     destination_for_commitment_v1,
-    diagnosis_ar_v1,
+    evidence_lines_ar_v1,
     execution_domain_v1,
     execution_readiness_v1,
     expected_outcome_ar_v1,
     how_execute_ar_v1,
     observation_ar_v1,
     operational_meaning_ar_v1,
-    priority_reason_ar_v1,
+    priority_rank_label_ar_v1,
     sanitize_merchant_story_text_v1,
     verify_ar_v1,
     where_execute_ar_v1,
-    why_believe_ar_v1,
 )
 
 MAX_NEXT_DECISIONS_V2 = 3
@@ -56,11 +55,17 @@ def _is_constitution_card(card: Mapping[str, Any]) -> bool:
     }
 
 
-def hydrate_decision_card_v2(card: dict[str, Any], *, is_primary: bool) -> dict[str, Any]:
-    """Stamp Decision Storytelling face fields (DIF V1)."""
+def hydrate_decision_card_v2(
+    card: dict[str, Any],
+    *,
+    is_primary: bool,
+    next_index: int = 0,
+) -> dict[str, Any]:
+    """Stamp Simplification V1 face fields."""
     out = dict(card)
     observation = observation_ar_v1(out)
-    meaning = operational_meaning_ar_v1(out, observation)  # internal/compat only
+    evidence_lines = evidence_lines_ar_v1(out)
+    meaning = operational_meaning_ar_v1(out, observation)  # internal only
     readiness = execution_readiness_v1(out)
     domain = execution_domain_v1(out)
     decision = decision_sentence_ar_v1(out)
@@ -70,20 +75,23 @@ def hydrate_decision_card_v2(card: dict[str, Any], *, is_primary: bool) -> dict[
     where = where_execute_ar_v1(out, domain, readiness)
     how = how_execute_ar_v1(out, domain, readiness)
     action_ready = action_is_ready_v1(readiness)
-    priority = priority_reason_ar_v1(out, is_primary=True if is_primary else False)
-    # Next cards still get a short priority when they are first among next? Only primary.
-    if not is_primary:
-        priority = ""
+    rank = priority_rank_label_ar_v1(
+        is_primary=is_primary,
+        next_index=next_index,
+        readiness=readiness,
+    )
 
     if not action_ready:
         href, label = "", ""
 
     out["observation_ar"] = observation
+    out["evidence_lines_ar"] = evidence_lines
+    out["evidence_ar"] = "\n".join(evidence_lines)
     out["diagnosis_ar"] = observation
-    out["operational_meaning_ar"] = meaning  # not painted
-    out["reasoning_ar"] = meaning
-    out["why_believe_ar"] = why_believe_ar_v1(out, observation) or meaning
-    out["confidence_ar"] = confidence_ar_v1(out)
+    out["operational_meaning_ar"] = ""  # never merchant-facing
+    out["reasoning_ar"] = ""
+    out["why_believe_ar"] = ""
+    out["confidence_ar"] = ""
     out["ignore_consequence_ar"] = consequence
     out["business_consequence_ar"] = consequence
     out["cartflow_responsibility_ar"] = cartflow_responsibility_ar_v1(out)
@@ -101,9 +109,11 @@ def hydrate_decision_card_v2(card: dict[str, Any], *, is_primary: bool) -> dict[
     out["commitment_ar"] = decision
     out["first_step_ar"] = decision
     out["required_merchant_action"] = decision
-    out["expected_outcome_ar"] = outcome if action_ready else ""
-    out["cartflow_continues_ar"] = ""  # never painted (CEO remove)
-    out["priority_reason_ar"] = sanitize_merchant_story_text_v1(priority)
+    out["expected_outcome_ar"] = ""
+    out["cartflow_continues_ar"] = ""
+    out["priority_reason_ar"] = ""  # rank label only on face
+    out["priority_rank_label_ar"] = rank
+    out["action_wait_lines_ar"] = [] if action_ready else action_wait_lines_ar_v1()
     out["execution_available"] = action_ready
     out["view_details_href"] = href
     out["view_details_ar"] = label
@@ -113,20 +123,16 @@ def hydrate_decision_card_v2(card: dict[str, Any], *, is_primary: bool) -> dict[
     out["decision_workspace_reality_ux_v1"] = True
     out["decision_workspace_operational_language_v1"] = True
     out["decision_workspace_storytelling_face_v1"] = True
+    out["decision_workspace_simplification_v1"] = True
     out["is_primary_decision"] = bool(is_primary)
     out["face_mode"] = "primary" if is_primary else "next_compact"
-    if is_primary:
-        out["priority_rank_label_ar"] = "الأولوية الأولى"
-        out["priority_rank_role"] = "primary"
-    else:
-        out["priority_rank_label_ar"] = "بعدها"
-        out["priority_rank_role"] = "next"
+    out["priority_rank_role"] = "primary" if is_primary else "next"
+    if not is_primary:
         out["next_stake_ar"] = meaning
     if _norm(out.get("decision_ar")) == decision:
         out["decision_ar"] = observation
     if _norm(out.get("title_ar")) == decision:
         out["title_ar"] = observation
-    # Never expose raw decision_id crumbs on painted fields
     for key in ("subject_ar", "product_name_ar"):
         if key in out:
             out[key] = sanitize_merchant_story_text_v1(_norm(out.get(key)))
@@ -137,7 +143,6 @@ def _inject_diagnostic_primary(
     constitution: list[dict[str, Any]],
     store_slug: str,
 ) -> list[dict[str, Any]]:
-    """Home continuity: diagnostic publication wins Primary when present."""
     try:
         from services.diagnostic_reasoning_v1.snapshot_store_v1 import (  # noqa: PLC0415
             read_primary_diagnostic_publication_v1,
@@ -167,7 +172,7 @@ def apply_decision_workspace_v2_budget(
     *,
     store_slug: str | None = None,
 ) -> dict[str, Any]:
-    """Enforce 1 Primary + ≤3 Next; Storytelling face; diagnostic continuity."""
+    """Enforce 1 Primary + ≤3 Next; Simplification V1 face."""
     if not isinstance(projection, dict):
         return {}
     if not decision_workspace_v2_enabled():
@@ -198,9 +203,9 @@ def apply_decision_workspace_v2_budget(
     next_cards = rest[:MAX_NEXT_DECISIONS_V2]
     painted: list[dict[str, Any]] = []
     if primary is not None:
-        painted.append(hydrate_decision_card_v2(primary, is_primary=True))
-    for c in next_cards:
-        painted.append(hydrate_decision_card_v2(c, is_primary=False))
+        painted.append(hydrate_decision_card_v2(primary, is_primary=True, next_index=0))
+    for i, c in enumerate(next_cards):
+        painted.append(hydrate_decision_card_v2(c, is_primary=False, next_index=i))
 
     projection["zone_a"] = []
     projection["zone_b"] = painted
@@ -217,6 +222,7 @@ def apply_decision_workspace_v2_budget(
     projection["decision_workspace_reality_ux_v1"] = True
     projection["decision_workspace_operational_language_v1"] = True
     projection["decision_workspace_storytelling_face_v1"] = True
+    projection["decision_workspace_simplification_v1"] = True
     projection["decision_workspace_v2_budget"] = {
         "primary": 1 if painted else 0,
         "next": max(0, len(painted) - 1),
@@ -225,7 +231,7 @@ def apply_decision_workspace_v2_budget(
         "diagnostic_primary": bool(
             painted and painted[0].get("gate_diagnostic_continuity_v1")
         ),
-        "storytelling_face": True,
+        "simplification_v1": True,
     }
 
     comp = projection.get("decision_composition_v1")
