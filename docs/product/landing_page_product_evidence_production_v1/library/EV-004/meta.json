@@ -1,0 +1,24 @@
+﻿{
+    "evidence_id":  "EV-004",
+    "name":  "Widget Reason Selection",
+    "version":  1,
+    "capture_date_utc":  "2026-06-06",
+    "product_version_note":  "Reason path after price; confirm reason list visible on retake",
+    "scenario_id":  "SCN-WIDGET-03",
+    "source_path":  "scripts/_production_visual_gate_out/normal_flow/05_after_price.png",
+    "landing_sections":  [
+                             "LP-06"
+                         ],
+    "status":  "Ready After Fresh Capture",
+    "last_verification_utc":  "2026-07-29",
+    "replacement_history":  [
+
+                            ],
+    "retirement_history":  [
+
+                           ],
+    "sensitive_data_review":  "pending",
+    "arabic_readiness":  "pending",
+    "acceptance_result":  "pending",
+    "file":  "candidate.png"
+}

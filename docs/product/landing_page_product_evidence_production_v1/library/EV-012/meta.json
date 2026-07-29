@@ -1,0 +1,24 @@
+﻿{
+    "evidence_id":  "EV-012",
+    "name":  "Knowledge Card",
+    "version":  1,
+    "capture_date_utc":  "2026-07-24",
+    "product_version_note":  "ORV findings surface — theme claims still RV-gated for landing",
+    "scenario_id":  "SCN-KNOW-01",
+    "source_path":  "observation_reality_validation_v1/05_production_desktop_orv_ui_polish.png",
+    "landing_sections":  [
+                             "LP-09"
+                         ],
+    "status":  "Requires Reality Validation",
+    "last_verification_utc":  "2026-07-29",
+    "replacement_history":  [
+
+                            ],
+    "retirement_history":  [
+
+                           ],
+    "sensitive_data_review":  "pending",
+    "arabic_readiness":  "pending",
+    "acceptance_result":  "pending",
+    "file":  "candidate.png"
+}

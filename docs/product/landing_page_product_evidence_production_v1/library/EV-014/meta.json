@@ -1,0 +1,25 @@
+﻿{
+    "evidence_id":  "EV-014",
+    "name":  "Decision Surface",
+    "version":  1,
+    "capture_date_utc":  "2026-07-29",
+    "product_version_note":  "Simplification Workspace face",
+    "scenario_id":  "SCN-DEC-01",
+    "source_path":  "decision_workspace_simplification_v1/prod_desktop_workspace.png",
+    "landing_sections":  [
+                             "LP-10",
+                             "LP-08"
+                         ],
+    "status":  "Ready After Fresh Capture",
+    "last_verification_utc":  "2026-07-29",
+    "replacement_history":  [
+
+                            ],
+    "retirement_history":  [
+
+                           ],
+    "sensitive_data_review":  "pending",
+    "arabic_readiness":  "pending",
+    "acceptance_result":  "pending",
+    "file":  "candidate.png"
+}

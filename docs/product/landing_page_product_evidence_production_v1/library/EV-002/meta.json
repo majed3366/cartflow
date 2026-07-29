@@ -1,0 +1,24 @@
+﻿{
+    "evidence_id":  "EV-002",
+    "name":  "Widget Introduction",
+    "version":  1,
+    "capture_date_utc":  "2026-06-06",
+    "product_version_note":  "Visual-gate demo/test storefront — not Zid merchant theme; retake required for E6",
+    "scenario_id":  "SCN-WIDGET-01",
+    "source_path":  "scripts/_production_visual_gate_out/normal_flow/01_test_widget_store.png",
+    "landing_sections":  [
+                             "LP-06"
+                         ],
+    "status":  "Ready After Fresh Capture",
+    "last_verification_utc":  "2026-07-29",
+    "replacement_history":  [
+
+                            ],
+    "retirement_history":  [
+
+                           ],
+    "sensitive_data_review":  "pending",
+    "arabic_readiness":  "pending",
+    "acceptance_result":  "pending",
+    "file":  "candidate.png"
+}
