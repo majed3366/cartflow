@@ -196,7 +196,7 @@ Decision must cite behavioural and/or structural evidence in `LANDING_PAGE_OBSER
 | Criterion | Status |
 |-----------|--------|
 | Landing publicly deployed | **Pass** — `https://smartreplyai.net/` returns 200 |
-| Behavioural telemetry operational | **Pass** after deploy of RV instrumentation (verify via summary) |
+| Behavioural telemetry operational | **Pending merge to `main`** — code on `feat/landing-page-reality-validation-v1` (`7918de1`); verify via summary after Railway deploy |
 | Merchant interaction observed | **In progress** — window open; refresh Observation Report as sessions accumulate |
 | Reality Validation reports completed | **Pass** — pack files present; behavioural sections update as data arrives |
 | Evidence-backed revision backlog | **Pass** — see `REVISION_BACKLOG_V1.md` |

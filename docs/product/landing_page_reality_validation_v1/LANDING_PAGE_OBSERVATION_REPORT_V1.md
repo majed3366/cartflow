@@ -21,6 +21,7 @@
 |------------|-------|--------|
 | 2026-07-29 | Agent probe | `GET https://smartreplyai.net/` → **HTTP 200**, HTML ~22KB, title/hero/sections present |
 | 2026-07-29 | Agent probe | `HEAD /` → **405** (method not allowed; GET is the contract — not a merchant defect) |
+| 2026-07-29 | Deploy | Branch `feat/landing-page-reality-validation-v1` @ `7918de1` pushed to origin — **merge to `main` required** for Railway to serve telemetry JS + `/api/landing/event` |
 
 ---
 
