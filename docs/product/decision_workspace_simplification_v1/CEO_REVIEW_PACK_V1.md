@@ -1,8 +1,8 @@
 # Decision Workspace Simplification V1 — CEO Review Pack
 
 **Status:** Deployed — awaiting CEO visual review.  
-**Deployed SHA:** `1d836c67b3474ac1e80c3f8970360e9b18f43c0b`  
-**PR:** [#130](https://github.com/majed3366/cartflow/pull/130)  
+**Deployed SHA:** `391094cfb2f0140bbba806ce5b20e5d6d8e8e359`  
+**Code PR:** [#130](https://github.com/majed3366/cartflow/pull/130) · language harden [#131](https://github.com/majed3366/cartflow/pull/131)  
 **Date (UTC):** 2026-07-29  
 **Living Store shots:** `PASS_WORKSPACE_SIMPLIFICATION_V1_SHOTS`  
 **Railway:** Success (cartflow + smart-reply-ai)
