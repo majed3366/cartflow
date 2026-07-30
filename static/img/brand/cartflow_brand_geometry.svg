@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" fill="none" aria-hidden="true">
+  <!-- CartFlow brand geometry  arcs/blocks/gradients derived from official mark -->
+  <defs>
+    <linearGradient id="cfArcTeal" x1="80" y1="40" x2="280" y2="320" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#18B0A8"/>
+      <stop offset="1" stop-color="#0E8E88" stop-opacity="0.35"/>
+    </linearGradient>
+    <linearGradient id="cfBlockNavy" x1="360" y1="60" x2="560" y2="260" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#18B0A8" stop-opacity="0.22"/>
+    </linearGradient>
+  </defs>
+  <path d="M120 300c0-90 72-162 162-162" stroke="url(#cfArcTeal)" stroke-width="54" stroke-linecap="round"/>
+  <circle cx="210" cy="210" r="14" fill="#18B0A8" fill-opacity="0.9"/>
+  <rect x="300" y="96" width="120" height="36" rx="18" fill="url(#cfBlockNavy)"/>
+  <path d="M300 160h96a28 28 0 0 1 28 28v96a28 28 0 0 1-28 28h-68a28 28 0 0 1-28-28V188a28 28 0 0 1 28-28z" fill="#082048" fill-opacity="0.35" stroke="#18B0A8" stroke-opacity="0.35" stroke-width="2"/>
+  <circle cx="480" cy="340" r="64" stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="28"/>
+  <circle cx="520" cy="120" r="8" fill="#18B0A8" fill-opacity="0.55"/>
+</svg>

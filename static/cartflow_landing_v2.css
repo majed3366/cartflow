@@ -2110,3 +2110,288 @@ body.cf-lp {
     gap: 10px;
   }
 }
+
+/* ========== Brand Identity & Premium UX Polish ========== */
+
+:root {
+  --cf-ds-radius: 14px;
+  --cf-ds-pad: 14px 16px;
+  --cf-ds-border: 1px solid rgba(8, 32, 72, 0.08);
+  --cf-ds-shadow: 0 1px 2px rgba(8, 32, 72, 0.04), 0 6px 18px rgba(8, 32, 72, 0.05);
+  --cf-ds-shadow-hover: 0 2px 4px rgba(8, 32, 72, 0.05), 0 12px 28px rgba(8, 32, 72, 0.08);
+}
+
+/* Unified card system */
+.cf-ds-card,
+.cf-cap,
+.cf-why,
+.cf-trust,
+.cf-flow__step,
+.cf-integ__card,
+.cf-card,
+.cf-insight,
+.cf-compose-card,
+.cf-faq details {
+  border-radius: var(--cf-ds-radius);
+  border: var(--cf-ds-border);
+  box-shadow: var(--cf-ds-shadow);
+  background: var(--cf-white);
+}
+
+.cf-cap,
+.cf-why,
+.cf-trust,
+.cf-flow__step,
+.cf-integ__card,
+.cf-card {
+  padding: var(--cf-ds-pad);
+}
+
+.cf-cap:hover,
+.cf-why:hover,
+.cf-trust:hover,
+.cf-integ__card:hover,
+.cf-flow__step:hover {
+  transform: none;
+  box-shadow: var(--cf-ds-shadow-hover);
+  border-color: rgba(8, 32, 72, 0.12);
+}
+
+/* Density −20–25% */
+.cf-sec {
+  padding: clamp(1.45rem, 3.4vw, 2.55rem) 0;
+}
+
+.cf-sec--tight {
+  padding: clamp(1.2rem, 2.8vw, 2rem) 0;
+}
+
+.cf-stack--lg {
+  gap: 18px;
+}
+
+.cf-hero {
+  padding: clamp(1.4rem, 3.2vw, 2.25rem) 0 clamp(1.75rem, 4vw, 2.75rem);
+}
+
+.cf-nav__in {
+  min-height: 56px;
+}
+
+/* Brand illustration (logo geometry, not logo paste) */
+.cf-brand-illo {
+  position: absolute;
+  inset-inline-end: -6%;
+  top: -8%;
+  width: min(58vw, 560px);
+  height: auto;
+  opacity: 0.9;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@media (max-width: 900px) {
+  .cf-brand-illo {
+    width: min(90vw, 420px);
+    opacity: 0.45;
+    inset-inline-end: -18%;
+    top: auto;
+    bottom: -12%;
+  }
+}
+
+.cf-hero__atmosphere {
+  overflow: hidden;
+}
+
+.cf-hero__grid {
+  position: relative;
+  z-index: 1;
+}
+
+/* Clean product stage — no browser chrome */
+.cf-product {
+  position: relative;
+  z-index: 1;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 0 0 1px rgba(8, 32, 72, 0.06),
+    0 24px 56px rgba(0, 0, 0, 0.28);
+  transform: none;
+}
+
+.cf-product__shot {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  object-position: top right;
+}
+
+.cf-product--wide .cf-product__shot {
+  aspect-ratio: 16 / 9.4;
+}
+
+.cf-hero__stage {
+  position: relative;
+  min-height: 0;
+  perspective: none;
+}
+
+.cf-hero__glow,
+.cf-device-desk,
+.cf-float-card,
+.cf-phone {
+  display: none !important;
+}
+
+.cf-insight {
+  position: absolute;
+  z-index: 2;
+  inset-inline-start: 4%;
+  bottom: 8%;
+  width: min(230px, 52%);
+  padding: 12px 14px;
+  color: var(--cfvi-ink);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.2);
+}
+
+.cf-insight__label {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cfvi-ink-whisper);
+}
+
+.cf-insight__title {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.cf-insight__body {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--cfvi-ink-soft);
+  line-height: 1.45;
+}
+
+@media (max-width: 720px) {
+  .cf-insight {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    margin-top: 12px;
+    box-shadow: var(--cf-ds-shadow);
+  }
+}
+
+/* Dashboard showcase stage */
+.cf-product-stage--lite {
+  position: relative;
+  padding: clamp(0.75rem, 2vw, 1.15rem);
+  border-radius: 20px;
+  background:
+    radial-gradient(ellipse at 12% 0%, rgba(24, 176, 168, 0.1) 0%, transparent 50%),
+    linear-gradient(180deg, var(--cf-soft-gray) 0%, #fff 100%);
+  border: 1px solid var(--cfvi-border);
+  box-shadow: none;
+}
+
+.cf-product-stage--lite .cf-product {
+  box-shadow: var(--cf-ds-shadow-hover);
+  border-color: var(--cfvi-border);
+}
+
+.cf-product-stage--centerpiece {
+  /* superseded by lite stage */
+  padding: clamp(0.75rem, 2vw, 1.15rem);
+}
+
+.cf-compose-card {
+  background: rgba(255, 255, 255, 0.96);
+}
+
+/* Process flow — shorter */
+.cf-flow__step {
+  min-height: 0;
+  gap: 6px;
+  padding: 12px 10px;
+}
+
+.cf-flow__icon {
+  width: 40px;
+  height: 40px;
+}
+
+.cf-flow__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.cf-flow__n {
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+}
+
+.cf-flow__title {
+  font-size: 13px;
+}
+
+.cf-flow__body {
+  font-size: 11.5px;
+  max-width: 16ch;
+  line-height: 1.45;
+}
+
+.cf-flow__arrow {
+  height: 18px;
+}
+
+@media (min-width: 960px) {
+  .cf-flow__arrow {
+    width: 18px;
+  }
+}
+
+.cf-cap__title {
+  font-size: 14px;
+}
+
+.cf-cap__body {
+  font-size: 12px;
+}
+
+.cf-why h3,
+.cf-trust h3 {
+  font-size: 13px;
+}
+
+.cf-why p,
+.cf-trust p {
+  font-size: 12px;
+}
+
+.cf-final {
+  padding: clamp(1.4rem, 3.2vw, 2rem);
+  border-radius: 20px;
+}
+
+.cf-knowledge {
+  padding: clamp(1.15rem, 2.8vw, 1.75rem);
+  border-radius: 20px;
+}
+
+.cf-kl-node {
+  padding: 14px 14px;
+}
+
+.cf-dash-highlights {
+  margin-bottom: 14px;
+}

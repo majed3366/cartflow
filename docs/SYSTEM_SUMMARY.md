@@ -561,6 +561,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-07-30 | **Landing Brand Identity & Premium UX Polish:** Logo-derived geometric illustration (not logo paste); hero/dashboard as clean straight product shots (no browser chrome); unified card system; −20–25% vertical density; shorter process cards; header `landing-brand-identity-polish-v1`. |
 | 2026-07-30 | **Landing Premium Brand & Visual Refinement V2:** Presentation-only elevate — calmer Hero (one focal path), denser vertical rhythm, softer cards, intentional motion, icon light/brand alternation, brand-pattern atmosphere; story/structure unchanged; header `landing-premium-refinement-v2`. |
 | 2026-07-30 | **Landing Final Polish + Brand Integration V1:** Official logo + Brand Kit V2 (navy `#082048` / teal `#18B0A8`); Hero rebuilt as strongest section; visual rhythm + dashboard centerpiece; logo on landing/auth/dashboard chrome; favicon + OG; VI tokens updated; evidence in `docs/product/landing_final_polish_brand_v1/`; header `landing-final-polish-brand-v1`. |
 | 2026-07-30 | **Landing Product Composition V2:** Recomposed full `GET /` product story (Hero → Everything you need ×6 → How it works ×5 → Why → Widget → Dashboard → Knowledge flow → Trust → Integrations → FAQ → primary CTA). Dashboard visual language retained; business-value capability cards; alive journey timeline; framed dashboard composition; no Demo/fake metrics; header `X-CartFlow-Landing: landing-product-composition-v2`. |
