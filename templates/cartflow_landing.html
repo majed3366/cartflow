@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CartFlow — منصة تفهم متجرك قبل الشراء وبعده</title>
-  <meta name="description" content="CartFlow يساعد متجرك على فهم التردد مبكرًا، ومتابعة الاستعادة بوضوح، ورؤية ما يحدث حول الشراء — بنفس لغة لوحة التحكم." />
+  <title>CartFlow — يفهم التردد، يستعيد الفرص، ويحسّن المتجر باستمرار</title>
+  <meta name="description" content="CartFlow يفهم تردد العملاء مبكرًا، يساعد على استعادة الفرص الضائعة، ويبني فهمًا تشغيليًا أوضح لمتجرك مع الوقت — بنفس لغة لوحة التحكم." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet" />
@@ -16,10 +16,10 @@
     <div class="cf-nav__in">
       <a href="/" class="cf-nav__brand">CartFlow</a>
       <ul class="cf-nav__links" aria-label="التنقل">
-        <li><a href="#dashboard">لوحة المتجر</a></li>
-        <li><a href="#widget">داخل المتجر</a></li>
+        <li><a href="#capabilities">القدرات</a></li>
         <li><a href="#journey">كيف يعمل</a></li>
-        <li><a href="#knowledge">المعرفة</a></li>
+        <li><a href="#widget">داخل المتجر</a></li>
+        <li><a href="#dashboard">لوحة المتجر</a></li>
       </ul>
       <div class="cf-nav__spacer" aria-hidden="true"></div>
       <div class="cf-nav__acts">
@@ -29,9 +29,11 @@
       </div>
     </div>
     <nav class="cf-nav__drawer" id="cf-nav-drawer" hidden>
-      <a href="#dashboard">لوحة المتجر</a>
-      <a href="#widget">داخل المتجر</a>
+      <a href="#capabilities">القدرات</a>
       <a href="#journey">كيف يعمل</a>
+      <a href="#why">لماذا CartFlow</a>
+      <a href="#widget">داخل المتجر</a>
+      <a href="#dashboard">لوحة المتجر</a>
       <a href="#knowledge">المعرفة</a>
       <a href="/login" data-lp-cta="login">دخول</a>
       <a href="/signup" data-lp-cta="signup">ابدأ</a>
@@ -39,26 +41,30 @@
   </header>
 
   <main>
-    <!-- Hero — product-first Dashboard composition -->
+    <!-- 1. Hero -->
     <section class="cf-hero" id="hero" data-lp-view="hero_visible" data-lp-section="hero" aria-labelledby="hero-title">
       <div class="cf-hero__atmosphere" aria-hidden="true"></div>
       <div class="cf-shell cf-hero__grid">
         <div class="cf-hero__copy cf-reveal">
           <p class="cf-hero__brand">CartFlow</p>
-          <p class="cf-kicker cf-kicker--on-dark">منصة التجارة التشغيلية</p>
-          <h1 class="cf-h1" id="hero-title">لوحة تُظهر ما يمنع إتمام الشراء — لا مجرد تذكير بعد الترك</h1>
+          <p class="cf-kicker cf-kicker--on-dark">منصة فهم المتجر قبل الشراء وبعده</p>
+          <h1 class="cf-h1" id="hero-title">يفهم التردد، يستعيد الفرص، ويحسّن متجرك باستمرار</h1>
           <p class="cf-lead cf-lead--on-dark">
-            نفس لغة لوحة المتجر: انتبه لما يحتاج متابعة، افهم التردد مبكرًا، وتابع الاستعادة بوضوح — دون وعود مزيفة.
+            ليس مجرد رسائل بعد الترك — بل رؤية مبكرة لما يمنع الشراء، ومتابعة أوضح للاستعادة، وفهم يتكوّن مع الأدلة.
           </p>
+          <ul class="cf-hero__pillars" aria-label="ماذا يقدّم CartFlow">
+            <li>يفهم التردد مبكرًا داخل المتجر</li>
+            <li>يستعيد الفرص الضائعة بوضوح تشغيلي</li>
+            <li>يساعد على تحسين المتجر مع تراكم الأدلة</li>
+          </ul>
           <div class="cf-cta-row">
             <a href="/signup" class="cf-btn cf-btn--on-dark" data-lp-cta="hero_signup">ابدأ مع متجرك</a>
-            <a href="/login" class="cf-btn cf-btn--on-dark-ghost" data-lp-cta="login">دخول</a>
+            <a href="#capabilities" class="cf-btn cf-btn--on-dark-ghost">تعرّف على المنصة</a>
           </div>
         </div>
 
         <aside class="cf-hero__stage" aria-label="تركيبة منتج من لوحة CartFlow">
           <div class="cf-hero__glow" aria-hidden="true"></div>
-
           <div class="cf-device-desk">
             <div class="cf-browser cf-browser--hero">
               <div class="cf-browser__chrome" aria-hidden="true">
@@ -70,7 +76,7 @@
               <div class="cf-browser__viewport">
                 <img
                   src="/static/img/landing_v1/dashboard.png"
-                  alt="لوحة المتجر في CartFlow — بطاقات القرار والحالة التشغيلية"
+                  alt="لوحة المتجر في CartFlow — ملخص تنفيذي وبطاقات القرار"
                   width="1600"
                   height="1000"
                   loading="eager"
@@ -79,79 +85,198 @@
               </div>
             </div>
           </div>
-
           <div class="cf-float-card cf-float-card--a" aria-hidden="true">
             <p class="cf-float-card__label">أهم قرار اليوم</p>
             <p class="cf-float-card__title">عملاء يتركون عند الشحن</p>
             <p class="cf-float-card__body">لا تغيّر العرض التجاري قبل أن يكتمل الدليل.</p>
             <span class="cf-chip" style="margin-top:10px;">يتطلب متابعة</span>
           </div>
-
           <div class="cf-float-card cf-float-card--b" aria-hidden="true">
-            <p class="cf-float-card__label">حالة المتجر</p>
-            <p class="cf-float-card__title">دليل محدود للتواصل</p>
-            <p class="cf-float-card__body">المتابعة ممكنة — والثقة تُعلن عندما ينقص الدليل.</p>
-            <span class="cf-chip cf-chip--soft" style="margin-top:10px;">وضوح تشغيلي</span>
+            <p class="cf-float-card__label">فهم التردد</p>
+            <p class="cf-float-card__title">إشارة مبكرة داخل المتجر</p>
+            <p class="cf-float-card__body">الفرصة تظهر قبل أن تختفي السلة.</p>
+            <span class="cf-chip cf-chip--soft" style="margin-top:10px;">قبل الترك</span>
           </div>
-
           <div class="cf-phone" aria-hidden="true">
             <div class="cf-phone__screen">
-              <img
-                src="/static/img/landing_v1/home.png"
-                alt=""
-                width="390"
-                height="844"
-                loading="eager"
-                decoding="async"
-              />
+              <img src="/static/img/landing_v1/home.png" alt="" width="390" height="844" loading="eager" decoding="async" />
             </div>
           </div>
         </aside>
       </div>
     </section>
 
-    <!-- Dashboard showcase -->
-    <section class="cf-sec" id="dashboard" data-lp-view="dashboard_section_viewed" data-lp-section="dashboard" aria-labelledby="dashboard-title">
-      <div class="cf-shell">
+    <!-- 2. Everything you need -->
+    <section class="cf-sec" id="capabilities" data-lp-view="capabilities_section_viewed" data-lp-section="capabilities" aria-labelledby="capabilities-title">
+      <div class="cf-shell cf-stack cf-stack--lg">
         <div class="cf-stage-head cf-stage-head--center">
-          <p class="cf-kicker">لوحة المتجر</p>
-          <h2 class="cf-h2" id="dashboard-title">ما تراه كل يوم — بوضوح تشغيلي</h2>
-          <p class="cf-lead">يجمع الانتباه، وما حدث في الاستعادة، وحركة العميل، وما يجدر معرفته الآن — بنفس واجهة المنتج.</p>
+          <p class="cf-kicker">منصة متكاملة</p>
+          <h2 class="cf-h2" id="capabilities-title">كل ما تحتاجه لفهم عملائك وتحسين متجرك</h2>
+          <p class="cf-lead">ست قدرات مترابطة — من سلوك العميل إلى الإرشاد التشغيلي — بنفس لغة لوحة التحكم.</p>
         </div>
-        <div class="cf-product-stage cf-product-stage--dark">
-          <div class="cf-browser cf-browser--wide cf-browser--flat">
-            <div class="cf-browser__chrome" aria-hidden="true">
-              <span class="cf-browser__dot"></span>
-              <span class="cf-browser__dot"></span>
-              <span class="cf-browser__dot"></span>
-              <span class="cf-browser__url">dashboard · CartFlow</span>
+        <div class="cf-cap-grid" role="list">
+          <article class="cf-cap" role="listitem">
+            <div class="cf-cap__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/></svg>
             </div>
-            <div class="cf-browser__viewport">
-              <img
-                src="/static/img/landing_v1/workspace.png"
-                alt="مساحة القرار في CartFlow — أولويات وثقة الدليل"
-                width="1600"
-                height="1000"
-                loading="lazy"
-                decoding="async"
-              />
+            <h3 class="cf-cap__title">مراقبة سلوك العملاء</h3>
+            <p class="cf-cap__body">ترى زياراتهم وترددهم وتفاعلهم قبل الشراء — لا بعد أن يختفوا فقط.</p>
+          </article>
+          <article class="cf-cap" role="listitem">
+            <div class="cf-cap__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 7h12l-1 12H7L6 7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>
             </div>
-          </div>
+            <h3 class="cf-cap__title">مراقبة المنتجات</h3>
+            <p class="cf-cap__body">تفهم أي المنتجات تجذب الاهتمام وأيها يتوقف عنده العميل دون إتمام.</p>
+          </article>
+          <article class="cf-cap" role="listitem">
+            <div class="cf-cap__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 19V5h12l4 4v10H4z"/><path d="M16 5v4h4"/><path d="M8 12h6M8 15h4"/></svg>
+            </div>
+            <h3 class="cf-cap__title">طبقة المعرفة</h3>
+            <p class="cf-cap__body">تتراكم الأدلة مع الوقت لتكوّن فهمًا أوضح — أو نصرّح أن الدليل غير كافٍ.</p>
+          </article>
+          <article class="cf-cap" role="listitem">
+            <div class="cf-cap__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 1 4 10c-.8.7-1.3 1.6-1.5 2.5H9.5C9.3 14.6 8.8 13.7 8 13a6 6 0 0 1 4-10z"/></svg>
+            </div>
+            <h3 class="cf-cap__title">إرشادات عملية</h3>
+            <p class="cf-cap__body">توصيات مرتبطة بما يحدث في متجرك — لتساعد على القرار، لا لتقرّر عنك.</p>
+          </article>
+          <article class="cf-cap" role="listitem">
+            <div class="cf-cap__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 11a8 8 0 1 1-3.2-6.4L21 5v6z"/><path d="M8 13h5M8 16h3"/></svg>
+            </div>
+            <h3 class="cf-cap__title">تواصل ذكي</h3>
+            <p class="cf-cap__body">متابعة عند الحاجة عبر قنوات المتجر — مع إيقاف الاستعادة غير الضرورية بعد الشراء.</p>
+          </article>
+          <article class="cf-cap" role="listitem">
+            <div class="cf-cap__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 15v-4"/><path d="M12 15V8"/><path d="M16 15v-6"/></svg>
+            </div>
+            <h3 class="cf-cap__title">تحليلات عميقة</h3>
+            <p class="cf-cap__body">تقارير تكشف أسباب التردد والأنماط المتكررة — بدل أرقام بلا تفسير.</p>
+          </article>
         </div>
       </div>
     </section>
 
-    <!-- Widget showcase — polished storefront composition (not Demo) -->
+    <!-- 3. How CartFlow works -->
+    <section class="cf-sec cf-sec--surface" id="journey" aria-labelledby="journey-title">
+      <div class="cf-shell cf-stack cf-stack--lg">
+        <div class="cf-stage-head cf-stage-head--center">
+          <p class="cf-kicker">كيف يعمل</p>
+          <h2 class="cf-h2" id="journey-title">كيف يعمل CartFlow؟</h2>
+          <p class="cf-lead">مسار متصل من ربط المتجر إلى فهم أوضح يمكن البناء عليه.</p>
+        </div>
+        <ol class="cf-flow" aria-label="مسار عمل CartFlow">
+          <li class="cf-flow__step">
+            <div class="cf-flow__icon" aria-hidden="true">
+              <span class="cf-flow__n">1</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></svg>
+            </div>
+            <h3 class="cf-flow__title">اربط متجرك</h3>
+            <p class="cf-flow__body">ابدأ بربط منصتك الحالية. زد مدعوم الآن؛ سلة وShopify ضمن الخطة.</p>
+          </li>
+          <li class="cf-flow__arrow" aria-hidden="true"></li>
+          <li class="cf-flow__step">
+            <div class="cf-flow__icon" aria-hidden="true">
+              <span class="cf-flow__n">2</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="12" cy="5" rx="7" ry="3"/><path d="M5 5v6c0 1.7 3.1 3 7 3s7-1.3 7-3V5"/><path d="M5 11v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg>
+            </div>
+            <h3 class="cf-flow__title">اجمع السلوك</h3>
+            <p class="cf-flow__body">تُلاحظ حركة العميل والسلة والتفاعل داخل المتجر دون افتراضات مسبقة.</p>
+          </li>
+          <li class="cf-flow__arrow" aria-hidden="true"></li>
+          <li class="cf-flow__step">
+            <div class="cf-flow__icon" aria-hidden="true">
+              <span class="cf-flow__n">3</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3c3 3 5 5.5 5 8.5A5 5 0 0 1 7 11.5C7 8.5 9 6 12 3z"/><path d="M9.5 14.5c.5 1.5 1.2 2.5 2.5 3.5 1.3-1 2-2 2.5-3.5"/></svg>
+            </div>
+            <h3 class="cf-flow__title">افهم التردد</h3>
+            <p class="cf-flow__body">تظهر أسباب التردد المبكرة — لتفهم لماذا يتوقف العميل قبل الشراء.</p>
+          </li>
+          <li class="cf-flow__arrow" aria-hidden="true"></li>
+          <li class="cf-flow__step">
+            <div class="cf-flow__icon" aria-hidden="true">
+              <span class="cf-flow__n">4</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 4v2M12 18v2M4 12h2M18 12h2"/></svg>
+            </div>
+            <h3 class="cf-flow__title">إرشاد تشغيلي</h3>
+            <p class="cf-flow__body">عندما يكفي الدليل، تحصل على توجيه عملي لما يستحق الانتباه الآن.</p>
+          </li>
+          <li class="cf-flow__arrow" aria-hidden="true"></li>
+          <li class="cf-flow__step">
+            <div class="cf-flow__icon" aria-hidden="true">
+              <span class="cf-flow__n">5</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M7 14l3-3 3 2 4-5"/><path d="M15 8h2v2"/></svg>
+            </div>
+            <h3 class="cf-flow__title">حسّن النتائج</h3>
+            <p class="cf-flow__body">طبّق ما اتضح من الأدلة، وتابع الاستعادة والعودة — بحدود واضحة للثقة.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- 4. Why CartFlow -->
+    <section class="cf-sec" id="why" aria-labelledby="why-title">
+      <div class="cf-shell cf-stack cf-stack--lg">
+        <div class="cf-stage-head cf-stage-head--center">
+          <p class="cf-kicker">لماذا CartFlow</p>
+          <h2 class="cf-h2" id="why-title">لماذا CartFlow؟</h2>
+          <p class="cf-lead">فرق واضح: دليل قبل النصيحة، وتحكم يبقى عندك.</p>
+        </div>
+        <div class="cf-why-grid" role="list">
+          <article class="cf-why" role="listitem">
+            <div class="cf-why__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M7 15l3-4 3 2 4-6"/></svg>
+            </div>
+            <h3>نتائج مبنية على الواقع</h3>
+            <p>تحسن أوضح عندما تفهم ما يحدث فعلًا حول الشراء — لا عند التخمين.</p>
+          </article>
+          <article class="cf-why" role="listitem">
+            <div class="cf-why__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l2.2 4.5 5 .7-3.6 3.5.9 5L12 14.8 7.5 16.7l.9-5L4.8 8.2l5-.7L12 3z"/></svg>
+            </div>
+            <h3>دقة في الإرشاد</h3>
+            <p>كل توصية تظهر فقط عندما يوجد أساس من بيانات متجرك.</p>
+          </article>
+          <article class="cf-why" role="listitem">
+            <div class="cf-why__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg>
+            </div>
+            <h3>توفير وقت التشغيل</h3>
+            <p>المنصة ترتّب ما يستحق الانتباه — لتبقى أنت على قرارات النمو.</p>
+          </article>
+          <article class="cf-why" role="listitem">
+            <div class="cf-why__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>
+            </div>
+            <h3>خصوصية وحدود واضحة</h3>
+            <p>بيانات متجرك معزولة ضمن سياقك التشغيلي — بلا مشاركة لجهات غير مصرّح بها.</p>
+          </article>
+          <article class="cf-why" role="listitem">
+            <div class="cf-why__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="3"/><path d="M5 19c1.5-3 4-4.5 7-4.5S17.5 16 19 19"/><path d="M19 8v4M17 10h4"/></svg>
+            </div>
+            <h3>قرارات تشغيلية مستدامة</h3>
+            <p>تحليل سلوك حقيقي بدل افتراضات ضعيفة — لبناء تحسن يتراكم مع الوقت.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. Inside your store (Widget) -->
     <section class="cf-sec cf-sec--surface" id="widget" data-lp-view="widget_section_viewed" data-lp-section="widget" aria-labelledby="widget-title">
       <div class="cf-shell cf-split">
         <div class="cf-split__copy">
-          <p class="cf-kicker">داخل المتجر</p>
-          <h2 class="cf-h2" id="widget-title">فهم التردد مبكرًا — قبل أن يختفي العميل</h2>
-          <p class="cf-lead">الأداة داخل المتجر تلتقط لحظة التردد وتفتح مسار استجابة واضح — ليست مجرد سطح عروض.</p>
+          <p class="cf-kicker">داخل متجرك</p>
+          <h2 class="cf-h2" id="widget-title">رصد مبكر للتردد — قبل أن تختفي الفرصة</h2>
+          <p class="cf-lead">الأداة داخل المتجر تلتقط لحظة التردد وتفتح مسار فهم واضح — ليست نافذة منبثقة بلا هدف.</p>
           <ul class="cf-list" style="margin-top:8px;">
-            <li>خيارات تردد يفهمها العميل بسرعة</li>
-            <li>فرصة مبكرة للمتابعة قبل الترك</li>
-            <li>ربط لاحق بما يظهر في لوحة المتجر</li>
+            <li>يكشف سبب التردد وهو ما زال داخل المتجر</li>
+            <li>يفتح فرصة متابعة قبل الترك</li>
+            <li>يربط ما حدث بما تراه لاحقًا في لوحة المتجر</li>
           </ul>
         </div>
         <div class="cf-split__visual">
@@ -167,7 +292,7 @@
                 <div class="cf-store-ui__product">
                   <div class="cf-store-ui__swatch" aria-hidden="true"></div>
                   <p class="cf-store-ui__name">TrueSound Pro</p>
-                  <p class="cf-store-ui__meta">إلكترونيات · في السلة</p>
+                  <p class="cf-store-ui__meta">في السلة · لم يُكمل الشراء بعد</p>
                   <p class="cf-store-ui__price">٤٤٩ ر.س</p>
                 </div>
                 <div class="cf-widget-card">
@@ -185,65 +310,78 @@
       </div>
     </section>
 
-    <!-- How it works -->
-    <section class="cf-sec" id="journey" aria-labelledby="journey-title">
-      <div class="cf-shell cf-stack cf-stack--lg">
-        <div class="cf-stage-head">
-          <p class="cf-kicker">كيف يعمل</p>
-          <h2 class="cf-h2" id="journey-title">مسار متصل — لا خطوات معزولة</h2>
-          <p class="cf-lead">من الملاحظة المبكرة إلى الفهم التشغيلي — كل مرحلة تغذي ما يليها.</p>
+    <!-- 6. Dashboard -->
+    <section class="cf-sec" id="dashboard" data-lp-view="dashboard_section_viewed" data-lp-section="dashboard" aria-labelledby="dashboard-title">
+      <div class="cf-shell">
+        <div class="cf-stage-head cf-stage-head--center">
+          <p class="cf-kicker">لوحة المتجر</p>
+          <h2 class="cf-h2" id="dashboard-title">ما تراه كل يوم كتاجر</h2>
+          <p class="cf-lead">ملخص تنفيذي، طابور انتباه، طبقة معرفة، وتوصيات عندما يكفي الدليل — في واجهة واحدة.</p>
         </div>
-        <div class="cf-journey" role="list">
-          <div class="cf-journey__step" role="listitem">
-            <span class="cf-journey__n">01</span>
-            <p class="cf-journey__t">نلاحظ حركة العميل</p>
+        <div class="cf-dash-highlights" aria-label="أبرز ما في اللوحة">
+          <span class="cf-pill">الملخص التنفيذي</span>
+          <span class="cf-pill">طابور الانتباه</span>
+          <span class="cf-pill">طبقة المعرفة</span>
+          <span class="cf-pill">التوصيات</span>
+        </div>
+        <div class="cf-product-stage cf-product-stage--dark cf-product-stage--compose">
+          <div class="cf-browser cf-browser--wide cf-browser--flat">
+            <div class="cf-browser__chrome" aria-hidden="true">
+              <span class="cf-browser__dot"></span>
+              <span class="cf-browser__dot"></span>
+              <span class="cf-browser__dot"></span>
+              <span class="cf-browser__url">dashboard · CartFlow</span>
+            </div>
+            <div class="cf-browser__viewport">
+              <img
+                src="/static/img/landing_v1/dashboard.png"
+                alt="لوحة المتجر في CartFlow — نظرة تشغيلية يومية"
+                width="1600"
+                height="1000"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
           </div>
-          <div class="cf-journey__step" role="listitem">
-            <span class="cf-journey__n">02</span>
-            <p class="cf-journey__t">نفهم التردد المبكر</p>
+          <div class="cf-compose-card cf-compose-card--1" aria-hidden="true">
+            <p class="cf-compose-card__k">الملخص التنفيذي</p>
+            <p class="cf-compose-card__t">ماذا يحتاج متجرك اليوم؟</p>
           </div>
-          <div class="cf-journey__step" role="listitem">
-            <span class="cf-journey__n">03</span>
-            <p class="cf-journey__t">نبدأ الاستعادة</p>
-          </div>
-          <div class="cf-journey__step" role="listitem">
-            <span class="cf-journey__n">04</span>
-            <p class="cf-journey__t">نواصل الرحلة عند الحاجة</p>
-          </div>
-          <div class="cf-journey__step" role="listitem">
-            <span class="cf-journey__n">05</span>
-            <p class="cf-journey__t">نتابع العودة والشراء</p>
-          </div>
-          <div class="cf-journey__step" role="listitem">
-            <span class="cf-journey__n">06</span>
-            <p class="cf-journey__t"> نحوّل ما حدث إلى معرفة — أو نصرّح أن الدليل غير كافٍ</p>
+          <div class="cf-compose-card cf-compose-card--2" aria-hidden="true">
+            <p class="cf-compose-card__k">طابور الانتباه</p>
+            <p class="cf-compose-card__t">ما يستحق المتابعة الآن</p>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Knowledge Layer -->
+    <!-- 7. Knowledge Layer -->
     <section class="cf-sec cf-sec--tight" id="knowledge" data-lp-view="knowledge_section_viewed" data-lp-section="knowledge" aria-labelledby="knowledge-title">
       <div class="cf-shell">
         <div class="cf-knowledge">
-          <div class="cf-knowledge__grid">
-            <div class="cf-stack">
+          <div class="cf-stack cf-stack--lg">
+            <div class="cf-stage-head" style="max-width:40rem;">
               <p class="cf-kicker cf-kicker--on-dark">طبقة المعرفة</p>
-              <h2 class="cf-h2" id="knowledge-title">من النشاط المتكرر… إلى فهم أوضح للمتجر</h2>
-              <p class="cf-lead cf-lead--on-dark">
-                الأنماط قد تتشكّل من الأدلة — أو نصرّح بصراحة أن الدليل غير كافٍ. لا تخمين يملأ الفراغ.
-              </p>
+              <h2 class="cf-h2" id="knowledge-title">يتعلّم مع الوقت — من الدليل إلى الإرشاد</h2>
+              <p class="cf-lead cf-lead--on-dark">قصة قصيرة بلا فقرات طويلة: الدليل يسبق المعرفة، والمعرفة تسبق النصيحة.</p>
             </div>
-            <div class="cf-stack" style="gap:12px;">
-              <div class="cf-knowledge__panel">
-                <h3>دليل كافٍ</h3>
-                <p>عندما تتكرر الإشارات بثقة مناسبة، يظهر ما يستحق الانتباه في مساحة القرار.</p>
-                <span class="cf-chip cf-chip--ok" style="margin-top:12px;">ثقة أعلى</span>
+            <div class="cf-kl-flow" aria-label="مسار المعرفة">
+              <div class="cf-kl-node">
+                <span class="cf-kl-node__n">01</span>
+                <h3>الدليل</h3>
+                <p>إشارات متكررة من سلوك حقيقي داخل المتجر.</p>
               </div>
-              <div class="cf-knowledge__panel">
-                <h3>دليل غير كافٍ</h3>
-                <p>عند نقص الأساس الآمن — نصرّح بذلك بدل توصية ضعيفة. هذه أمانة تشغيلية.</p>
-                <span class="cf-chip" style="margin-top:12px;background:rgba(255,255,255,0.16);color:#fff;">وضوح بدل التخمين</span>
+              <div class="cf-kl-join" aria-hidden="true"></div>
+              <div class="cf-kl-node">
+                <span class="cf-kl-node__n">02</span>
+                <h3>المعرفة</h3>
+                <p>أنماط أوضح — أو تصريح صريح بأن الدليل غير كافٍ.</p>
+              </div>
+              <div class="cf-kl-join" aria-hidden="true"></div>
+              <div class="cf-kl-node">
+                <span class="cf-kl-node__n">03</span>
+                <h3>إرشاد تشغيلي</h3>
+                <p>توجيه عملي لما يستحق قرارًا — عندما يكتمل الأساس.</p>
               </div>
             </div>
           </div>
@@ -251,98 +389,98 @@
       </div>
     </section>
 
-    <!-- Decision / Trust compact -->
+    <!-- 8. Trust Principles -->
     <section class="cf-sec cf-sec--surface" id="trust" aria-labelledby="trust-title">
-      <div class="cf-shell cf-split">
-        <div class="cf-split__copy">
-          <p class="cf-kicker">الثقة</p>
-          <h2 class="cf-h2" id="trust-title">لا يقين مزيف حيث الدليل ضعيف</h2>
-          <p class="cf-lead">الفهم يساعدك على القرار — لا يقرر عنك. والحدود واضحة عندما ينقص الدليل.</p>
+      <div class="cf-shell cf-stack cf-stack--lg">
+        <div class="cf-stage-head cf-stage-head--center">
+          <p class="cf-kicker">مبادئ الثقة</p>
+          <h2 class="cf-h2" id="trust-title">حدود واضحة — وميزة تنافسية</h2>
+          <p class="cf-lead">لا يقين مزيف حيث الدليل ضعيف. التاجر يبقى صاحب القرار.</p>
         </div>
-        <div class="cf-cards">
-          <div class="cf-card">
-            <h3>لا توصية بلا أساس</h3>
-            <p>لا تُعرض توصية قوية دون أدلة كافية.</p>
-          </div>
-          <div class="cf-card">
-            <h3>الشراء يوقف الإزعاج</h3>
-            <p>اكتمال الطلب يوقف الاستعادة غير الضرورية.</p>
-          </div>
-          <div class="cf-card">
-            <h3>الملاحظة ≠ الاستنتاج</h3>
-            <p>ما يُلاحظ يُعرض كما هو — دون قفز إلى خلاصة غير آمنة.</p>
-          </div>
-          <div class="cf-card">
-            <h3>بيانات المتجر معزولة</h3>
-            <p>سياق متجرك يبقى في حدوده التشغيلية.</p>
-          </div>
+        <div class="cf-trust-grid" role="list">
+          <article class="cf-trust" role="listitem">
+            <h3>لا توصيات مزيفة</h3>
+            <p>لا تُعرض توصية قوية بلا أساس كافٍ من الأدلة.</p>
+          </article>
+          <article class="cf-trust" role="listitem">
+            <h3>لا تخمين يملأ الفراغ</h3>
+            <p>عند نقص الدليل نصرّح بذلك — بدل قصة مقنعة بلا سند.</p>
+          </article>
+          <article class="cf-trust" role="listitem">
+            <h3>الدليل قبل النصيحة</h3>
+            <p>الإرشاد يظهر بعد تراكم إشارات كافية — لا قبلها.</p>
+          </article>
+          <article class="cf-trust" role="listitem">
+            <h3>الشراء يوقف الاستعادة</h3>
+            <p>اكتمال الطلب يوقف المتابعة غير الضرورية تلقائيًا.</p>
+          </article>
+          <article class="cf-trust" role="listitem">
+            <h3>التحكم يبقى عندك</h3>
+            <p>الفهم يساعدك على القرار — ولا يستبدل حكمك التشغيلي.</p>
+          </article>
         </div>
       </div>
     </section>
 
-    <!-- Integrations -->
+    <!-- 9. Integrations -->
     <section class="cf-sec cf-sec--tight" id="integrations" aria-labelledby="integrations-title">
       <div class="cf-shell cf-stack">
-        <div class="cf-stage-head">
+        <div class="cf-stage-head cf-stage-head--center">
           <p class="cf-kicker">التكامل</p>
-          <h2 class="cf-h2" id="integrations-title">ما يعمل الآن — وما هو ضمن الخطة</h2>
+          <h2 class="cf-h2" id="integrations-title">المنصات المدعومة — بشفافية</h2>
+          <p class="cf-lead">نوضح ما يعمل الآن وما هو ضمن الخطة — بلا شعارات مضلّلة.</p>
         </div>
-        <div class="cf-stack" style="gap:10px;max-width:40rem;">
-          <div class="cf-row">
-            <span class="cf-row__plat">زد</span>
-            <span class="cf-row__status">مدعوم حاليًا — قد يتطلب التفعيل تدخلًا تشغيليًا</span>
+        <div class="cf-integ">
+          <div class="cf-integ__card cf-integ__card--live">
+            <span class="cf-integ__name">زد</span>
+            <span class="cf-integ__badge">مدعوم حاليًا</span>
+            <p>قد يتطلب التفعيل تدخلًا تشغيليًا حسب جاهزية المتجر.</p>
           </div>
-          <div class="cf-row">
-            <span class="cf-row__plat">سلة</span>
-            <span class="cf-row__status">مخطط له</span>
+          <div class="cf-integ__card">
+            <span class="cf-integ__name">سلة</span>
+            <span class="cf-integ__badge cf-integ__badge--plan">مخطط له</span>
+            <p>ضمن خارطة الطريق — ليس متاحًا للتشغيل العام بعد.</p>
           </div>
-          <div class="cf-row">
-            <span class="cf-row__plat">Shopify</span>
-            <span class="cf-row__status">مخطط له</span>
+          <div class="cf-integ__card">
+            <span class="cf-integ__name">Shopify</span>
+            <span class="cf-integ__badge cf-integ__badge--plan">مخطط له</span>
+            <p>ضمن خارطة الطريق — ليس متاحًا للتشغيل العام بعد.</p>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- FAQ -->
+    <!-- 10. FAQ -->
     <section class="cf-sec" id="faq" data-lp-view="faq_section_viewed" data-lp-section="faq" aria-labelledby="faq-title">
       <div class="cf-shell cf-stack cf-stack--lg">
-        <div class="cf-stage-head">
+        <div class="cf-stage-head cf-stage-head--center">
           <p class="cf-kicker">أسئلة</p>
           <h2 class="cf-h2" id="faq-title">أسئلة ما زالت مهمة قبل البدء</h2>
         </div>
         <div class="cf-faq">
           <details>
             <summary>ما هو CartFlow فعليًا؟</summary>
-            <p>يساعد متجرك على فهم التردد مبكرًا ومتابعة الاستعادة ورؤية ما يحدث حول الشراء — عبر الأداة داخل المتجر ولوحة تشغيل واضحة.</p>
+            <p>منصة تساعد متجرك على فهم تردد العملاء مبكرًا، ومتابعة استعادة الفرص بوضوح، وبناء فهم تشغيلي أوضح مع تراكم الأدلة — عبر الأداة داخل المتجر ولوحة المتجر.</p>
           </details>
           <details>
-            <summary>هل هو مجرد أداة سلال متروكة؟</summary>
-            <p>الاستعادة جزء من القصة. الأعمق هو رؤية التردد والحركة وما يتكرر — وعند نقص الدليل نصرّح بذلك بوضوح.</p>
+            <summary>هل هو مجرد أداة سلال متروكة أو واتساب؟</summary>
+            <p>الاستعادة والتواصل جزء من القصة. الأعمق هو فهم التردد والحركة وما يتكرر — وعند نقص الدليل نصرّح بذلك بوضوح.</p>
+          </details>
+          <details>
+            <summary>ماذا أحصل عليه بعد التسجيل؟</summary>
+            <p>حساب متجر، ضبط الأداة داخل المتجر ومسار الاستعادة، ولوحة تشغيل تعرض الملخص والانتباه والمعرفة عندما تتوفر أدلة كافية.</p>
           </details>
           <details>
             <summary>هل يستبدل أدواتي الحالية؟</summary>
             <p>لا نطالبك باستبدال كل شيء. الهدف فهم أوضح لما يحدث حول الشراء — بما يكمّل عملك التشغيلي.</p>
           </details>
           <details>
-            <summary>ماذا عن سرعة المتجر والأداة داخل المتجر؟</summary>
-            <p>لا ندّعي أثرًا على السرعة دون قياس. أي ادعاء أداء يُعلن فقط عند توفر دليل.</p>
-          </details>
-          <details>
-            <summary>كيف يُفعَّل واتساب؟</summary>
-            <p>التفعيل قد يتطلب جاهزية تشغيلية ومزوّد رسائل. لا نعدّ بتفعيل فوري إن لم يكن متاحًا لمتجرك.</p>
-          </details>
-          <details>
-            <summary>ماذا يحدث بعد الشراء؟</summary>
-            <p>الشراء يوقف الاستعادة غير الضرورية — لا نواصل الإزعاج بعد اكتمال الطلب.</p>
-          </details>
-          <details>
             <summary>متى تظهر التوصيات؟</summary>
             <p>عندما يتوفر دليل كافٍ. إن لم يكفِ الدليل، نصرّح بذلك بدل ملء الفراغ بالتخمين.</p>
           </details>
           <details>
-            <summary>ماذا يعني «دليل غير كافٍ»؟</summary>
-            <p>يعني أن النظام لا يملك أساسًا آمنًا لاستنتاج أو توصية — وهذه أمانة، وليست عطلًا.</p>
+            <summary>ماذا يحدث بعد الشراء؟</summary>
+            <p>الشراء يوقف الاستعادة غير الضرورية — لا نواصل الإزعاج بعد اكتمال الطلب.</p>
           </details>
           <details>
             <summary>ما المنصات المدعومة؟</summary>
@@ -356,16 +494,15 @@
       </div>
     </section>
 
-    <!-- Final CTA -->
+    <!-- 11. Final CTA — primary only -->
     <section class="cf-sec" id="cta" aria-labelledby="cta-title">
       <div class="cf-shell">
         <div class="cf-final">
-          <p class="cf-kicker cf-kicker--on-dark">الخطوة التالية</p>
-          <h2 class="cf-h2" id="cta-title">عندما تكون جاهزًا — ابدأ بهدوء</h2>
-          <p class="cf-lead">خطوة مناسبة لمتجرك — بلا ضغط وبلا وعود مضمونة.</p>
+          <p class="cf-kicker cf-kicker--on-dark">ابدأ من الفهم</p>
+          <h2 class="cf-h2" id="cta-title">CartFlow يفهم العملاء قبل أن يحاول استعادتهم</h2>
+          <p class="cf-lead">اربط متجرك وابدأ برؤية أوضح لما يحدث حول الشراء.</p>
           <div class="cf-cta-row">
             <a href="/signup" class="cf-btn cf-btn--on-dark" data-lp-cta="final_signup">ابدأ مع متجرك</a>
-            <a href="/login" class="cf-btn cf-btn--on-dark-ghost" data-lp-cta="login">دخول</a>
           </div>
         </div>
       </div>
@@ -377,6 +514,7 @@
       <div class="cf-foot__top">
         <span class="cf-foot__brand">CartFlow</span>
         <div class="cf-foot__links">
+          <a href="#capabilities">القدرات</a>
           <a href="#dashboard">لوحة المتجر</a>
           <a href="#widget">داخل المتجر</a>
           <a href="/login" data-lp-cta="login">دخول</a>
