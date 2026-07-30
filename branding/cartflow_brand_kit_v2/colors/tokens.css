@@ -1,0 +1,39 @@
+/**
+ * CartFlow Brand Kit V2 — Official color tokens
+ * Source: Official logo asset (navy + teal). Semantic tokens only.
+ */
+:root {
+  /* Brand core */
+  --cf-navy: #082048;
+  --cf-navy-deep: #001838;
+  --cf-teal: #18b0a8;
+  --cf-teal-deep: #0e8e88;
+  --cf-teal-soft: rgba(24, 176, 168, 0.12);
+  --cf-silver: #d0d8d8;
+
+  /* Semantic aliases */
+  --cf-primary: var(--cf-teal);
+  --cf-primary-dark: var(--cf-teal-deep);
+  --cf-secondary: var(--cf-navy);
+  --cf-secondary-dark: var(--cf-navy-deep);
+  --cf-accent: var(--cf-teal);
+
+  --cf-bg: #f4f7fa;
+  --cf-surface: #ffffff;
+  --cf-surface-raised: #ffffff;
+  --cf-border: rgba(8, 32, 72, 0.1);
+  --cf-ink: #082048;
+  --cf-ink-soft: #3d4a63;
+  --cf-ink-whisper: #8b95a8;
+  --cf-on-primary: #ffffff;
+  --cf-on-navy: #ffffff;
+
+  --cf-success: #059669;
+  --cf-warning: #ea580c;
+  --cf-error: #dc2626;
+
+  --cf-hero-bg: linear-gradient(155deg, #0a2d5c 0%, #082048 42%, #001830 100%);
+  --cf-chrome-bg: linear-gradient(165deg, #0a2d5c 0%, #082048 50%, #001838 100%);
+  --cf-card-radius: 16px;
+  --cf-card-shadow: 0 4px 24px rgba(8, 32, 72, 0.08);
+}

@@ -1,18 +1,25 @@
 /**
- * CartFlow Official Color Tokens v1
- * Source: Visual Identity Board (approved). Do not add colors outside this file.
+ * CartFlow Official Color Tokens
+ * Superseded for product UI by Brand Kit V2 (navy + teal from official logo).
+ * Kept aliases for backward compatibility; new work should use Brand Kit V2.
+ * See: branding/cartflow_brand_kit_v2/
  */
 :root {
-  --cf-primary: #1E6B4A;
-  --cf-secondary: #2DA36A;
-  --cf-accent: #A7E3C4;
-  --cf-background: #E9F7EF;
-  --cf-surface: #F6FBF8;
-  --cf-text: #344054;
+  /* Brand Kit V2 */
+  --cf-navy: #082048;
+  --cf-navy-deep: #001838;
+  --cf-teal: #18b0a8;
+  --cf-teal-deep: #0e8e88;
 
-  /* Derived (same palette family only) */
-  --cf-primary-hover: #185a3e;
-  --cf-border: #cce8d8;
-  --cf-text-muted: #667085;
-  --cf-on-primary: #F6FBF8;
+  --cf-primary: #18b0a8;
+  --cf-secondary: #082048;
+  --cf-accent: #18b0a8;
+  --cf-background: #f4f7fa;
+  --cf-surface: #ffffff;
+  --cf-text: #082048;
+
+  --cf-primary-hover: #0e8e88;
+  --cf-border: rgba(8, 32, 72, 0.12);
+  --cf-text-muted: #3d4a63;
+  --cf-on-primary: #ffffff;
 }

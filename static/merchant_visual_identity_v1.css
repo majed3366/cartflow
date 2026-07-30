@@ -22,19 +22,19 @@
   --cfvi-type-button: 13px;
   --cfvi-type-link: 13px;
 
-  /* Semantic palette — one product */
-  --cfvi-primary: #0d9488;
-  --cfvi-primary-deep: #0f766e;
-  --cfvi-primary-soft: rgba(13, 148, 136, 0.1);
-  --cfvi-secondary: #1a7a4a;
-  --cfvi-secondary-deep: #145a38;
-  --cfvi-bg: #f4f6fa;
+  /* Semantic palette — Brand Kit V2 (navy + teal from official logo) */
+  --cfvi-primary: #18b0a8;
+  --cfvi-primary-deep: #0e8e88;
+  --cfvi-primary-soft: rgba(24, 176, 168, 0.12);
+  --cfvi-secondary: #082048;
+  --cfvi-secondary-deep: #001838;
+  --cfvi-bg: #f4f7fa;
   --cfvi-surface: #ffffff;
   --cfvi-surface-raised: #ffffff;
-  --cfvi-ink: #0b1220;
+  --cfvi-ink: #082048;
   --cfvi-ink-soft: #3d4a63;
   --cfvi-ink-whisper: #8b95a8;
-  --cfvi-border: rgba(11, 18, 32, 0.08);
+  --cfvi-border: rgba(8, 32, 72, 0.1);
   --cfvi-success: #059669;
   --cfvi-success-soft: #ecfdf5;
   --cfvi-warning: #ea580c;
@@ -46,9 +46,9 @@
   --cfvi-vip: #b45309;
   --cfvi-vip-soft: #fffbeb;
 
-  /* Hero gradient — shared identity */
-  --cfvi-hero-bg: linear-gradient(165deg, #0f766e 0%, #134e4a 48%, #0b1220 100%);
-  --cfvi-hero-shadow: 0 24px 64px rgba(11, 18, 32, 0.2);
+  /* Hero / chrome — navy brand with teal light */
+  --cfvi-hero-bg: linear-gradient(155deg, #0a2d5c 0%, #082048 42%, #001830 100%);
+  --cfvi-hero-shadow: 0 24px 64px rgba(8, 32, 72, 0.28);
   --cfvi-hero-radius: 24px;
 
   /* Rhythm */
@@ -65,9 +65,9 @@
   --cfvi-card-border: 1px solid var(--cfvi-border);
 
   /* Chrome — same language as hero */
-  --cfvi-chrome-bg: linear-gradient(165deg, #0f766e 0%, #134e4a 46%, #0f4229 100%);
-  --cfvi-chrome-shadow: 0 4px 24px rgba(11, 18, 32, 0.18);
-  --cfvi-chrome-active: rgba(255, 255, 255, 0.22);
+  --cfvi-chrome-bg: linear-gradient(165deg, #0a2d5c 0%, #082048 50%, #001838 100%);
+  --cfvi-chrome-shadow: 0 4px 24px rgba(8, 32, 72, 0.2);
+  --cfvi-chrome-active: rgba(24, 176, 168, 0.28);
 
   /* Sidebar */
   --cfvi-sidebar-bg: var(--cfvi-chrome-bg);

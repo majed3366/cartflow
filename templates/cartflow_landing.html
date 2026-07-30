@@ -3,8 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CartFlow — يفهم التردد، يستعيد الفرص، ويحسّن المتجر باستمرار</title>
-  <meta name="description" content="CartFlow يفهم تردد العملاء مبكرًا، يساعد على استعادة الفرص الضائعة، ويبني فهمًا تشغيليًا أوضح لمتجرك مع الوقت — بنفس لغة لوحة التحكم." />
+  <title>CartFlow — يفهم متجرك قبل أن يستعيد السلات</title>
+  <meta name="description" content="CartFlow لا يكتفي باسترجاع السلات المتروكة — يفهم سبب التردد ويقدّم إرشادات عملية لتحسين المتجر باستمرار." />
+  <meta property="og:title" content="CartFlow — Understand. Decide. Act. Recover." />
+  <meta property="og:description" content="منصة تشغيلية تفهم سلوك العملاء وتبني معرفة من الأدلة لتساعد التاجر على قرارات أوضح." />
+  <meta property="og:image" content="/static/img/brand/og_cartflow.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/img/brand/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="64x64" href="/static/img/brand/favicon-64.png" />
+  <link rel="apple-touch-icon" href="/static/img/brand/cartflow_mark.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet" />
@@ -14,7 +21,10 @@
 
   <header class="cf-nav" id="nav">
     <div class="cf-nav__in">
-      <a href="/" class="cf-nav__brand">CartFlow</a>
+      <a href="/" class="cf-nav__brand" aria-label="CartFlow">
+        <img class="cf-nav__logo cf-nav__logo--mark" src="/static/img/brand/cartflow_mark.png" alt="" width="40" height="40" />
+        <span>Cart<span style="color:var(--cfvi-primary)">Flow</span></span>
+      </a>
       <ul class="cf-nav__links" aria-label="التنقل">
         <li><a href="#capabilities">القدرات</a></li>
         <li><a href="#journey">كيف يعمل</a></li>
@@ -46,20 +56,23 @@
       <div class="cf-hero__atmosphere" aria-hidden="true"></div>
       <div class="cf-shell cf-hero__grid">
         <div class="cf-hero__copy cf-reveal">
-          <p class="cf-hero__brand">CartFlow</p>
-          <p class="cf-kicker cf-kicker--on-dark">منصة فهم المتجر قبل الشراء وبعده</p>
-          <h1 class="cf-h1" id="hero-title">يفهم التردد، يستعيد الفرص، ويحسّن متجرك باستمرار</h1>
+          <div class="cf-hero__brand-lockup">
+            <img src="/static/img/brand/cartflow_mark.png" alt="" width="48" height="48" />
+            <p class="cf-hero__brand">Cart<span>Flow</span></p>
+          </div>
+          <p class="cf-kicker cf-kicker--on-dark">UNDERSTAND · DECIDE · ACT · RECOVER</p>
+          <h1 class="cf-h1" id="hero-title">يفهم متجرك قبل أن يحاول استعادة السلة</h1>
           <p class="cf-lead cf-lead--on-dark">
-            ليس مجرد رسائل بعد الترك — بل رؤية مبكرة لما يمنع الشراء، ومتابعة أوضح للاستعادة، وفهم يتكوّن مع الأدلة.
+            لا يكتفي باسترجاع السلات المتروكة — يكشف سبب التردد، ويبني معرفة من الأدلة، ويقدّم إرشادًا عمليًا لتحسين المبيعات بشكل مستدام.
           </p>
           <ul class="cf-hero__pillars" aria-label="ماذا يقدّم CartFlow">
             <li>يفهم التردد مبكرًا داخل المتجر</li>
-            <li>يستعيد الفرص الضائعة بوضوح تشغيلي</li>
-            <li>يساعد على تحسين المتجر مع تراكم الأدلة</li>
+            <li>يستعيد الفرص بوضوح تشغيلي — لا بإزعاج أعمى</li>
+            <li>يساعد على قرارات أفضل مع تراكم الأدلة</li>
           </ul>
           <div class="cf-cta-row">
-            <a href="/signup" class="cf-btn cf-btn--on-dark" data-lp-cta="hero_signup">ابدأ مع متجرك</a>
-            <a href="#capabilities" class="cf-btn cf-btn--on-dark-ghost">تعرّف على المنصة</a>
+            <a href="/signup" class="cf-btn cf-btn--on-dark cf-hero__cta-primary" data-lp-cta="hero_signup">ابدأ مع متجرك</a>
+            <a href="#dashboard" class="cf-btn cf-btn--on-dark-ghost">شاهد لوحة المتجر</a>
           </div>
         </div>
 
@@ -107,7 +120,7 @@
     </section>
 
     <!-- 2. Everything you need -->
-    <section class="cf-sec" id="capabilities" data-lp-view="capabilities_section_viewed" data-lp-section="capabilities" aria-labelledby="capabilities-title">
+    <section class="cf-sec cf-sec--surface" id="capabilities" data-lp-view="capabilities_section_viewed" data-lp-section="capabilities" aria-labelledby="capabilities-title">
       <div class="cf-shell cf-stack cf-stack--lg">
         <div class="cf-stage-head cf-stage-head--center">
           <p class="cf-kicker">منصة متكاملة</p>
@@ -162,7 +175,7 @@
     </section>
 
     <!-- 3. How CartFlow works -->
-    <section class="cf-sec cf-sec--surface" id="journey" aria-labelledby="journey-title">
+    <section class="cf-sec cf-sec--mint" id="journey" aria-labelledby="journey-title">
       <div class="cf-shell cf-stack cf-stack--lg">
         <div class="cf-stage-head cf-stage-head--center">
           <p class="cf-kicker">كيف يعمل</p>
@@ -219,7 +232,7 @@
     </section>
 
     <!-- 4. Why CartFlow -->
-    <section class="cf-sec" id="why" aria-labelledby="why-title">
+    <section class="cf-sec cf-sec--surface" id="why" aria-labelledby="why-title">
       <div class="cf-shell cf-stack cf-stack--lg">
         <div class="cf-stage-head cf-stage-head--center">
           <p class="cf-kicker">لماذا CartFlow</p>
@@ -267,7 +280,7 @@
     </section>
 
     <!-- 5. Inside your store (Widget) -->
-    <section class="cf-sec cf-sec--surface" id="widget" data-lp-view="widget_section_viewed" data-lp-section="widget" aria-labelledby="widget-title">
+    <section class="cf-sec cf-sec--navy-soft" id="widget" data-lp-view="widget_section_viewed" data-lp-section="widget" aria-labelledby="widget-title">
       <div class="cf-shell cf-split">
         <div class="cf-split__copy">
           <p class="cf-kicker">داخل متجرك</p>
@@ -324,8 +337,8 @@
           <span class="cf-pill">طبقة المعرفة</span>
           <span class="cf-pill">التوصيات</span>
         </div>
-        <div class="cf-product-stage cf-product-stage--dark cf-product-stage--compose">
-          <div class="cf-browser cf-browser--wide cf-browser--flat">
+        <div class="cf-product-stage cf-product-stage--dark cf-product-stage--compose cf-product-stage--centerpiece">
+          <div class="cf-browser cf-browser--wide">
             <div class="cf-browser__chrome" aria-hidden="true">
               <span class="cf-browser__dot"></span>
               <span class="cf-browser__dot"></span>
@@ -343,11 +356,11 @@
               />
             </div>
           </div>
-          <div class="cf-compose-card cf-compose-card--1" aria-hidden="true">
+          <div class="cf-compose-card cf-compose-card--1 cf-glass" aria-hidden="true">
             <p class="cf-compose-card__k">الملخص التنفيذي</p>
             <p class="cf-compose-card__t">ماذا يحتاج متجرك اليوم؟</p>
           </div>
-          <div class="cf-compose-card cf-compose-card--2" aria-hidden="true">
+          <div class="cf-compose-card cf-compose-card--2 cf-glass" aria-hidden="true">
             <p class="cf-compose-card__k">طابور الانتباه</p>
             <p class="cf-compose-card__t">ما يستحق المتابعة الآن</p>
           </div>
@@ -512,7 +525,10 @@
   <footer class="cf-foot" data-lp-view="footer_reached" data-lp-section="footer">
     <div class="cf-shell">
       <div class="cf-foot__top">
-        <span class="cf-foot__brand">CartFlow</span>
+        <span class="cf-foot__brand cf-foot__brand-lockup">
+          <img src="/static/img/brand/cartflow_mark.png" alt="" width="28" height="28" />
+          CartFlow
+        </span>
         <div class="cf-foot__links">
           <a href="#capabilities">القدرات</a>
           <a href="#dashboard">لوحة المتجر</a>

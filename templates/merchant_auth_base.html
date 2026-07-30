@@ -4,12 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}CartFlow{% endblock %}</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/static/img/brand/favicon-32.png" />
+<link rel="apple-touch-icon" href="/static/img/brand/cartflow_mark.png" />
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/merchant_auth.css">
 </head>
 <body class="ma-auth-body">
   <div class="ma-auth-shell">
-    <a class="ma-auth-brand" href="/login">CartFlow</a>
+    <a class="ma-auth-brand" href="/login" aria-label="CartFlow">
+      <img src="/static/img/brand/cartflow_mark.png" alt="" width="40" height="40" />
+      <span>Cart<span>Flow</span></span>
+    </a>
     {% block content %}{% endblock %}
   </div>
 </body>
