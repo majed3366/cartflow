@@ -15,12 +15,19 @@ router = APIRouter(tags=["public"])
 def home(request: Request):
     """الصفحة العامة — واجهة تسويق CartFlow (عربي، RTL مع تخطيط مطابق للمرجع)."""
     from main import templates  # lazy — avoid circular import at module load
+    from services.deploy_build_info_v1 import resolve_deploy_git_sha
 
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         request,
         "cartflow_landing.html",
         {"request": request},
     )
+    # Prevent stale HTML from masking landing deploys (no redesign — cache hygiene only).
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["X-CartFlow-Git-Sha"] = resolve_deploy_git_sha(short=False)
+    response.headers["X-CartFlow-Landing"] = "premium-visual-upgrade-v1"
+    return response
 
 
 @router.get("/register")
