@@ -2403,3 +2403,320 @@ body.cf-lp {
 .cf-dash-highlights {
   margin-bottom: 14px;
 }
+
+/* ========== Landing V4 — Hero First (hero only) ========== */
+.cf-hero.cf-hero--v4 {
+  isolation: isolate;
+  padding: clamp(2.75rem, 7vw, 5.25rem) 0 clamp(3.25rem, 8vw, 6rem);
+  background:
+    radial-gradient(ellipse 70% 55% at 78% -8%, rgba(24, 176, 168, 0.34) 0%, transparent 58%),
+    radial-gradient(ellipse 45% 40% at 8% 100%, rgba(56, 189, 248, 0.1) 0%, transparent 55%),
+    linear-gradient(168deg, #0c3368 0%, #082048 44%, #03101f 100%);
+}
+
+.cf-hero--v4 .cf-hero__atmosphere {
+  overflow: hidden;
+  background: none;
+}
+
+.cf-hero--v4 .cf-hero__beam {
+  position: absolute;
+  inset-inline-end: -12%;
+  top: -30%;
+  width: min(72vw, 720px);
+  height: min(72vw, 720px);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(24, 176, 168, 0.38) 0%, rgba(24, 176, 168, 0.08) 38%, transparent 68%);
+  filter: blur(8px);
+  opacity: 0.95;
+}
+
+.cf-hero--v4 .cf-hero__veil {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, transparent 28%),
+    radial-gradient(ellipse 90% 50% at 50% 110%, rgba(0, 0, 0, 0.35) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.cf-hero--v4 .cf-brand-illo {
+  opacity: 0.28;
+  filter: blur(0.2px);
+  mix-blend-mode: screen;
+  inset-inline-end: -10%;
+  top: -4%;
+  width: min(52vw, 480px);
+}
+
+.cf-hero--v4 .cf-hero__grid {
+  gap: clamp(2rem, 5vw, 3.25rem);
+  align-items: center;
+}
+
+@media (min-width: 980px) {
+  .cf-hero--v4 .cf-hero__grid {
+    grid-template-columns: minmax(280px, 0.92fr) minmax(0, 1.45fr);
+    gap: clamp(2rem, 4vw, 3.5rem);
+  }
+}
+
+.cf-hero--v4 .cf-hero__copy {
+  gap: 18px;
+  max-width: 34rem;
+}
+
+.cf-hero--v4 .cf-kicker--on-dark {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #5eead4;
+  opacity: 0.95;
+}
+
+.cf-hero--v4 .cf-h1 {
+  font-size: clamp(1.85rem, 4.2vw, 2.85rem);
+  line-height: 1.18;
+  letter-spacing: -0.035em;
+  max-width: 15ch;
+  text-wrap: balance;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.12);
+}
+
+.cf-hero--v4 .cf-lead--on-dark {
+  font-size: clamp(0.98rem, 1.5vw, 1.12rem);
+  line-height: 1.7;
+  max-width: 36ch;
+  color: rgba(255, 255, 255, 0.78);
+  margin: 0;
+}
+
+.cf-hero--v4 .cf-hero__cta-row {
+  margin-top: 10px;
+  gap: 12px;
+  align-items: center;
+}
+
+.cf-hero--v4 .cf-hero__cta-primary {
+  min-height: 52px;
+  padding-inline: 26px;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 12px;
+  background: var(--cf-teal);
+  color: #fff;
+  border-color: transparent;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.22) inset,
+    0 14px 36px rgba(24, 176, 168, 0.38);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.cf-hero--v4 .cf-hero__cta-primary:hover {
+  background: var(--cf-teal-deep);
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.22) inset,
+    0 18px 42px rgba(24, 176, 168, 0.45);
+}
+
+.cf-hero--v4 .cf-hero__cta-secondary {
+  min-height: 52px;
+  padding-inline: 22px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.cf-hero--v4 .cf-hero__cta-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.34);
+}
+
+.cf-hero--v4 .cf-hero__stage {
+  position: relative;
+  min-height: 0;
+  perspective: 1600px;
+  padding-bottom: 1.25rem;
+}
+
+.cf-hero--v4 .cf-hero__glow {
+  display: block !important;
+  position: absolute;
+  inset: 18% 6% -8%;
+  border-radius: 40%;
+  background: radial-gradient(circle, rgba(24, 176, 168, 0.42) 0%, rgba(24, 176, 168, 0.08) 45%, transparent 70%);
+  filter: blur(28px);
+  opacity: 1;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.cf-hero--v4 .cf-hero__frame {
+  position: relative;
+  z-index: 1;
+  border-radius: 18px;
+  padding: 0;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow:
+    0 0 0 1px rgba(8, 32, 72, 0.25),
+    0 28px 64px rgba(0, 0, 0, 0.42),
+    0 8px 20px rgba(0, 0, 0, 0.22);
+  transform: rotateX(5deg) rotateY(-3deg) rotateZ(0.4deg);
+  transform-style: preserve-3d;
+  backdrop-filter: blur(8px);
+}
+
+.cf-hero--v4 .cf-hero__frame-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 11px 14px;
+  background: linear-gradient(180deg, rgba(10, 22, 42, 0.92) 0%, rgba(8, 18, 34, 0.88) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cf-hero--v4 .cf-hero__frame-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.cf-hero--v4 .cf-hero__frame-dot:nth-child(1) { background: #ff5f57; }
+.cf-hero--v4 .cf-hero__frame-dot:nth-child(2) { background: #febc2e; }
+.cf-hero--v4 .cf-hero__frame-dot:nth-child(3) { background: #28c840; }
+
+.cf-hero--v4 .cf-hero__frame-url {
+  margin-inline-start: 8px;
+  flex: 1;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.48);
+  letter-spacing: 0.01em;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.cf-hero--v4 .cf-product {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  transform: none;
+  background: #0b1220;
+}
+
+.cf-hero--v4 .cf-product__shot {
+  aspect-ratio: 16 / 10.1;
+  object-fit: cover;
+  object-position: top right;
+}
+
+.cf-hero--v4 .cf-insight {
+  position: absolute;
+  z-index: 3;
+  inset-inline-start: 3%;
+  bottom: 0;
+  width: min(248px, 54%);
+  padding: 14px 16px;
+  border-radius: 16px;
+  color: var(--cfvi-ink);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.8) inset,
+    0 18px 40px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(16px);
+}
+
+.cf-hero--v4 .cf-insight__label {
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+.cf-hero--v4 .cf-insight__title {
+  font-size: 14px;
+}
+
+@media (max-width: 979px) {
+  .cf-hero--v4 .cf-hero__frame {
+    transform: none;
+  }
+
+  .cf-hero--v4 .cf-h1 {
+    max-width: 18ch;
+  }
+}
+
+@media (max-width: 720px) {
+  .cf-hero.cf-hero--v4 {
+    padding: 2rem 0 2.5rem;
+  }
+
+  .cf-hero--v4 .cf-brand-illo {
+    opacity: 0.16;
+    width: min(88vw, 360px);
+    bottom: -8%;
+    top: auto;
+  }
+
+  .cf-hero--v4 .cf-h1 {
+    max-width: none;
+    font-size: clamp(1.7rem, 7.2vw, 2.15rem);
+  }
+
+  .cf-hero--v4 .cf-lead--on-dark {
+    max-width: none;
+  }
+
+  .cf-hero--v4 .cf-hero__cta-row {
+    width: 100%;
+  }
+
+  .cf-hero--v4 .cf-hero__cta-primary,
+  .cf-hero--v4 .cf-hero__cta-secondary {
+    flex: 1 1 auto;
+    justify-content: center;
+    min-height: 48px;
+  }
+
+  .cf-hero--v4 .cf-hero__stage {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 0;
+  }
+
+  .cf-hero--v4 .cf-insight {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    margin-top: 14px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+  }
+
+  .cf-hero--v4 .cf-hero__glow {
+    inset: 28% 4% 18%;
+    opacity: 0.85;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-hero--v4 .cf-hero__cta-primary {
+    transition: none;
+  }
+
+  .cf-hero--v4 .cf-hero__cta-primary:hover {
+    transform: none;
+  }
+}

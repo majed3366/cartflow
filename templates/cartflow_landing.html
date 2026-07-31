@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/cartflow_landing_v2.css?v=c13" />
+  <link rel="stylesheet" href="/static/cartflow_landing_v2.css?v=v4hero" />
 </head>
 <body class="cf-lp">
 
@@ -52,8 +52,10 @@
 
   <main>
     <!-- 1. Hero -->
-    <section class="cf-hero" id="hero" data-lp-view="hero_visible" data-lp-section="hero" aria-labelledby="hero-title">
+    <section class="cf-hero cf-hero--v4" id="hero" data-lp-view="hero_visible" data-lp-section="hero" aria-labelledby="hero-title">
       <div class="cf-hero__atmosphere" aria-hidden="true">
+        <div class="cf-hero__beam"></div>
+        <div class="cf-hero__veil"></div>
         <!-- Brand geometry derived from logo arcs / blocks — not a logo paste -->
         <svg class="cf-brand-illo" viewBox="0 0 640 480" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <defs>
@@ -81,23 +83,32 @@
           <p class="cf-lead cf-lead--on-dark">
             لا يكتفي باسترجاع السلات المتروكة — يكشف سبب التردد، ويبني معرفة من الأدلة، ويقدّم إرشادًا عمليًا لتحسين المبيعات بشكل مستدام.
           </p>
-          <div class="cf-cta-row">
+          <div class="cf-cta-row cf-hero__cta-row">
             <a href="/signup" class="cf-btn cf-btn--on-dark cf-hero__cta-primary" data-lp-cta="hero_signup">ابدأ مع متجرك</a>
-            <a href="#dashboard" class="cf-btn cf-btn--on-dark-ghost">شاهد لوحة المتجر</a>
+            <a href="#dashboard" class="cf-btn cf-btn--on-dark-ghost cf-hero__cta-secondary">شاهد لوحة المتجر</a>
           </div>
         </div>
 
         <aside class="cf-hero__stage" aria-label="لوحة المتجر في CartFlow">
-          <div class="cf-product">
-            <img
-              class="cf-product__shot"
-              src="/static/img/landing_v1/dashboard.png"
-              alt="لوحة المتجر في CartFlow — ملخص تنفيذي وبطاقات القرار"
-              width="1600"
-              height="1000"
-              loading="eager"
-              decoding="async"
-            />
+          <div class="cf-hero__glow" aria-hidden="true"></div>
+          <div class="cf-hero__frame">
+            <div class="cf-hero__frame-bar" aria-hidden="true">
+              <span class="cf-hero__frame-dot"></span>
+              <span class="cf-hero__frame-dot"></span>
+              <span class="cf-hero__frame-dot"></span>
+              <span class="cf-hero__frame-url">لوحة المتجر</span>
+            </div>
+            <div class="cf-product">
+              <img
+                class="cf-product__shot"
+                src="/static/img/landing_v1/dashboard.png"
+                alt="لوحة المتجر في CartFlow — ملخص تنفيذي وبطاقات القرار"
+                width="1600"
+                height="1000"
+                loading="eager"
+                decoding="async"
+              />
+            </div>
           </div>
           <div class="cf-insight cf-ds-card" aria-hidden="true">
             <p class="cf-insight__label">أهم قرار اليوم</p>
