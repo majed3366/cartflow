@@ -3196,3 +3196,110 @@ body.cf-lp {
     min-height: 0;
   }
 }
+
+/* ========== Landing Layout Final Adjustments V1 ========== */
+.cf-nav__brand {
+  gap: 11px;
+  align-items: center;
+  min-height: 44px;
+}
+
+.cf-nav__logo--mark {
+  height: 38px;
+  width: 38px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.cf-brand-wordmark {
+  font-size: 1.28rem;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
+
+@media (min-width: 720px) {
+  .cf-nav__logo--mark {
+    height: 40px;
+    width: 40px;
+  }
+
+  .cf-brand-wordmark {
+    font-size: 1.34rem;
+  }
+}
+
+/* Full-width bands below grids */
+.cf-feature-band {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start;
+  text-align: start !important;
+  gap: 16px !important;
+  width: 100%;
+  min-height: 0 !important;
+  padding: 18px 20px !important;
+  margin-top: 4px;
+}
+
+.cf-feature-band__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.cf-feature-band .cf-flow__title,
+.cf-feature-band h3,
+.cf-feature-band .cf-flow__body,
+.cf-feature-band p {
+  max-width: none;
+  text-align: start;
+}
+
+.cf-feature-band .cf-flow__icon,
+.cf-feature-band .cf-why__icon {
+  flex: 0 0 auto;
+}
+
+@media (min-width: 1024px) {
+  .cf-flow {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  .cf-why-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  /* Compact desktop cards — smallest practical readable size */
+  :root {
+    --cf-feature-pad: 16px 14px 16px;
+    --cf-feature-gap: 8px;
+    --cf-feature-min-h: 0;
+    --cf-feature-icon: 44px;
+    --cf-feature-icon-svg: 20px;
+    --cf-feature-title: 13.5px;
+    --cf-feature-body: 12px;
+  }
+
+  .cf-flow__step,
+  .cf-cap,
+  .cf-why,
+  .cf-faq details {
+    min-height: 0;
+    padding: 16px 14px;
+    gap: 8px;
+  }
+
+  .cf-flow__body,
+  .cf-cap__body,
+  .cf-why p {
+    max-width: 18ch;
+  }
+
+  .cf-faq details {
+    min-height: 0;
+    padding: 14px 14px 12px;
+  }
+}
