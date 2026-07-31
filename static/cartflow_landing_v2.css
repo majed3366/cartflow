@@ -2563,17 +2563,12 @@ body.cf-lp {
   z-index: 1;
   border-radius: 18px;
   padding: 0;
-  overflow: hidden;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow:
-    0 0 0 1px rgba(8, 32, 72, 0.25),
-    0 28px 64px rgba(0, 0, 0, 0.42),
-    0 8px 20px rgba(0, 0, 0, 0.22);
+  overflow: visible;
+  background: transparent;
+  border: none;
+  box-shadow: none;
   transform: rotateX(5deg) rotateY(-3deg) rotateZ(0.4deg);
   transform-style: preserve-3d;
-  backdrop-filter: blur(8px);
 }
 
 .cf-hero--v4 .cf-hero__frame-bar {
@@ -2610,17 +2605,22 @@ body.cf-lp {
 }
 
 .cf-hero--v4 .cf-product {
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow:
+    0 24px 56px rgba(0, 0, 0, 0.32),
+    0 6px 16px rgba(0, 0, 0, 0.18);
   transform: none;
-  background: #0b1220;
+  background: transparent;
 }
 
 .cf-hero--v4 .cf-product__shot {
   aspect-ratio: 16 / 10.1;
   object-fit: cover;
   object-position: top right;
+  display: block;
+  background: transparent;
 }
 
 .cf-hero--v4 .cf-insight {
@@ -2723,17 +2723,24 @@ body.cf-lp {
 
 /* ========== Landing Final Polish V1 ========== */
 .cf-nav__brand {
-  gap: 9px;
+  gap: 10px;
+  align-items: center;
 }
 
 .cf-nav__logo--mark {
-  height: 30px;
-  width: 30px;
+  height: 34px;
+  width: 34px;
   flex: 0 0 auto;
+  object-fit: contain;
+  display: block;
 }
 
 .cf-brand-wordmark {
   line-height: 1;
+  font-size: 1.2rem;
+  letter-spacing: -0.03em;
+  display: inline-flex;
+  align-items: baseline;
 }
 
 .cf-hero--v4 .cf-hero__frame-url {
@@ -2764,10 +2771,39 @@ body.cf-lp {
   opacity: 0.85;
 }
 
+.cf-foot__brand-lockup {
+  gap: 10px;
+  align-items: center;
+}
+
 .cf-foot__brand-lockup img {
-  height: 26px;
-  width: 26px;
+  height: 28px;
+  width: 28px;
   flex: 0 0 auto;
+  object-fit: contain;
+  display: block;
+}
+
+.cf-store-ui__mark {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  display: block;
+  filter: none;
+}
+
+/* ========== Landing Final Corrections V1 ========== */
+.cf-hero--v4 .cf-hero__frame-bar,
+.cf-hero--v4 .cf-hero__frame-brand,
+.cf-hero--v4 .cf-hero__frame-dot {
+  display: none !important;
+}
+
+@media (min-width: 720px) {
+  .cf-nav__logo--mark {
+    height: 36px;
+    width: 36px;
+  }
 }
 
 /* Phone illustration — brand colors + headset */
