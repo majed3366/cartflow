@@ -26,7 +26,7 @@ def home(request: Request):
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"
     response.headers["X-CartFlow-Git-Sha"] = resolve_deploy_git_sha(short=False)
-    response.headers["X-CartFlow-Landing"] = "landing-layout-final-adjustments-v1"
+    response.headers["X-CartFlow-Landing"] = "landing-compactness-corrections-v1"
     return response
 
 
