@@ -2968,3 +2968,231 @@ body.cf-lp {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
+
+/* ========== Final Landing Layout Polish ========== */
+:root {
+  --lp-max: 1280px;
+  --lp-pad: clamp(0.85rem, 2.2vw, 1.5rem);
+  --cf-feature-pad: 28px 22px 26px;
+  --cf-feature-gap: 14px;
+  --cf-feature-min-h: 236px;
+  --cf-feature-icon: 58px;
+  --cf-feature-icon-svg: 26px;
+  --cf-feature-title: 15px;
+  --cf-feature-body: 12.5px;
+  --cf-feature-radius: 16px;
+}
+
+html,
+body.cf-lp {
+  overflow-x: clip;
+  max-width: 100%;
+}
+
+body.cf-lp {
+  width: 100%;
+}
+
+.cf-shell,
+.cf-nav__in {
+  width: 100%;
+  max-width: var(--lp-max);
+  margin-inline: auto;
+  padding-inline: var(--lp-pad);
+  box-sizing: border-box;
+}
+
+.cf-nav,
+.cf-sec,
+.cf-hero,
+.cf-foot {
+  width: 100%;
+}
+
+/* Shared feature-card language = كيف يعمل CartFlow */
+.cf-flow__step,
+.cf-cap,
+.cf-why,
+.cf-faq details {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  justify-content: flex-start;
+  gap: var(--cf-feature-gap);
+  padding: var(--cf-feature-pad);
+  min-height: var(--cf-feature-min-h);
+  border-radius: var(--cf-feature-radius);
+  background: #fff;
+  border: 1px solid var(--cfvi-border);
+  box-shadow: var(--cfvi-card-shadow);
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
+.cf-flow__icon,
+.cf-cap__icon,
+.cf-why__icon {
+  width: var(--cf-feature-icon);
+  height: var(--cf-feature-icon);
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  background: linear-gradient(165deg, rgba(24, 176, 168, 0.14), rgba(8, 32, 72, 0.06));
+  color: var(--cf-teal-deep);
+  border: 1px solid rgba(24, 176, 168, 0.2);
+}
+
+.cf-flow__icon svg,
+.cf-cap__icon svg,
+.cf-why__icon svg {
+  width: var(--cf-feature-icon-svg);
+  height: var(--cf-feature-icon-svg);
+}
+
+.cf-cap:nth-child(even) .cf-cap__icon,
+.cf-ico--brand {
+  background: var(--cf-navy) !important;
+  color: #7ee7e0 !important;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.cf-cap:nth-child(odd) .cf-cap__icon,
+.cf-ico--light {
+  background: linear-gradient(165deg, rgba(24, 176, 168, 0.14), rgba(8, 32, 72, 0.06)) !important;
+  color: var(--cf-teal-deep) !important;
+}
+
+.cf-flow__title,
+.cf-cap__title,
+.cf-why h3,
+.cf-faq summary {
+  margin: 0;
+  font-size: var(--cf-feature-title);
+  font-weight: 800;
+  line-height: 1.35;
+  color: var(--cfvi-ink);
+  max-width: 18ch;
+}
+
+.cf-flow__body,
+.cf-cap__body,
+.cf-why p,
+.cf-faq p {
+  margin: 0;
+  font-size: var(--cf-feature-body);
+  font-weight: 500;
+  line-height: 1.55;
+  color: var(--cfvi-ink-soft);
+  max-width: 20ch;
+}
+
+.cf-flow__n {
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
+}
+
+/* Grids — 2-up mobile, 2 tablet, 4 desktop where appropriate */
+.cf-cap-grid,
+.cf-flow,
+.cf-why-grid,
+.cf-faq {
+  display: grid !important;
+  gap: 16px;
+  align-items: stretch;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.cf-flow__arrow {
+  display: none !important;
+}
+
+@media (min-width: 720px) {
+  .cf-cap-grid,
+  .cf-flow,
+  .cf-why-grid,
+  .cf-faq {
+    gap: 18px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .cf-cap-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .cf-flow {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .cf-why-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .cf-faq {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1200px) {
+  .cf-cap-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .cf-why-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+/* FAQ card rhythm (same shell as feature cards) */
+.cf-faq {
+  flex-direction: unset;
+}
+
+.cf-faq details {
+  padding: 22px 18px 20px;
+  min-height: 180px;
+}
+
+.cf-faq summary {
+  padding: 0;
+  max-width: 22ch;
+  cursor: pointer;
+  list-style: none;
+}
+
+.cf-faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.cf-faq details[open] summary {
+  color: var(--cfvi-primary-deep);
+  border-bottom: 1px solid var(--cfvi-border);
+  padding-bottom: 10px;
+  margin-bottom: 4px;
+}
+
+.cf-faq p {
+  padding: 0;
+  max-width: 28ch;
+}
+
+@media (max-width: 380px) {
+  .cf-cap-grid,
+  .cf-flow,
+  .cf-why-grid,
+  .cf-faq {
+    grid-template-columns: 1fr;
+  }
+
+  .cf-flow__step,
+  .cf-cap,
+  .cf-why,
+  .cf-faq details {
+    min-height: 0;
+  }
+}
