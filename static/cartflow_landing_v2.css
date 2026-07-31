@@ -176,6 +176,14 @@ body.cf-lp img {
   color: var(--cfvi-secondary);
 }
 
+.cf-brand-wordmark {
+  color: var(--cfvi-secondary);
+}
+
+.cf-brand-wordmark__flow {
+  color: var(--cfvi-primary);
+}
+
 .cf-nav__logo {
   display: block;
   height: 36px;
