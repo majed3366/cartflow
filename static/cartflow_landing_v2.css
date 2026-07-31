@@ -3651,3 +3651,79 @@ body.cf-lp {
     radial-gradient(ellipse at 12% 0%, rgba(24, 176, 168, 0.08) 0%, transparent 50%),
     linear-gradient(180deg, #eef1f6 0%, #ffffff 100%) !important;
 }
+
+/* ========== Landing Mobile Visual Correction V1 (mobile only) ========== */
+@media (max-width: 720px) {
+  /* Decision card = Dashboard main content panel width (not full mock / not over sidebar) */
+  .cf-hero--v4 .cf-hero__stage {
+    align-items: stretch;
+  }
+
+  .cf-insight,
+  .cf-hero--v4 .cf-insight {
+    position: relative !important;
+    inset: auto !important;
+    width: 78% !important;
+    max-width: none !important;
+    margin-top: 10px !important;
+    margin-inline-start: auto !important; /* RTL: leave right sidebar column clear */
+    margin-inline-end: 0 !important;
+    align-self: flex-end !important;
+    padding: 10px 12px !important;
+    border-radius: 14px !important;
+    box-sizing: border-box !important;
+    box-shadow: var(--cf-dash-card-shadow) !important;
+  }
+
+  .cf-insight__label,
+  .cf-hero--v4 .cf-insight__label {
+    font-size: 10px !important;
+  }
+
+  .cf-insight__title,
+  .cf-hero--v4 .cf-insight__title {
+    font-size: 12.5px !important;
+  }
+
+  .cf-insight__body,
+  .cf-hero--v4 .cf-insight__body {
+    font-size: 11px !important;
+    margin-bottom: 8px !important;
+  }
+
+  /* Replace pale/mint greens with navy + teal platform surfaces (not plain white) */
+  body.cf-lp {
+    background: #e6eef8 !important;
+  }
+
+  .cf-sec--mint,
+  .cf-sec--navy-soft {
+    background:
+      linear-gradient(
+        165deg,
+        rgba(8, 32, 72, 0.11) 0%,
+        rgba(24, 176, 168, 0.14) 48%,
+        #e6eef8 100%
+      ) !important;
+  }
+
+  .cf-product-stage--lite {
+    background:
+      radial-gradient(ellipse at 14% 0%, rgba(24, 176, 168, 0.18) 0%, transparent 52%),
+      linear-gradient(180deg, #d7e3f2 0%, #e6eef8 100%) !important;
+  }
+
+  .cf-store-ui__swatch {
+    background:
+      radial-gradient(circle at 30% 28%, rgba(24, 176, 168, 0.4) 0%, transparent 48%),
+      linear-gradient(145deg, #0a2d5c 0%, #082048 46%, #18B0A8 100%) !important;
+  }
+
+  .cf-ico--light,
+  .cf-why__icon,
+  .cf-flow__icon,
+  .cf-cap__icon:not(.cf-ico--brand):not(.cf-ico--light) {
+    background: rgba(24, 176, 168, 0.14) !important;
+    color: #0e8e88 !important;
+  }
+}
