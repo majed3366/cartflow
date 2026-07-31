@@ -3516,3 +3516,138 @@ body.cf-lp .cf-final a.cf-btn.cf-btn--on-dark:hover {
     padding: 14px 14px 12px;
   }
 }
+
+/* ========== Landing Final Visual Polish V1 ========== */
+:root {
+  --cf-mint: #f4f7fa; /* retire washed mint — Dashboard page bg */
+  --cf-soft-gray: #eef1f6;
+  --cf-dash-card-radius: 16px;
+  --cf-dash-card-pad: 12px 14px;
+  --cf-dash-card-shadow: 0 4px 24px rgba(11, 18, 32, 0.07);
+  --cf-dash-card-border: 1px solid rgba(11, 18, 32, 0.08);
+}
+
+/* Section backgrounds — navy/teal system, no pale green wash */
+.cf-sec--mint,
+.cf-sec--navy-soft {
+  background: var(--cf-soft-gray) !important;
+}
+
+.cf-sec--surface {
+  background: #ffffff !important;
+}
+
+body.cf-lp {
+  background: #f4f7fa !important;
+}
+
+/* Light icon containers — teal soft, not mint fill */
+.cf-ico--light {
+  background: rgba(24, 176, 168, 0.1) !important;
+  color: #0e8e88 !important;
+}
+
+.cf-ico--brand {
+  background: #082048 !important;
+  color: #7ee7e0 !important;
+}
+
+.cf-why__icon,
+.cf-flow__icon,
+.cf-cap__icon:not(.cf-ico--brand):not(.cf-ico--light) {
+  background: rgba(24, 176, 168, 0.1) !important;
+  color: #0e8e88 !important;
+}
+
+.cf-flow__n {
+  background: #082048 !important;
+  color: #fff !important;
+}
+
+.cf-kicker {
+  color: #0e8e88 !important;
+}
+
+.cf-kicker--on-dark {
+  color: rgba(126, 231, 224, 0.92) !important;
+}
+
+/* Dashboard-scale insight card (content cards, no sidebar chrome) */
+.cf-insight,
+.cf-hero--v4 .cf-insight {
+  width: min(212px, 44%) !important;
+  padding: var(--cf-dash-card-pad) !important;
+  border-radius: var(--cf-dash-card-radius) !important;
+  background: #ffffff !important;
+  border: var(--cf-dash-card-border) !important;
+  box-shadow: var(--cf-dash-card-shadow) !important;
+  backdrop-filter: none !important;
+  bottom: 8% !important;
+}
+
+.cf-insight__label,
+.cf-hero--v4 .cf-insight__label {
+  margin: 0 0 2px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em !important;
+  color: #8b95a8 !important;
+  line-height: 1.2 !important;
+}
+
+.cf-insight__title,
+.cf-hero--v4 .cf-insight__title {
+  margin: 0 0 4px !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  line-height: 1.3 !important;
+  color: #082048 !important;
+}
+
+.cf-insight__body,
+.cf-hero--v4 .cf-insight__body {
+  margin: 0 0 8px !important;
+  font-size: 11.5px !important;
+  line-height: 1.4 !important;
+  color: #3d4a63 !important;
+}
+
+.cf-insight .cf-chip {
+  min-height: 20px !important;
+  padding: 2px 8px !important;
+  font-size: 10px !important;
+  background: #e0f2fe !important;
+  color: #0369a1 !important;
+  border-radius: 999px !important;
+}
+
+@media (max-width: 720px) {
+  .cf-insight,
+  .cf-hero--v4 .cf-insight {
+    width: 100% !important;
+    margin-top: 10px !important;
+    padding: 10px 12px !important;
+    border-radius: 14px !important;
+    box-shadow: var(--cf-dash-card-shadow) !important;
+  }
+}
+
+/* Cards / feature sections — Dashboard white surface language */
+.cf-cap,
+.cf-why,
+.cf-trust,
+.cf-flow__step,
+.cf-integ__card,
+.cf-card,
+.cf-faq details,
+.cf-feature-band {
+  background: #ffffff !important;
+  border: var(--cf-dash-card-border) !important;
+  box-shadow: var(--cf-dash-card-shadow) !important;
+}
+
+.cf-product-stage--lite {
+  background:
+    radial-gradient(ellipse at 12% 0%, rgba(24, 176, 168, 0.08) 0%, transparent 50%),
+    linear-gradient(180deg, #eef1f6 0%, #ffffff 100%) !important;
+}
