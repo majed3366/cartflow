@@ -2542,7 +2542,7 @@ body.cf-lp {
 .cf-hero--v4 .cf-hero__stage {
   position: relative;
   min-height: 0;
-  perspective: 1600px;
+  perspective: none;
   padding-bottom: 1.25rem;
 }
 
@@ -2567,8 +2567,8 @@ body.cf-lp {
   background: transparent;
   border: none;
   box-shadow: none;
-  transform: rotateX(5deg) rotateY(-3deg) rotateZ(0.4deg);
-  transform-style: preserve-3d;
+  transform: none;
+  transform-style: flat;
 }
 
 .cf-hero--v4 .cf-hero__frame-bar {
@@ -2871,4 +2871,100 @@ body.cf-lp {
 
 .cf-storefront__glow {
   background: radial-gradient(circle, rgba(24, 176, 168, 0.22) 0%, transparent 70%);
+}
+
+/* ========== Landing Final Layout Corrections V1 ========== */
+.cf-hero--v4 .cf-hero__stage,
+.cf-hero__stage {
+  perspective: none !important;
+}
+
+.cf-hero--v4 .cf-hero__frame,
+.cf-hero--v4 .cf-product,
+.cf-device-desk,
+.cf-product-stage--centerpiece .cf-browser {
+  transform: none !important;
+  transform-style: flat !important;
+}
+
+.cf-brand-wordmark {
+  direction: ltr;
+  unicode-bidi: isolate;
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.cf-nav__brand,
+.cf-foot__brand-lockup {
+  unicode-bidi: isolate;
+}
+
+/* Capabilities — responsive grid */
+.cf-cap-grid {
+  display: grid !important;
+  gap: 14px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .cf-cap-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .cf-cap-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* How it works — responsive grid (steps only; arrows hidden) */
+.cf-flow {
+  display: grid !important;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 14px;
+  grid-template-columns: 1fr;
+  align-items: stretch;
+}
+
+.cf-flow__arrow {
+  display: none !important;
+}
+
+.cf-flow__step {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .cf-flow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .cf-flow {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+/* Why CartFlow — responsive grid */
+.cf-why-grid {
+  display: grid !important;
+  gap: 14px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .cf-why-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1100px) {
+  .cf-why-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
 }
