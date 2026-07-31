@@ -2720,3 +2720,119 @@ body.cf-lp {
     transform: none;
   }
 }
+
+/* ========== Landing Final Polish V1 ========== */
+.cf-nav__brand {
+  gap: 9px;
+}
+
+.cf-nav__logo--mark {
+  height: 30px;
+  width: 30px;
+  flex: 0 0 auto;
+}
+
+.cf-brand-wordmark {
+  line-height: 1;
+}
+
+.cf-hero--v4 .cf-hero__frame-url {
+  display: none;
+}
+
+.cf-hero--v4 .cf-hero__frame-brand {
+  margin-inline-start: 8px;
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.62);
+  letter-spacing: 0.01em;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.cf-hero--v4 .cf-hero__frame-brand img {
+  width: 14px;
+  height: 14px;
+  display: block;
+  filter: brightness(0) invert(1);
+  opacity: 0.85;
+}
+
+.cf-foot__brand-lockup img {
+  height: 26px;
+  width: 26px;
+  flex: 0 0 auto;
+}
+
+/* Phone illustration — brand colors + headset */
+.cf-storefront__phone {
+  background: linear-gradient(160deg, #0f2a52 0%, #082048 55%, #041428 100%);
+  border-color: rgba(24, 176, 168, 0.28);
+  box-shadow:
+    0 0 0 1px rgba(8, 32, 72, 0.35),
+    0 32px 64px rgba(8, 32, 72, 0.32);
+}
+
+.cf-storefront__notch {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.cf-store-ui__logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--cf-navy);
+}
+
+.cf-store-ui__mark {
+  width: 16px;
+  height: 16px;
+  display: block;
+  flex: 0 0 auto;
+}
+
+.cf-store-ui__cart {
+  background: rgba(24, 176, 168, 0.12);
+  color: var(--cf-teal-deep);
+}
+
+.cf-store-ui__swatch {
+  position: relative;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 30% 28%, rgba(24, 176, 168, 0.35) 0%, transparent 48%),
+    linear-gradient(145deg, #dce8f5 0%, #b7cfe6 42%, #082048 100%);
+}
+
+.cf-store-ui__headset {
+  width: 54px;
+  height: 54px;
+  color: rgba(255, 255, 255, 0.88);
+  filter: drop-shadow(0 6px 12px rgba(8, 32, 72, 0.28));
+}
+
+.cf-store-ui__price {
+  color: var(--cf-navy);
+}
+
+.cf-widget-card {
+  border-color: rgba(8, 32, 72, 0.1);
+  box-shadow: 0 16px 36px rgba(8, 32, 72, 0.12);
+}
+
+.cf-widget-choice--active {
+  border-color: rgba(24, 176, 168, 0.45);
+  background: rgba(24, 176, 168, 0.1);
+  color: var(--cf-teal-deep);
+}
+
+.cf-storefront__glow {
+  background: radial-gradient(circle, rgba(24, 176, 168, 0.22) 0%, transparent 70%);
+}

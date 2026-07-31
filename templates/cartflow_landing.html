@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/cartflow_landing_v2.css?v=v4hero" />
+  <link rel="stylesheet" href="/static/cartflow_landing_v2.css?v=finalpolish1" />
 </head>
 <body class="cf-lp">
 
@@ -78,7 +78,7 @@
       </div>
       <div class="cf-shell cf-hero__grid">
         <div class="cf-hero__copy">
-          <p class="cf-kicker cf-kicker--on-dark">منصة التجارة التشغيلية</p>
+          <p class="cf-kicker cf-kicker--on-dark">التجارة التشغيلية</p>
           <h1 class="cf-h1" id="hero-title">يفهم متجرك قبل أن يحاول استعادة السلة</h1>
           <p class="cf-lead cf-lead--on-dark">
             لا يكتفي باسترجاع السلات المتروكة — يكشف سبب التردد، ويبني معرفة من الأدلة، ويقدّم إرشادًا عمليًا لتحسين المبيعات بشكل مستدام.
@@ -89,19 +89,22 @@
           </div>
         </div>
 
-        <aside class="cf-hero__stage" aria-label="لوحة المتجر في CartFlow">
+        <aside class="cf-hero__stage" id="dashboard" aria-label="لوحة المتجر في CartFlow">
           <div class="cf-hero__glow" aria-hidden="true"></div>
           <div class="cf-hero__frame">
             <div class="cf-hero__frame-bar" aria-hidden="true">
               <span class="cf-hero__frame-dot"></span>
               <span class="cf-hero__frame-dot"></span>
               <span class="cf-hero__frame-dot"></span>
-              <span class="cf-hero__frame-url">لوحة المتجر</span>
+              <span class="cf-hero__frame-brand">
+                <img src="/static/img/brand/concept_13_mark.svg?v=fp1" alt="" width="14" height="14" />
+                <span>لوحة المتجر</span>
+              </span>
             </div>
             <div class="cf-product">
               <img
                 class="cf-product__shot"
-                src="/static/img/landing_v1/dashboard.png"
+                src="/static/img/landing_v1/dashboard.png?v=fp1"
                 alt="لوحة المتجر في CartFlow — ملخص تنفيذي وبطاقات القرار"
                 width="1600"
                 height="1000"
@@ -300,11 +303,21 @@
               <div class="cf-storefront__notch" aria-hidden="true"></div>
               <div class="cf-storefront__screen">
                 <div class="cf-store-ui__bar">
-                  <span class="cf-store-ui__logo">متجرك</span>
+                  <span class="cf-store-ui__logo">
+                    <img class="cf-store-ui__mark" src="/static/img/brand/concept_13_mark.svg?v=fp1" alt="" width="16" height="16" />
+                    متجرك
+                  </span>
                   <span class="cf-store-ui__cart" aria-hidden="true">١</span>
                 </div>
                 <div class="cf-store-ui__product">
-                  <div class="cf-store-ui__swatch" aria-hidden="true"></div>
+                  <div class="cf-store-ui__swatch" aria-hidden="true">
+                    <svg class="cf-store-ui__headset" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+                      <path d="M12 26v-4a12 12 0 0 1 24 0v4" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+                      <rect x="8" y="24" width="8" height="12" rx="3" fill="currentColor"/>
+                      <rect x="32" y="24" width="8" height="12" rx="3" fill="currentColor"/>
+                      <path d="M36 36v2a4 4 0 0 1-4 4h-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                    </svg>
+                  </div>
                   <p class="cf-store-ui__name">TrueSound Pro</p>
                   <p class="cf-store-ui__meta">في السلة · لم يُكمل الشراء بعد</p>
                   <p class="cf-store-ui__price">٤٤٩ ر.س</p>
@@ -324,45 +337,7 @@
       </div>
     </section>
 
-    <!-- 6. Dashboard -->
-    <section class="cf-sec" id="dashboard" data-lp-view="dashboard_section_viewed" data-lp-section="dashboard" aria-labelledby="dashboard-title">
-      <div class="cf-shell">
-        <div class="cf-stage-head cf-stage-head--center">
-          <p class="cf-kicker">لوحة المتجر</p>
-          <h2 class="cf-h2" id="dashboard-title">ما تراه كل يوم كتاجر</h2>
-          <p class="cf-lead">ملخص تنفيذي، طابور انتباه، طبقة معرفة، وتوصيات عندما يكفي الدليل — في واجهة واحدة.</p>
-        </div>
-        <div class="cf-dash-highlights" aria-label="أبرز ما في اللوحة">
-          <span class="cf-pill">الملخص التنفيذي</span>
-          <span class="cf-pill">طابور الانتباه</span>
-          <span class="cf-pill">طبقة المعرفة</span>
-          <span class="cf-pill">التوصيات</span>
-        </div>
-        <div class="cf-product-stage cf-product-stage--lite cf-product-stage--compose">
-          <div class="cf-product cf-product--wide">
-            <img
-              class="cf-product__shot"
-              src="/static/img/landing_v1/dashboard.png"
-              alt="لوحة المتجر في CartFlow — نظرة تشغيلية يومية"
-              width="1600"
-              height="1000"
-              loading="lazy"
-              decoding="async"
-            />
-          </div>
-          <div class="cf-compose-card cf-compose-card--1 cf-ds-card" aria-hidden="true">
-            <p class="cf-compose-card__k">الملخص التنفيذي</p>
-            <p class="cf-compose-card__t">ماذا يحتاج متجرك اليوم؟</p>
-          </div>
-          <div class="cf-compose-card cf-compose-card--2 cf-ds-card" aria-hidden="true">
-            <p class="cf-compose-card__k">طابور الانتباه</p>
-            <p class="cf-compose-card__t">ما يستحق المتابعة الآن</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 7. Knowledge Layer -->
+    <!-- 6. Knowledge Layer -->
     <section class="cf-sec cf-sec--tight" id="knowledge" data-lp-view="knowledge_section_viewed" data-lp-section="knowledge" aria-labelledby="knowledge-title">
       <div class="cf-shell">
         <div class="cf-knowledge">
