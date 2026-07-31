@@ -561,6 +561,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-07-31 | **Auth identity (CF mark icon-only):** Merchant auth header (`merchant_auth_base`) drops legacy `cartflow_mark.png` + CartFlow wordmark; uses landing CF mark `/static/img/brand/cartflow_cf_mark.png?v=fc1` icon-only (~40px) on login/signup/forgot/reset. |
 | 2026-07-31 | **Landing Final Visual Polish V1:** Decision card scaled to Dashboard content-card language; replace washed mint section backgrounds with navy/teal Dashboard palette; consistent card/icon accents. Header `landing-final-visual-polish-v1`. |
 | 2026-07-31 | **Landing Compactness Corrections V1:** Production polish only — compact mobile insight card; remove Hero secondary CTA; denser desktop cards/grids; horizontal «قرارات تشغيلية مستدامة» band; fix final white CTA contrast; shorter section spacing. Header `landing-compactness-corrections-v1`. |
 | 2026-07-31 | **Landing Concept 13 identity (production):** Replaced header mark, CartFlow wordmark lockup (Cart navy / Flow teal), favicon/app mark, and footer logo with Concept 13 Frame Open (`static/img/brand/concept_13_mark.svg` + favicons); no hero/layout/copy/section changes; header `landing-concept-13-identity-v1`. |

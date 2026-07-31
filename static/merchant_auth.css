@@ -32,22 +32,15 @@
 .ma-auth-brand {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  font-size: 20px;
-  font-weight: 800;
-  color: var(--cf-navy);
+  justify-content: center;
   text-decoration: none;
-  margin-bottom: 18px;
+  margin-bottom: 20px;
 }
 
 .ma-auth-brand img {
   height: 40px;
-  width: auto;
+  width: 40px;
   display: block;
-}
-
-.ma-auth-brand span span {
-  color: var(--cf-teal);
 }
 
 .ma-auth-card {
