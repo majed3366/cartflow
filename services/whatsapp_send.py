@@ -740,7 +740,10 @@ def whatsapp_send_truth_context(wa_result: Any) -> Dict[str, str]:
     sid = str(wa.get("sid") or "").strip()
     ok = wa.get("ok") is True
     err = str(wa.get("error") or "").strip()
-    if sid:
+    explicit_provider = str(wa.get("provider") or "").strip().lower()
+    if explicit_provider in ("twilio", "meta", "mock", "none"):
+        provider = explicit_provider
+    elif sid:
         provider = "twilio"
     elif ok:
         provider = "mock"

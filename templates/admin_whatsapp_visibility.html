@@ -84,6 +84,97 @@
   </dl>
 </section>
 
+<section class="admin-card px-6 py-5" id="awm-meta-templates-section">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h3 class="text-lg font-semibold text-slate-900">Meta Template Operations</h3>
+      <p class="mt-1 text-sm text-slate-600">
+        قراءة حالة قوالب Meta ومقارنة عقد الاسترجاع المعتمد —
+        <code dir="ltr">cartflow_cart_reminder_ar_v1</code>.
+        لا يغيّر مزوّد الإرسال ولا يرسل رسائل استرجاع.
+      </p>
+    </div>
+    <button type="button" id="awm-tpl-refresh" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
+      تحديث الحالة
+    </button>
+  </div>
+  <p id="awm-tpl-status" class="mt-2 text-xs text-slate-500">جاري التحميل…</p>
+  <dl class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+    <div>
+      <dt class="text-slate-500">Meta connection</dt>
+      <dd id="awm-tpl-meta-conn" class="mt-1 font-medium text-slate-900">—</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">WABA ID (masked)</dt>
+      <dd id="awm-tpl-waba" class="mt-1 font-medium text-slate-900" dir="ltr">—</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">Required template</dt>
+      <dd id="awm-tpl-name" class="mt-1 font-medium text-slate-900" dir="ltr">cartflow_cart_reminder_ar_v1</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">Local contract</dt>
+      <dd id="awm-tpl-local" class="mt-1 font-medium text-slate-900">MARKETING · ar · BODY</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">Meta status</dt>
+      <dd id="awm-tpl-meta-status" class="mt-1 font-medium text-slate-900">—</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">Category</dt>
+      <dd id="awm-tpl-category" class="mt-1 font-medium text-slate-900">—</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">Language</dt>
+      <dd id="awm-tpl-language" class="mt-1 font-medium text-slate-900">—</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">Comparison</dt>
+      <dd id="awm-tpl-comparison" class="mt-1 font-medium text-slate-900">—</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">Last checked</dt>
+      <dd id="awm-tpl-checked" class="mt-1 font-medium text-slate-900">—</dd>
+    </div>
+  </dl>
+  <p id="awm-tpl-error" class="mt-3 text-sm text-rose-700">—</p>
+  <div class="mt-4 flex flex-wrap items-center gap-3">
+    <button
+      type="button"
+      id="awm-tpl-create"
+      class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-40"
+      disabled
+    >
+      Create Template
+    </button>
+    <span class="text-xs text-slate-500">يتطلب تأكيدًا صريحًا. لا يرسل رسالة ولا يبدّل Twilio.</span>
+  </div>
+  <div id="awm-tpl-confirm-modal" class="mt-4 hidden rounded-lg border border-amber-200 bg-amber-50 px-4 py-4 text-sm">
+    <p class="font-semibold text-amber-900">تأكيد إنشاء القالب في Meta</p>
+    <p class="mt-2 text-amber-900">
+      سيتم إنشاء القالب
+      <code dir="ltr" id="awm-tpl-confirm-name">cartflow_cart_reminder_ar_v1</code>
+      بفئة
+      <strong id="awm-tpl-confirm-category">MARKETING</strong>
+      ولغة
+      <strong>ar</strong>.
+      لن يُحذف أو يُستبدل أي قالب موجود.
+    </p>
+    <div class="mt-3 flex flex-wrap gap-2">
+      <button type="button" id="awm-tpl-confirm-yes" class="rounded-lg bg-amber-700 px-3 py-2 text-white hover:bg-amber-800">
+        تأكيد الإنشاء
+      </button>
+      <button type="button" id="awm-tpl-confirm-no" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-700">
+        إلغاء
+      </button>
+    </div>
+  </div>
+  <details class="mt-4 text-sm text-slate-600">
+    <summary class="cursor-pointer font-medium text-slate-800">نص العقد المحلي (BODY)</summary>
+    <pre id="awm-tpl-body-preview" class="mt-2 overflow-x-auto whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-xs" dir="rtl"></pre>
+  </details>
+</section>
+
 <section class="admin-card px-6 py-5">
   <h3 class="text-lg font-semibold text-slate-900">Template Registry (canonical)</h3>
   <p id="awt-registry-status" class="mt-2 text-xs text-slate-500">جاري التحميل…</p>
@@ -159,4 +250,5 @@
 </section>
 
 <script src="/static/admin_whatsapp_visibility.js"></script>
+<script src="/static/admin_meta_templates_v1.js"></script>
 {% endblock %}

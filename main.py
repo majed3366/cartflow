@@ -273,6 +273,7 @@ from services.product_data.product_data_line_snapshots_hook_v1 import (  # noqa:
 )
 from routes.cart_recovery_reason import router as cart_recovery_reason_router  # noqa: E402
 from routes.admin_operations import router as admin_operations_router  # noqa: E402
+from routes.admin_meta_templates_v1 import router as admin_meta_templates_router  # noqa: E402
 import routes.admin_ops  # noqa: F401,E402 — registers /admin/ops/* on admin router
 import routes.operational_control_admin  # noqa: F401,E402 — /admin/control targeted controls v1
 import routes.admin_investigations  # noqa: F401,E402 — /admin/investigations (read-only)
@@ -310,6 +311,7 @@ app.include_router(cart_workspace_v1_router)
 app.include_router(whatsapp_delivery_webhook_router)
 app.include_router(meta_whatsapp_webhook_router)
 app.include_router(admin_operations_router)
+app.include_router(admin_meta_templates_router)
 app.include_router(cartflow_router)
 app.include_router(knowledge_router)
 app.include_router(daily_brief_router)
@@ -332,6 +334,9 @@ from services.whatsapp_send import (  # noqa: E402
     recovery_uses_real_whatsapp,
     send_whatsapp,
     should_send_whatsapp,
+)
+from services.whatsapp_provider import (  # noqa: E402
+    send_whatsapp_message as send_recovery_whatsapp_via_provider,
 )
 from schema_widget import ensure_store_widget_schema
 from services.cartflow_whatsapp_mock import REASON_CHOICES as CF_REASON_CHOICES
@@ -9122,16 +9127,26 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         (str(cart_id or "") or "-")[:64],
     )
     try:
-        wa_result = send_whatsapp(
+        # Provider-neutral send boundary (production default remains Twilio).
+        _store_display_name = None
+        if store_obj is not None:
+            _raw_sdn = getattr(store_obj, "widget_display_name", None)
+            if isinstance(_raw_sdn, str) and _raw_sdn.strip():
+                _store_display_name = _raw_sdn.strip()[:255]
+        wa_result = send_recovery_whatsapp_via_provider(
             phone,
             text,
-            reason_tag=reason_tag,
-            wa_trace_path=__file__,
-            wa_trace_session_id=session_id,
-            wa_trace_store_slug=store_slug,
-            wa_trace_last_activity=last_activity,
-            wa_trace_recovery_delay_minutes=gate_delay_seconds / 60.0,
-            wa_trace_delay_passed=True,
+            {
+                "reason_tag": reason_tag,
+                "recovery_key": recovery_key,
+                "store_slug": store_slug,
+                "store_display_name": _store_display_name,
+                "session_id": session_id,
+                "wa_trace_path": __file__,
+                "wa_trace_last_activity": last_activity,
+                "wa_trace_recovery_delay_minutes": gate_delay_seconds / 60.0,
+                "wa_trace_delay_passed": True,
+            },
         )
     finally:
         release_outbound_whatsapp_inflight(recovery_key, step_num)
