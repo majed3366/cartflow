@@ -94,6 +94,7 @@ def _parse_inbound_message(msg: dict[str, Any]) -> Optional[dict[str, Any]]:
         return None
 
     text_body = ""
+    button_payload = ""
     if msg_type == "text":
         text_obj = msg.get("text")
         if isinstance(text_obj, dict):
@@ -101,19 +102,26 @@ def _parse_inbound_message(msg: dict[str, Any]) -> Optional[dict[str, Any]]:
     elif msg_type == "button":
         btn = msg.get("button")
         if isinstance(btn, dict):
-            text_body = str(btn.get("text") or btn.get("payload") or "").strip()
+            text_body = str(btn.get("text") or "").strip()
+            button_payload = str(btn.get("payload") or "").strip()
+            if not text_body and button_payload:
+                text_body = button_payload
     elif msg_type == "interactive":
         inter = msg.get("interactive")
         if isinstance(inter, dict):
             br = inter.get("button_reply")
             if isinstance(br, dict):
-                text_body = str(br.get("title") or br.get("id") or "").strip()
+                text_body = str(br.get("title") or "").strip()
+                button_payload = str(br.get("id") or "").strip()
+                if not text_body and button_payload:
+                    text_body = button_payload
 
     return {
         "from": from_id or None,
         "message_id": message_id or None,
         "type": msg_type or None,
         "text": text_body or None,
+        "button_payload": button_payload or None,
         "timestamp": msg.get("timestamp"),
         "received_at": _utc_now_iso(),
     }
@@ -220,6 +228,18 @@ def process_webhook_payload(payload: dict[str, Any]) -> dict[str, Any]:
                         _safe_json_preview(inbound.get("text"), 120),
                     )
                     _append_event("inbound_message", inbound)
+                    try:
+                        from services.meta_recovery_template_inbound_v1 import (
+                            handle_meta_inbound_message,
+                        )
+
+                        handle_meta_inbound_message(inbound)
+                    except Exception as inbound_exc:  # noqa: BLE001
+                        log.warning(
+                            "[CF META WA WEBHOOK] conversation_inbound_failed: %s",
+                            type(inbound_exc).__name__,
+                            exc_info=True,
+                        )
 
     return {
         "ok": True,

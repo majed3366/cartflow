@@ -50,7 +50,7 @@
     var lc = data.local_contract || {};
     setText(
       "awm-tpl-local",
-      (lc.category || "MARKETING") + " · " + (lc.language || "ar") + " · BODY"
+      (lc.category || "MARKETING") + " · " + (lc.language || "ar") + " · BODY + BUTTONS"
     );
     setText("awm-tpl-meta-status", data.status);
     setText("awm-tpl-category", data.category);

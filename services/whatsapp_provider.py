@@ -27,10 +27,45 @@ logger = logging.getLogger(__name__)
 
 _VALID_PROVIDERS = frozenset({PROVIDER_TWILIO, PROVIDER_META})
 
-# First controlled-test Meta recovery template (Contract V1).
+# First controlled-test Meta recovery template (Contract V1 — BODY + buttons).
 META_RECOVERY_TEMPLATE_CARTFLOW_V1 = "cartflow_cart_reminder_ar_v1"
 META_RECOVERY_TEMPLATE_V1_BODY_PARAM_COUNT = 1
 STORE_DISPLAY_NAME_MAX_LEN = 60
+CHECKOUT_URL_MAX_LEN = 2000
+
+
+def normalize_checkout_url(raw: Any) -> Optional[str]:
+    """Accept http(s) checkout/restore URLs only."""
+    if raw is None:
+        return None
+    if not isinstance(raw, str):
+        return None
+    u = raw.strip()
+    if not u or len(u) > CHECKOUT_URL_MAX_LEN:
+        return None
+    lowered = u.lower()
+    if not (lowered.startswith("https://") or lowered.startswith("http://")):
+        return None
+    if any(ch in u for ch in ("\n", "\r", "\t", " ")):
+        return None
+    return u
+
+
+def resolve_store_name_from_context(context: Mapping[str, Any]) -> Optional[str]:
+    """Runtime store_name (alias: store_display_name)."""
+    for key in ("store_name", "store_display_name"):
+        n = normalize_store_display_name(context.get(key))
+        if n:
+            return n
+    return resolve_store_display_name_from_context(context)
+
+
+def resolve_checkout_url_from_context(context: Mapping[str, Any]) -> Optional[str]:
+    for key in ("checkout_url", "cart_url", "restore_url"):
+        u = normalize_checkout_url(context.get(key))
+        if u:
+            return u
+    return None
 
 
 def resolve_whatsapp_provider(explicit: Optional[str] = None) -> str:
@@ -199,7 +234,7 @@ def resolve_meta_template_parameters(
 
     Order:
       A. Explicit context['template_parameters'] (valid normalized list)
-      B/C. Governed store display name (context → Store.widget_display_name → slug)
+      B/C. Governed store_name (store_name → store_display_name → Store → slug)
       D. Fail with meta_store_display_name_missing
 
     Never uses the full recovery message.
@@ -213,7 +248,7 @@ def resolve_meta_template_parameters(
                 return None, "meta_template_parameter_count_invalid"
         return explicit, None
 
-    display = resolve_store_display_name_from_context(context)
+    display = resolve_store_name_from_context(context)
     if not display:
         return None, "meta_store_display_name_missing"
     params = [display]
@@ -221,6 +256,38 @@ def resolve_meta_template_parameters(
         if len(params) != META_RECOVERY_TEMPLATE_V1_BODY_PARAM_COUNT:
             return None, "meta_template_parameter_count_invalid"
     return params, None
+
+
+def resolve_meta_template_button_url_param(
+    context: Mapping[str, Any],
+    *,
+    template_name: Optional[str],
+) -> tuple[Optional[str], Optional[str]]:
+    """
+    Resolve URL-button dynamic suffix for recovery template.
+    Requires checkout_url for cartflow_cart_reminder_ar_v1.
+    Mints signed checkout redirect token (opaque; destination not plain in token).
+    """
+    name = (template_name or "").strip()
+    if name and name != META_RECOVERY_TEMPLATE_CARTFLOW_V1:
+        return None, None
+    explicit = str(context.get("template_button_url_param") or "").strip()
+    if explicit:
+        return explicit[:1800], None
+    checkout = resolve_checkout_url_from_context(context)
+    if not checkout:
+        return None, "meta_checkout_url_missing"
+    from services.meta_recovery_template_contract_v1 import TEMPLATE_NAME
+    from services.recovery_checkout_redirect_v1 import mint_token_from_send_context
+
+    token = mint_token_from_send_context(
+        context,
+        checkout_url=checkout,
+        template_name=name or TEMPLATE_NAME,
+    )
+    if not token:
+        return None, "meta_checkout_url_invalid"
+    return token, None
 
 
 def _proven_session_window_allows_freeform(
@@ -370,7 +437,10 @@ def _build_meta_request(
 
     template_parameters: list[str] = []
     param_error: Optional[str] = None
-    store_display_name = resolve_store_display_name_from_context(context)
+    button_url_param: Optional[str] = None
+    button_error: Optional[str] = None
+    store_display_name = resolve_store_name_from_context(context)
+    checkout_url = resolve_checkout_url_from_context(context)
     if mode == MODE_TEMPLATE:
         template_parameters, param_error = resolve_meta_template_parameters(
             context,
@@ -378,6 +448,12 @@ def _build_meta_request(
         )
         if template_parameters and not store_display_name:
             store_display_name = template_parameters[0]
+        button_url_param, button_error = resolve_meta_template_button_url_param(
+            context,
+            template_name=template_name,
+        )
+        if param_error is None and button_error:
+            param_error = button_error
 
     # body_text retained for session_text / Twilio-compat; NEVER copied into template params
     req = WhatsAppProviderRequest(
@@ -388,9 +464,12 @@ def _build_meta_request(
         template_name=template_name,
         template_language=template_language,
         template_parameters=list(template_parameters or []),
+        checkout_url=checkout_url,
+        template_button_url_param=button_url_param,
         recovery_key=str(context.get("recovery_key") or "")[:120] or None,
         store_slug=str(context.get("store_slug") or "")[:255] or None,
         store_display_name=store_display_name,
+        store_name=store_display_name,
         idempotency_key=str(context.get("idempotency_key") or "")[:256] or None,
         reason_tag=str(context.get("reason_tag") or "")[:64] or None,
         session_id=str(context.get("session_id") or "")[:512] or None,
@@ -571,8 +650,12 @@ __all__ = [
     "resolve_whatsapp_provider",
     "send_whatsapp_message",
     "normalize_store_display_name",
+    "normalize_checkout_url",
     "resolve_store_display_name_from_context",
+    "resolve_store_name_from_context",
+    "resolve_checkout_url_from_context",
     "resolve_meta_template_parameters",
+    "resolve_meta_template_button_url_param",
     "META_RECOVERY_TEMPLATE_CARTFLOW_V1",
     "PROVIDER_META",
     "PROVIDER_TWILIO",

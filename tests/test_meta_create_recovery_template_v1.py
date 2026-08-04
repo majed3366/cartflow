@@ -26,15 +26,20 @@ from tools.meta.create_recovery_template_v1 import (
 
 
 class ContractTests(unittest.TestCase):
-    def test_payload_body_only_no_header(self) -> None:
+    def test_payload_body_and_buttons(self) -> None:
         payload = build_template_payload()
         errors = validate_template_contract(payload)
         self.assertEqual(errors, [])
         types = [c["type"] for c in payload["components"]]
-        self.assertEqual(types, ["BODY"])
+        self.assertEqual(types, ["BODY", "BUTTONS"])
         self.assertNotIn("HEADER", types)
         self.assertNotIn("FOOTER", types)
-        self.assertNotIn("BUTTONS", types)
+        buttons = payload["components"][1]["buttons"]
+        self.assertEqual(buttons[0]["type"], "URL")
+        self.assertEqual(buttons[0]["text"], "إكمال الشراء")
+        self.assertIn("{{1}}", buttons[0]["url"])
+        self.assertEqual(buttons[1]["type"], "QUICK_REPLY")
+        self.assertEqual(buttons[1]["text"], "خدمة العملاء")
 
     def test_exact_name_language_category(self) -> None:
         payload = build_template_payload()
@@ -206,6 +211,20 @@ class ExecutePathTests(unittest.TestCase):
                         "status": "APPROVED",
                         "components": [
                             {"type": "BODY", "text": TEMPLATE_BODY_TEXT},
+                            {
+                                "type": "BUTTONS",
+                                "buttons": [
+                                    {
+                                        "type": "URL",
+                                        "text": "إكمال الشراء",
+                                        "url": "https://smartreplyai.net/wa/checkout/{{1}}",
+                                    },
+                                    {
+                                        "type": "QUICK_REPLY",
+                                        "text": "خدمة العملاء",
+                                    },
+                                ],
+                            },
                         ],
                     }
                 ]
@@ -276,12 +295,9 @@ class ExecutePathTests(unittest.TestCase):
         self.assertNotIn("/messages", url.replace("/message_templates", ""))
 
     def test_compare_helper(self) -> None:
-        same = {
-            "name": TEMPLATE_NAME,
-            "language": TEMPLATE_LANGUAGE,
-            "category": TEMPLATE_CATEGORY,
-            "components": [{"type": "BODY", "text": TEMPLATE_BODY_TEXT}],
-        }
+        from services.meta_recovery_template_contract_v1 import build_template_payload
+
+        same = build_template_payload()
         self.assertEqual(compare_remote_to_contract(same), "SAME")
         diff = dict(same)
         diff["components"] = [{"type": "BODY", "text": "other {{1}}"}]

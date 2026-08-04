@@ -51,20 +51,47 @@ def build_meta_template_payload(
     template_name: str,
     template_language: str,
     template_parameters: list[str],
+    template_button_url_param: Optional[str] = None,
+    quick_reply_payload: Optional[str] = None,
 ) -> dict[str, Any]:
     """Construct Meta template message body (no secrets)."""
     template: dict[str, Any] = {
         "name": template_name,
         "language": {"code": template_language},
     }
+    components: list[dict[str, Any]] = []
     params = [str(p) for p in (template_parameters or []) if str(p).strip() != ""]
     if params:
-        template["components"] = [
+        components.append(
             {
                 "type": "body",
                 "parameters": [{"type": "text", "text": p} for p in params],
             }
-        ]
+        )
+    url_param = (template_button_url_param or "").strip()
+    if url_param:
+        # Button index 0 = URL (إكمال الشراء) on approved contract
+        components.append(
+            {
+                "type": "button",
+                "sub_type": "url",
+                "index": "0",
+                "parameters": [{"type": "text", "text": url_param}],
+            }
+        )
+    qr_payload = (quick_reply_payload or "").strip()
+    if qr_payload:
+        # Button index 1 = QUICK_REPLY (خدمة العملاء)
+        components.append(
+            {
+                "type": "button",
+                "sub_type": "quick_reply",
+                "index": "1",
+                "parameters": [{"type": "payload", "payload": qr_payload}],
+            }
+        )
+    if components:
+        template["components"] = components
     return {
         "messaging_product": "whatsapp",
         "to": to_digits,
@@ -174,11 +201,25 @@ def send_via_meta(
                 error_message_safe="meta_template_name_missing",
                 message_mode=mode,
             ).to_legacy_wa_dict()
+        from services.meta_recovery_template_contract_v1 import (  # noqa: PLC0415
+            BUTTON_QUICK_REPLY_PAYLOAD,
+            TEMPLATE_NAME as RECOVERY_TPL,
+            encode_checkout_url_button_param,
+        )
+
+        url_param = (req.template_button_url_param or "").strip() or None
+        if not url_param and (req.checkout_url or "").strip():
+            url_param = encode_checkout_url_button_param(str(req.checkout_url))
+        qr_payload = None
+        if name == RECOVERY_TPL:
+            qr_payload = BUTTON_QUICK_REPLY_PAYLOAD
         payload = build_meta_template_payload(
             to_digits=to_digits,
             template_name=name,
             template_language=lang,
             template_parameters=list(req.template_parameters or []),
+            template_button_url_param=url_param,
+            quick_reply_payload=qr_payload,
         )
     else:
         body = (req.body_text or "").strip()

@@ -39,13 +39,18 @@ def _env_ok() -> dict[str, str]:
 
 
 def _body_only_remote(*, status: str = "APPROVED", text=None) -> dict:
+    from services.meta_recovery_template_contract_v1 import build_template_payload
+
+    payload = build_template_payload()
+    if text is not None:
+        payload["components"][0]["text"] = text
     return {
         "id": "tpl_remote_1",
         "name": TEMPLATE_NAME,
         "language": TEMPLATE_LANGUAGE,
         "category": TEMPLATE_CATEGORY,
         "status": status,
-        "components": [{"type": "BODY", "text": text or TEMPLATE_BODY_TEXT}],
+        "components": payload["components"],
     }
 
 
@@ -226,8 +231,11 @@ class DuplicateSafetyTests(unittest.TestCase):
         self.assertEqual(out["status"], STATUS_PENDING)
         mock_post.assert_called_once()
         payload = mock_post.call_args[1]["json"]
+        from services.meta_recovery_template_contract_v1 import build_template_payload
+
+        self.assertEqual(payload, build_template_payload())
         types = [c["type"] for c in payload["components"]]
-        self.assertEqual(types, ["BODY"])
+        self.assertEqual(types, ["BODY", "BUTTONS"])
         self.assertNotIn("HEADER", types)
         self.assertEqual(payload["components"][0]["text"], TEMPLATE_BODY_TEXT)
         self.assertEqual(
@@ -251,7 +259,7 @@ class DuplicateSafetyTests(unittest.TestCase):
 
 
 class ContractAndProviderTests(unittest.TestCase):
-    def test_payload_body_only_exact_arabic(self) -> None:
+    def test_payload_body_and_buttons_exact_arabic(self) -> None:
         payload = build_template_payload()
         self.assertEqual(validate_template_contract(payload), [])
         self.assertEqual(payload["components"][0]["text"], TEMPLATE_BODY_TEXT)
@@ -260,7 +268,7 @@ class ContractAndProviderTests(unittest.TestCase):
             [[TEMPLATE_EXAMPLE_VALUE]],
         )
         types = [c["type"] for c in payload["components"]]
-        self.assertEqual(types, ["BODY"])
+        self.assertEqual(types, ["BODY", "BUTTONS"])
         self.assertNotIn("HEADER", types)
 
     def test_production_provider_default_twilio(self) -> None:

@@ -138,19 +138,31 @@ class MetaTemplatePayloadMappingTests(unittest.TestCase):
                 "recovery_key": "rk-map",
                 "store_display_name": "متجر الأمان",
                 "store_slug": "aman-store",
+                "checkout_url": "https://merchant.com/cart/restore/abc123",
             },
         )
         self.assertTrue(out["ok"])
         payload = mock_post.call_args[1]["json"]
-        expected = build_meta_template_payload(
-            to_digits="966500000100",
-            template_name=META_RECOVERY_TEMPLATE_CARTFLOW_V1,
-            template_language="ar",
-            template_parameters=["متجر الأمان"],
+        from services.meta_recovery_template_contract_v1 import BUTTON_QUICK_REPLY_PAYLOAD
+        from services.recovery_checkout_redirect_v1 import resolve_checkout_redirect_token
+
+        comps = payload["template"]["components"]
+        self.assertEqual(comps[0]["type"], "body")
+        self.assertEqual(comps[0]["parameters"][0]["text"], "متجر الأمان")
+        self.assertEqual(comps[1]["type"], "button")
+        self.assertEqual(comps[1]["sub_type"], "url")
+        url_param = comps[1]["parameters"][0]["text"]
+        resolved = resolve_checkout_redirect_token(url_param, check_archived=False)
+        self.assertTrue(resolved.ok)
+        assert resolved.claims is not None
+        self.assertEqual(
+            resolved.claims.destination_url,
+            "https://merchant.com/cart/restore/abc123",
         )
-        self.assertEqual(payload, expected)
+        self.assertEqual(comps[2]["sub_type"], "quick_reply")
+        self.assertEqual(comps[2]["parameters"][0]["payload"], BUTTON_QUICK_REPLY_PAYLOAD)
         self.assertNotEqual(
-            payload["template"]["components"][0]["parameters"][0]["text"],
+            comps[0]["parameters"][0]["text"],
             recovery_copy,
         )
         self.assertNotIn(recovery_copy, str(payload))
@@ -182,7 +194,11 @@ class MetaTemplatePayloadMappingTests(unittest.TestCase):
         send_whatsapp_message(
             "+966500000101",
             msg,
-            {"store_display_name": "متجر", "template_parameters": ["متجر"]},
+            {
+                "store_display_name": "متجر",
+                "template_parameters": ["متجر"],
+                "checkout_url": "https://merchant.com/cart/restore/abc123",
+            },
         )
         payload = mock_post.call_args[1]["json"]
         self.assertEqual(
@@ -336,7 +352,10 @@ class MetaTemplatePayloadMappingTests(unittest.TestCase):
         out = send_whatsapp_message(
             "+966500000106",
             "body",
-            {"store_display_name": "متجر"},
+            {
+                "store_display_name": "متجر",
+                "checkout_url": "https://merchant.com/cart/restore/abc123",
+            },
         )
         self.assertNotIn("tok-secret-NEVER", str(out))
         self.assertNotIn("Bearer ", str(out))

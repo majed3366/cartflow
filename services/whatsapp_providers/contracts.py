@@ -23,9 +23,13 @@ class WhatsAppProviderRequest:
     template_name: Optional[str] = None
     template_language: Optional[str] = None
     template_parameters: list[str] = field(default_factory=list)
+    # URL button dynamic suffix (Meta {{1}} on checkout URL button)
+    checkout_url: Optional[str] = None
+    template_button_url_param: Optional[str] = None
     recovery_key: Optional[str] = None
     store_slug: Optional[str] = None
     store_display_name: Optional[str] = None
+    store_name: Optional[str] = None
     idempotency_key: Optional[str] = None
     reason_tag: Optional[str] = None
     session_id: Optional[str] = None

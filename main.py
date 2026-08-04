@@ -274,6 +274,7 @@ from services.product_data.product_data_line_snapshots_hook_v1 import (  # noqa:
 from routes.cart_recovery_reason import router as cart_recovery_reason_router  # noqa: E402
 from routes.admin_operations import router as admin_operations_router  # noqa: E402
 from routes.admin_meta_templates_v1 import router as admin_meta_templates_router  # noqa: E402
+from routes.wa_checkout_redirect_v1 import router as wa_checkout_redirect_router  # noqa: E402
 import routes.admin_ops  # noqa: F401,E402 — registers /admin/ops/* on admin router
 import routes.operational_control_admin  # noqa: F401,E402 — /admin/control targeted controls v1
 import routes.admin_investigations  # noqa: F401,E402 — /admin/investigations (read-only)
@@ -312,6 +313,7 @@ app.include_router(whatsapp_delivery_webhook_router)
 app.include_router(meta_whatsapp_webhook_router)
 app.include_router(admin_operations_router)
 app.include_router(admin_meta_templates_router)
+app.include_router(wa_checkout_redirect_router)
 app.include_router(cartflow_router)
 app.include_router(knowledge_router)
 app.include_router(daily_brief_router)
@@ -9133,6 +9135,32 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             _raw_sdn = getattr(store_obj, "widget_display_name", None)
             if isinstance(_raw_sdn, str) and _raw_sdn.strip():
                 _store_display_name = _raw_sdn.strip()[:255]
+        _checkout_url = None
+        if isinstance(recovery_context, dict):
+            for _ck in ("checkout_url", "cart_url"):
+                _cv = recovery_context.get(_ck)
+                if isinstance(_cv, str) and _cv.strip():
+                    _checkout_url = _cv.strip()[:2000]
+                    break
+        if not _checkout_url and isinstance(_send_message_context, dict):
+            for _ck in ("checkout_url", "cart_url"):
+                _cv = _send_message_context.get(_ck)
+                if isinstance(_cv, str) and _cv.strip():
+                    _checkout_url = _cv.strip()[:2000]
+                    break
+        if not _checkout_url and cart_id:
+            try:
+                _ac_url = (
+                    db.session.query(AbandonedCart)
+                    .filter(AbandonedCart.zid_cart_id == str(cart_id).strip())
+                    .first()
+                )
+                if _ac_url is not None:
+                    _cu = getattr(_ac_url, "cart_url", None)
+                    if isinstance(_cu, str) and _cu.strip():
+                        _checkout_url = _cu.strip()[:2000]
+            except Exception:  # noqa: BLE001
+                pass
         wa_result = send_recovery_whatsapp_via_provider(
             phone,
             text,
@@ -9140,7 +9168,9 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
                 "reason_tag": reason_tag,
                 "recovery_key": recovery_key,
                 "store_slug": store_slug,
+                "store_name": _store_display_name,
                 "store_display_name": _store_display_name,
+                "checkout_url": _checkout_url,
                 "session_id": session_id,
                 "wa_trace_path": __file__,
                 "wa_trace_last_activity": last_activity,
