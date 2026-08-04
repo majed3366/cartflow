@@ -326,9 +326,13 @@ def dev_meta_pilot_preflight() -> Any:
         COMPARISON_SAME,
         STATUS_APPROVED,
         TEMPLATE_NAME,
+        build_template_payload,
+        canonicalize_remote_template,
         local_contract_summary,
     )
     from services.meta_template_operations_v1 import (  # noqa: PLC0415
+        _graph_get_templates,
+        resolve_meta_template_credentials,
         get_recovery_template_status,
     )
     from services.whatsapp_provider import resolve_whatsapp_provider  # noqa: PLC0415
@@ -352,6 +356,66 @@ def dev_meta_pilot_preflight() -> Any:
     )
     remote_status = str(status.get("status") or "")
     comparison = str(status.get("comparison") or "")
+    remote_canon = None
+    expected_canon = None
+    mismatch_hints: list[str] = []
+    try:
+        creds = resolve_meta_template_credentials()
+        if creds.get("access_token") and creds.get("waba_id"):
+            fetched = _graph_get_templates(
+                waba_id=str(creds["waba_id"]),
+                access_token=str(creds["access_token"]),
+                name=TEMPLATE_NAME,
+            )
+            templates = fetched.get("templates") or []
+            if templates:
+                remote_canon = canonicalize_remote_template(templates[0])
+                expected_canon = canonicalize_remote_template(build_template_payload())
+                if remote_canon.get("name") != expected_canon.get("name"):
+                    mismatch_hints.append("name")
+                if remote_canon.get("language") != expected_canon.get("language"):
+                    mismatch_hints.append("language")
+                if remote_canon.get("category") != expected_canon.get("category"):
+                    mismatch_hints.append("category")
+                r_comps = remote_canon.get("components") or []
+                e_comps = expected_canon.get("components") or []
+                r_types = [str(c.get("type") or "").upper() for c in r_comps if isinstance(c, dict)]
+                e_types = [str(c.get("type") or "").upper() for c in e_comps if isinstance(c, dict)]
+                if r_types != e_types:
+                    mismatch_hints.append(f"component_types:{','.join(r_types)}!={','.join(e_types)}")
+                r_body = next(
+                    (c for c in r_comps if isinstance(c, dict) and str(c.get("type") or "").upper() == "BODY"),
+                    None,
+                )
+                e_body = next(
+                    (c for c in e_comps if isinstance(c, dict) and str(c.get("type") or "").upper() == "BODY"),
+                    None,
+                )
+                if r_body and e_body and str(r_body.get("text") or "") != str(e_body.get("text") or ""):
+                    mismatch_hints.append("body_text")
+                r_btns = next(
+                    (
+                        c.get("buttons")
+                        for c in r_comps
+                        if isinstance(c, dict) and str(c.get("type") or "").upper() == "BUTTONS"
+                    ),
+                    None,
+                )
+                e_btns = next(
+                    (
+                        c.get("buttons")
+                        for c in e_comps
+                        if isinstance(c, dict) and str(c.get("type") or "").upper() == "BUTTONS"
+                    ),
+                    None,
+                )
+                if not r_btns:
+                    mismatch_hints.append("buttons_missing_remote")
+                elif r_btns != e_btns:
+                    mismatch_hints.append("buttons")
+    except Exception as exc:  # noqa: BLE001
+        mismatch_hints.append(f"diagnose_error:{type(exc).__name__}")
+
     contract_ok = bool(
         provider == "meta"
         and (template_env == TEMPLATE_NAME or not template_env)
@@ -377,6 +441,9 @@ def dev_meta_pilot_preflight() -> Any:
             "template_status_raw": status.get("status_raw"),
             "comparison": comparison or None,
             "template_id": status.get("template_id"),
+            "mismatch_hints": mismatch_hints,
+            "remote_canon": remote_canon,
+            "expected_canon": expected_canon,
             "local_contract": {
                 "template_name": local.get("template_name"),
                 "language": local.get("language"),
