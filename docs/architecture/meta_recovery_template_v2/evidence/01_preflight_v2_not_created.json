@@ -1,0 +1,50 @@
+{
+  "ok": false,
+  "pilot_gate": "meta_production_pilot_v1",
+  "provider": "meta",
+  "provider_is_meta": true,
+  "template_name_env": "cartflow_cart_reminder_ar_v1",
+  "template_name_expected": "cartflow_cart_reminder_ar_v2",
+  "template_exists": false,
+  "template_status": "NOT_CREATED",
+  "template_status_raw": null,
+  "comparison": "NOT_AVAILABLE",
+  "template_id": null,
+  "mismatch_hints": [],
+  "remote_canon": null,
+  "expected_canon": null,
+  "local_contract": {
+    "template_name": "cartflow_cart_reminder_ar_v2",
+    "language": "ar",
+    "body_has_store_param": true,
+    "runtime_fields": [
+      "store_display_name",
+      "checkout_redirect_token"
+    ],
+    "buttons": [
+      {
+        "type": "URL",
+        "text": "إكمال الشراء",
+        "url_template": "https://smartreplyai.net/wa/checkout/{{1}}",
+        "example_suffix": "demo-checkout-token",
+        "runtime_field": "checkout_redirect_token"
+      },
+      {
+        "type": "QUICK_REPLY",
+        "text": "خدمة العملاء",
+        "payload": "cartflow_customer_support_v1",
+        "runtime_flag": "customer_requested_human_support"
+      }
+    ]
+  },
+  "meta_ops": {
+    "ok": true,
+    "meta_connection_ok": true,
+    "error_code": null,
+    "error_subcode": null,
+    "error_message_safe": null,
+    "trace_id": "974dfcc9533e4b8c",
+    "checked_at": "2026-08-04T21:34:47.248770+00:00"
+  },
+  "abort_reason": "template_validation_failed"
+}
