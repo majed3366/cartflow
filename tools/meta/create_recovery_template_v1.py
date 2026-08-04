@@ -350,7 +350,7 @@ def run_create_recovery_template(
 def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Create CartFlow Meta recovery template cartflow_cart_reminder_ar_v1. "
+            "Create CartFlow Meta recovery template cartflow_cart_reminder_ar_v2. "
             "Default is dry-run; pass --execute to submit."
         )
     )

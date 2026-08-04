@@ -43,7 +43,7 @@ class ContractTests(unittest.TestCase):
 
     def test_exact_name_language_category(self) -> None:
         payload = build_template_payload()
-        self.assertEqual(payload["name"], "cartflow_cart_reminder_ar_v1")
+        self.assertEqual(payload["name"], "cartflow_cart_reminder_ar_v2")
         self.assertEqual(payload["language"], "ar")
         self.assertEqual(payload["category"], "MARKETING")
 

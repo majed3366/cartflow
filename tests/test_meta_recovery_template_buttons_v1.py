@@ -51,8 +51,11 @@ class ContractButtonsTests(unittest.TestCase):
         self.assertEqual(decode_checkout_url_button_param(token or ""), TEMPLATE_CHECKOUT_URL_EXAMPLE)
 
     def test_same_template_name(self) -> None:
-        self.assertEqual(TEMPLATE_NAME, "cartflow_cart_reminder_ar_v1")
-        self.assertEqual(META_RECOVERY_TEMPLATE_CARTFLOW_V1, TEMPLATE_NAME)
+        self.assertEqual(TEMPLATE_NAME, "cartflow_cart_reminder_ar_v2")
+        from services.whatsapp_provider import META_RECOVERY_TEMPLATE_CARTFLOW_V2
+
+        self.assertEqual(META_RECOVERY_TEMPLATE_CARTFLOW_V2, TEMPLATE_NAME)
+        self.assertEqual(META_RECOVERY_TEMPLATE_CARTFLOW_V1, "cartflow_cart_reminder_ar_v1")
 
 
 class RuntimeParamsTests(unittest.TestCase):

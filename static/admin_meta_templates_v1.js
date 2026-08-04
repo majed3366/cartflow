@@ -46,7 +46,7 @@
             : "غير مؤكد";
     setText("awm-tpl-meta-conn", conn);
     setText("awm-tpl-waba", data.waba_masked);
-    setText("awm-tpl-name", data.template_name || "cartflow_cart_reminder_ar_v1");
+    setText("awm-tpl-name", data.template_name || "cartflow_cart_reminder_ar_v2");
     var lc = data.local_contract || {};
     setText(
       "awm-tpl-local",
@@ -118,7 +118,7 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         confirm: true,
-        template_name: "cartflow_cart_reminder_ar_v1",
+        template_name: "cartflow_cart_reminder_ar_v2",
       }),
     })
       .then(function (r) {

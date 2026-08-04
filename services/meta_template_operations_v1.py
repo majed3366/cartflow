@@ -26,6 +26,7 @@ from services.meta_recovery_template_contract_v1 import (
     TEMPLATE_CATEGORY,
     TEMPLATE_LANGUAGE,
     TEMPLATE_NAME,
+    TEMPLATE_NAME_V1,
     build_template_payload,
     compare_remote_to_contract,
     local_contract_summary,
@@ -473,6 +474,8 @@ def get_recovery_template_status(
                 "meta_connection_ok": True,
                 "exists": False,
                 "can_create": True,
+                "historical_template_name_v1": TEMPLATE_NAME_V1,
+                "preserves_v1": True,
             },
         )
         _log_op(
@@ -508,6 +511,8 @@ def get_recovery_template_status(
             "exists": True,
             "can_create": False,
             "status_raw": str(remote.get("status") or ""),
+            "historical_template_name_v1": TEMPLATE_NAME_V1,
+            "preserves_v1": True,
         },
     )
     _log_op(
@@ -554,6 +559,16 @@ def create_recovery_template(
             error_code="confirmation_required",
             error_message_safe="confirmation_required",
             comparison=COMPARISON_NOT_AVAILABLE,
+        )
+    if name == TEMPLATE_NAME_V1:
+        return _base_result(
+            ok=False,
+            operation="create_recovery_template",
+            trace_id=trace_id,
+            error_code="v1_immutable",
+            error_message_safe="v1_immutable_never_overwrite_or_delete",
+            comparison=COMPARISON_NOT_AVAILABLE,
+            extra={"historical_template_name_v1": TEMPLATE_NAME_V1},
         )
     if name != TEMPLATE_NAME:
         return _base_result(

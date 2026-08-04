@@ -29,7 +29,17 @@ _VALID_PROVIDERS = frozenset({PROVIDER_TWILIO, PROVIDER_META})
 
 # First controlled-test Meta recovery template (Contract V1 — BODY + buttons).
 META_RECOVERY_TEMPLATE_CARTFLOW_V1 = "cartflow_cart_reminder_ar_v1"
+META_RECOVERY_TEMPLATE_CARTFLOW_V2 = "cartflow_cart_reminder_ar_v2"
 META_RECOVERY_TEMPLATE_V1_BODY_PARAM_COUNT = 1
+META_RECOVERY_TEMPLATE_V2_BODY_PARAM_COUNT = 1
+# Templates that use store_display_name body {{1}} (+ v2 URL button token).
+_META_RECOVERY_STORE_NAME_TEMPLATES = frozenset(
+    {
+        META_RECOVERY_TEMPLATE_CARTFLOW_V1,
+        META_RECOVERY_TEMPLATE_CARTFLOW_V2,
+    }
+)
+_META_RECOVERY_BUTTON_TEMPLATES = frozenset({META_RECOVERY_TEMPLATE_CARTFLOW_V2})
 STORE_DISPLAY_NAME_MAX_LEN = 60
 CHECKOUT_URL_MAX_LEN = 2000
 
@@ -243,8 +253,13 @@ def resolve_meta_template_parameters(
     name = (template_name or "").strip()
     explicit = _normalize_explicit_template_parameters(context.get("template_parameters"))
     if explicit is not None:
-        if name == META_RECOVERY_TEMPLATE_CARTFLOW_V1:
-            if len(explicit) != META_RECOVERY_TEMPLATE_V1_BODY_PARAM_COUNT:
+        if name in _META_RECOVERY_STORE_NAME_TEMPLATES:
+            expected = (
+                META_RECOVERY_TEMPLATE_V2_BODY_PARAM_COUNT
+                if name == META_RECOVERY_TEMPLATE_CARTFLOW_V2
+                else META_RECOVERY_TEMPLATE_V1_BODY_PARAM_COUNT
+            )
+            if len(explicit) != expected:
                 return None, "meta_template_parameter_count_invalid"
         return explicit, None
 
@@ -252,8 +267,13 @@ def resolve_meta_template_parameters(
     if not display:
         return None, "meta_store_display_name_missing"
     params = [display]
-    if name == META_RECOVERY_TEMPLATE_CARTFLOW_V1:
-        if len(params) != META_RECOVERY_TEMPLATE_V1_BODY_PARAM_COUNT:
+    if name in _META_RECOVERY_STORE_NAME_TEMPLATES:
+        expected = (
+            META_RECOVERY_TEMPLATE_V2_BODY_PARAM_COUNT
+            if name == META_RECOVERY_TEMPLATE_CARTFLOW_V2
+            else META_RECOVERY_TEMPLATE_V1_BODY_PARAM_COUNT
+        )
+        if len(params) != expected:
             return None, "meta_template_parameter_count_invalid"
     return params, None
 
@@ -264,12 +284,11 @@ def resolve_meta_template_button_url_param(
     template_name: Optional[str],
 ) -> tuple[Optional[str], Optional[str]]:
     """
-    Resolve URL-button dynamic suffix for recovery template.
-    Requires checkout_url for cartflow_cart_reminder_ar_v1.
-    Mints signed checkout redirect token (opaque; destination not plain in token).
+    Resolve URL-button dynamic suffix for recovery template V2.
+    Requires checkout_url; mints opaque checkout redirect token (not raw URL).
     """
     name = (template_name or "").strip()
-    if name and name != META_RECOVERY_TEMPLATE_CARTFLOW_V1:
+    if name and name not in _META_RECOVERY_BUTTON_TEMPLATES:
         return None, None
     explicit = str(context.get("template_button_url_param") or "").strip()
     if explicit:
@@ -657,6 +676,7 @@ __all__ = [
     "resolve_meta_template_parameters",
     "resolve_meta_template_button_url_param",
     "META_RECOVERY_TEMPLATE_CARTFLOW_V1",
+    "META_RECOVERY_TEMPLATE_CARTFLOW_V2",
     "PROVIDER_META",
     "PROVIDER_TWILIO",
     "MODE_TEMPLATE",

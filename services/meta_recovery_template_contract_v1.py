@@ -1,14 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-Canonical Meta recovery template contract (CartFlow V1).
+Canonical Meta recovery template contract (CartFlow V2).
 
 Single source of truth for:
 - tools/meta/create_recovery_template_v1.py
 - services/meta_template_operations_v1.py
-- Meta send-time parameter mapping (store_name + checkout_url)
+- Meta send-time parameter mapping (store_name + checkout redirect token)
 
-Template name remains cartflow_cart_reminder_ar_v1 (no new template name).
-BODY text is frozen. BUTTONS: URL checkout + QUICK_REPLY support.
+Canonical create/compare target: cartflow_cart_reminder_ar_v2
+(BODY + URL checkout button + QUICK_REPLY support).
+
+Historical v1 name cartflow_cart_reminder_ar_v1 remains APPROVED in Meta
+(BODY-only). Ops must never overwrite or delete v1.
 """
 from __future__ import annotations
 
@@ -20,7 +23,11 @@ from urllib.parse import urlparse
 
 from services.admin_whatsapp_meta_status_v1 import META_GRAPH_BASE, META_GRAPH_VERSION
 
-TEMPLATE_NAME = "cartflow_cart_reminder_ar_v1"
+# Historical BODY-only template — still active in Meta; never mutate/delete via ops.
+TEMPLATE_NAME_V1 = "cartflow_cart_reminder_ar_v1"
+
+# Canonical required recovery contract (V2).
+TEMPLATE_NAME = "cartflow_cart_reminder_ar_v2"
 TEMPLATE_LANGUAGE = "ar"
 TEMPLATE_CATEGORY = "MARKETING"
 TEMPLATE_BODY_TEXT = (
@@ -28,7 +35,7 @@ TEMPLATE_BODY_TEXT = (
     "لاحظنا أن لديك طلبًا لم يكتمل في {{1}}.\n\n"
     "سلتك ما زالت محفوظة، ويمكنك الرجوع لإكمال الطلب متى ما ناسبك."
 )
-# Body {{1}} — store display name (runtime: store_name)
+# Body {{1}} — store display name (runtime: store_name / store_display_name)
 TEMPLATE_STORE_NAME_EXAMPLE = "متجر الأمان"
 # Backward-compatible alias
 TEMPLATE_EXAMPLE_VALUE = TEMPLATE_STORE_NAME_EXAMPLE
@@ -37,8 +44,10 @@ BUTTON_URL_TEXT = "إكمال الشراء"
 BUTTON_QUICK_REPLY_TEXT = "خدمة العملاء"
 # Stable payload echoed on Meta button webhooks (send-time optional; match on text too)
 BUTTON_QUICK_REPLY_PAYLOAD = "cartflow_customer_support_v1"
+# Meta create payload URL-button example suffix (not a live checkout URL)
+TEMPLATE_URL_BUTTON_EXAMPLE_SUFFIX = "demo-checkout-token"
 
-# Runtime semantic example for checkout_url (feeds URL button)
+# Runtime semantic example for checkout_url (feeds redirect token minting)
 TEMPLATE_CHECKOUT_URL_EXAMPLE = "https://merchant.com/cart/restore/abc123"
 
 COMPARISON_SAME = "SAME"
@@ -58,6 +67,7 @@ HTTP_TIMEOUT_SECONDS = 30.0
 
 # Body has one variable; URL button has one variable (separate Meta namespace).
 META_RECOVERY_TEMPLATE_V1_BODY_PARAM_COUNT = 1
+META_RECOVERY_TEMPLATE_V2_BODY_PARAM_COUNT = 1
 
 
 def public_base_url() -> str:
@@ -108,20 +118,6 @@ def decode_checkout_url_button_param(token: str) -> Optional[str]:
 
 
 def build_buttons_component() -> dict[str, Any]:
-    from services.recovery_checkout_redirect_v1 import mint_checkout_redirect_token
-
-    example_suffix = (
-        mint_checkout_redirect_token(
-            checkout_url=TEMPLATE_CHECKOUT_URL_EXAMPLE,
-            recovery_key="example_recovery",
-            store_slug="example-store",
-            template_name=TEMPLATE_NAME,
-            provider="meta",
-            now_ts=1_700_000_000,
-        )
-        or encode_checkout_url_button_param(TEMPLATE_CHECKOUT_URL_EXAMPLE)
-        or "demo"
-    )
     return {
         "type": "BUTTONS",
         "buttons": [
@@ -129,7 +125,7 @@ def build_buttons_component() -> dict[str, Any]:
                 "type": "URL",
                 "text": BUTTON_URL_TEXT,
                 "url": button_checkout_url_with_variable(),
-                "example": [example_suffix],
+                "example": [TEMPLATE_URL_BUTTON_EXAMPLE_SUFFIX],
             },
             {
                 "type": "QUICK_REPLY",
@@ -140,7 +136,7 @@ def build_buttons_component() -> dict[str, Any]:
 
 
 def build_template_payload() -> dict[str, Any]:
-    """Approved template create payload: BODY + BUTTONS (URL + QUICK_REPLY)."""
+    """Approved V2 template create payload: BODY + BUTTONS (URL + QUICK_REPLY)."""
     return {
         "name": TEMPLATE_NAME,
         "language": TEMPLATE_LANGUAGE,
@@ -163,18 +159,22 @@ def local_contract_summary() -> dict[str, Any]:
     payload = build_template_payload()
     return {
         "template_name": TEMPLATE_NAME,
+        "historical_template_name_v1": TEMPLATE_NAME_V1,
+        "preserves_v1": True,
         "language": TEMPLATE_LANGUAGE,
         "category": TEMPLATE_CATEGORY,
         "body_text": TEMPLATE_BODY_TEXT,
         "example_value": TEMPLATE_STORE_NAME_EXAMPLE,
         "store_name_example": TEMPLATE_STORE_NAME_EXAMPLE,
         "checkout_url_example": TEMPLATE_CHECKOUT_URL_EXAMPLE,
+        "url_button_example_suffix": TEMPLATE_URL_BUTTON_EXAMPLE_SUFFIX,
         "buttons": [
             {
                 "type": "URL",
                 "text": BUTTON_URL_TEXT,
                 "url_template": button_checkout_url_with_variable(),
-                "runtime_field": "checkout_url",
+                "example_suffix": TEMPLATE_URL_BUTTON_EXAMPLE_SUFFIX,
+                "runtime_field": "checkout_redirect_token",
             },
             {
                 "type": "QUICK_REPLY",
@@ -183,9 +183,17 @@ def local_contract_summary() -> dict[str, Any]:
                 "runtime_flag": "customer_requested_human_support",
             },
         ],
-        "runtime_fields": ["store_name", "checkout_url"],
+        "runtime_fields": ["store_display_name", "checkout_redirect_token"],
         "components": payload["components"],
-        "forbidden": ["HEADER", "FOOTER", "media", "discounts", "dynamic_full_recovery_text"],
+        "forbidden": [
+            "HEADER",
+            "FOOTER",
+            "media",
+            "discounts",
+            "dynamic_full_recovery_text",
+            "overwrite_v1",
+            "delete_v1",
+        ],
         "graph_version": META_GRAPH_VERSION,
     }
 
@@ -198,6 +206,8 @@ def validate_template_contract(payload: dict[str, Any]) -> list[str]:
 
     if payload.get("name") != TEMPLATE_NAME:
         errors.append("template_name_mismatch")
+    if payload.get("name") == TEMPLATE_NAME_V1:
+        errors.append("v1_name_forbidden_for_v2_contract")
     if payload.get("language") != TEMPLATE_LANGUAGE:
         errors.append("language_mismatch")
     if payload.get("category") != TEMPLATE_CATEGORY:
@@ -278,6 +288,13 @@ def validate_template_contract(payload: dict[str, Any]) -> list[str]:
         errors.append("button1_url_mismatch")
     if "{{1}}" not in str(b0.get("url") or ""):
         errors.append("button1_url_missing_variable")
+    url_ex = b0.get("example")
+    if not (
+        isinstance(url_ex, list)
+        and len(url_ex) == 1
+        and str(url_ex[0]) == TEMPLATE_URL_BUTTON_EXAMPLE_SUFFIX
+    ):
+        errors.append("button1_example_suffix_mismatch")
 
     if str(b1.get("type") or "").upper() != "QUICK_REPLY":
         errors.append("button2_must_be_quick_reply")
@@ -328,7 +345,7 @@ def canonicalize_remote_template(remote: dict[str, Any]) -> dict[str, Any]:
 
 
 def compare_remote_to_contract(remote: dict[str, Any]) -> str:
-    """Return SAME / DIFFERENT for an existing template vs approved contract."""
+    """Return SAME / DIFFERENT for an existing template vs approved V2 contract."""
     canon = canonicalize_remote_template(remote)
     expected = build_template_payload()
     if canon.get("name") != expected["name"]:
@@ -418,16 +435,19 @@ def is_customer_support_quick_reply(*, text: str = "", payload: str = "") -> boo
 
 __all__ = [
     "TEMPLATE_NAME",
+    "TEMPLATE_NAME_V1",
     "TEMPLATE_LANGUAGE",
     "TEMPLATE_CATEGORY",
     "TEMPLATE_BODY_TEXT",
     "TEMPLATE_EXAMPLE_VALUE",
     "TEMPLATE_STORE_NAME_EXAMPLE",
     "TEMPLATE_CHECKOUT_URL_EXAMPLE",
+    "TEMPLATE_URL_BUTTON_EXAMPLE_SUFFIX",
     "BUTTON_URL_TEXT",
     "BUTTON_QUICK_REPLY_TEXT",
     "BUTTON_QUICK_REPLY_PAYLOAD",
     "META_RECOVERY_TEMPLATE_V1_BODY_PARAM_COUNT",
+    "META_RECOVERY_TEMPLATE_V2_BODY_PARAM_COUNT",
     "COMPARISON_SAME",
     "COMPARISON_DIFFERENT",
     "COMPARISON_NOT_AVAILABLE",
