@@ -383,6 +383,7 @@ def normalize_meta_template_status(raw: Optional[str]) -> str:
         "PENDING": STATUS_PENDING,
         "IN_APPEAL": STATUS_PENDING,
         "APPROVED": STATUS_APPROVED,
+        "ACTIVE": STATUS_APPROVED,
         "REJECTED": STATUS_REJECTED,
         "PAUSED": STATUS_PAUSED,
         "DISABLED": STATUS_DISABLED,

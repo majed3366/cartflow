@@ -1041,6 +1041,8 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/recovery-restart-survival-verify",
         "/dev/recovery-health",
         "/dev/recovery-truth",
+        "/dev/meta-pilot-preflight",
+        "/dev/meta-pilot-evidence",
         "/dev/store-template-debug",
         "/dev/template-truth",
         "/dev/store-identity-runtime-truth",

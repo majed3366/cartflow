@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from typing import Any, Optional
@@ -14,7 +15,15 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from extensions import db
 from json_response import j
-from models import AbandonedCart, CartRecoveryLog, CartRecoveryReason, RecoverySchedule, Store
+from models import (
+    AbandonedCart,
+    CartRecoveryLog,
+    CartRecoveryReason,
+    RecoveryEvent,
+    RecoverySchedule,
+    Store,
+    WhatsAppDeliveryTruth,
+)
 from services.ai_message_builder import build_abandoned_cart_message
 from services.whatsapp_recovery import build_whatsapp_recovery_message
 from services.whatsapp_send import should_send_whatsapp
@@ -296,6 +305,309 @@ def dev_recovery_truth(recovery_key: str = Query("", max_length=512)) -> Any:
                 "recovery_key": rk,
                 "timeline": timeline,
                 "persistence": persistence,
+            }
+        )
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        return j({"ok": False, "error": str(exc)}, 500)
+
+
+@router.get("/dev/meta-pilot-preflight")
+def dev_meta_pilot_preflight() -> Any:
+    """
+    Read-only Meta Production Pilot gate.
+
+    Resolves WHATSAPP_PROVIDER + Graph recovery-template contract status.
+    Does not send messages. Does not switch provider.
+    """
+    from services.meta_recovery_template_contract_v1 import (  # noqa: PLC0415
+        BUTTON_QUICK_REPLY_TEXT,
+        BUTTON_URL_TEXT,
+        COMPARISON_SAME,
+        STATUS_APPROVED,
+        TEMPLATE_NAME,
+        local_contract_summary,
+    )
+    from services.meta_template_operations_v1 import (  # noqa: PLC0415
+        get_recovery_template_status,
+    )
+    from services.whatsapp_provider import resolve_whatsapp_provider  # noqa: PLC0415
+
+    provider = resolve_whatsapp_provider()
+    template_env = (os.getenv("WHATSAPP_META_RECOVERY_TEMPLATE_NAME") or "").strip()
+    status = get_recovery_template_status()
+    local = local_contract_summary()
+    buttons = local.get("buttons") if isinstance(local.get("buttons"), list) else []
+    url_btn = next(
+        (b for b in buttons if isinstance(b, dict) and str(b.get("type") or "").upper() == "URL"),
+        None,
+    )
+    qr_btn = next(
+        (
+            b
+            for b in buttons
+            if isinstance(b, dict) and str(b.get("type") or "").upper() == "QUICK_REPLY"
+        ),
+        None,
+    )
+    remote_status = str(status.get("status") or "")
+    comparison = str(status.get("comparison") or "")
+    contract_ok = bool(
+        provider == "meta"
+        and (template_env == TEMPLATE_NAME or not template_env)
+        and status.get("exists") is True
+        and remote_status == STATUS_APPROVED
+        and comparison == COMPARISON_SAME
+        and isinstance(url_btn, dict)
+        and str(url_btn.get("text") or "") == BUTTON_URL_TEXT
+        and isinstance(qr_btn, dict)
+        and str(qr_btn.get("text") or "") == BUTTON_QUICK_REPLY_TEXT
+        and "store_name" in (local.get("runtime_fields") or [])
+    )
+    return j(
+        {
+            "ok": contract_ok,
+            "pilot_gate": "meta_production_pilot_v1",
+            "provider": provider,
+            "provider_is_meta": provider == "meta",
+            "template_name_env": template_env or None,
+            "template_name_expected": TEMPLATE_NAME,
+            "template_exists": bool(status.get("exists")),
+            "template_status": remote_status or None,
+            "template_status_raw": status.get("status_raw"),
+            "comparison": comparison or None,
+            "template_id": status.get("template_id"),
+            "local_contract": {
+                "template_name": local.get("template_name"),
+                "language": local.get("language"),
+                "body_has_store_param": "{{1}}" in str(local.get("body_text") or ""),
+                "runtime_fields": local.get("runtime_fields"),
+                "buttons": buttons,
+            },
+            "meta_ops": {
+                "ok": status.get("ok"),
+                "meta_connection_ok": status.get("meta_connection_ok"),
+                "error_code": status.get("error_code"),
+                "error_subcode": status.get("error_subcode"),
+                "error_message_safe": status.get("error_message_safe"),
+                "trace_id": status.get("trace_id"),
+                "checked_at": status.get("checked_at"),
+            },
+            "abort_reason": None
+            if contract_ok
+            else (
+                "provider_not_meta"
+                if provider != "meta"
+                else "template_validation_failed"
+            ),
+        }
+    )
+
+
+@router.get("/dev/meta-pilot-evidence")
+def dev_meta_pilot_evidence(
+    recovery_key: str = Query("", max_length=512),
+) -> Any:
+    """
+    Read-only Meta pilot evidence for one recovery_key.
+    Phone numbers are masked. Does not send messages.
+    """
+    import main as _main  # noqa: PLC0415
+
+    rk = (recovery_key or "").strip()[:512]
+    if not rk:
+        return j({"ok": False, "error": "recovery_key_required"}, 400)
+
+    def _iso(dt: Optional[datetime]) -> Optional[str]:
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc).isoformat()
+        return dt.astimezone(timezone.utc).isoformat()
+
+    def _mask_phone(raw: Any) -> Optional[str]:
+        digits = "".join(c for c in str(raw or "") if c.isdigit())
+        if not digits:
+            return None
+        if len(digits) <= 4:
+            return "****"
+        return f"{digits[:3]}…{digits[-2:]}"
+
+    try:
+        _main._ensure_cartflow_api_db_warmed()
+        from services.recovery_truth_timeline_v1 import (  # noqa: PLC0415
+            get_recovery_truth_timeline,
+        )
+        from services.whatsapp_provider import resolve_whatsapp_provider  # noqa: PLC0415
+
+        logs = (
+            db.session.query(CartRecoveryLog)
+            .filter(CartRecoveryLog.recovery_key == rk)
+            .order_by(CartRecoveryLog.id.asc())
+            .limit(20)
+            .all()
+        )
+        if not logs:
+            # Fallback: store:cart_id style — match cart_id suffix
+            parts = rk.split(":", 1)
+            if len(parts) == 2 and parts[1]:
+                logs = (
+                    db.session.query(CartRecoveryLog)
+                    .filter(
+                        CartRecoveryLog.store_slug == parts[0],
+                        or_(
+                            CartRecoveryLog.cart_id == parts[1],
+                            CartRecoveryLog.session_id == parts[1],
+                        ),
+                    )
+                    .order_by(CartRecoveryLog.id.asc())
+                    .limit(20)
+                    .all()
+                )
+
+        sched = (
+            db.session.query(RecoverySchedule)
+            .filter(RecoverySchedule.recovery_key == rk)
+            .order_by(RecoverySchedule.id.asc())
+            .limit(20)
+            .all()
+        )
+        if not sched and ":" in rk:
+            store_slug, rest = rk.split(":", 1)
+            sched = (
+                db.session.query(RecoverySchedule)
+                .filter(
+                    RecoverySchedule.store_slug == store_slug,
+                    or_(
+                        RecoverySchedule.cart_id == rest,
+                        RecoverySchedule.session_id == rest,
+                    ),
+                )
+                .order_by(RecoverySchedule.id.asc())
+                .limit(20)
+                .all()
+            )
+
+        delivery_rows: list[Any] = []
+        sids = [
+            str(getattr(lg, "provider_message_sid", "") or "").strip()
+            for lg in logs
+            if str(getattr(lg, "provider_message_sid", "") or "").strip()
+        ]
+        if sids:
+            delivery_rows = (
+                db.session.query(WhatsAppDeliveryTruth)
+                .filter(WhatsAppDeliveryTruth.message_sid.in_(sids))
+                .order_by(WhatsAppDeliveryTruth.id.desc())
+                .limit(20)
+                .all()
+            )
+        else:
+            delivery_rows = (
+                db.session.query(WhatsAppDeliveryTruth)
+                .filter(WhatsAppDeliveryTruth.recovery_key == rk)
+                .order_by(WhatsAppDeliveryTruth.id.desc())
+                .limit(20)
+                .all()
+            )
+
+        ac = None
+        if ":" in rk:
+            _store_slug, rest = rk.split(":", 1)
+            ac = (
+                db.session.query(AbandonedCart)
+                .filter(
+                    or_(
+                        AbandonedCart.zid_cart_id == rest,
+                        AbandonedCart.recovery_session_id == rest,
+                    )
+                )
+                .order_by(AbandonedCart.id.desc())
+                .first()
+            )
+
+        events: list[Any] = []
+        if ac is not None:
+            events = (
+                db.session.query(RecoveryEvent)
+                .filter(RecoveryEvent.abandoned_cart_id == int(ac.id))
+                .order_by(RecoveryEvent.id.asc())
+                .limit(30)
+                .all()
+            )
+
+        timeline = get_recovery_truth_timeline(rk) or []
+        providers = {
+            str(getattr(lg, "provider", "") or "").strip().lower()
+            for lg in logs
+            if str(getattr(lg, "provider", "") or "").strip()
+        }
+        return j(
+            {
+                "ok": True,
+                "recovery_key": rk,
+                "runtime_provider": resolve_whatsapp_provider(),
+                "abandoned_cart": None
+                if ac is None
+                else {
+                    "id": int(ac.id),
+                    "status": getattr(ac, "status", None),
+                    "cart_id": getattr(ac, "zid_cart_id", None),
+                    "session_id": getattr(ac, "recovery_session_id", None),
+                    "phone_masked": _mask_phone(getattr(ac, "customer_phone", None)),
+                    "cart_url": (getattr(ac, "cart_url", None) or None),
+                },
+                "schedule_rows": [
+                    {
+                        "id": int(getattr(sr, "id", 0) or 0),
+                        "status": getattr(sr, "status", None),
+                        "step": getattr(sr, "step", None),
+                        "due_at": _iso(getattr(sr, "due_at", None)),
+                        "created_at": _iso(getattr(sr, "created_at", None)),
+                    }
+                    for sr in sched
+                ],
+                "recovery_logs": [
+                    {
+                        "id": int(lg.id),
+                        "status": lg.status,
+                        "step": lg.step,
+                        "provider": getattr(lg, "provider", None),
+                        "provider_message_sid": getattr(lg, "provider_message_sid", None),
+                        "reason_tag": getattr(lg, "reason_tag", None),
+                        "phone_masked": _mask_phone(lg.phone),
+                        "message_preview": (lg.message or "")[:80],
+                        "created_at": _iso(lg.created_at),
+                        "sent_at": _iso(lg.sent_at),
+                    }
+                    for lg in logs
+                ],
+                "delivery_truth": [
+                    {
+                        "provider": getattr(row, "provider", None),
+                        "message_sid": getattr(row, "message_sid", None),
+                        "send_status": getattr(row, "send_status", None),
+                        "delivery_status": getattr(row, "delivery_status", None),
+                        "read_status": getattr(row, "read_status", None),
+                        "truth_level": getattr(row, "truth_level", None),
+                        "provider_error": getattr(row, "provider_error", None),
+                        "last_event_time": _iso(getattr(row, "last_event_time", None)),
+                    }
+                    for row in delivery_rows
+                ],
+                "recovery_events": [
+                    {
+                        "id": int(ev.id),
+                        "event_type": ev.event_type,
+                        "created_at": _iso(ev.created_at),
+                        "payload_preview": (ev.payload or "")[:240],
+                    }
+                    for ev in events
+                ],
+                "timeline": timeline,
+                "providers_seen": sorted(providers),
+                "twilio_path_used": "twilio" in providers,
+                "meta_path_used": "meta" in providers,
             }
         )
     except Exception as exc:  # noqa: BLE001
