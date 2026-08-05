@@ -1,0 +1,17 @@
+{
+  "template_name": "cartflow_cart_reminder_ar_v2",
+  "template_id": "1354248266812321",
+  "status": "PENDING",
+  "comparison": "SAME",
+  "language": "ar",
+  "category": "MARKETING",
+  "created": true,
+  "ok": true,
+  "error_code": null,
+  "error_message_safe": null,
+  "trace_id": "0fa64e90a2044bed",
+  "whatsapp_meta_recovery_template_name_unchanged": true,
+  "provider_unchanged_observed": "meta",
+  "no_message_sent": true,
+  "v1_not_modified": true
+}

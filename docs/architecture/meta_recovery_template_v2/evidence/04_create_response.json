@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "operation": "create_recovery_template",
+  "template_name": "cartflow_cart_reminder_ar_v2",
+  "template_id": "1354248266812321",
+  "status": "PENDING",
+  "category": "MARKETING",
+  "language": "ar",
+  "comparison": "NOT_AVAILABLE",
+  "error_code": null,
+  "error_subcode": null,
+  "error_message_safe": null,
+  "trace_id": "0fa64e90a2044bed",
+  "checked_at": "2026-08-05T05:20:05.746051+00:00",
+  "waba_masked": "152…766",
+  "waba_source": "WHATSAPP_BUSINESS_ACCOUNT_ID",
+  "created": true,
+  "note": "Graph accepted create — PENDING is not APPROVED"
+}

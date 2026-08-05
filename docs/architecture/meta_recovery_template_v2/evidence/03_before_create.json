@@ -1,0 +1,95 @@
+{
+  "ok": true,
+  "operation": "recovery_template_status",
+  "template_name": "cartflow_cart_reminder_ar_v2",
+  "template_id": null,
+  "status": "NOT_CREATED",
+  "category": "MARKETING",
+  "language": "ar",
+  "comparison": "NOT_AVAILABLE",
+  "error_code": null,
+  "error_subcode": null,
+  "error_message_safe": null,
+  "trace_id": "b3c3e938654441a4",
+  "checked_at": "2026-08-05T05:19:43.245129+00:00",
+  "waba_masked": "152…766",
+  "waba_source": "WHATSAPP_BUSINESS_ACCOUNT_ID",
+  "credential_configured": true,
+  "waba_configured": true,
+  "local_contract": {
+    "template_name": "cartflow_cart_reminder_ar_v2",
+    "historical_template_name_v1": "cartflow_cart_reminder_ar_v1",
+    "preserves_v1": true,
+    "language": "ar",
+    "category": "MARKETING",
+    "body_text": "مرحبًا،\n\nلاحظنا أن لديك طلبًا لم يكتمل في {{1}}.\n\nسلتك ما زالت محفوظة، ويمكنك الرجوع لإكمال الطلب متى ما ناسبك.",
+    "example_value": "متجر الأمان",
+    "store_name_example": "متجر الأمان",
+    "checkout_url_example": "https://merchant.com/cart/restore/abc123",
+    "url_button_example_suffix": "demo-checkout-token",
+    "buttons": [
+      {
+        "type": "URL",
+        "text": "إكمال الشراء",
+        "url_template": "https://smartreplyai.net/wa/checkout/{{1}}",
+        "example_suffix": "demo-checkout-token",
+        "runtime_field": "checkout_redirect_token"
+      },
+      {
+        "type": "QUICK_REPLY",
+        "text": "خدمة العملاء",
+        "payload": "cartflow_customer_support_v1",
+        "runtime_flag": "customer_requested_human_support"
+      }
+    ],
+    "runtime_fields": [
+      "store_display_name",
+      "checkout_redirect_token"
+    ],
+    "components": [
+      {
+        "type": "BODY",
+        "text": "مرحبًا،\n\nلاحظنا أن لديك طلبًا لم يكتمل في {{1}}.\n\nسلتك ما زالت محفوظة، ويمكنك الرجوع لإكمال الطلب متى ما ناسبك.",
+        "example": {
+          "body_text": [
+            [
+              "متجر الأمان"
+            ]
+          ]
+        }
+      },
+      {
+        "type": "BUTTONS",
+        "buttons": [
+          {
+            "type": "URL",
+            "text": "إكمال الشراء",
+            "url": "https://smartreplyai.net/wa/checkout/{{1}}",
+            "example": [
+              "demo-checkout-token"
+            ]
+          },
+          {
+            "type": "QUICK_REPLY",
+            "text": "خدمة العملاء"
+          }
+        ]
+      }
+    ],
+    "forbidden": [
+      "HEADER",
+      "FOOTER",
+      "media",
+      "discounts",
+      "dynamic_full_recovery_text",
+      "overwrite_v1",
+      "delete_v1"
+    ],
+    "graph_version": "v23.0"
+  },
+  "meta_connection_ok": true,
+  "exists": false,
+  "can_create": true,
+  "historical_template_name_v1": "cartflow_cart_reminder_ar_v1",
+  "preserves_v1": true
+}
