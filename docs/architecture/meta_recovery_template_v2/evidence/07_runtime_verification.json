@@ -1,0 +1,35 @@
+{
+  "verdict": "PASS",
+  "checks": {
+    "provider_is_meta": true,
+    "template_env_is_v2": true,
+    "ops_required_is_v2": true,
+    "ops_status_approved": true,
+    "ops_comparison_same": true,
+    "preflight_required_is_v2": true,
+    "preflight_status_approved": true,
+    "preflight_comparison_same": true
+  },
+  "observed": {
+    "provider": "meta",
+    "template_name_env": "cartflow_cart_reminder_ar_v2",
+    "template_name_expected": "cartflow_cart_reminder_ar_v2",
+    "preflight_template_status": "APPROVED",
+    "preflight_comparison": "SAME",
+    "preflight_template_exists": true,
+    "preflight_template_id": "1354248266812321",
+    "admin_http": 200,
+    "ops_template_name": "cartflow_cart_reminder_ar_v2",
+    "ops_status": "APPROVED",
+    "ops_status_raw": "APPROVED",
+    "ops_comparison": "SAME",
+    "ops_template_id": "1354248266812321",
+    "ops_language": "ar",
+    "ops_category": "MARKETING",
+    "ops_exists": true,
+    "ops_historical_v1": "cartflow_cart_reminder_ar_v1"
+  },
+  "no_message_sent": true,
+  "no_cart_created": true,
+  "no_recovery_executed": true
+}

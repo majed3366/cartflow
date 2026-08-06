@@ -1,0 +1,245 @@
+{
+  "preflight": {
+    "ok": false,
+    "pilot_gate": "meta_production_pilot_v1",
+    "provider": "meta",
+    "provider_is_meta": true,
+    "template_name_env": "cartflow_cart_reminder_ar_v2",
+    "template_name_expected": "cartflow_cart_reminder_ar_v2",
+    "template_exists": true,
+    "template_status": "APPROVED",
+    "template_status_raw": "APPROVED",
+    "comparison": "SAME",
+    "template_id": "1354248266812321",
+    "mismatch_hints": [],
+    "remote_canon": {
+      "name": "cartflow_cart_reminder_ar_v2",
+      "language": "ar",
+      "category": "MARKETING",
+      "components": [
+        {
+          "type": "BODY",
+          "text": "مرحبًا،\n\nلاحظنا أن لديك طلبًا لم يكتمل في {{1}}.\n\nسلتك ما زالت محفوظة، ويمكنك الرجوع لإكمال الطلب متى ما ناسبك.",
+          "example": {
+            "body_text": [
+              [
+                "متجر الأمان"
+              ]
+            ]
+          }
+        },
+        {
+          "type": "BUTTONS",
+          "buttons": [
+            {
+              "type": "URL",
+              "text": "إكمال الشراء",
+              "url": "https://smartreplyai.net/wa/checkout/{{1}}"
+            },
+            {
+              "type": "QUICK_REPLY",
+              "text": "خدمة العملاء"
+            }
+          ]
+        }
+      ]
+    },
+    "expected_canon": {
+      "name": "cartflow_cart_reminder_ar_v2",
+      "language": "ar",
+      "category": "MARKETING",
+      "components": [
+        {
+          "type": "BODY",
+          "text": "مرحبًا،\n\nلاحظنا أن لديك طلبًا لم يكتمل في {{1}}.\n\nسلتك ما زالت محفوظة، ويمكنك الرجوع لإكمال الطلب متى ما ناسبك.",
+          "example": {
+            "body_text": [
+              [
+                "متجر الأمان"
+              ]
+            ]
+          }
+        },
+        {
+          "type": "BUTTONS",
+          "buttons": [
+            {
+              "type": "URL",
+              "text": "إكمال الشراء",
+              "url": "https://smartreplyai.net/wa/checkout/{{1}}"
+            },
+            {
+              "type": "QUICK_REPLY",
+              "text": "خدمة العملاء"
+            }
+          ]
+        }
+      ]
+    },
+    "local_contract": {
+      "template_name": "cartflow_cart_reminder_ar_v2",
+      "language": "ar",
+      "body_has_store_param": true,
+      "runtime_fields": [
+        "store_display_name",
+        "checkout_redirect_token"
+      ],
+      "buttons": [
+        {
+          "type": "URL",
+          "text": "إكمال الشراء",
+          "url_template": "https://smartreplyai.net/wa/checkout/{{1}}",
+          "example_suffix": "demo-checkout-token",
+          "runtime_field": "checkout_redirect_token"
+        },
+        {
+          "type": "QUICK_REPLY",
+          "text": "خدمة العملاء",
+          "payload": "cartflow_customer_support_v1",
+          "runtime_flag": "customer_requested_human_support"
+        }
+      ]
+    },
+    "meta_ops": {
+      "ok": true,
+      "meta_connection_ok": true,
+      "error_code": null,
+      "error_subcode": null,
+      "error_message_safe": null,
+      "trace_id": "3d5abb46259e4c31",
+      "checked_at": "2026-08-06T14:14:36.736155+00:00"
+    },
+    "abort_reason": "template_validation_failed"
+  },
+  "admin": {
+    "ok": true,
+    "operation": "recovery_template_status",
+    "template_name": "cartflow_cart_reminder_ar_v2",
+    "template_id": "1354248266812321",
+    "status": "APPROVED",
+    "category": "MARKETING",
+    "language": "ar",
+    "comparison": "SAME",
+    "error_code": null,
+    "error_subcode": null,
+    "error_message_safe": null,
+    "trace_id": "640e6c0e482d4d82",
+    "checked_at": "2026-08-06T14:14:41.766395+00:00",
+    "waba_masked": "152…766",
+    "waba_source": "WHATSAPP_BUSINESS_ACCOUNT_ID",
+    "credential_configured": true,
+    "waba_configured": true,
+    "local_contract": {
+      "template_name": "cartflow_cart_reminder_ar_v2",
+      "historical_template_name_v1": "cartflow_cart_reminder_ar_v1",
+      "preserves_v1": true,
+      "language": "ar",
+      "category": "MARKETING",
+      "body_text": "مرحبًا،\n\nلاحظنا أن لديك طلبًا لم يكتمل في {{1}}.\n\nسلتك ما زالت محفوظة، ويمكنك الرجوع لإكمال الطلب متى ما ناسبك.",
+      "example_value": "متجر الأمان",
+      "store_name_example": "متجر الأمان",
+      "checkout_url_example": "https://merchant.com/cart/restore/abc123",
+      "url_button_example_suffix": "demo-checkout-token",
+      "buttons": [
+        {
+          "type": "URL",
+          "text": "إكمال الشراء",
+          "url_template": "https://smartreplyai.net/wa/checkout/{{1}}",
+          "example_suffix": "demo-checkout-token",
+          "runtime_field": "checkout_redirect_token"
+        },
+        {
+          "type": "QUICK_REPLY",
+          "text": "خدمة العملاء",
+          "payload": "cartflow_customer_support_v1",
+          "runtime_flag": "customer_requested_human_support"
+        }
+      ],
+      "runtime_fields": [
+        "store_display_name",
+        "checkout_redirect_token"
+      ],
+      "components": [
+        {
+          "type": "BODY",
+          "text": "مرحبًا،\n\nلاحظنا أن لديك طلبًا لم يكتمل في {{1}}.\n\nسلتك ما زالت محفوظة، ويمكنك الرجوع لإكمال الطلب متى ما ناسبك.",
+          "example": {
+            "body_text": [
+              [
+                "متجر الأمان"
+              ]
+            ]
+          }
+        },
+        {
+          "type": "BUTTONS",
+          "buttons": [
+            {
+              "type": "URL",
+              "text": "إكمال الشراء",
+              "url": "https://smartreplyai.net/wa/checkout/{{1}}",
+              "example": [
+                "demo-checkout-token"
+              ]
+            },
+            {
+              "type": "QUICK_REPLY",
+              "text": "خدمة العملاء"
+            }
+          ]
+        }
+      ],
+      "forbidden": [
+        "HEADER",
+        "FOOTER",
+        "media",
+        "discounts",
+        "dynamic_full_recovery_text",
+        "overwrite_v1",
+        "delete_v1"
+      ],
+      "graph_version": "v23.0"
+    },
+    "meta_connection_ok": true,
+    "exists": true,
+    "can_create": false,
+    "status_raw": "APPROVED",
+    "historical_template_name_v1": "cartflow_cart_reminder_ar_v1",
+    "preserves_v1": true
+  },
+  "report": {
+    "verdict": "PASS",
+    "checks": {
+      "provider_is_meta": true,
+      "template_env_is_v2": true,
+      "ops_required_is_v2": true,
+      "ops_status_approved": true,
+      "ops_comparison_same": true,
+      "preflight_required_is_v2": true,
+      "preflight_status_approved": true,
+      "preflight_comparison_same": true
+    },
+    "observed": {
+      "provider": "meta",
+      "template_name_env": "cartflow_cart_reminder_ar_v2",
+      "template_name_expected": "cartflow_cart_reminder_ar_v2",
+      "preflight_template_status": "APPROVED",
+      "preflight_comparison": "SAME",
+      "preflight_template_exists": true,
+      "preflight_template_id": "1354248266812321",
+      "admin_http": 200,
+      "ops_template_name": "cartflow_cart_reminder_ar_v2",
+      "ops_status": "APPROVED",
+      "ops_status_raw": "APPROVED",
+      "ops_comparison": "SAME",
+      "ops_template_id": "1354248266812321",
+      "ops_language": "ar",
+      "ops_category": "MARKETING",
+      "ops_exists": true,
+      "ops_historical_v1": "cartflow_cart_reminder_ar_v1"
+    },
+    "no_message_sent": true,
+    "no_cart_created": true,
+    "no_recovery_executed": true
+  }
+}
