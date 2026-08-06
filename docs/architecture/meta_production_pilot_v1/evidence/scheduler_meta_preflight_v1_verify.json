@@ -1,0 +1,44 @@
+{
+  "task": "scheduler_meta_preflight_endpoint_v1",
+  "deploy_commit": "cba66e8",
+  "deploy_git_sha_full": "cba66e879ce32695bdb019ab1ea774bb1699b07f",
+  "pushed_to": ["main", "feat/meta-template-operations-v1"],
+  "tests": "9 passed (tests/test_scheduler_meta_preflight_v1.py)",
+  "api_verification": {
+    "base_url": "https://smartreplyai.net",
+    "endpoint": "GET /dev/scheduler-meta-preflight",
+    "http_status": 403,
+    "sanitized_response": {
+      "role": "api",
+      "git_sha": "cba66e879ce32695bdb019ab1ea774bb1699b07f",
+      "whatsapp_provider": "meta",
+      "meta_template_name": "cartflow_cart_reminder_ar_v2",
+      "access_token_configured": true,
+      "phone_number_id_configured": true,
+      "waba_id_configured": true,
+      "template_expected_name": "cartflow_cart_reminder_ar_v2",
+      "ready_for_meta_recovery": false,
+      "ok": false,
+      "error": "role_not_scheduler"
+    },
+    "ready_for_meta_recovery": false,
+    "git_sha": "cba66e879ce32695bdb019ab1ea774bb1699b07f",
+    "notes": "API correctly rejects with role_not_scheduler. Confirms deploy SHA on smart-reply-ai."
+  },
+  "scheduler_verification": {
+    "status": "blocked_no_public_base_url",
+    "railway_service_names_documented": ["cartflow", "smart-reply-ai-scheduler"],
+    "scheduler_base_url": null,
+    "ready_for_meta_recovery": null,
+    "git_sha": null,
+    "attempts": [
+      "railway CLI unauthorized (invalid_grant)",
+      "subdomains under smartreplyai.net → DNS/URLError",
+      "*.up.railway.app guesses → Railway edge Application not found"
+    ],
+    "operator_action": "Generate or share the public domain for the Scheduler Railway service (cartflow / smart-reply-ai-scheduler), then GET {base}/dev/scheduler-meta-preflight"
+  },
+  "stop": true,
+  "no_recovery_journey": true,
+  "no_sends": true
+}
