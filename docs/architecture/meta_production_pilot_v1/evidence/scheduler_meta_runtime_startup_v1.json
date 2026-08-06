@@ -1,0 +1,31 @@
+{
+  "task": "scheduler_meta_runtime_startup_evidence_v1",
+  "deploy_commit": "3a4df0e",
+  "tests": "15 passed (preflight + runtime startup)",
+  "implementation": {
+    "module": "services/scheduler_meta_preflight_v1.py",
+    "functions": ["format_scheduler_meta_runtime_log_lines", "log_scheduler_meta_runtime"],
+    "wiring": "services/runtime_startup_v1.py::_log_scheduler_meta_runtime (no main.py logic)",
+    "expected_log_block": [
+      "[SCHEDULER META RUNTIME]",
+      "role=scheduler",
+      "whatsapp_provider=<resolved>",
+      "meta_template_name=<resolved>",
+      "access_token_configured=<true|false>",
+      "phone_number_id_configured=<true|false>",
+      "waba_id_configured=<true|false>",
+      "ready_for_meta_recovery=<true|false>"
+    ]
+  },
+  "scheduler_deploy_log_capture": {
+    "status": "blocked_railway_cli_unauthorized",
+    "error": "invalid_grant — railway login required",
+    "services_attempted": ["cartflow", "smart-reply-ai-scheduler"],
+    "captured_line": null,
+    "ready_for_meta_recovery": null
+  },
+  "stop": true,
+  "no_recovery_journey": true,
+  "no_sends": true,
+  "operator_action": "In Railway dashboard → Scheduler service (cartflow / smart-reply-ai-scheduler) → Deploy Logs after 3a4df0e restart → copy the [SCHEDULER META RUNTIME] block"
+}
