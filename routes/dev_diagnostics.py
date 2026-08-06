@@ -312,6 +312,31 @@ def dev_recovery_truth(recovery_key: str = Query("", max_length=512)) -> Any:
         return j({"ok": False, "error": str(exc)}, 500)
 
 
+@router.get("/dev/scheduler-meta-preflight")
+def dev_scheduler_meta_preflight() -> Any:
+    """
+    Scheduler-only read-only Meta provider config probe.
+
+    No Graph calls. No DB. No sends. No secrets / full Meta IDs in response.
+    """
+    from services.scheduler_meta_preflight_v1 import (  # noqa: PLC0415
+        build_scheduler_meta_preflight,
+    )
+
+    payload = build_scheduler_meta_preflight()
+    if payload.get("role") != "scheduler":
+        return j(
+            {
+                **payload,
+                "ok": False,
+                "error": "role_not_scheduler",
+                "ready_for_meta_recovery": False,
+            },
+            403,
+        )
+    return j({"ok": True, **payload})
+
+
 @router.get("/dev/meta-pilot-preflight")
 def dev_meta_pilot_preflight() -> Any:
     """
