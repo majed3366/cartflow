@@ -136,6 +136,7 @@ def log_runtime_startup_banner() -> dict[str, Any]:
         pass
     _log_scheduler_build_info(role)
     _log_dashboard_snapshot_archive_config(role)
+    _log_scheduler_meta_runtime(role)
     if policy.get("block_reason"):
         _print_line(f"ownership_block_reason={policy.get('block_reason')}")
     if policy.get("compliance") == "misconfigured":
@@ -143,6 +144,20 @@ def log_runtime_startup_banner() -> dict[str, Any]:
 
     log_scheduler_owner_at_startup()
     return snap
+
+
+def _log_scheduler_meta_runtime(role: str) -> None:
+    """Emit sanitized Meta provider/template runtime evidence (scheduler only)."""
+    if role != "scheduler":
+        return
+    try:
+        from services.scheduler_meta_preflight_v1 import (  # noqa: PLC0415
+            log_scheduler_meta_runtime,
+        )
+
+        log_scheduler_meta_runtime(role=role)
+    except Exception:  # noqa: BLE001
+        return
 
 
 async def run_scheduler_drivers_at_startup() -> dict[str, Any]:
