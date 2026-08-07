@@ -1,0 +1,24 @@
+{
+  "http": 200,
+  "body": {
+    "ok": true,
+    "cf_timing": {
+      "stages_ms": {
+        "db_warm": 0.0,
+        "json_parse": 27.4,
+        "validate_coerce": 0.0,
+        "phone_normalize": 0.1,
+        "db_lookup_crr": 22.4,
+        "db_prepare_writes": 0.1,
+        "db_flush": 17.3,
+        "phone_sync_session": 20.2,
+        "db_commit": 50.0,
+        "phone_side_effects": 0.1,
+        "vip_alert_optional": 0.0,
+        "schedule_recovery_bg": 0.3
+      },
+      "total_handler_ms": 138.0,
+      "investigation": "widget_fast_path_root_cause_v1"
+    }
+  }
+}

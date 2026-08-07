@@ -1,0 +1,9 @@
+{
+  "http": 200,
+  "body": {
+    "ok": true,
+    "purchase_completed": true,
+    "recovery_key": "demo:cf_cart_meta_pilot_phone_pf_d7915ace4754",
+    "purchase_truth_source": "purchase_completed"
+  }
+}

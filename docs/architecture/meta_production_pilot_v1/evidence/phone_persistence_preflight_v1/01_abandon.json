@@ -1,0 +1,11 @@
+{
+  "http": 200,
+  "body": {
+    "ok": true,
+    "event": "cart_abandoned",
+    "recovery_scheduled": false,
+    "recovery_skipped": true,
+    "recovery_state": "waiting_for_reason",
+    "waiting_for_reason": true
+  }
+}

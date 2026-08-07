@@ -1,0 +1,15 @@
+{
+  "http": 200,
+  "meta_path_used": false,
+  "twilio_path_used": false,
+  "providers_seen": [],
+  "schedule_rows": [
+    {
+      "id": 1113,
+      "status": "cancelled",
+      "step": 1,
+      "due_at": "2026-08-07T11:34:05.536396+00:00",
+      "created_at": "2026-08-07T11:33:06.625863+00:00"
+    }
+  ]
+}

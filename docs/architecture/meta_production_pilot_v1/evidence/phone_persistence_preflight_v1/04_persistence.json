@@ -1,0 +1,15 @@
+{
+  "recovery_key": "demo:cf_cart_meta_pilot_phone_pf_d7915ace4754",
+  "schedule_id": 1113,
+  "schedule_status": "scheduled",
+  "schedule_due_at": "2026-08-07T11:34:05.536396+00:00",
+  "crr_phone_masked": "966…11",
+  "abandoned_cart_phone_masked": "966…11",
+  "expected_phone_masked": "966…11",
+  "phone_normalized_ok": true,
+  "identity_linked": true,
+  "phone_persistence_ready": true,
+  "no_send_yet": true,
+  "providers_seen": [],
+  "helper_ready": true
+}

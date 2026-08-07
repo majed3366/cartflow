@@ -1,0 +1,61 @@
+{
+  "http": 200,
+  "body": {
+    "ok": true,
+    "recovery_key": "demo:cf_cart_meta_pilot_phone_pf_d7915ace4754",
+    "runtime_provider": "meta",
+    "abandoned_cart": {
+      "id": 5871,
+      "status": "abandoned",
+      "cart_id": "cf_cart_meta_pilot_phone_pf_d7915ace4754",
+      "session_id": "meta_pilot_phone_pf_d7915ace4754",
+      "phone_masked": "966…11",
+      "cart_url": null
+    },
+    "cart_recovery_reason": {
+      "reason": "other",
+      "phone_masked": "966…11",
+      "session_id": "meta_pilot_phone_pf_d7915ace4754"
+    },
+    "schedule_rows": [
+      {
+        "id": 1113,
+        "status": "scheduled",
+        "step": 1,
+        "due_at": "2026-08-07T11:34:05.536396+00:00",
+        "created_at": "2026-08-07T11:33:06.625863+00:00"
+      }
+    ],
+    "recovery_logs": [
+      {
+        "id": 2730,
+        "status": "skipped_missing_reason_tag",
+        "step": null,
+        "provider": null,
+        "provider_message_sid": null,
+        "reason_tag": null,
+        "phone_masked": null,
+        "message_preview": "يبدو أنك نسيت سلتك 🛒",
+        "created_at": "2026-08-07T11:33:02.896681+00:00",
+        "sent_at": null
+      }
+    ],
+    "delivery_truth": [],
+    "recovery_events": [],
+    "timeline": [
+      {
+        "status": "scheduled",
+        "timestamp": "2026-08-07T11:33:06.697311+00:00",
+        "source": "persist_recovery_schedule_durable",
+        "store_slug": "demo",
+        "session_id": "meta_pilot_phone_pf_d7915ace4754",
+        "cart_id": "cf_cart_meta_pilot_phone_pf_d7915ace4754",
+        "recovery_key": "demo:cf_cart_meta_pilot_phone_pf_d7915ace4754",
+        "row_id": 2386
+      }
+    ],
+    "providers_seen": [],
+    "twilio_path_used": false,
+    "meta_path_used": false
+  }
+}

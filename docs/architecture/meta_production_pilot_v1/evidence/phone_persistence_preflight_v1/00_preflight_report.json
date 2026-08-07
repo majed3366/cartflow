@@ -1,0 +1,87 @@
+{
+  "pilot": "meta_pilot_fixture_phone_persistence_preflight_v1",
+  "recovery_key": "demo:cf_cart_meta_pilot_phone_pf_d7915ace4754",
+  "session_id": "meta_pilot_phone_pf_d7915ace4754",
+  "cart_id": "cf_cart_meta_pilot_phone_pf_d7915ace4754",
+  "phone_input": "+966546518011",
+  "expected_digits": "966546518011",
+  "no_send": true,
+  "cancel_before_due": true,
+  "fresh_http": 200,
+  "abandon": {
+    "http": 200,
+    "body": {
+      "ok": true,
+      "event": "cart_abandoned",
+      "recovery_scheduled": false,
+      "recovery_skipped": true,
+      "recovery_state": "waiting_for_reason",
+      "waiting_for_reason": true
+    }
+  },
+  "reason": {
+    "http": 200,
+    "body": {
+      "ok": true,
+      "cf_timing": {
+        "stages_ms": {
+          "db_warm": 0.0,
+          "json_parse": 27.4,
+          "validate_coerce": 0.0,
+          "phone_normalize": 0.1,
+          "db_lookup_crr": 22.4,
+          "db_prepare_writes": 0.1,
+          "db_flush": 17.3,
+          "phone_sync_session": 20.2,
+          "db_commit": 50.0,
+          "phone_side_effects": 0.1,
+          "vip_alert_optional": 0.0,
+          "schedule_recovery_bg": 0.3
+        },
+        "total_handler_ms": 138.0,
+        "investigation": "widget_fast_path_root_cause_v1"
+      }
+    }
+  },
+  "persistence": {
+    "recovery_key": "demo:cf_cart_meta_pilot_phone_pf_d7915ace4754",
+    "schedule_id": 1113,
+    "schedule_status": "scheduled",
+    "schedule_due_at": "2026-08-07T11:34:05.536396+00:00",
+    "crr_phone_masked": "966…11",
+    "abandoned_cart_phone_masked": "966…11",
+    "expected_phone_masked": "966…11",
+    "phone_normalized_ok": true,
+    "identity_linked": true,
+    "phone_persistence_ready": true,
+    "no_send_yet": true,
+    "providers_seen": [],
+    "helper_ready": true
+  },
+  "conversion_cancel": {
+    "http": 200,
+    "body": {
+      "ok": true,
+      "purchase_completed": true,
+      "recovery_key": "demo:cf_cart_meta_pilot_phone_pf_d7915ace4754",
+      "purchase_truth_source": "purchase_completed"
+    }
+  },
+  "evidence_after_cancel": {
+    "http": 200,
+    "meta_path_used": false,
+    "twilio_path_used": false,
+    "providers_seen": [],
+    "schedule_rows": [
+      {
+        "id": 1113,
+        "status": "cancelled",
+        "step": 1,
+        "due_at": "2026-08-07T11:34:05.536396+00:00",
+        "created_at": "2026-08-07T11:33:06.625863+00:00"
+      }
+    ]
+  },
+  "go_no_go": "GO",
+  "phone_persistence_ready": true
+}
