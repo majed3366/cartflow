@@ -634,6 +634,33 @@ def dev_meta_pilot_evidence(
             for lg in logs
             if str(getattr(lg, "provider", "") or "").strip()
         }
+
+        # Sanitized durable phone truth (never return raw phone).
+        crr_row = None
+        sid_for_crr = None
+        if ac is not None:
+            sid_for_crr = (getattr(ac, "recovery_session_id", None) or "").strip() or None
+        if not sid_for_crr and ":" in rk:
+            _parts = rk.split(":", 1)
+            # session often equals cart_id suffix for pilot carts; prefer schedule session
+            if sched:
+                sid_for_crr = (getattr(sched[0], "session_id", None) or "").strip() or None
+            if not sid_for_crr and len(_parts) == 2:
+                sid_for_crr = None
+        store_for_crr = rk.split(":", 1)[0].strip() if ":" in rk else ""
+        if sched and not sid_for_crr:
+            sid_for_crr = (getattr(sched[0], "session_id", None) or "").strip() or None
+        if store_for_crr and sid_for_crr:
+            crr_row = (
+                db.session.query(CartRecoveryReason)
+                .filter(
+                    CartRecoveryReason.store_slug == store_for_crr,
+                    CartRecoveryReason.session_id == sid_for_crr,
+                )
+                .order_by(CartRecoveryReason.id.desc())
+                .first()
+            )
+
         return j(
             {
                 "ok": True,
@@ -648,6 +675,13 @@ def dev_meta_pilot_evidence(
                     "session_id": getattr(ac, "recovery_session_id", None),
                     "phone_masked": _mask_phone(getattr(ac, "customer_phone", None)),
                     "cart_url": (getattr(ac, "cart_url", None) or None),
+                },
+                "cart_recovery_reason": None
+                if crr_row is None
+                else {
+                    "reason": getattr(crr_row, "reason", None),
+                    "phone_masked": _mask_phone(getattr(crr_row, "customer_phone", None)),
+                    "session_id": getattr(crr_row, "session_id", None),
                 },
                 "schedule_rows": [
                     {

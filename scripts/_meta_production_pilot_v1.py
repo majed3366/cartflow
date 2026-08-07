@@ -112,7 +112,8 @@ def main() -> int:
         "session_id": session_id,
         "cart_id": cart_id,
         "reason": REASON,
-        "cf_test_phone": PHONE,
+        "custom_text": "سبب اخر",
+        "customer_phone": PHONE,
         "checkout_url": CHECKOUT_URL,
         "cart_url": CHECKOUT_URL,
     }
@@ -128,7 +129,6 @@ def main() -> int:
         "store_slug": STORE,
         "session_id": session_id,
         "cart_id": cart_id,
-        "cf_test_phone": PHONE,
         "cart_value": 189.0,
         "currency": "SAR",
         "checkout_url": CHECKOUT_URL,
