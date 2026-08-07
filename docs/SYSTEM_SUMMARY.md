@@ -568,6 +568,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-08-07 | **Register Saudi Production WhatsApp Phone V2:** Admin `POST /admin/api/whatsapp/meta-register` allowlists Saudi `1260388737156321`, calls Meta `/{id}/register`, verifies status; never logs PIN; no env phone-id change / no send. |
 | 2026-08-07 | **Saudi Phone Pending Root Cause V1:** Admin `meta-status` accepts `phone_number_id` override + expanded Graph diagnostic fields (account_mode, name_status, extras probe). Read-only; no register/send/env changes. |
 | 2026-08-07 | **Locate Saudi Production Phone Number ID V1:** Admin read-only `GET /admin/api/whatsapp/meta-phone-numbers` enumerates WABA phones via Graph `/{waba}/phone_numbers` (no send/register/env changes). |
 | 2026-08-07 | **Verify Successful Meta Phone Registration V1:** Expand admin `meta-status` Graph fields (`status`/`registration_status`, quality, code/name status, platform_type, messaging_limit_tier, `cloud_api_registered`). Evidence under `docs/architecture/register_production_whatsapp_phone_v1/`. No send / no env changes. |

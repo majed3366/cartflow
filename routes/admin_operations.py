@@ -1021,6 +1021,30 @@ def api_admin_whatsapp_meta_phone_numbers(request: Request) -> Any:
     return j({"ok": result.get("error") is None, **result})
 
 
+@router.post("/admin/api/whatsapp/meta-register")
+async def api_admin_whatsapp_meta_register(request: Request) -> Any:
+    """Register allowlisted WhatsApp phone via Meta Graph (no message send)."""
+    denied = _admin_json_auth(request)
+    if denied is not None:
+        return denied
+    try:
+        body = await request.json()
+    except (TypeError, ValueError):
+        body = {}
+    if not isinstance(body, dict):
+        body = {}
+    phone_number_id = str(body.get("phone_number_id") or "").strip()
+    pin = str(body.get("pin") or "").strip()
+    from services.admin_whatsapp_meta_register_v1 import (  # noqa: PLC0415
+        register_whatsapp_phone,
+    )
+
+    result = register_whatsapp_phone(phone_number_id=phone_number_id, pin=pin)
+    # Never echo pin back even if client sent it.
+    result.pop("pin", None)
+    return j(result)
+
+
 @router.post("/admin/api/whatsapp/meta-send-test")
 async def api_admin_whatsapp_meta_send_test(request: Request) -> Any:
     denied = _admin_json_auth(request)
