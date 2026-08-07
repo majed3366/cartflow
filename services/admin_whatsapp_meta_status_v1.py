@@ -20,9 +20,29 @@ PHONE_STATUS_FIELDS = (
     "quality_rating,"
     "code_verification_status,"
     "name_status,"
+    "new_name_status,"
     "status,"
     "platform_type,"
-    "messaging_limit_tier"
+    "messaging_limit_tier,"
+    "account_mode,"
+    "last_onboarded_time,"
+    "is_official_business_account,"
+    "is_pin_enabled,"
+    "throughput,"
+    "webhook_configuration"
+)
+
+# Extra diagnostic fields requested one-by-one if core GET succeeds (unknown → omitted).
+PHONE_DIAGNOSTIC_EXTRA_FIELDS = (
+    "health_status",
+    "eligibility_status",
+    "onboarding_status",
+    "display_name_status",
+    "certificate",
+    "certificate_status",
+    "registration_state",
+    "pending_reason",
+    "search_visibility",
 )
 
 
@@ -64,8 +84,17 @@ def _empty_status(env: dict[str, str]) -> dict[str, Any]:
         "quality_rating": None,
         "code_verification_status": None,
         "name_status": None,
+        "new_name_status": None,
         "platform_type": None,
         "messaging_limit_tier": None,
+        "account_mode": None,
+        "last_onboarded_time": None,
+        "is_official_business_account": None,
+        "is_pin_enabled": None,
+        "throughput": None,
+        "webhook_configuration": None,
+        "diagnostic_extras": {},
+        "diagnostic_unavailable_fields": [],
         "cloud_api_registered": False,
         "meta_response_ok": False,
         "error": None,
@@ -73,19 +102,43 @@ def _empty_status(env: dict[str, str]) -> dict[str, Any]:
     }
 
 
+def _graph_get_json(
+    *,
+    url: str,
+    token: str,
+    fields: str,
+    session: Optional[requests.Session],
+    timeout: float,
+) -> tuple[Optional[int], Any, Optional[str]]:
+    headers = {"Authorization": f"Bearer {token}"}
+    http = session or requests
+    try:
+        resp = http.get(url, params={"fields": fields}, headers=headers, timeout=timeout)
+    except requests.RequestException as exc:
+        return None, None, f"http_error: {exc}"
+    try:
+        body = resp.json()
+    except ValueError:
+        return resp.status_code, None, "invalid_json_response"
+    return resp.status_code, body, None
+
+
 def fetch_whatsapp_meta_status(
     *,
     session: Optional[requests.Session] = None,
     timeout: float = 20.0,
+    phone_number_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """
-    Call Meta Graph API for the configured phone number id.
+    Call Meta Graph API for the configured phone number id (or an explicit override).
     Never exposes the access token in the returned dict.
     """
     env = read_whatsapp_meta_env()
     out = _empty_status(env)
     token = env.get("access_token") or ""
-    phone_id = env.get("phone_number_id") or ""
+    phone_id = (phone_number_id or env.get("phone_number_id") or "").strip()
+    if phone_number_id:
+        out["phone_number_id"] = phone_id or None
 
     if not token or token.lower() in PLACEHOLDER_TOKENS:
         out["error"] = "access_token_missing"
@@ -95,34 +148,38 @@ def fetch_whatsapp_meta_status(
         return out
 
     url = f"{META_GRAPH_BASE}/{phone_id}"
-    params = {"fields": PHONE_STATUS_FIELDS}
-    headers = {"Authorization": f"Bearer {token}"}
-    http = session or requests
-
-    try:
-        resp = http.get(url, params=params, headers=headers, timeout=timeout)
-    except requests.RequestException as exc:
-        out["error"] = f"http_error: {exc}"
+    status_code, body, transport_err = _graph_get_json(
+        url=url,
+        token=token,
+        fields=PHONE_STATUS_FIELDS,
+        session=session,
+        timeout=timeout,
+    )
+    if transport_err:
+        out["error"] = transport_err
         return out
+    assert body is not None
 
-    try:
-        body = resp.json()
-    except ValueError:
-        out["error"] = "invalid_json_response"
-        return out
-
-    if resp.status_code != 200:
+    if status_code != 200:
         err_obj = body.get("error") if isinstance(body, dict) else None
         if isinstance(err_obj, dict):
             out["error"] = str(err_obj.get("message") or err_obj.get("type") or "meta_http_error")
+            out["error_code"] = err_obj.get("code")
+            out["error_subcode"] = err_obj.get("error_subcode")
+            out["error_type"] = err_obj.get("type")
+            out["fbtrace_id"] = err_obj.get("fbtrace_id")
         else:
-            out["error"] = f"meta_http_{resp.status_code}"
+            out["error"] = f"meta_http_{status_code}"
         return out
 
     if isinstance(body, dict) and body.get("error"):
         err_obj = body.get("error")
         if isinstance(err_obj, dict):
             out["error"] = str(err_obj.get("message") or err_obj.get("type") or "meta_api_error")
+            out["error_code"] = err_obj.get("code")
+            out["error_subcode"] = err_obj.get("error_subcode")
+            out["error_type"] = err_obj.get("type")
+            out["fbtrace_id"] = err_obj.get("fbtrace_id")
         else:
             out["error"] = "meta_api_error"
         return out
@@ -143,10 +200,43 @@ def fetch_whatsapp_meta_status(
         body.get("code_verification_status") if isinstance(body, dict) else None
     )
     out["name_status"] = body.get("name_status") if isinstance(body, dict) else None
+    out["new_name_status"] = body.get("new_name_status") if isinstance(body, dict) else None
     out["platform_type"] = body.get("platform_type") if isinstance(body, dict) else None
     out["messaging_limit_tier"] = (
         body.get("messaging_limit_tier") if isinstance(body, dict) else None
     )
+    out["account_mode"] = body.get("account_mode") if isinstance(body, dict) else None
+    out["last_onboarded_time"] = (
+        body.get("last_onboarded_time") if isinstance(body, dict) else None
+    )
+    out["is_official_business_account"] = (
+        body.get("is_official_business_account") if isinstance(body, dict) else None
+    )
+    out["is_pin_enabled"] = body.get("is_pin_enabled") if isinstance(body, dict) else None
+    out["throughput"] = body.get("throughput") if isinstance(body, dict) else None
+    out["webhook_configuration"] = (
+        body.get("webhook_configuration") if isinstance(body, dict) else None
+    )
+
+    extras: dict[str, Any] = {}
+    unavailable: list[str] = []
+    for field in PHONE_DIAGNOSTIC_EXTRA_FIELDS:
+        sc, extra_body, extra_err = _graph_get_json(
+            url=url,
+            token=token,
+            fields=field,
+            session=session,
+            timeout=timeout,
+        )
+        if extra_err or sc != 200 or not isinstance(extra_body, dict) or extra_body.get("error"):
+            unavailable.append(field)
+            continue
+        if field in extra_body:
+            extras[field] = extra_body.get(field)
+        else:
+            unavailable.append(field)
+    out["diagnostic_extras"] = extras
+    out["diagnostic_unavailable_fields"] = unavailable
 
     status_norm = (out["registration_status"] or "").strip().upper()
     out["cloud_api_registered"] = status_norm == "CONNECTED"

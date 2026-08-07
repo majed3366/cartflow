@@ -1002,7 +1002,8 @@ def api_admin_whatsapp_meta_status(request: Request) -> Any:
         return denied
     from services.admin_whatsapp_meta_status_v1 import fetch_whatsapp_meta_status  # noqa: PLC0415
 
-    status = fetch_whatsapp_meta_status()
+    override = str(request.query_params.get("phone_number_id") or "").strip() or None
+    status = fetch_whatsapp_meta_status(phone_number_id=override)
     return j({"ok": True, **status})
 
 

@@ -568,6 +568,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-08-07 | **Saudi Phone Pending Root Cause V1:** Admin `meta-status` accepts `phone_number_id` override + expanded Graph diagnostic fields (account_mode, name_status, extras probe). Read-only; no register/send/env changes. |
 | 2026-08-07 | **Locate Saudi Production Phone Number ID V1:** Admin read-only `GET /admin/api/whatsapp/meta-phone-numbers` enumerates WABA phones via Graph `/{waba}/phone_numbers` (no send/register/env changes). |
 | 2026-08-07 | **Verify Successful Meta Phone Registration V1:** Expand admin `meta-status` Graph fields (`status`/`registration_status`, quality, code/name status, platform_type, messaging_limit_tier, `cloud_api_registered`). Evidence under `docs/architecture/register_production_whatsapp_phone_v1/`. No send / no env changes. |
 | 2026-08-07 | **Register Production WhatsApp Phone V1 — STOP `PIN_REQUIRED` / NO-GO:** Target phone `1182183628307692` / WABA `1520530422625766`. Live Graph registration GET blocked (no session token; Railway unauthorized; admin meta-status 401). Prior wire evidence proves token can hit this phone_number_id. Official Meta `POST …/register` requires 6-digit `pin`; no operator PIN available → **no register call**. Evidence: `docs/architecture/register_production_whatsapp_phone_v1/`. **NO-GO for Meta recovery retry.** |

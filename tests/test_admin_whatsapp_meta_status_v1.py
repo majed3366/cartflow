@@ -86,6 +86,7 @@ class AdminWhatsappMetaStatusFetchTests(unittest.TestCase):
             "name_status": "APPROVED",
             "platform_type": "CLOUD_API",
             "messaging_limit_tier": "TIER_1K",
+            "account_mode": "LIVE",
         }
         mock_get.return_value = mock_resp
 
@@ -104,13 +105,43 @@ class AdminWhatsappMetaStatusFetchTests(unittest.TestCase):
         self.assertEqual(out["name_status"], "APPROVED")
         self.assertEqual(out["platform_type"], "CLOUD_API")
         self.assertEqual(out["messaging_limit_tier"], "TIER_1K")
-        mock_get.assert_called_once()
-        call_kwargs = mock_get.call_args
-        self.assertIn("graph.facebook.com/v23.0/pn123", call_kwargs[0][0])
-        self.assertEqual(call_kwargs[1]["headers"]["Authorization"], "Bearer tok")
-        self.assertIn("status", call_kwargs[1]["params"]["fields"])
+        self.assertEqual(out["account_mode"], "LIVE")
+        self.assertIn("diagnostic_extras", out)
+        self.assertIn("diagnostic_unavailable_fields", out)
+        mock_get.assert_called()
+        first_call = mock_get.call_args_list[0]
+        self.assertIn("graph.facebook.com/v23.0/pn123", first_call[0][0])
+        self.assertEqual(first_call[1]["headers"]["Authorization"], "Bearer tok")
+        self.assertIn("status", first_call[1]["params"]["fields"])
         self.assertNotIn("access_token", out)
         self.assertNotIn("token", out)
+
+    @patch.dict(
+        "os.environ",
+        {
+            "WHATSAPP_ACCESS_TOKEN": "tok",
+            "WHATSAPP_PHONE_NUMBER_ID": "env-pn",
+            "WHATSAPP_BUSINESS_ACCOUNT_ID": "waba456",
+        },
+        clear=True,
+    )
+    @patch("services.admin_whatsapp_meta_status_v1.requests.get")
+    def test_phone_number_id_override(self, mock_get: MagicMock) -> None:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "id": "1260388737156321",
+            "status": "PENDING",
+            "platform_type": "NOT_APPLICABLE",
+            "display_phone_number": "+966 57 970 6669",
+            "verified_name": "Cartflow",
+        }
+        mock_get.return_value = mock_resp
+        out = fetch_whatsapp_meta_status(phone_number_id="1260388737156321")
+        self.assertEqual(out["phone_number_id"], "1260388737156321")
+        self.assertEqual(out["registration_status"], "PENDING")
+        self.assertFalse(out["cloud_api_registered"])
+        self.assertIn("1260388737156321", mock_get.call_args_list[0][0][0])
 
     @patch.dict(
         "os.environ",
