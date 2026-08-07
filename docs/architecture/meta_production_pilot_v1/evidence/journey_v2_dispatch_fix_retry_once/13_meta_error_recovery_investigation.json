@@ -1,0 +1,14 @@
+{
+  "schedule_id": 1115,
+  "recovery_key": "demo:cf_cart_meta_dispatch_retry_5abb0408dc26",
+  "exact_meta_error_recoverable": false,
+  "error_code": null,
+  "error_subcode": null,
+  "error_message_safe": null,
+  "provider_status": null,
+  "fbtrace_id": null,
+  "where_lost": "Runtime WhatsAppProviderResult carried error_code/subcode/message_safe; main failure path put them into message_context dict; merge_persist_context→RecoveryMessageContext dropped unknown keys before CartRecoveryLog.context_json. Evidence API never exposed them. RecoverySchedule.last_error only held status label whatsapp_failed. No WhatsAppDeliveryTruth row (no message id). stdout [WA PROVIDER SEND] had the code but Railway logs unavailable. fbtrace_id was in Graph JSON but never mapped into WhatsAppProviderResult before this fix.",
+  "raw_meta_error_never_stored_durably": true,
+  "another_live_send_necessary": true,
+  "fix_deployed": false
+}

@@ -111,8 +111,12 @@ def build_meta_session_text_payload(*, to_digits: str, body_text: str) -> dict[s
 
 def _safe_meta_error_fields(
     body: Any, status_code: int
-) -> tuple[Optional[str], Optional[str], str, bool]:
-    """Return (error_code, error_subcode, safe_message, retryable). Never includes tokens."""
+) -> tuple[Optional[str], Optional[str], str, bool, Optional[str]]:
+    """
+    Return (error_code, error_subcode, safe_message, retryable, fbtrace_id).
+
+    Never includes tokens / Authorization.
+    """
     if isinstance(body, dict):
         err_obj = body.get("error")
         if isinstance(err_obj, dict):
@@ -127,8 +131,21 @@ def _safe_meta_error_fields(
             retryable = bool(code_s and code_s in _RETRYABLE_META_CODES)
             if status_code in (429, 500, 502, 503, 504):
                 retryable = True
-            return code_s, sub_s, msg[:300], retryable
-    return str(status_code), None, f"meta_http_{status_code}", status_code in (429, 500, 502, 503, 504)
+            trace_raw = err_obj.get("fbtrace_id")
+            trace_s = None
+            if trace_raw is not None:
+                t = str(trace_raw).strip()
+                # fbtrace_id is opaque alphanumeric — keep short, never headers
+                if t and len(t) <= 128 and all(c.isalnum() or c in "-_" for c in t):
+                    trace_s = t
+            return code_s, sub_s, msg[:300], retryable, trace_s
+    return (
+        str(status_code),
+        None,
+        f"meta_http_{status_code}",
+        status_code in (429, 500, 502, 503, 504),
+        None,
+    )
 
 
 def _extract_message_id(body: Any) -> Optional[str]:
@@ -278,14 +295,18 @@ def send_via_meta(
         ).to_legacy_wa_dict()
 
     if resp.status_code != 200 or (isinstance(body, dict) and body.get("error")):
-        code, sub, msg, retryable = _safe_meta_error_fields(body, resp.status_code)
+        code, sub, msg, retryable, trace_id = _safe_meta_error_fields(
+            body, resp.status_code
+        )
         return empty_provider_result(
             PROVIDER_META,
             error_code=code or "meta_api_error",
             error_subcode=sub,
             error_message_safe=msg,
+            error_trace_id=trace_id,
             retryable=retryable,
             message_mode=mode,
+            provider_status=f"http_{int(resp.status_code)}",
         ).to_legacy_wa_dict()
 
     message_id = _extract_message_id(body)

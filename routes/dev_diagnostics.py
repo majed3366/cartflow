@@ -661,6 +661,30 @@ def dev_meta_pilot_evidence(
                 .first()
             )
 
+        from services.recovery_message_context_v1 import (  # noqa: PLC0415
+            context_from_log_row,
+        )
+
+        def _log_evidence_row(lg: Any) -> dict[str, Any]:
+            ctx = context_from_log_row(lg)
+            return {
+                "id": int(lg.id),
+                "status": lg.status,
+                "step": lg.step,
+                "provider": getattr(lg, "provider", None),
+                "provider_message_sid": getattr(lg, "provider_message_sid", None),
+                "reason_tag": getattr(lg, "reason_tag", None),
+                "phone_masked": _mask_phone(lg.phone),
+                "message_preview": (lg.message or "")[:80],
+                "created_at": _iso(lg.created_at),
+                "sent_at": _iso(lg.sent_at),
+                "provider_status": (ctx.get("provider_status") or None) or None,
+                "error_code": (ctx.get("error_code") or None) or None,
+                "error_subcode": (ctx.get("error_subcode") or None) or None,
+                "error_message_safe": (ctx.get("error_message_safe") or None) or None,
+                "error_trace_id": (ctx.get("error_trace_id") or None) or None,
+            }
+
         return j(
             {
                 "ok": True,
@@ -690,24 +714,11 @@ def dev_meta_pilot_evidence(
                         "step": getattr(sr, "step", None),
                         "due_at": _iso(getattr(sr, "due_at", None)),
                         "created_at": _iso(getattr(sr, "created_at", None)),
+                        "last_error": (getattr(sr, "last_error", None) or None),
                     }
                     for sr in sched
                 ],
-                "recovery_logs": [
-                    {
-                        "id": int(lg.id),
-                        "status": lg.status,
-                        "step": lg.step,
-                        "provider": getattr(lg, "provider", None),
-                        "provider_message_sid": getattr(lg, "provider_message_sid", None),
-                        "reason_tag": getattr(lg, "reason_tag", None),
-                        "phone_masked": _mask_phone(lg.phone),
-                        "message_preview": (lg.message or "")[:80],
-                        "created_at": _iso(lg.created_at),
-                        "sent_at": _iso(lg.sent_at),
-                    }
-                    for lg in logs
-                ],
+                "recovery_logs": [_log_evidence_row(lg) for lg in logs],
                 "delivery_truth": [
                     {
                         "provider": getattr(row, "provider", None),

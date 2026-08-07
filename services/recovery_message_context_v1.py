@@ -44,6 +44,12 @@ class RecoveryMessageContext:
     read_status: str = ""
     source: str = ""
     context_status: str = LEGACY_CONTEXT_MISSING
+    # Safe provider failure fields (Meta/Twilio) — never tokens / Authorization
+    provider_status: str = ""
+    error_code: str = ""
+    error_subcode: str = ""
+    error_message_safe: str = ""
+    error_trace_id: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -221,6 +227,11 @@ def build_recovery_message_context(
     store: Optional[Any] = None,
     abandoned_cart: Optional[Any] = None,
     reason_row: Optional[Any] = None,
+    provider_status: str = "",
+    error_code: str = "",
+    error_subcode: str = "",
+    error_message_safe: str = "",
+    error_trace_id: str = "",
 ) -> RecoveryMessageContext:
     rk = _norm(recovery_key) or recovery_key_from_parts(
         store_slug=store_slug,
@@ -277,6 +288,11 @@ def build_recovery_message_context(
         read_status=_norm(read_status)[:64],
         source=_norm(source)[:64] or "recovery_sequence",
         context_status=linkage,
+        provider_status=_norm(provider_status)[:64],
+        error_code=_norm(error_code)[:128],
+        error_subcode=_norm(error_subcode)[:64],
+        error_message_safe=_norm(error_message_safe)[:300],
+        error_trace_id=_norm(error_trace_id)[:128],
     )
 
 
@@ -367,6 +383,11 @@ def merge_persist_context(
             send_status=status or message_context.get("send_status") or "",
             sent_at=sent_at,
             source=message_context.get("source") or source,
+            provider_status=str(message_context.get("provider_status") or ""),
+            error_code=str(message_context.get("error_code") or ""),
+            error_subcode=str(message_context.get("error_subcode") or ""),
+            error_message_safe=str(message_context.get("error_message_safe") or ""),
+            error_trace_id=str(message_context.get("error_trace_id") or ""),
         )
     else:
         base = build_recovery_message_context(
@@ -397,6 +418,19 @@ def merge_persist_context(
         base.provider_message_sid = _norm(provider_message_sid)[:128]
     if step is not None:
         base.attempt = max(1, int(step))
+    if isinstance(message_context, dict):
+        if message_context.get("provider_status"):
+            base.provider_status = _norm(str(message_context.get("provider_status")))[:64]
+        if message_context.get("error_code"):
+            base.error_code = _norm(str(message_context.get("error_code")))[:128]
+        if message_context.get("error_subcode"):
+            base.error_subcode = _norm(str(message_context.get("error_subcode")))[:64]
+        if message_context.get("error_message_safe"):
+            base.error_message_safe = _norm(
+                str(message_context.get("error_message_safe"))
+            )[:300]
+        if message_context.get("error_trace_id"):
+            base.error_trace_id = _norm(str(message_context.get("error_trace_id")))[:128]
     base.context_status = classify_context_linkage(
         recovery_key=base.recovery_key,
         store_slug=base.store_slug,

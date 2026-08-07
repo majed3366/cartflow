@@ -51,6 +51,7 @@ class WhatsAppProviderResult:
     error_code: Optional[str] = None
     error_subcode: Optional[str] = None
     error_message_safe: Optional[str] = None
+    error_trace_id: Optional[str] = None
     retryable: bool = False
     raw_payload_stored: bool = False
     message_mode: Optional[str] = None
@@ -75,6 +76,7 @@ class WhatsAppProviderResult:
             "error_code": self.error_code,
             "error_subcode": self.error_subcode,
             "error_message_safe": self.error_message_safe,
+            "error_trace_id": self.error_trace_id,
             "retryable": bool(self.retryable),
             "raw_payload_stored": False,
             "message_mode": self.message_mode,
@@ -92,13 +94,17 @@ def empty_provider_result(
     retryable: bool = False,
     message_mode: Optional[str] = None,
     error_subcode: Optional[str] = None,
+    error_trace_id: Optional[str] = None,
+    provider_status: Optional[str] = None,
 ) -> WhatsAppProviderResult:
     return WhatsAppProviderResult(
         provider=provider,
         accepted=False,
+        provider_status=provider_status or "rejected",
         error_code=error_code,
         error_subcode=error_subcode,
         error_message_safe=error_message_safe,
+        error_trace_id=error_trace_id,
         retryable=retryable,
         raw_payload_stored=False,
         message_mode=message_mode,

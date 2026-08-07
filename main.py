@@ -7122,7 +7122,8 @@ def _wa_result_provider_persist_kwargs(wa_dict: dict[str, Any]) -> dict[str, Any
     err_sub = str(wa_dict.get("error_subcode") or "").strip()[:64]
     err_safe = str(
         wa_dict.get("error_message_safe") or wa_dict.get("error") or ""
-    ).strip()[:256]
+    ).strip()[:300]
+    err_trace = str(wa_dict.get("error_trace_id") or "").strip()[:128]
     prov_status = str(
         wa_dict.get("provider_status") or wa_dict.get("status") or ""
     ).strip()[:64]
@@ -7137,6 +7138,7 @@ def _wa_result_provider_persist_kwargs(wa_dict: dict[str, Any]) -> dict[str, Any
         "error_code": err_code or None,
         "error_subcode": err_sub or None,
         "error_message_safe": err_safe or None,
+        "error_trace_id": err_trace or None,
     }
 
 
@@ -9347,6 +9349,7 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
                 "error_code": _wa_prov.get("error_code") or "",
                 "error_subcode": _wa_prov.get("error_subcode") or "",
                 "error_message_safe": _wa_prov.get("error_message_safe") or "",
+                "error_trace_id": _wa_prov.get("error_trace_id") or "",
             }
         )
         _persist_cart_recovery_log(
