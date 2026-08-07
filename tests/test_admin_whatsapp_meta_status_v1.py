@@ -78,21 +78,35 @@ class AdminWhatsappMetaStatusFetchTests(unittest.TestCase):
             "id": "pn123",
             "verified_name": "CartFlow",
             "display_phone_number": "+966 50 000 0000",
+            "status": "CONNECTED",
+            "quality_rating": "GREEN",
+            "code_verification_status": "VERIFIED",
+            "name_status": "APPROVED",
+            "platform_type": "CLOUD_API",
+            "messaging_limit_tier": "TIER_1K",
         }
         mock_get.return_value = mock_resp
 
         out = fetch_whatsapp_meta_status()
         self.assertTrue(out["connected"])
+        self.assertTrue(out["cloud_api_registered"])
         self.assertTrue(out["meta_response_ok"])
         self.assertIsNone(out["error"])
         self.assertEqual(out["verified_name"], "CartFlow")
         self.assertEqual(out["display_phone_number"], "+966 50 000 0000")
         self.assertEqual(out["phone_number_id"], "pn123")
         self.assertEqual(out["waba_id"], "waba456")
+        self.assertEqual(out["registration_status"], "CONNECTED")
+        self.assertEqual(out["quality_rating"], "GREEN")
+        self.assertEqual(out["code_verification_status"], "VERIFIED")
+        self.assertEqual(out["name_status"], "APPROVED")
+        self.assertEqual(out["platform_type"], "CLOUD_API")
+        self.assertEqual(out["messaging_limit_tier"], "TIER_1K")
         mock_get.assert_called_once()
         call_kwargs = mock_get.call_args
         self.assertIn("graph.facebook.com/v23.0/pn123", call_kwargs[0][0])
         self.assertEqual(call_kwargs[1]["headers"]["Authorization"], "Bearer tok")
+        self.assertIn("status", call_kwargs[1]["params"]["fields"])
         self.assertNotIn("access_token", out)
         self.assertNotIn("token", out)
 

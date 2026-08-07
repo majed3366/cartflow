@@ -12,6 +12,19 @@ META_GRAPH_VERSION = "v23.0"
 META_GRAPH_BASE = f"https://graph.facebook.com/{META_GRAPH_VERSION}"
 PLACEHOLDER_TOKENS = frozenset({"your_token", "your_id", "changeme", "placeholder"})
 
+# Registration / eligibility fields for Cloud API verify (never secrets).
+PHONE_STATUS_FIELDS = (
+    "id,"
+    "verified_name,"
+    "display_phone_number,"
+    "quality_rating,"
+    "code_verification_status,"
+    "name_status,"
+    "status,"
+    "platform_type,"
+    "messaging_limit_tier"
+)
+
 
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -47,6 +60,13 @@ def _empty_status(env: dict[str, str]) -> dict[str, Any]:
         "verified_name": None,
         "display_phone_number": None,
         "waba_id": env.get("waba_id") or None,
+        "registration_status": None,
+        "quality_rating": None,
+        "code_verification_status": None,
+        "name_status": None,
+        "platform_type": None,
+        "messaging_limit_tier": None,
+        "cloud_api_registered": False,
         "meta_response_ok": False,
         "error": None,
         "verified_at": _utc_now_iso(),
@@ -75,7 +95,7 @@ def fetch_whatsapp_meta_status(
         return out
 
     url = f"{META_GRAPH_BASE}/{phone_id}"
-    params = {"fields": "verified_name,display_phone_number,id"}
+    params = {"fields": PHONE_STATUS_FIELDS}
     headers = {"Authorization": f"Bearer {token}"}
     http = session or requests
 
@@ -115,6 +135,22 @@ def fetch_whatsapp_meta_status(
     api_id = body.get("id") if isinstance(body, dict) else None
     if api_id:
         out["phone_number_id"] = str(api_id)
-    out["connected"] = out["meta_response_ok"] is True
+
+    status_raw = body.get("status") if isinstance(body, dict) else None
+    out["registration_status"] = str(status_raw) if status_raw is not None else None
+    out["quality_rating"] = body.get("quality_rating") if isinstance(body, dict) else None
+    out["code_verification_status"] = (
+        body.get("code_verification_status") if isinstance(body, dict) else None
+    )
+    out["name_status"] = body.get("name_status") if isinstance(body, dict) else None
+    out["platform_type"] = body.get("platform_type") if isinstance(body, dict) else None
+    out["messaging_limit_tier"] = (
+        body.get("messaging_limit_tier") if isinstance(body, dict) else None
+    )
+
+    status_norm = (out["registration_status"] or "").strip().upper()
+    out["cloud_api_registered"] = status_norm == "CONNECTED"
+    # Legacy admin card: Graph reachable. Prefer CONNECTED when status present.
+    out["connected"] = out["cloud_api_registered"] if status_norm else True
     out["error"] = None
     return out
