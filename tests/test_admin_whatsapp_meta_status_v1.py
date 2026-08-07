@@ -7,7 +7,9 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from services.admin_whatsapp_meta_status_v1 import (
+    fetch_waba_phone_numbers,
     fetch_whatsapp_meta_status,
+    find_phone_by_display_digits,
     read_whatsapp_meta_env,
 )
 
@@ -131,6 +133,67 @@ class AdminWhatsappMetaStatusFetchTests(unittest.TestCase):
         self.assertFalse(out["connected"])
         self.assertFalse(out["meta_response_ok"])
         self.assertEqual(out["error"], "Invalid OAuth access token")
+
+
+class AdminWhatsappWabaPhoneListTests(unittest.TestCase):
+    @patch.dict(
+        "os.environ",
+        {
+            "WHATSAPP_ACCESS_TOKEN": "tok",
+            "WHATSAPP_BUSINESS_ACCOUNT_ID": "waba456",
+        },
+        clear=True,
+    )
+    @patch("services.admin_whatsapp_meta_status_v1.requests.get")
+    def test_lists_waba_phones(self, mock_get: MagicMock) -> None:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "data": [
+                {
+                    "id": "111",
+                    "display_phone_number": "+1 555-650-3844",
+                    "verified_name": "Test Number",
+                    "status": "CONNECTED",
+                    "platform_type": "CLOUD_API",
+                    "quality_rating": "GREEN",
+                },
+                {
+                    "id": "222",
+                    "display_phone_number": "+966 57 970 6669",
+                    "verified_name": "CartFlow",
+                    "status": "PENDING",
+                    "platform_type": "CLOUD_API",
+                    "quality_rating": "UNKNOWN",
+                },
+            ]
+        }
+        mock_get.return_value = mock_resp
+        out = fetch_waba_phone_numbers()
+        self.assertTrue(out["meta_response_ok"])
+        self.assertEqual(out["waba_id"], "waba456")
+        self.assertEqual(len(out["phones"]), 2)
+        self.assertEqual(out["phones"][1]["phone_number_id"], "222")
+        self.assertNotIn("access_token", out)
+        mock_get.assert_called_once()
+        self.assertIn("waba456/phone_numbers", mock_get.call_args[0][0])
+
+    def test_find_saudi_by_digits(self) -> None:
+        phones = [
+            {
+                "phone_number_id": "111",
+                "display_phone_number": "+1 555-650-3844",
+            },
+            {
+                "phone_number_id": "222",
+                "display_phone_number": "+966 57 970 6669",
+            },
+        ]
+        hit = find_phone_by_display_digits(phones, "+966579706669")
+        self.assertIsNotNone(hit)
+        assert hit is not None
+        self.assertEqual(hit["phone_number_id"], "222")
+        self.assertIsNone(find_phone_by_display_digits(phones, "+966500000000"))
 
 
 class AdminWhatsappMetaStatusRouteTests(unittest.TestCase):

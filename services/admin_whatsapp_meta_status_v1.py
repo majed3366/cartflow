@@ -154,3 +154,112 @@ def fetch_whatsapp_meta_status(
     out["connected"] = out["cloud_api_registered"] if status_norm else True
     out["error"] = None
     return out
+
+
+WABA_PHONE_LIST_FIELDS = (
+    "id,display_phone_number,verified_name,status,platform_type,quality_rating"
+)
+
+
+def _normalize_phone_digits(value: Any) -> str:
+    return "".join(ch for ch in str(value or "") if ch.isdigit())
+
+
+def fetch_waba_phone_numbers(
+    *,
+    session: Optional[requests.Session] = None,
+    timeout: float = 20.0,
+    waba_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """
+    Enumerate WhatsApp Business phone numbers on the configured (or given) WABA.
+    Never exposes the access token.
+    """
+    env = read_whatsapp_meta_env()
+    token = env.get("access_token") or ""
+    resolved_waba = (waba_id or env.get("waba_id") or "").strip()
+    out: dict[str, Any] = {
+        "waba_id": resolved_waba or None,
+        "phones": [],
+        "meta_response_ok": False,
+        "error": None,
+        "verified_at": _utc_now_iso(),
+    }
+
+    if not token or token.lower() in PLACEHOLDER_TOKENS:
+        out["error"] = "access_token_missing"
+        return out
+    if not resolved_waba or resolved_waba.lower() in PLACEHOLDER_TOKENS:
+        out["error"] = "waba_id_missing"
+        return out
+
+    url = f"{META_GRAPH_BASE}/{resolved_waba}/phone_numbers"
+    params = {"fields": WABA_PHONE_LIST_FIELDS}
+    headers = {"Authorization": f"Bearer {token}"}
+    http = session or requests
+
+    try:
+        resp = http.get(url, params=params, headers=headers, timeout=timeout)
+    except requests.RequestException as exc:
+        out["error"] = f"http_error: {exc}"
+        return out
+
+    try:
+        body = resp.json()
+    except ValueError:
+        out["error"] = "invalid_json_response"
+        return out
+
+    if resp.status_code != 200:
+        err_obj = body.get("error") if isinstance(body, dict) else None
+        if isinstance(err_obj, dict):
+            out["error"] = str(err_obj.get("message") or err_obj.get("type") or "meta_http_error")
+        else:
+            out["error"] = f"meta_http_{resp.status_code}"
+        return out
+
+    if isinstance(body, dict) and body.get("error"):
+        err_obj = body.get("error")
+        if isinstance(err_obj, dict):
+            out["error"] = str(err_obj.get("message") or err_obj.get("type") or "meta_api_error")
+        else:
+            out["error"] = "meta_api_error"
+        return out
+
+    rows = body.get("data") if isinstance(body, dict) else None
+    phones: list[dict[str, Any]] = []
+    if isinstance(rows, list):
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            status_raw = row.get("status")
+            phones.append(
+                {
+                    "phone_number_id": str(row["id"]) if row.get("id") is not None else None,
+                    "display_phone_number": row.get("display_phone_number"),
+                    "verified_name": row.get("verified_name"),
+                    "registration_status": str(status_raw) if status_raw is not None else None,
+                    "platform_type": row.get("platform_type"),
+                    "quality_rating": row.get("quality_rating"),
+                }
+            )
+
+    out["phones"] = phones
+    out["meta_response_ok"] = True
+    out["error"] = None
+    return out
+
+
+def find_phone_by_display_digits(
+    phones: list[dict[str, Any]],
+    target_digits: str,
+) -> Optional[dict[str, Any]]:
+    """Match a phone row by digit-only display number (ignores spaces/dashes)."""
+    want = _normalize_phone_digits(target_digits)
+    if not want:
+        return None
+    for row in phones:
+        got = _normalize_phone_digits(row.get("display_phone_number"))
+        if got == want or got.endswith(want) or want.endswith(got):
+            return row
+    return None

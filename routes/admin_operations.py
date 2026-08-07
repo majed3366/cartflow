@@ -1006,6 +1006,20 @@ def api_admin_whatsapp_meta_status(request: Request) -> Any:
     return j({"ok": True, **status})
 
 
+@router.get("/admin/api/whatsapp/meta-phone-numbers")
+def api_admin_whatsapp_meta_phone_numbers(request: Request) -> Any:
+    """Read-only WABA phone enumeration (no send / no register)."""
+    denied = _admin_json_auth(request)
+    if denied is not None:
+        return denied
+    from services.admin_whatsapp_meta_status_v1 import (  # noqa: PLC0415
+        fetch_waba_phone_numbers,
+    )
+
+    result = fetch_waba_phone_numbers()
+    return j({"ok": result.get("error") is None, **result})
+
+
 @router.post("/admin/api/whatsapp/meta-send-test")
 async def api_admin_whatsapp_meta_send_test(request: Request) -> Any:
     denied = _admin_json_auth(request)
