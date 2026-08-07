@@ -1,0 +1,18 @@
+{
+  "task": "scheduler_meta_runtime_log_single_line_evidence_v2",
+  "commit_sha": "f0db08adc0fa6b0cfa56ac47558ea474199ab0b9",
+  "pushed_to": "main",
+  "tests": {
+    "command": "python -m pytest tests/test_scheduler_meta_runtime_startup_v1.py tests/test_scheduler_meta_preflight_v1.py -q",
+    "result": "19 passed"
+  },
+  "expected_line_shape": "[SCHEDULER META RUNTIME] role=scheduler whatsapp_provider=<value> meta_template_name=<value> access_token_configured=<true|false> phone_number_id_configured=<true|false> waba_id_configured=<true|false> ready_for_meta_recovery=<true|false>",
+  "production_capture": {
+    "status": "blocked",
+    "reason": "railway_cli_invalid_grant",
+    "exact_line": null,
+    "readiness_verdict": null
+  },
+  "stop": true,
+  "no_recovery_journey": true
+}
