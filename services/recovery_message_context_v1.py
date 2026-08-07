@@ -50,6 +50,8 @@ class RecoveryMessageContext:
     error_subcode: str = ""
     error_message_safe: str = ""
     error_trace_id: str = ""
+    # Sanitized Meta wire capture JSON (no secrets)
+    meta_dispatch_evidence_json: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -232,6 +234,7 @@ def build_recovery_message_context(
     error_subcode: str = "",
     error_message_safe: str = "",
     error_trace_id: str = "",
+    meta_dispatch_evidence_json: str = "",
 ) -> RecoveryMessageContext:
     rk = _norm(recovery_key) or recovery_key_from_parts(
         store_slug=store_slug,
@@ -293,6 +296,7 @@ def build_recovery_message_context(
         error_subcode=_norm(error_subcode)[:64],
         error_message_safe=_norm(error_message_safe)[:300],
         error_trace_id=_norm(error_trace_id)[:128],
+        meta_dispatch_evidence_json=_norm(meta_dispatch_evidence_json)[:20000],
     )
 
 
@@ -388,6 +392,9 @@ def merge_persist_context(
             error_subcode=str(message_context.get("error_subcode") or ""),
             error_message_safe=str(message_context.get("error_message_safe") or ""),
             error_trace_id=str(message_context.get("error_trace_id") or ""),
+            meta_dispatch_evidence_json=str(
+                message_context.get("meta_dispatch_evidence_json") or ""
+            ),
         )
     else:
         base = build_recovery_message_context(
@@ -431,6 +438,18 @@ def merge_persist_context(
             )[:300]
         if message_context.get("error_trace_id"):
             base.error_trace_id = _norm(str(message_context.get("error_trace_id")))[:128]
+        raw_ev = message_context.get("meta_dispatch_evidence_json")
+        if raw_ev:
+            base.meta_dispatch_evidence_json = _norm(str(raw_ev))[:20000]
+        elif isinstance(message_context.get("meta_dispatch_evidence"), dict):
+            try:
+                base.meta_dispatch_evidence_json = json.dumps(
+                    message_context.get("meta_dispatch_evidence"),
+                    ensure_ascii=False,
+                    default=str,
+                )[:20000]
+            except (TypeError, ValueError):
+                pass
     base.context_status = classify_context_linkage(
         recovery_key=base.recovery_key,
         store_slug=base.store_slug,

@@ -1044,6 +1044,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/meta-pilot-preflight",
         "/dev/scheduler-meta-preflight",
         "/dev/meta-pilot-evidence",
+        "/dev/meta-dispatch-request",
         "/dev/store-template-debug",
         "/dev/template-truth",
         "/dev/store-identity-runtime-truth",
@@ -9352,6 +9353,9 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
                 "error_trace_id": _wa_prov.get("error_trace_id") or "",
             }
         )
+        _ev = wa_dict.get("meta_dispatch_evidence")
+        if isinstance(_ev, dict):
+            _fail_ctx["meta_dispatch_evidence"] = _ev
         _persist_cart_recovery_log(
             store_slug=store_slug,
             session_id=session_id,
@@ -9397,6 +9401,9 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             "provider_status": _wa_prov_ok.get("provider_status") or "",
         }
     )
+    _ev_ok = wa_dict.get("meta_dispatch_evidence")
+    if isinstance(_ev_ok, dict):
+        final_ctx["meta_dispatch_evidence"] = _ev_ok
     _persist_cart_recovery_log(
         store_slug=store_slug,
         session_id=session_id,

@@ -159,6 +159,23 @@ def _extract_message_id(body: Any) -> Optional[str]:
     return None
 
 
+def _attach_dispatch_evidence(out: dict[str, Any]) -> dict[str, Any]:
+    """Attach sanitized wire evidence to result dict (no behavior change)."""
+    try:
+        from services.meta_dispatch_request_evidence_v1 import (  # noqa: PLC0415
+            get_last_meta_dispatch_evidence,
+        )
+
+        ev = get_last_meta_dispatch_evidence()
+        if isinstance(ev, dict) and isinstance(out, dict):
+            attached = dict(out)
+            attached["meta_dispatch_evidence"] = ev
+            return attached
+    except Exception:  # noqa: BLE001
+        pass
+    return out
+
+
 def send_via_meta(
     req: WhatsAppProviderRequest,
     *,
@@ -262,61 +279,108 @@ def send_via_meta(
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
     }
+    # Evidence-only capture — must not alter payload / headers / send path
+    try:
+        from services.meta_dispatch_request_evidence_v1 import (  # noqa: PLC0415
+            record_meta_dispatch_request,
+        )
+
+        record_meta_dispatch_request(
+            graph_endpoint=url,
+            graph_version=META_PROVIDER_GRAPH_BASE.rsplit("/", 1)[-1],
+            phone_number_id=phone_id,
+            payload=payload if isinstance(payload, dict) else {},
+            recovery_key=getattr(req, "recovery_key", None),
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
     http = session or requests
 
     try:
         resp = http.post(url, json=payload, headers=headers, timeout=timeout)
     except requests.Timeout:
-        return empty_provider_result(
-            PROVIDER_META,
-            error_code="provider_timeout",
-            error_message_safe="provider_timeout",
-            retryable=True,
-            message_mode=mode,
-        ).to_legacy_wa_dict()
+        return _attach_dispatch_evidence(
+            empty_provider_result(
+                PROVIDER_META,
+                error_code="provider_timeout",
+                error_message_safe="provider_timeout",
+                retryable=True,
+                message_mode=mode,
+            ).to_legacy_wa_dict()
+        )
     except requests.RequestException as exc:
         # Never include request headers/token in the safe message
-        return empty_provider_result(
-            PROVIDER_META,
-            error_code="http_error",
-            error_message_safe=f"http_error:{type(exc).__name__}",
-            retryable=True,
-            message_mode=mode,
-        ).to_legacy_wa_dict()
+        return _attach_dispatch_evidence(
+            empty_provider_result(
+                PROVIDER_META,
+                error_code="http_error",
+                error_message_safe=f"http_error:{type(exc).__name__}",
+                retryable=True,
+                message_mode=mode,
+            ).to_legacy_wa_dict()
+        )
 
     try:
         body = resp.json()
     except ValueError:
-        return empty_provider_result(
-            PROVIDER_META,
-            error_code="invalid_json_response",
-            error_message_safe="invalid_json_response",
-            message_mode=mode,
-        ).to_legacy_wa_dict()
+        body = None
+        try:
+            from services.meta_dispatch_request_evidence_v1 import (  # noqa: PLC0415
+                record_meta_dispatch_response,
+            )
+
+            record_meta_dispatch_response(
+                status_code=int(resp.status_code),
+                body={"error": {"message": "invalid_json_response", "code": None}},
+            )
+        except Exception:  # noqa: BLE001
+            pass
+        return _attach_dispatch_evidence(
+            empty_provider_result(
+                PROVIDER_META,
+                error_code="invalid_json_response",
+                error_message_safe="invalid_json_response",
+                message_mode=mode,
+            ).to_legacy_wa_dict()
+        )
+
+    try:
+        from services.meta_dispatch_request_evidence_v1 import (  # noqa: PLC0415
+            record_meta_dispatch_response,
+        )
+
+        record_meta_dispatch_response(status_code=int(resp.status_code), body=body)
+    except Exception:  # noqa: BLE001
+        pass
 
     if resp.status_code != 200 or (isinstance(body, dict) and body.get("error")):
         code, sub, msg, retryable, trace_id = _safe_meta_error_fields(
             body, resp.status_code
         )
-        return empty_provider_result(
-            PROVIDER_META,
-            error_code=code or "meta_api_error",
-            error_subcode=sub,
-            error_message_safe=msg,
-            error_trace_id=trace_id,
-            retryable=retryable,
-            message_mode=mode,
-            provider_status=f"http_{int(resp.status_code)}",
-        ).to_legacy_wa_dict()
+        return _attach_dispatch_evidence(
+            empty_provider_result(
+                PROVIDER_META,
+                error_code=code or "meta_api_error",
+                error_subcode=sub,
+                error_message_safe=msg,
+                error_trace_id=trace_id,
+                retryable=retryable,
+                message_mode=mode,
+                provider_status=f"http_{int(resp.status_code)}",
+            ).to_legacy_wa_dict()
+        )
 
     message_id = _extract_message_id(body)
     if not message_id:
-        return empty_provider_result(
-            PROVIDER_META,
-            error_code="message_id_missing_in_response",
-            error_message_safe="message_id_missing_in_response",
-            message_mode=mode,
-        ).to_legacy_wa_dict()
+        return _attach_dispatch_evidence(
+            empty_provider_result(
+                PROVIDER_META,
+                error_code="message_id_missing_in_response",
+                error_message_safe="message_id_missing_in_response",
+                message_mode=mode,
+            ).to_legacy_wa_dict()
+        )
 
     result = WhatsAppProviderResult(
         provider=PROVIDER_META,
@@ -330,4 +394,4 @@ def send_via_meta(
         raw_payload_stored=False,
         message_mode=mode,
     )
-    return result.to_legacy_wa_dict()
+    return _attach_dispatch_evidence(result.to_legacy_wa_dict())

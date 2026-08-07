@@ -1,0 +1,132 @@
+{
+  "captured_at": "2026-08-07T12:51:10.499697+00:00",
+  "recovery_key": "demo:cf_cart_meta_err_persist",
+  "resolved_whatsapp_provider": "meta",
+  "resolved_phone_number_id": "pn-err-1",
+  "resolved_template_name": "cartflow_cart_reminder_ar_v2",
+  "resolved_waba_id": null,
+  "resolved_waba_source": "none",
+  "resolved_token_env_key": "WHATSAPP_ACCESS_TOKEN",
+  "resolved_phone_number_id_source": "WHATSAPP_PHONE_NUMBER_ID",
+  "meta_app_id": null,
+  "waba_id": null,
+  "graph_api_version": "v23.0",
+  "http_phone_number_id": "pn-err-1",
+  "http_template_name": "cartflow_cart_reminder_ar_v2",
+  "request": {
+    "graph_endpoint": "https://graph.facebook.com/v23.0/pn-err-1/messages",
+    "graph_version": "v23.0",
+    "phone_number_id": "pn-err-1",
+    "messaging_product": "whatsapp",
+    "recipient_type": null,
+    "to": "+966*******11",
+    "type": "template",
+    "template": {
+      "name": "cartflow_cart_reminder_ar_v2",
+      "language": {
+        "code": "ar"
+      }
+    },
+    "template_components": [
+      {
+        "type": "body",
+        "sub_type": null,
+        "index": null,
+        "parameters": [
+          {
+            "type": "text",
+            "text": "مساعد المتجر"
+          }
+        ],
+        "parameter_count": 1,
+        "parameter_types": [
+          "text"
+        ]
+      },
+      {
+        "type": "button",
+        "sub_type": "url",
+        "index": "0",
+        "parameters": [
+          {
+            "type": "text",
+            "text": "[redacted]"
+          }
+        ],
+        "parameter_count": 1,
+        "parameter_types": [
+          "text"
+        ]
+      },
+      {
+        "type": "button",
+        "sub_type": "quick_reply",
+        "index": "1",
+        "parameters": [
+          {
+            "type": "payload",
+            "payload": "cartflow_customer_support_v1"
+          }
+        ],
+        "parameter_count": 1,
+        "parameter_types": [
+          "payload"
+        ]
+      }
+    ]
+  },
+  "response": {
+    "http_status": 400,
+    "error": {
+      "code": 100,
+      "error_subcode": 2388044,
+      "message_safe": "(#100) Invalid parameter",
+      "fbtrace_id": "AGxYz_trace99",
+      "type": "OAuthException"
+    },
+    "accepted": false
+  },
+  "verification": {
+    "checks": {
+      "phone_number_id_in_endpoint": true,
+      "template_name_ok": true,
+      "language_ok": true,
+      "body_param_count_ok": true,
+      "url_button_present": true,
+      "quick_reply_present": true,
+      "provider_is_meta": true
+    },
+    "all_passed": true,
+    "component_summary": {
+      "body": {
+        "present": true,
+        "parameter_count": 1,
+        "parameter_types": [
+          "text"
+        ],
+        "sanitized_values": [
+          "مساعد المتجر"
+        ]
+      },
+      "url_button": {
+        "present": true,
+        "index": "0",
+        "sub_type": "url",
+        "parameter_count": 1,
+        "sanitized_values": [
+          "[redacted]"
+        ]
+      },
+      "quick_reply": {
+        "present": true,
+        "index": "1",
+        "sub_type": "quick_reply",
+        "parameter_count": 1,
+        "sanitized_values": [
+          "cartflow_customer_support_v1"
+        ]
+      }
+    }
+  },
+  "response_captured_at": "2026-08-07T12:51:10.507755+00:00"
+}

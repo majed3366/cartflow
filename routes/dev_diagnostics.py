@@ -2,6 +2,7 @@
 """Read-only dev diagnostic routes (Phase 1D/1E-A extraction)."""
 from __future__ import annotations
 
+import json
 import logging
 import os
 from datetime import datetime, timedelta, timezone
@@ -335,6 +336,70 @@ def dev_scheduler_meta_preflight() -> Any:
             403,
         )
     return j({"ok": True, **payload})
+
+
+@router.get("/dev/meta-dispatch-request")
+def dev_meta_dispatch_request(
+    recovery_key: str = Query("", max_length=512),
+) -> Any:
+    """
+    Read-only sanitized Meta Graph outbound request evidence.
+
+    Prefer durable CartRecoveryLog context (Scheduler write → API read).
+    Falls back to in-process last capture when recovery_key omitted.
+    Never returns access tokens or Authorization headers.
+    """
+    from services.meta_dispatch_request_evidence_v1 import (  # noqa: PLC0415
+        get_last_meta_dispatch_evidence,
+    )
+    from services.recovery_message_context_v1 import context_from_log_row  # noqa: PLC0415
+
+    evidence = None
+    rk = (recovery_key or "").strip()[:512]
+    if rk:
+        try:
+            import main as _main  # noqa: PLC0415
+
+            _main._ensure_cartflow_api_db_warmed()
+            row = (
+                db.session.query(CartRecoveryLog)
+                .filter(
+                    CartRecoveryLog.recovery_key == rk,
+                    CartRecoveryLog.provider == "meta",
+                )
+                .order_by(CartRecoveryLog.id.desc())
+                .first()
+            )
+            if row is None:
+                row = (
+                    db.session.query(CartRecoveryLog)
+                    .filter(CartRecoveryLog.recovery_key == rk)
+                    .order_by(CartRecoveryLog.id.desc())
+                    .first()
+                )
+            if row is not None:
+                ctx = context_from_log_row(row)
+                raw = ctx.get("meta_dispatch_evidence_json") or ""
+                if raw:
+                    try:
+                        parsed = json.loads(str(raw))
+                        if isinstance(parsed, dict):
+                            evidence = parsed
+                    except (TypeError, ValueError, json.JSONDecodeError):
+                        evidence = None
+                if evidence is None and isinstance(ctx.get("meta_dispatch_evidence"), dict):
+                    evidence = ctx.get("meta_dispatch_evidence")
+        except Exception as exc:  # noqa: BLE001
+            db.session.rollback()
+            return j({"ok": False, "error": f"lookup_failed:{type(exc).__name__}"}, 500)
+    if evidence is None:
+        evidence = get_last_meta_dispatch_evidence()
+    if not evidence:
+        return j({"ok": False, "error": "no_capture_yet"}, 404)
+    blob = json.dumps(evidence, ensure_ascii=False, default=str).lower()
+    if "bearer " in blob or '"authorization"' in blob:
+        return j({"ok": False, "error": "sanitization_guard_triggered"}, 500)
+    return j({"ok": True, "evidence": evidence, "recovery_key": rk or None})
 
 
 @router.get("/dev/meta-pilot-preflight")
