@@ -156,8 +156,24 @@ def _log_scheduler_meta_runtime(role: str) -> None:
         )
 
         log_scheduler_meta_runtime(role=role)
-    except Exception:  # noqa: BLE001
-        return
+    except Exception as exc:  # noqa: BLE001 — never crash Scheduler startup
+        # Import/wiring failure — still emit one searchable safe line.
+        try:
+            from services.scheduler_meta_preflight_v1 import (  # noqa: PLC0415
+                format_scheduler_meta_runtime_error_line as _fmt_err,
+            )
+
+            line = _fmt_err(type(exc).__name__)
+        except Exception:  # noqa: BLE001
+            line = f"[SCHEDULER META RUNTIME ERROR] error={type(exc).__name__}"
+        try:
+            print(line, flush=True)
+        except OSError:
+            pass
+        try:
+            log.info("%s", line)
+        except Exception:  # noqa: BLE001
+            pass
 
 
 async def run_scheduler_drivers_at_startup() -> dict[str, Any]:
