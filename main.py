@@ -5527,7 +5527,21 @@ def _build_recovery_context_from_arm(
         rt, store_arm, recovery_context=None
     )
     _sync_recovery_multi_attempt_cap(recovery_key, cfg_count, source=cfg_source)
-    return {
+    checkout_url: Optional[str] = None
+    if cart_id:
+        try:
+            _ac_chk = (
+                db.session.query(AbandonedCart)
+                .filter(AbandonedCart.zid_cart_id == str(cart_id).strip()[:255])
+                .first()
+            )
+            if _ac_chk is not None:
+                _cu = getattr(_ac_chk, "cart_url", None)
+                if isinstance(_cu, str) and _cu.strip():
+                    checkout_url = _cu.strip()[:2000]
+        except Exception:  # noqa: BLE001
+            checkout_url = None
+    out_ctx: Dict[str, Any] = {
         "store_slug": canon_slug[:255],
         "store_id": sid_pk,
         "session_id": (session_id or "").strip()[:512],
@@ -5539,6 +5553,10 @@ def _build_recovery_context_from_arm(
         "configured_message_count": int(cfg_count),
         "configured_message_count_source": str(cfg_source)[:64],
     }
+    if checkout_url:
+        out_ctx["checkout_url"] = checkout_url
+        out_ctx["cart_url"] = checkout_url
+    return out_ctx
 
 
 def _store_slug_from_recovery_key(recovery_key: Optional[str]) -> Optional[str]:
@@ -7086,6 +7104,40 @@ def _recovery_persist_context_kwargs(
     if send_ctx:
         out["message_context"] = send_ctx
     return out
+
+
+def _wa_result_provider_persist_kwargs(wa_dict: dict[str, Any]) -> dict[str, Any]:
+    """
+    Provider fields for CartRecoveryLog after a governed send attempt.
+
+    Must run after provider resolution — never drop provider on failure.
+    """
+    provider = str(wa_dict.get("provider") or "").strip()
+    sid = str(
+        wa_dict.get("sid") or wa_dict.get("external_message_id") or ""
+    ).strip()
+    err_code = str(
+        wa_dict.get("error_code") or wa_dict.get("error") or ""
+    ).strip()[:128]
+    err_sub = str(wa_dict.get("error_subcode") or "").strip()[:64]
+    err_safe = str(
+        wa_dict.get("error_message_safe") or wa_dict.get("error") or ""
+    ).strip()[:256]
+    prov_status = str(
+        wa_dict.get("provider_status") or wa_dict.get("status") or ""
+    ).strip()[:64]
+    accepted = wa_dict.get("accepted")
+    if accepted is None:
+        accepted = wa_dict.get("ok") is True
+    return {
+        "provider": provider or None,
+        "provider_message_sid": sid or None,
+        "provider_accepted": bool(accepted),
+        "provider_status": prov_status or None,
+        "error_code": err_code or None,
+        "error_subcode": err_sub or None,
+        "error_message_safe": err_safe or None,
+    }
 
 
 def _try_claim_recovery_session(recovery_key: str) -> bool:
@@ -9283,6 +9335,20 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             "whatsapp_failed",
             session_id=session_id,
         )
+        _wa_prov = _wa_result_provider_persist_kwargs(wa_dict)
+        _fail_ctx = dict(_send_message_context) if _send_message_context else {}
+        _fail_ctx.update(
+            {
+                "provider": _wa_prov.get("provider") or "",
+                "provider_message_sid": _wa_prov.get("provider_message_sid") or "",
+                "send_status": "whatsapp_failed",
+                "accepted": bool(_wa_prov.get("provider_accepted")),
+                "provider_status": _wa_prov.get("provider_status") or "",
+                "error_code": _wa_prov.get("error_code") or "",
+                "error_subcode": _wa_prov.get("error_subcode") or "",
+                "error_message_safe": _wa_prov.get("error_message_safe") or "",
+            }
+        )
         _persist_cart_recovery_log(
             store_slug=store_slug,
             session_id=session_id,
@@ -9291,7 +9357,13 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
             message=text,
             status="whatsapp_failed",
             step=step_num,
-            **_persist_ctx_kw,
+            recovery_key=recovery_key,
+            reason_tag=reason_tag,
+            message_context=_fail_ctx,
+            provider=_wa_prov.get("provider"),
+            provider_message_sid=_wa_prov.get("provider_message_sid"),
+            source=str(_fail_ctx.get("source") or "recovery_sequence"),
+            message_type=str(_fail_ctx.get("message_type") or ""),
         )
         print("recovery NOT marked as sent due to failure")
         _consume_seq_slot_if_needed()
@@ -9302,13 +9374,24 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
     from services.whatsapp_send import whatsapp_send_truth_context  # noqa: PLC0415
 
     wa_truth = whatsapp_send_truth_context(wa_dict)
+    _wa_prov_ok = _wa_result_provider_persist_kwargs(wa_dict)
+    # Prefer explicit provider from governed result over truth-context inference
+    _provider_final = (
+        str(_wa_prov_ok.get("provider") or "").strip()
+        or str(wa_truth.get("provider") or "").strip()
+    )
     final_ctx = dict(_send_message_context) if _send_message_context else {}
     final_ctx.update(
         {
-            "provider": wa_truth.get("provider") or "",
-            "provider_message_sid": wa_truth.get("message_sid") or "",
+            "provider": _provider_final,
+            "provider_message_sid": (
+                str(_wa_prov_ok.get("provider_message_sid") or "")
+                or str(wa_truth.get("message_sid") or "")
+            ),
             "send_status": log_status,
             "sent_at": now.isoformat(),
+            "accepted": bool(_wa_prov_ok.get("provider_accepted")),
+            "provider_status": _wa_prov_ok.get("provider_status") or "",
         }
     )
     _persist_cart_recovery_log(
@@ -9323,8 +9406,12 @@ async def _run_recovery_sequence_after_cart_abandoned_impl(
         recovery_key=recovery_key,
         reason_tag=reason_tag,
         message_context=final_ctx,
-        provider=str(wa_truth.get("provider") or ""),
-        provider_message_sid=str(wa_truth.get("message_sid") or ""),
+        provider=_provider_final or None,
+        provider_message_sid=(
+            str(_wa_prov_ok.get("provider_message_sid") or "")
+            or str(wa_truth.get("message_sid") or "")
+            or None
+        ),
         source=str(final_ctx.get("source") or "recovery_sequence"),
         message_type=str(final_ctx.get("message_type") or ""),
     )
@@ -9928,6 +10015,10 @@ def _execute_cart_abandon_recovery_schedule_continue(
                 skip_ok = False
         if not skip_ok:
             do_upsert = True
+        elif extract_cart_url(payload):
+            # Existing AC may lack cart_url (reason-arm previously omitted checkout).
+            # Re-upsert merges checkout onto the row for Meta template URL button.
+            do_upsert = True
     if do_upsert:
         try:
             ok_u, err_u, _urow = upsert_abandoned_cart_from_payload(payload, store=store_row)
@@ -10528,7 +10619,7 @@ async def _schedule_normal_recovery_after_cart_recovery_reason_saved(
         for k in ("cart_total", "cart_value"):
             if k in body and body.get(k) is not None:
                 synth_pl[k] = body[k]
-    for k in ("phone", "customer_phone", "items_count"):
+    for k in ("phone", "customer_phone", "items_count", "checkout_url", "cart_url"):
         if k in body and body.get(k) is not None:
             synth_pl[k] = body[k]
 
