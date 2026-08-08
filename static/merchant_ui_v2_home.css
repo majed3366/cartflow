@@ -8,23 +8,24 @@ body[data-cf-ui="v2"] .cf2-home {
   max-width: none;
 }
 
-/* One coherent executive surface */
+/* One coherent executive surface — primary + rail adjacent (no dead middle) */
 body[data-cf-ui="v2"] .cf2-home__board {
-  display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(260px, 0.95fr);
+  display: flex;
+  flex-direction: row;
   align-items: stretch;
+  justify-content: flex-start;
   min-height: min(34rem, calc(100vh - var(--cf2-appbar-h) - 7rem));
   background:
     radial-gradient(
-      70% 55% at 100% 0%,
-      rgba(24, 176, 168, 0.11) 0%,
-      transparent 58%
+      55% 50% at 92% 8%,
+      rgba(24, 176, 168, 0.12) 0%,
+      transparent 55%
     ),
     linear-gradient(
       118deg,
-      rgba(8, 32, 72, 0.045) 0%,
-      rgba(255, 255, 255, 0.72) 42%,
-      rgba(243, 246, 249, 0.95) 100%
+      rgba(8, 32, 72, 0.05) 0%,
+      rgba(255, 255, 255, 0.78) 38%,
+      rgba(243, 246, 249, 0.98) 100%
     );
   border: 1px solid rgba(8, 32, 72, 0.08);
   border-radius: 0 20px 20px 0;
@@ -40,15 +41,28 @@ body[data-cf-ui="v2"] .cf2-home__board[data-cf2-tension="resolved"] {
   border-inline-start-color: var(--cf2-navy);
 }
 
-body[data-cf-ui="v2"] .cf2-home__board[data-cf2-rail="empty"] {
-  grid-template-columns: 1fr;
+body[data-cf-ui="v2"] .cf2-home__board[data-cf2-rail="empty"] .cf2-home__primary {
+  max-width: 52rem;
 }
 
 body[data-cf-ui="v2"] .cf2-home__primary {
+  flex: 1 1 36rem;
   min-width: 0;
+  max-width: 46rem;
   padding: 28px 28px 32px 24px;
   display: flex;
   flex-direction: column;
+}
+
+body[data-cf-ui="v2"] .cf2-home__rail {
+  flex: 0 0 19.5rem;
+  width: 19.5rem;
+  padding: 26px 22px 28px 20px;
+  background: rgba(8, 32, 72, 0.04);
+  border-inline-start: 1px solid rgba(8, 32, 72, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 
 body[data-cf-ui="v2"] .cf2-home__mark {
@@ -145,15 +159,6 @@ body[data-cf-ui="v2"] .cf2-home__action {
 }
 
 /* Secondary rail — same board, different question */
-body[data-cf-ui="v2"] .cf2-home__rail {
-  padding: 26px 22px 28px 20px;
-  background: rgba(8, 32, 72, 0.035);
-  border-inline-start: 1px solid rgba(8, 32, 72, 0.1);
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
 body[data-cf-ui="v2"] .cf2-home__rail-label {
   margin: 0;
   font-size: 11px;
@@ -249,7 +254,7 @@ body[data-cf-ui="v2"] .cf2-home__item-body {
 
 @media (max-width: 1023px) {
   body[data-cf-ui="v2"] .cf2-home__board {
-    grid-template-columns: 1fr;
+    flex-direction: column;
     min-height: 0;
     border-radius: 0;
     border-inline-start: none;
@@ -258,10 +263,14 @@ body[data-cf-ui="v2"] .cf2-home__item-body {
   }
 
   body[data-cf-ui="v2"] .cf2-home__primary {
+    flex: none;
+    max-width: none;
     padding: 4px 0 12px;
   }
 
   body[data-cf-ui="v2"] .cf2-home__rail {
+    flex: none;
+    width: auto;
     padding: 14px 0 0;
     background: transparent;
     border-inline-start: none;
