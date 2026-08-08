@@ -1,7 +1,7 @@
 {
   "deploy": {
     "ok": true,
-    "sha": "f5133e79755ba105d3fd9fa0e86393ace204bbc5",
+    "sha": "86545be0b07a2a88127912c91b1e5b9559feb7e1",
     "status": 200
   },
   "desktop": {
@@ -14,7 +14,9 @@
     "coCount": 1,
     "noSceneGallery": true,
     "cache": true,
-    "visibleDesignVocab": false
+    "visibleDesignVocab": false,
+    "support": true,
+    "secondaryDup": false
   },
   "mobile": {
     "ui": "v2",
@@ -26,6 +28,8 @@
     "coCount": 1,
     "noSceneGallery": true,
     "cache": true,
-    "visibleDesignVocab": false
+    "visibleDesignVocab": false,
+    "support": true,
+    "secondaryDup": false
   }
 }
