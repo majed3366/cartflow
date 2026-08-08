@@ -47,6 +47,7 @@ body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__field {
   display: flex;
   flex-direction: column;
   gap: 0;
+  isolation: isolate;
 }
 
 body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__condition {
@@ -130,13 +131,6 @@ body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__secondary {
 body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__condition .cx-insight__action,
 body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight--quiet .cx-insight__action {
   margin-top: 12px;
-}
-
-body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__field {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  isolation: isolate;
 }
 
 /* Keep setup / alerts below the executive field — no collision */

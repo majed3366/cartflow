@@ -12,7 +12,7 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs" / "product" / "merchant_experience_rebuild_v1"
 BASE = "https://smartreplyai.net"
-EXPECTED_SHA_PREFIX = "425afab"
+EXPECTED_SHA_PREFIX = "61c415f"
 ASSETS = (
     "/static/merchant_frame_v1.css",
     "/static/merchant_ds_v1.css",

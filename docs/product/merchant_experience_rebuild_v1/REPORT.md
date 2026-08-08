@@ -8,10 +8,10 @@
 
 | Field | Value |
 |---|---|
-| SHA | `425afabf9a33a2807ce93892235ade72d37f0fa1` |
-| Short | `425afab` |
-| Message | `feat: rebuild Home and Decision Workspace presentation for CartFlow` |
-| Production header | `X-CartFlow-Git-Sha: 425afabf9a33a2807ce93892235ade72d37f0fa1` |
+| SHA | `61c415f` (polish on `425afab`) |
+| Short | `61c415f` |
+| Message | `fix: polish Home experience field spacing after Living Store capture` |
+| Production header | matches `61c415f…` |
 
 ## What changed (presentation only)
 
