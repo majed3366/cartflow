@@ -61,6 +61,4 @@ Probe: `gate_bc_probe.json` · Capture: `scripts/_capture_merchant_ui_v2_figma_p
 - No fake metrics, charts, or invented journeys
 - No runtime animation pass (static structural motion only)
 
-## Success question (for review)
-
-Does Living Store V2 read as **CartFlow — the Figma visual system in product**, not a nice SaaS dashboard using CartFlow colors?
+Also note: Living Store `zone_b` may be empty at capture time. In that case Workspace renders a **Core Silence Decision Object** (open Living Route + sparse Evidence Field + open Decision Mass + wait terminus) — uncertainty as visual state, not invented decisions.

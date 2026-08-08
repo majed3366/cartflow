@@ -134,8 +134,14 @@ body[data-cf-ui="v2"] .cf2-reason__wait p {
   color: var(--cf2-ink-soft);
 }
 
-body[data-cf-ui="v2"] .cf2-dobj--quiet {
-  padding: 28px 8px;
+body[data-cf-ui="v2"] .cf2-dobj--quiet .cf2-dmass[data-cf2-tension="open"] .cf2-dmass__text {
+  font-size: clamp(1.15rem, 1.8vw, 1.4rem);
+  font-weight: 700;
+  opacity: 0.92;
+}
+
+body[data-cf-ui="v2"] .cf2-dobj--quiet .cf2-route::before {
+  opacity: 0.4;
 }
 
 @media (min-width: 1024px) {

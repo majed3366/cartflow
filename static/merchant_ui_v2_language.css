@@ -462,11 +462,17 @@ body[data-cf-ui="v2"] .cf2-capsule__title {
   font-weight: 700;
 }
 
-body[data-cf-ui="v2"] .cf2-capsule__body {
-  margin: 0;
-  font-size: 0.88rem;
-  line-height: 1.45;
-  color: var(--cf2-ink-soft);
+body[data-cf-ui="v2"] .cf2-capsule .cf2-badge {
+  display: inline-block;
+  margin: 0 0 8px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: var(--cf2-mute);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 /* ——— Silence / Taper ——— */

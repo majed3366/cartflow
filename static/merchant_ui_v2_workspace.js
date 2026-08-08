@@ -191,6 +191,47 @@
     return html;
   }
 
+  function renderQuietEnvironment() {
+    var lang = L();
+    var html =
+      '<article class="cf2-dobj cf2-dobj--primary cf2-dobj--quiet" data-cf2-tension="open" data-cf2-evidence="sparse" data-cf2-grammar="core-silence">';
+    html += '<p class="cf2-dobj__rank">هدوء تشغيلي · صمت القرار</p>';
+    if (lang) {
+      html += '<div class="cf2-co-row">';
+      html += lang.commerceObject("attention");
+      html += lang.commerceObject("uncertainty");
+      html += lang.commerceObject("insufficient");
+      html += "</div>";
+    }
+    html +=
+      '<div class="cf2-route" data-cf2-tension="open" data-cf2-grammar="living-route">';
+    html +=
+      '<section class="cf2-route__node cf2-beat cf2-beat--evidence" data-cf2-node="evidence">';
+    html += '<p class="cf2-beat__label">الملاحظة · كثافة الدليل</p>';
+    html += '<div class="cf2-dobj__ev-row">';
+    if (lang) html += lang.evidenceField(1, "sparse");
+    html +=
+      '<ul class="cf2-beat__list"><li>لا توجد سلة أو إشارة تشغيلية جاهزة للتكثيف إلى قرار الآن.</li></ul>';
+    html += "</div></section>";
+    html +=
+      '<section class="cf2-route__node cf2-beat cf2-beat--understanding" data-cf2-node="understanding">';
+    html += '<p class="cf2-beat__label">ما يعنيه ذلك · توطيد المعنى</p>';
+    html +=
+      '<p class="cf2-beat__body">الصمت هنا حالة صادقة: لا معنى جاهز للتجميع لأن الأدلة لم تتجمّع بعد في مسار قرار.</p></section>';
+    html +=
+      '<section class="cf2-route__node cf2-beat cf2-beat--decision" data-cf2-node="decision">';
+    html += '<p class="cf2-beat__label">القرار الآن · كتلة القرار</p>';
+    html +=
+      '<div class="cf2-dmass" data-cf2-tension="open"><p class="cf2-dmass__text">لا يوجد قرار يحتاج انتباهك الآن.</p></div></section>';
+    html +=
+      '<section class="cf2-route__node cf2-beat cf2-beat--action" data-cf2-node="action">';
+    html += '<p class="cf2-beat__label">خطوتك · نهاية المسار</p>';
+    html +=
+      '<div class="cf2-beat__action"><div class="cf2-reason__wait" data-cf2-grammar="recovery-wait"><p>لا يوجد إجراء حالياً.</p><p>سيخبرك CartFlow عندما يتكثّف دليل جديد إلى قرار.</p></div></div></section>';
+    html += "</div></article>";
+    return html;
+  }
+
   function splitPrimary(zoneB) {
     var primary = null;
     var next = [];
@@ -215,13 +256,9 @@
       '<div class="cf2-ws cf2-ws--lang" data-cf2="workspace-scene">';
     if (!split.primary) {
       html +=
-        '<article class="cf2-dobj cf2-dobj--quiet"><div class="cf2-co-row">';
-      if (L()) {
-        html += L().commerceObject("attention");
-        html += L().commerceObject("uncertainty");
-      }
-      html +=
-        '</div><p class="cf2-dobj__rank">هدوء تشغيلي</p><h3 class="cf2-dmass__text" style="font-size:1.2rem">لا يوجد قرار يحتاج انتباهك الآن.</h3></article>';
+        '<section class="cf2-ws__primary" aria-label="صمت القرار">' +
+        renderQuietEnvironment() +
+        "</section>";
       html += '<hr class="cf2-taper" /></div>';
       return html;
     }
