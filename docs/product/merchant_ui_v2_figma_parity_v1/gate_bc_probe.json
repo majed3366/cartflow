@@ -1,0 +1,55 @@
+{
+  "deploy": {
+    "ok": true,
+    "sha": "8bf7a827ae715124b2d88432dd1b5f14f52f26d8",
+    "status": 200
+  },
+  "desktop_home": {
+    "ui": "v2",
+    "langCss": true,
+    "scene": true,
+    "co": 9,
+    "evfield": true,
+    "route": false,
+    "dmass": false,
+    "dobj": false,
+    "mtrace": true,
+    "capsule": 3
+  },
+  "desktop_workspace": {
+    "ui": "v2",
+    "langCss": true,
+    "scene": true,
+    "co": 12,
+    "evfield": true,
+    "route": true,
+    "dmass": true,
+    "dobj": true,
+    "mtrace": true,
+    "capsule": 3
+  },
+  "mobile_home": {
+    "ui": "v2",
+    "langCss": true,
+    "scene": true,
+    "co": 9,
+    "evfield": true,
+    "route": false,
+    "dmass": false,
+    "dobj": false,
+    "mtrace": true,
+    "capsule": 3
+  },
+  "mobile_workspace": {
+    "ui": "v2",
+    "langCss": true,
+    "scene": true,
+    "co": 12,
+    "evfield": true,
+    "route": true,
+    "dmass": true,
+    "dobj": true,
+    "mtrace": true,
+    "capsule": 3
+  }
+}

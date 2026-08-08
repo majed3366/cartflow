@@ -12,7 +12,7 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs" / "product" / "merchant_ui_v2_figma_parity_v1"
 BASE = "https://smartreplyai.net"
-EXPECTED_SHA_PREFIX = ""
+EXPECTED_SHA_PREFIX = "8bf7a82"
 
 
 def http_status(url: str) -> int:
