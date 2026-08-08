@@ -248,10 +248,13 @@
       ? card.action_wait_lines_ar
       : ["لا يوجد إجراء حالياً.", "سيخبرك CartFlow عندما يصبح القرار جاهزاً."];
 
+    var evidenceDensity =
+      evidenceLines.length >= 3 ? "dense" : evidenceLines.length <= 1 ? "sparse" : "mid";
+
     var rows = [];
     rows.push(
-      '<p class="cw-card__rank' +
-        (isPrimary ? " cw-card__rank--primary" : " cw-card__rank--next") +
+      '<p class="cx-decision__rank' +
+        (isPrimary ? " cx-decision__rank--primary" : " cx-decision__rank--next") +
         '" data-exec-domain="' +
         esc(execDomain) +
         '" data-simplification="1" data-story-beat="priority">' +
@@ -259,12 +262,16 @@
         "</p>"
     );
 
-    rows.push('<div class="cw-card__stack" data-hierarchy="evidence-understanding-decision-action">');
+    rows.push(
+      '<div class="cx-decision__flow" data-hierarchy="evidence-understanding-decision-action" data-cf-evidence="' +
+        esc(evidenceDensity) +
+        '">'
+    );
 
     rows.push(
-      '<section class="cw-beat cw-beat--evidence" data-story-beat="evidence">' +
-        '<p class="cw-beat__label">الملاحظة</p>' +
-        '<ul class="cw-beat__list cw-card__evidence-list">'
+      '<section class="cx-beat cx-beat--evidence cf-evidence-surface" data-story-beat="evidence" data-cf-grammar="evidence">' +
+        '<p class="cx-beat__label">الملاحظة</p>' +
+        '<ul class="cx-beat__list">'
     );
     evidenceLines.forEach(function (line) {
       rows.push("<li>" + esc(line) + "</li>");
@@ -272,17 +279,17 @@
     rows.push("</ul></section>");
 
     rows.push(
-      '<section class="cw-beat cw-beat--understanding" data-story-beat="understanding">' +
-        '<p class="cw-beat__label">ما يعنيه ذلك</p>' +
-        '<p class="cw-beat__body">' +
+      '<section class="cx-beat cx-beat--understanding cf-insight-surface" data-story-beat="understanding">' +
+        '<p class="cx-beat__label">ما يعنيه ذلك</p>' +
+        '<p class="cx-beat__body">' +
         esc(understanding) +
         "</p></section>"
     );
 
     rows.push(
-      '<section class="cw-beat cw-beat--decision" data-story-beat="decision">' +
-        '<p class="cw-beat__label">القرار الآن</p>' +
-        '<p class="cw-beat__decision cw-card__field-value cw-card__field-value--commitment cw-card__story-decision">' +
+      '<section class="cx-beat cx-beat--decision cf-decision-surface" data-story-beat="decision" data-cf-grammar="decision-mass">' +
+        '<p class="cx-beat__label">القرار الآن</p>' +
+        '<p class="cx-beat__decision">' +
         esc(decision) +
         "</p></section>"
     );
@@ -290,17 +297,17 @@
     var actionInner = "";
     if (actionReady && href2) {
       actionInner =
-        '<a class="cw-card__dest-link cw-card__commit-link" href="' +
+        '<a class="cx-decision__commit cf-btn" href="' +
         esc(href2) +
         '">' +
         esc(detailsLabel || "افتح") +
         "</a>";
     } else if (actionReady && detailsLabel) {
       actionInner =
-        '<p class="cw-card__dest cw-card__dest--plain">' + esc(detailsLabel) + "</p>";
+        '<p class="cx-decision__dest">' + esc(detailsLabel) + "</p>";
     } else if (!actionReady) {
       actionInner =
-        '<div class="cw-card__action-wait">' +
+        '<div class="cx-decision__wait" data-cf-grammar="recovery">' +
         "<p>" +
         esc(merchantSafeAr(waitLines[0], "لا يوجد إجراء حالياً.")) +
         "</p>" +
@@ -316,9 +323,9 @@
 
     if (actionInner) {
       rows.push(
-        '<section class="cw-beat cw-beat--action" data-story-beat="action">' +
-          '<p class="cw-beat__label">خطوتك</p>' +
-          '<div class="cw-beat__action">' +
+        '<section class="cx-beat cx-beat--action" data-story-beat="action">' +
+          '<p class="cx-beat__label">خطوتك</p>' +
+          '<div class="cx-beat__action">' +
           actionInner +
           "</div></section>"
       );
@@ -414,12 +421,11 @@
         })
         .join(" ");
       return (
-        '<article class="cw-card cw-card--quiet" data-cw-quiet="1" data-band="no_decision_supported" data-storytelling-face="1" ' +
+        '<article class="cx-decision cx-decision--quiet cw-card cw-card--quiet" data-cw-quiet="1" data-band="no_decision_supported" data-storytelling-face="1" ' +
         quietAttrs +
         ">" +
-        '<p class="cw-card__band cw-card__band--none">راقب</p>' +
-        '<div class="cw-card__head">' +
-        '<h3 class="cw-card__title">لا يوجد قرار يحتاج انتباهك الآن.</h3></div>' +
+        '<p class="cx-decision__rank">هدوء تشغيلي</p>' +
+        '<h3 class="cx-decision__title-quiet">لا يوجد قرار يحتاج انتباهك الآن.</h3>' +
         "</article>"
       );
     }
@@ -458,8 +464,14 @@
     if (p.isConstitution || isConstitutionCard(card)) {
       var sitAttr = String(card.situation_id || "").trim();
       var primaryAttr = card.is_primary_decision ? ' data-primary-decision="1"' : "";
-      if (card.is_primary_decision) mods.push("cw-card--primary");
-      else mods.push("cw-card--next");
+      mods.unshift("cx-decision");
+      if (card.is_primary_decision) {
+        mods.push("cw-card--primary");
+        mods.push("cx-decision--primary");
+      } else {
+        mods.push("cw-card--next");
+        mods.push("cx-decision--next");
+      }
       var sigMap =
         global.CFSignature && global.CFSignature.attrsForCard
           ? global.CFSignature.attrsForCard(card)
@@ -469,7 +481,11 @@
           return k + '="' + esc(sigMap[k]) + '"';
         })
         .join(" ");
-      // V2: full constitutional face only — no duplicate "مزيد" report drawer.
+      var evidenceN = Array.isArray(card.evidence_lines_ar)
+        ? card.evidence_lines_ar.length
+        : 0;
+      var evidenceAttr =
+        evidenceN >= 3 ? "dense" : evidenceN <= 1 ? "sparse" : "mid";
       return (
         '<article class="' +
         mods.join(" ") +
@@ -485,6 +501,10 @@
         ' data-dw-v2="1"' +
         ' data-storytelling-face="1"' +
         ' data-simplification="1"' +
+        ' data-cx="decision"' +
+        ' data-cf-evidence="' +
+        esc(evidenceAttr) +
+        '"' +
         primaryAttr +
         (sitAttr ? ' data-commerce-situation="1"' : "") +
         (sigAttrs ? " " + sigAttrs : "") +

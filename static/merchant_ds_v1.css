@@ -157,6 +157,7 @@ body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-badge,
 body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-pill,
 body[data-cf-merchant-app="1"][data-cf-frame="v1"] .nb,
 body[data-cf-merchant-app="1"][data-cf-frame="v1"] .meif-chip,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight__status,
 body[data-cf-merchant-app="1"][data-cf-frame="v1"] .hes-status,
 body[data-cf-merchant-app="1"][data-cf-frame="v1"] .hes-count,
 body[data-cf-merchant-app="1"][data-cf-frame="v1"] .hes-conf,
@@ -251,7 +252,10 @@ body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-search input {
 
 /* ——— Panel / Card / Section (DS-03 — cards not default brand language) ——— */
 body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-panel,
-body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-section {
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-section,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-insight-surface,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-decision-surface,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-evidence-surface {
   background: transparent;
   border: none;
   border-radius: 0;
@@ -267,12 +271,8 @@ body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-product-card,
 body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cs-card,
 body[data-cf-merchant-app="1"][data-cf-frame="v1"] .v2-card,
 body[data-cf-merchant-app="1"][data-cf-frame="v1"] .meif-card,
-body[data-cf-merchant-app="1"][data-cf-frame="v1"] .hes-section,
-body[data-cf-merchant-app="1"][data-cf-frame="v1"] .hes-surface,
 body[data-cf-merchant-app="1"][data-cf-frame="v1"] .orv-surface,
 body[data-cf-merchant-app="1"][data-cf-frame="v1"] .orv-card,
-body[data-cf-merchant-app="1"][data-cf-frame="v1"] .hes-obs-card,
-body[data-cf-merchant-app="1"][data-cf-frame="v1"] .hes-situation-card,
 body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-fw-card {
   background: var(--cf-surface, #fff);
   border: 1px solid var(--cf-border-on-canvas, rgba(8, 32, 72, 0.1));
@@ -281,22 +281,20 @@ body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-fw-card {
   color: var(--cf-ink-on-canvas, #082048);
 }
 
-/* Soften legacy “card wall” — interaction units, not chrome spectacle */
-body[data-cf-merchant-app="1"][data-cf-frame="v1"] .hes-surface,
+/* Soften residual surfaces — interaction units, not chrome spectacle */
 body[data-cf-merchant-app="1"][data-cf-frame="v1"] .orv-surface {
   background: linear-gradient(180deg, #f7fafc 0%, #fff 55%);
   border-color: var(--cf-border-on-canvas, rgba(8, 32, 72, 0.1));
 }
 
-body[data-cf-merchant-app="1"][data-cf-frame="v1"] .hes-section__head h3,
-body[data-cf-merchant-app="1"][data-cf-frame="v1"] .hes-header h2,
-body[data-cf-merchant-app="1"][data-cf-frame="v1"] .orv-surface h3,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight__title,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-beat__decision,
 body[data-cf-merchant-app="1"][data-cf-frame="v1"] .meif-brief h2,
 body[data-cf-merchant-app="1"][data-cf-frame="v1"] .meif-surface > h2 {
   color: var(--cf-ink-on-canvas, #082048);
 }
 
-body[data-cf-merchant-app="1"][data-cf-frame="v1"] .hes-section__cta a,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight__action a,
 body[data-cf-merchant-app="1"][data-cf-frame="v1"] .meif-next a {
   color: var(--cf-teal-dark, #10827c);
 }

@@ -1,8 +1,7 @@
 /**
- * Home Executive Summary — Home Constitution V2 + Diagnosis Language V1.
- * Merchant-safe: no identity diagnostics, no situation_id, no run stamps.
- * Question appears once in #pagePurpose — not duplicated here.
- * Card body: Diagnosis → Recommendation (never Observation → Recommendation).
+ * Home Executive Summary — Merchant Experience Rebuild V1.
+ * Product truth unchanged. Presentation rebuilt: Truth → Meaning → Priority → Decision → Action.
+ * Not a stack of equal cards.
  */
 (function () {
   "use strict";
@@ -26,67 +25,73 @@
     }
   }
 
-  function renderDiagnosisBody(sec) {
-    var diagnosis = String(sec.diagnosis_ar || "").trim();
-    var recommendation = String(sec.recommendation_ar || "").trim();
-    if (diagnosis || recommendation) {
-      var html = "";
-      if (diagnosis) {
-        html +=
-          '<p class="hes-section__diagnosis" data-hes-diagnosis="1">' +
-          esc(diagnosis) +
-          "</p>";
-      }
-      if (recommendation) {
-        html +=
-          '<p class="hes-section__recommendation" data-hes-recommendation="1">' +
-          esc(recommendation) +
-          "</p>";
-      }
-      return html;
-    }
-    return (
-      '<p class="hes-section__summary" data-hes-summary="1">' +
-      esc(sec.summary_ar || "") +
-      "</p>"
-    );
+  function gravityOf(sec) {
+    if (!sec) return "quiet";
+    if (sec.dominant || sec.id === "decisions") return "primary";
+    var rank = Number(sec.executive_rank || 99);
+    if (rank <= 2) return "secondary";
+    if (rank <= 3) return "tertiary";
+    return "quiet";
   }
 
-  function renderSection(sec) {
+  function laneOf(sec) {
+    var id = String((sec && sec.id) || "");
+    if (id === "decisions") return "decision";
+    if (id === "health") return "condition";
+    if (id === "observations" || id === "situations") return "evidence";
+    if (id === "carts") return "momentum";
+    if (id === "communication") return "recovery";
+    return "knowledge";
+  }
+
+  function momentumOf(sec) {
+    if (!sec || sec.empty) return "calm";
+    if (sec.recommendation_ar || sec.view_details_href) return "forward";
+    return "forming";
+  }
+
+  function diagnosisText(sec) {
+    return String(
+      (sec && (sec.diagnosis_ar || sec.summary_ar)) || ""
+    ).trim();
+  }
+
+  function recommendationText(sec) {
+    return String((sec && sec.recommendation_ar) || "").trim();
+  }
+
+  function renderInsight(sec, role) {
     if (!sec) return "";
-    // Constitution: never paint bare count badges.
-    var statusHtml = sec.status_ar
-      ? '<span class="hes-status" data-hes-status="1">' +
-        esc(sec.status_ar) +
-        "</span>"
-      : "";
-    var body = renderDiagnosisBody(sec);
-    if (sec.id === "carts" && sec.cart_level_action_ar && !sec.empty) {
-      // Cart ops note only when it is not a duplicate recommendation.
-      var note = String(sec.cart_level_action_ar || "").trim();
-      var rec = String(sec.recommendation_ar || "").trim();
-      if (note && note !== rec) {
-        body +=
-          '<p class="hes-section__note">' + esc(note) + "</p>";
-      }
+    var gravity = gravityOf(sec);
+    var lane = laneOf(sec);
+    var momentum = momentumOf(sec);
+    var rank = Number(sec.executive_rank || 0) || 9;
+    var diagnosis = diagnosisText(sec);
+    var recommendation = recommendationText(sec);
+    var status = String(sec.status_ar || "").trim();
+    var href = String(sec.view_details_href || "").trim() || "#";
+    var empty = !!sec.empty;
+    var note = "";
+    if (sec.id === "carts" && sec.cart_level_action_ar && !empty) {
+      var cartNote = String(sec.cart_level_action_ar || "").trim();
+      if (cartNote && cartNote !== recommendation) note = cartNote;
     }
-    var dominant = sec.dominant || sec.id === "decisions" ? ' data-hes-dominant="1"' : "";
-    var gravity =
-      sec.dominant || sec.id === "decisions"
-        ? "primary"
-        : Number(sec.executive_rank || 99) <= 2
-          ? "secondary"
-          : "quiet";
-    var rank = Number(sec.executive_rank || 0) || (gravity === "primary" ? 1 : 2);
-    var momentum =
-      sec.recommendation_ar || sec.view_details_href ? "forward" : "forming";
-    return (
-      '<section class="hes-section' +
-      (sec.dominant || sec.id === "decisions" ? " hes-section--dominant" : "") +
+
+    var roleClass =
+      role === "primary"
+        ? " cx-insight--primary"
+        : role === "secondary"
+          ? " cx-insight--secondary"
+          : " cx-insight--quiet";
+
+    var html =
+      '<article class="cx-insight' +
+      roleClass +
+      (empty ? " cx-insight--empty" : "") +
       '" data-hes-section="' +
       esc(sec.id || "") +
       '"' +
-      dominant +
+      (sec.dominant || sec.id === "decisions" ? ' data-hes-dominant="1"' : "") +
       (sec.executive_rank
         ? ' data-hes-rank="' + esc(String(sec.executive_rank)) + '"'
         : "") +
@@ -100,56 +105,211 @@
       ' data-cf-momentum="' +
       esc(momentum) +
       '"' +
+      ' data-cf-lane="' +
+      esc(lane) +
+      '"' +
       ' data-cf-has-decision="' +
       (sec.id === "decisions" || sec.dominant ? "1" : "0") +
       '"' +
-      ' data-diagnosis="home_diagnosis_language_v1">' +
-      '<div class="hes-section__head">' +
-      "<h3>" +
-      esc(sec.title_ar || "") +
-      "</h3>" +
-      '<div class="hes-section__meta">' +
-      statusHtml +
-      "</div></div>" +
-      body +
-      '<p class="hes-section__cta"><a href="' +
-      esc(sec.view_details_href || "#") +
-      '" data-hes-view-details="' +
-      esc(sec.id || "") +
-      '">عرض التفاصيل ←</a></p>' +
-      "</section>"
-    );
+      ' data-diagnosis="home_diagnosis_language_v1"' +
+      ' data-cx-role="' +
+      esc(role) +
+      '">';
+
+    html += '<header class="cx-insight__head">';
+    html +=
+      '<p class="cx-insight__lane">' +
+      esc(
+        lane === "decision"
+          ? "القرار"
+          : lane === "condition"
+            ? "الحالة"
+            : lane === "evidence"
+              ? "الدليل"
+              : lane === "momentum"
+                ? "الحركة"
+                : lane === "recovery"
+                  ? "الاسترداد"
+                  : "معرفة"
+      ) +
+      "</p>";
+    html += "<h3 class=\"cx-insight__title\">" + esc(sec.title_ar || "") + "</h3>";
+    if (status) {
+      html +=
+        '<span class="cx-insight__status cf-badge" data-hes-status="1">' +
+        esc(status) +
+        "</span>";
+    }
+    html += "</header>";
+
+    if (diagnosis) {
+      html +=
+        '<p class="cx-insight__diagnosis" data-hes-diagnosis="1">' +
+        esc(diagnosis) +
+        "</p>";
+    } else if (!recommendation) {
+      html +=
+        '<p class="cx-insight__summary" data-hes-summary="1">' +
+        esc(sec.summary_ar || "") +
+        "</p>";
+    }
+
+    if (recommendation) {
+      html +=
+        '<p class="cx-insight__meaning" data-hes-recommendation="1">' +
+        esc(recommendation) +
+        "</p>";
+    }
+
+    if (note) {
+      html += '<p class="cx-insight__note">' + esc(note) + "</p>";
+    }
+
+    if (!empty) {
+      html +=
+        '<p class="cx-insight__action"><a class="cf-btn cf-btn--quiet" href="' +
+        esc(href) +
+        '" data-hes-view-details="' +
+        esc(sec.id || "") +
+        '">عرض التفاصيل ←</a></p>';
+    }
+
+    html += "</article>";
+    return html;
   }
 
-  function paintShell(root, pkg) {
-    var sections = Array.isArray(pkg.sections) ? pkg.sections : [];
-    sections = sections.slice().sort(function (a, b) {
+  function splitComposition(sections) {
+    var list = (sections || []).slice().sort(function (a, b) {
       var ra = parseInt((a && a.executive_rank) || 99, 10);
       var rb = parseInt((b && b.executive_rank) || 99, 10);
       return ra - rb;
     });
-    var errLede = pkg.error || (!sections.length && pkg.lede_ar)
-      ? String(pkg.lede_ar || "تعذّر تحميل الملخص — أعد المحاولة.")
-      : "";
+    var primary = null;
+    var i;
+    for (i = 0; i < list.length; i++) {
+      if (list[i] && (list[i].dominant || list[i].id === "decisions")) {
+        primary = list[i];
+        break;
+      }
+    }
+    if (!primary && list.length) primary = list[0];
+
+    var rest = list.filter(function (s) {
+      return s && s !== primary;
+    });
+    var condition = null;
+    for (i = 0; i < rest.length; i++) {
+      if (rest[i].id === "health") {
+        condition = rest[i];
+        break;
+      }
+    }
+    rest = rest.filter(function (s) {
+      return s !== condition;
+    });
+
+    var evidence = [];
+    var secondary = [];
+    rest.forEach(function (sec) {
+      if (laneOf(sec) === "evidence" && evidence.length < 2) {
+        evidence.push(sec);
+      } else {
+        secondary.push(sec);
+      }
+    });
+
+    return {
+      primary: primary,
+      condition: condition,
+      evidence: evidence,
+      secondary: secondary,
+    };
+  }
+
+  function paintShell(root, pkg) {
+    var sections = Array.isArray(pkg.sections) ? pkg.sections : [];
+    var errLede =
+      pkg.error || (!sections.length && pkg.lede_ar)
+        ? String(pkg.lede_ar || "تعذّر تحميل الملخص — أعد المحاولة.")
+        : "";
+
     var html =
-      '<section class="hes-surface" data-hes="1" data-hes-stabilization="1" data-executive-control="1" data-constitution="home_constitution_v2" data-diagnosis-language="home_diagnosis_language_v1" aria-label="' +
+      '<section class="cx-home" data-hes="1" data-hes-stabilization="1" data-executive-control="1" data-constitution="home_constitution_v2" data-diagnosis-language="home_diagnosis_language_v1" data-cx="home" data-cf-sig="home" aria-label="' +
       esc(pkg.title_ar || HOME_QUESTION_AR) +
       '">';
+
     if (errLede && !sections.length) {
       html +=
-        '<p class="hes-empty" data-hes-attach-empty="1">' +
+        '<p class="cx-home__empty cf-empty" data-hes-attach-empty="1">' +
         esc(errLede) +
         "</p>";
     } else {
-      html += '<div class="hes-sections">';
-      for (var i = 0; i < sections.length; i++) {
-        html += renderSection(sections[i]);
+      var parts = splitComposition(sections);
+      var hasPrimary = !!parts.primary;
+      var openCount =
+        (parts.primary ? 1 : 0) +
+        (parts.condition ? 1 : 0) +
+        parts.evidence.length +
+        parts.secondary.length;
+
+      html +=
+        '<div class="cx-home__spine" data-cf-grammar="attention">' +
+        '<p class="cx-home__spine-kicker">فهم تنفيذي</p>' +
+        '<p class="cx-home__spine-line">أوضح حقيقة الآن · ثم المعنى · ثم القرار</p>' +
+        "</div>";
+
+      html +=
+        '<div class="cx-home__field" data-cf-open-count="' +
+        esc(String(openCount)) +
+        '" data-cf-breathing="' +
+        (hasPrimary ? "focused" : "open") +
+        '">';
+
+      if (parts.condition) {
+        html +=
+          '<div class="cx-home__condition" data-cf-grammar="attention">' +
+          renderInsight(parts.condition, "secondary") +
+          "</div>";
+      }
+
+      html += '<div class="cx-home__core">';
+      if (parts.primary) {
+        html +=
+          '<div class="cx-home__decision cf-decision-surface" data-cf-grammar="decision-mass">' +
+          renderInsight(parts.primary, "primary") +
+          "</div>";
+      }
+      if (parts.evidence.length) {
+        html +=
+          '<div class="cx-home__evidence cf-evidence-surface" data-cf-grammar="evidence" data-cf-evidence-density="' +
+          (parts.evidence.length > 1 ? "high" : "mid") +
+          '">';
+        parts.evidence.forEach(function (sec) {
+          html += renderInsight(sec, "secondary");
+        });
+        html += "</div>";
       }
       html += "</div>";
+
+      html += '<div class="cf-grammar-silence" data-cf-grammar="silence" aria-hidden="true"></div>';
+
+      if (parts.secondary.length) {
+        html +=
+          '<div class="cx-home__secondary" data-cf-grammar="taper" aria-label="معرفة ثانوية">';
+        parts.secondary.forEach(function (sec) {
+          html += renderInsight(sec, "quiet");
+        });
+        html += "</div>";
+      }
+
+      html += '<div class="cf-grammar-taper" aria-hidden="true"></div>';
+      html += "</div>";
     }
+
     html += "</section>";
 
-    root.className = "ma-home-experience hes-home-root";
+    root.className = "ma-home-experience cx-home-root";
+    root.setAttribute("data-cx", "home-root");
     root.innerHTML = html;
     root.removeAttribute("aria-busy");
     var loading = document.getElementById("ma-home-experience-loading");

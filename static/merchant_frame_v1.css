@@ -56,8 +56,8 @@ body[data-cf-merchant-app="1"][data-cf-frame="v1"] {
   --cf-dur-base: 200ms;
   --cf-ease: cubic-bezier(0.22, 1, 0.36, 1);
 
-  --cf-rail-w: 208px;
-  --cf-topbar-h: 56px;
+  --cf-rail-w: 176px;
+  --cf-topbar-h: 52px;
   --cf-font: "Tajawal", "Segoe UI", Tahoma, sans-serif;
 
   /* Legacy aliases — single system, no green dialect */
@@ -220,14 +220,14 @@ body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-sidebar-toggle {
     grid-template-columns: none;
   }
 
-  /* Desktop: brand lives in rail — hide duplicate topbar brand/menu/sections */
+  /* Desktop: brand lives in rail — hide duplicate topbar brand/menu only */
   body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar__menu,
   body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-gtb-menu,
   body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar__brand,
-  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-gtb-logo,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar .ma-gtb-logo,
   body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar__sections,
-  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-gtb-sections,
-  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-gtb-center {
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar .ma-gtb-sections,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar .ma-gtb-center {
     display: none !important;
   }
 
@@ -323,8 +323,8 @@ body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-sidebar-toggle {
 
   body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar__title-slot,
   body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar__sections,
-  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-gtb-sections,
-  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-gtb-center,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar .ma-gtb-sections,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar .ma-gtb-center,
   body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-gtb-date,
   body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar__utils .ma-gtb-util--text:not(.cf-topbar__account),
   body[data-cf-merchant-app="1"][data-cf-frame="v1"] #ma-gtb-plans-btn,

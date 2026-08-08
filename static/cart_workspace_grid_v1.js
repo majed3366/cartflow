@@ -1,6 +1,6 @@
 /**
- * Cart Workspace Grid — Simplification V1.
- * One Primary (Priority→Evidence→Decision→Action) + ≤3 Next.
+ * Cart Workspace Grid — Merchant Experience Rebuild V1.
+ * One Primary reasoning object + ≤3 Next. Presentation only.
  */
 (function (global) {
   "use strict";
@@ -61,7 +61,7 @@
     var routeCount = hasDecisions ? Math.min(1 + split.next.length, 4) : 0;
     var html = [];
     html.push(
-      '<div class="cw-ops cw-ops--decisions-only cw-ops--v2 cw-ops--refinement cw-ops--r2 cw-ops--reality-ux cw-ops--operational cw-ops--storytelling cw-ops--simplification" dir="rtl" data-cf-sig="workspace" data-cf-quiet="' +
+      '<div class="cx-ws cw-ops cw-ops--decisions-only" dir="rtl" data-cx="workspace" data-cf-sig="workspace" data-cf-quiet="' +
         (hasDecisions ? "0" : "1") +
         '" data-cf-route-count="' +
         esc(routeCount) +
@@ -69,15 +69,17 @@
         (hasDecisions ? (routeCount === 1 ? "focused" : "active") : "open") +
         '" data-open-count="' +
         esc(hasDecisions ? 1 + split.next.length : 0) +
-        '" data-dw-v2="1" data-dw-refinement="1" data-dw-r2="1" data-dw-reality-ux="1" data-dw-operational="1" data-dw-storytelling="1" data-dw-simplification="1">'
+        '" data-dw-v2="1" data-dw-simplification="1">'
     );
 
+    html.push('<div class="cx-ws__route" data-cf-grammar="living-route">');
+
     if (!hasDecisions) {
-      html.push('<div class="cw-grid cw-grid--decisions cw-grid--v2">');
+      html.push('<div class="cx-ws__primary">');
       html.push(renderCard({ quiet: true }, "quiet"));
       html.push("</div>");
     } else {
-      html.push('<section class="cw-primary-slot" aria-label="الأولوية الآن">');
+      html.push('<section class="cx-ws__primary cw-primary-slot" aria-label="الأولوية الآن">');
       if (split.primary) {
         html.push(renderCard(split.primary, "decision"));
       }
@@ -85,9 +87,9 @@
 
       if (split.next.length) {
         html.push(
-          '<section class="cw-next-slot" aria-label="بعده">' +
-            '<p class="cw-next-slot__label">بعده</p>' +
-            '<div class="cw-grid cw-grid--next">'
+          '<section class="cx-ws__next cw-next-slot" aria-label="بعده">' +
+            '<p class="cx-ws__next-label">بعده</p>' +
+            '<div class="cx-ws__next-list cw-grid cw-grid--next">'
         );
         split.next.forEach(function (c) {
           html.push(renderCard(c, "decision"));
@@ -96,6 +98,8 @@
       }
     }
 
+    html.push("</div>");
+    html.push('<div class="cf-grammar-taper" aria-hidden="true"></div>');
     html.push("</div>");
     return html.join("");
   }

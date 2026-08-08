@@ -1,0 +1,399 @@
+/**
+ * Merchant Experience Rebuild V1 — Decision Workspace presentation.
+ * Binding: Figma SA-03 / Signature / CIM.
+ * Evidence → Understanding → Decision → Action as structural progression.
+ */
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] #page-workspace .cw-workspace-shell,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] #page-workspace #cw-merchant-host,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] #page-workspace .cx-ws {
+  max-width: none !important;
+  width: 100%;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] #page-workspace .ma-workspace-question,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] #page-workspace #cw-constitution-question {
+  margin: 0 0 28px;
+  padding: 0;
+  max-width: 40rem;
+  font-size: clamp(1.25rem, 2vw, 1.55rem);
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+  color: var(--cf-ink-on-canvas, #082048);
+  background: transparent;
+  border: none;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-ws {
+  position: relative;
+  width: min(1080px, 100%);
+  margin: 0;
+  padding: 0 0 48px;
+  color: var(--cf-ink-on-canvas, #082048);
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-ws__route {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-ws__primary {
+  position: relative;
+  margin: 0 0 36px;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-ws__next {
+  position: relative;
+  margin: 0;
+  padding-top: 8px;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-ws__next-label {
+  margin: 0 0 18px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--cf-text-soft, #73859e);
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-ws__next-list {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* Decision reasoning object */
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  color: inherit;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision--primary {
+  padding-inline-start: 22px;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision--primary::before {
+  content: "";
+  position: absolute;
+  inset-block: 4% 8%;
+  inset-inline-start: 0;
+  width: 3px;
+  background: linear-gradient(
+    180deg,
+    rgba(24, 176, 168, 0.15) 0%,
+    var(--cf-navy, #082048) 28%,
+    var(--cf-navy, #082048) 72%,
+    rgba(24, 176, 168, 0.35) 100%
+  );
+  clip-path: polygon(0 0, 100% 6%, 100% 78%, 45% 100%, 0 94%);
+  pointer-events: none;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision--next {
+  padding-inline-start: 14px;
+  opacity: 0.88;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision--next::before {
+  content: "";
+  position: absolute;
+  inset-block: 10% 18%;
+  inset-inline-start: 0;
+  width: 2px;
+  background: rgba(8, 32, 72, 0.2);
+  pointer-events: none;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision--quiet {
+  padding: 28px 4px;
+  opacity: 0.78;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision__rank {
+  margin: 0 0 18px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--cf-teal-dark, #10827c);
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision--next .cx-decision__rank {
+  color: var(--cf-text-soft, #73859e);
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision__flow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+/* Living route stages */
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-beat {
+  position: relative;
+  margin: 0;
+  padding: 0 0 22px;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-beat:last-child {
+  padding-bottom: 0;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-beat__label {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--cf-text-soft, #73859e);
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-beat--evidence {
+  padding-bottom: 20px;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-beat__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-beat__list li {
+  position: relative;
+  margin: 0;
+  padding-inline-start: 14px;
+  font-size: 0.98rem;
+  line-height: 1.5;
+  color: var(--cf-ink-on-canvas, #082048);
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-beat__list li::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  top: 0.55em;
+  width: 5px;
+  height: 2px;
+  background: var(--cf-teal, #18b0a8);
+  opacity: 0.85;
+}
+
+/* Evidence density — denser list when more lines */
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision[data-cf-evidence="dense"] .cx-beat__list {
+  gap: 6px;
+  letter-spacing: -0.01em;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision[data-cf-evidence="dense"] .cx-beat__list li {
+  font-size: 0.94rem;
+  line-height: 1.45;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision[data-cf-evidence="sparse"] .cx-beat--evidence {
+  opacity: 0.9;
+  padding-bottom: 28px;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision[data-cf-evidence="sparse"] .cx-beat__list {
+  gap: 12px;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-beat--understanding {
+  padding: 4px 0 24px;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-beat__body {
+  margin: 0;
+  max-width: 38rem;
+  font-size: 1.02rem;
+  line-height: 1.55;
+  font-weight: 500;
+  color: var(--cf-ink-soft-on-canvas, #3d4a63);
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-beat--decision {
+  padding: 8px 0 24px;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-beat__decision {
+  margin: 0;
+  max-width: 36rem;
+  font-size: clamp(1.2rem, 1.8vw, 1.45rem);
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: -0.015em;
+  color: var(--cf-navy, #082048);
+}
+
+/* Decision densification / tension from readiness */
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision[data-cf-tension="resolved"] .cx-beat__decision {
+  font-size: clamp(1.28rem, 2vw, 1.55rem);
+  letter-spacing: -0.02em;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision[data-cf-tension="high"] .cx-beat__decision,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision[data-cf-tension="open"] .cx-beat__decision {
+  font-weight: 700;
+  opacity: 0.94;
+  max-width: 34rem;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision--next .cx-beat__decision {
+  font-size: 1.12rem;
+  font-weight: 700;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-beat--action {
+  padding-top: 4px;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-beat__action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision__commit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: var(--cf-r-sm, 8px);
+  background: var(--cf-navy, #082048);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: background 120ms ease, box-shadow 120ms ease;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision__commit:hover {
+  background: var(--cf-deep, #001838);
+  box-shadow: var(--cf-e-1);
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision--next .cx-decision__commit {
+  background: transparent;
+  color: var(--cf-teal-dark, #10827c);
+  border-color: rgba(24, 176, 168, 0.4);
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision--next .cx-decision__commit:hover {
+  background: rgba(24, 176, 168, 0.1);
+  box-shadow: none;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision__wait {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 32rem;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision__wait p {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--cf-ink-soft-on-canvas, #3d4a63);
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision__dest {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--cf-ink-on-canvas, #082048);
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision__title-quiet {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--cf-ink-on-canvas, #082048);
+}
+
+/* Legacy cw-card aliases under rebuild — neutralize card chrome */
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] #page-workspace .cx-ws .cw-card,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] #page-workspace .cx-decision.cw-card {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+
+@media (min-width: 1024px) {
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision--primary .cx-decision__flow {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    column-gap: 48px;
+    row-gap: 0;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision--primary .cx-beat--evidence {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision--primary .cx-beat--understanding {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision--primary .cx-beat--decision {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+    padding: 12px 0 12px 8px;
+    border-inline-start: 1px solid rgba(8, 32, 72, 0.1);
+    padding-inline-start: 28px;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision--primary .cx-beat--action {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    padding-top: 12px;
+    margin-top: 8px;
+    border-block-start: 1px solid rgba(8, 32, 72, 0.06);
+  }
+}
+
+@media (max-width: 1023px) {
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-ws {
+    width: 100%;
+    padding-bottom: 36px;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] #page-workspace .ma-workspace-question,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] #page-workspace #cw-constitution-question {
+    margin-bottom: 20px;
+    font-size: 1.28rem;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-decision--primary {
+    padding-inline-start: 16px;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-beat__decision {
+    font-size: 1.22rem;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-ws__primary {
+    margin-bottom: 28px;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-ws__next-list {
+    gap: 24px;
+  }
+}

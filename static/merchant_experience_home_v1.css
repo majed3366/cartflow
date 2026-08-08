@@ -1,0 +1,302 @@
+/**
+ * Merchant Experience Rebuild V1 — Home presentation.
+ * Binding: Figma SA-02 / Constitution / Signature / CIM.
+ * Composition from truth rank — not equal cards.
+ */
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] #page-home .cx-home-root,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] #page-home .ma-home-experience {
+  max-width: none !important;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home {
+  position: relative;
+  width: min(1120px, 100%);
+  margin: 0;
+  padding: 8px 0 48px;
+  color: var(--cf-ink-on-canvas, #082048);
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__spine {
+  margin: 0 0 28px;
+  padding: 0 0 18px;
+  border-block-end: 1px solid rgba(8, 32, 72, 0.08);
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__spine-kicker {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--cf-teal-dark, #10827c);
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__spine-line {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--cf-ink-soft-on-canvas, #3d4a63);
+  max-width: 36rem;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__condition {
+  margin: 0 0 28px;
+  padding-inline-end: 18%;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__condition .cx-insight {
+  padding-block: 4px 8px;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__condition .cx-insight__title {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__condition .cx-insight__diagnosis {
+  font-size: 0.98rem;
+  font-weight: 500;
+  opacity: 0.92;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__core {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.9fr);
+  gap: 40px 48px;
+  align-items: start;
+  margin: 0 0 8px;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__decision {
+  position: relative;
+  min-width: 0;
+  padding: 8px 0 8px 4px;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__decision::before {
+  content: "";
+  position: absolute;
+  inset-block: 6% 10%;
+  inset-inline-start: 0;
+  width: 3px;
+  background: var(--cf-navy, #082048);
+  clip-path: polygon(0 0, 100% 8%, 100% 70%, 40% 100%, 0 92%);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__evidence {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding-block: 12px 4px;
+  padding-inline-start: 8px;
+  border-inline-start: 1px solid rgba(8, 32, 72, 0.1);
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__secondary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px 40px;
+  margin-top: 8px;
+  padding-top: 8px;
+  opacity: 0.86;
+}
+
+/* Insight atoms — open surfaces, not card chrome */
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  color: inherit;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+  margin: 0 0 10px;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight__lane {
+  margin: 0;
+  width: 100%;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--cf-teal-dark, #10827c);
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight__title {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--cf-ink-on-canvas, #082048);
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight__status {
+  flex: 0 0 auto;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight__diagnosis {
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 600;
+  line-height: 1.55;
+  color: var(--cf-ink-on-canvas, #082048);
+  max-width: 40rem;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight__summary,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight__meaning,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight__note {
+  margin: 10px 0 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--cf-ink-soft-on-canvas, #3d4a63);
+  max-width: 38rem;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight__meaning {
+  font-weight: 500;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight__action {
+  margin: 16px 0 0;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight__action .cf-btn {
+  padding-inline: 0;
+  min-height: 32px;
+  font-size: 13px;
+}
+
+/* Primary gravity — decision mass */
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight--primary {
+  padding-inline-start: 18px;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight--primary .cx-insight__title {
+  font-size: clamp(1.35rem, 2.1vw, 1.75rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight--primary .cx-insight__diagnosis {
+  margin-top: 6px;
+  font-size: clamp(1.12rem, 1.6vw, 1.28rem);
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight--primary .cx-insight__meaning {
+  margin-top: 14px;
+  font-size: 1.02rem;
+  color: var(--cf-ink-on-canvas, #082048);
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight--primary .cx-insight__action .cf-btn {
+  color: var(--cf-navy, #082048);
+  font-weight: 800;
+}
+
+/* Secondary / quiet taper */
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight--secondary .cx-insight__title {
+  font-size: 1.02rem;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight--quiet .cx-insight__title {
+  font-size: 0.98rem;
+  font-weight: 700;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight--quiet .cx-insight__diagnosis,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight--quiet .cx-insight__meaning {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight--empty {
+  opacity: 0.72;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__empty {
+  padding: 40px 8px;
+}
+
+/* Kill legacy equal-card dialects on this root */
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home-root .hes-section,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home .hes-section,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home .hes-surface {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 1023px) {
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home {
+    width: 100%;
+    padding: 4px 0 36px;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__spine {
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__condition {
+    padding-inline-end: 0;
+    margin-bottom: 20px;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__core {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__evidence {
+    border-inline-start: none;
+    padding-inline-start: 0;
+    border-block-start: 1px solid rgba(8, 32, 72, 0.08);
+    padding-block-start: 22px;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__secondary {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight--primary {
+    padding-inline-start: 14px;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight--primary .cx-insight__title {
+    font-size: 1.4rem;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight--primary .cx-insight__diagnosis {
+    font-size: 1.12rem;
+  }
+}

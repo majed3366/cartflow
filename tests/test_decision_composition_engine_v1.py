@@ -347,30 +347,32 @@ class PipelineTests(unittest.TestCase):
 
 
 class UiParityTests(unittest.TestCase):
-    def test_card_has_gate2b_fields(self) -> None:
+    def test_card_has_reasoning_face(self) -> None:
         js = (ROOT / "static" / "cart_workspace_decision_card_v1.js").read_text(
             encoding="utf-8"
         )
         for label in (
-            "القرار",
-            "لماذا؟",
-            "لماذا الآن؟",
-            "الأدلة",
-            "ماذا يحدث إذا تجاهلته؟",
-            "الإجراء الموصى به",
-            "ابدأ بهذه الخطوة",
-            "الأثر المتوقع",
-            "الثقة",
+            "الملاحظة",
+            "ما يعنيه ذلك",
+            "القرار الآن",
+            "خطوتك",
+            "الأولوية",
+            "cx-decision",
+            "cx-beat--evidence",
         ):
             self.assertIn(label, js)
 
-    def test_grid_bands(self) -> None:
+    def test_grid_primary_next(self) -> None:
         grid = (ROOT / "static" / "cart_workspace_grid_v1.js").read_text(
             encoding="utf-8"
         )
-        self.assertIn("needs_action_now", grid)
-        self.assertIn("لا قرار مدعوم حالياً", grid)
-        self.assertIn("data-gate2b", grid)
+        card = (ROOT / "static" / "cart_workspace_decision_card_v1.js").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("cx-ws", grid)
+        self.assertIn("cx-ws__primary", grid)
+        self.assertIn("is_primary_decision", grid)
+        self.assertIn("لا يوجد قرار يحتاج انتباهك الآن", card)
 
 
 class PriorityTests(unittest.TestCase):

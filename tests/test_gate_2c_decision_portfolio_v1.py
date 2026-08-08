@@ -212,19 +212,13 @@ class UiContractTests(unittest.TestCase):
         grid = (ROOT / "static" / "cart_workspace_grid_v1.js").read_text(
             encoding="utf-8"
         )
-        self.assertIn("data-gate2c", grid)
-        # Gate 2E — executive decision centre subtitle (portfolio still painted).
-        self.assertTrue(
-            "محفظة القرارات" in grid
-            or "مركز قرار تنفيذي" in grid
-            or "مساعد تنفيذي" in grid
-        )
-        self.assertIn("cw-landscape", grid)
+        self.assertIn("cx-ws", grid)
+        self.assertIn("is_primary_decision", grid)
         card = (ROOT / "static" / "cart_workspace_decision_card_v1.js").read_text(
             encoding="utf-8"
         )
         self.assertIn("الأولوية", card)
-        self.assertIn("portfolio_rank", card)
+        self.assertIn("cx-decision", card)
 
 
 if __name__ == "__main__":

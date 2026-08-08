@@ -56,7 +56,8 @@ class MerchantFrontendRecompositionV1Tests(unittest.TestCase):
         self.assertIn("cf-topbar", _TEMPLATE)
 
     def test_primary_nav_lives_in_rail_not_mobile_squeezed_header(self) -> None:
-        self.assertIn('class="cf-rail__primary ma-gtb-sections"', _TEMPLATE)
+        self.assertIn('class="cf-rail__primary"', _TEMPLATE)
+        self.assertIn("ma-gtb-section", _TEMPLATE)
         self.assertIn("cf-rail__account", _TEMPLATE)
 
     def test_frame_css_tokens(self) -> None:

@@ -39,14 +39,19 @@ body[data-cf-merchant-app="1"][data-cf-frame="v1"] [data-cf-grammar="attention"]
 }
 
 body[data-cf-merchant-app="1"][data-cf-frame="v1"] .hes-section[data-cf-gravity="primary"],
-body[data-cf-merchant-app="1"][data-cf-frame="v1"] [data-cf-sig="hes-section"][data-cf-gravity="primary"] {
-  border-inline-start: var(--cf-g-edge) solid var(--cf-navy, #082048);
-  box-shadow: 0 14px 36px rgba(8, 32, 72, 0.12);
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] [data-cf-sig="hes-section"][data-cf-gravity="primary"],
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight--primary {
+  /* Attention gravity — structural, not card chrome */
 }
 
 body[data-cf-merchant-app="1"][data-cf-frame="v1"] .hes-section[data-cf-gravity="secondary"],
-body[data-cf-merchant-app="1"][data-cf-frame="v1"] [data-cf-sig="hes-section"][data-cf-gravity="secondary"] {
-  opacity: 0.88;
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] [data-cf-sig="hes-section"][data-cf-gravity="secondary"],
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight--secondary {
+  opacity: 0.92;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight--quiet {
+  opacity: 0.84;
 }
 
 /* Living Route */

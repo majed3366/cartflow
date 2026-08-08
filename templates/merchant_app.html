@@ -21,9 +21,11 @@
 <link rel="stylesheet" href="/static/merchant_dashboard_home_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
 <link rel="stylesheet" href="/static/merchant_session_identity_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-msi1">
 <link rel="stylesheet" href="/static/cf_signature_primitives_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-sig1">
-<link rel="stylesheet" href="/static/merchant_frame_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-frame1">
-<link rel="stylesheet" href="/static/merchant_ds_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-ds1">
-<link rel="stylesheet" href="/static/merchant_grammar_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-g1">
+<link rel="stylesheet" href="/static/merchant_frame_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-frame2">
+<link rel="stylesheet" href="/static/merchant_ds_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-ds2">
+<link rel="stylesheet" href="/static/merchant_grammar_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-g2">
+<link rel="stylesheet" href="/static/merchant_experience_home_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-cxh1">
+{# Merchant Experience Rebuild V1 — Home + Workspace presentation (ONE generation). #}
 <style>
   /* MSR V1 — hierarchy only; consumes MEIF packages */
   .meif-trust{display:inline-block;font-size:11px;font-weight:700;margin-inline-end:8px;letter-spacing:.02em}
@@ -95,43 +97,7 @@
   .orv-card__title{margin:0 0 6px;font-size:15px;line-height:1.4;font-weight:700}
   .orv-card__statement{margin:0;font-size:14px;line-height:1.5}
   .orv-card__action{margin:10px 0 0;padding-top:8px;border-top:1px dashed rgba(0,0,0,.08);font-size:13px;line-height:1.5}
-  .hes-surface{padding:16px 18px;border-radius:14px;background:linear-gradient(180deg,#f6f9f7 0%,#fff 50%);border:1px solid rgba(31,61,47,.14)}
-  .hes-eyebrow{margin:0 0 4px;font-size:11px;font-weight:700;opacity:.7}
-  .hes-header h2{margin:0 0 6px;font-size:22px;line-height:1.35;color:#1f3d2f}
-  .hes-lede{margin:0 0 14px;font-size:13px;line-height:1.5;opacity:.8}
-  .hes-sections{display:grid;gap:12px}
-  .hes-section{padding:12px 14px;border-radius:10px;background:#fff;border:1px solid rgba(53,92,125,.14)}
-  .hes-section__head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
-  .hes-section__head h3{margin:0;font-size:15px}
-  .hes-section__meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-  .hes-status{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(53,92,125,.1);color:#355c7d}
-  .hes-count{display:inline-block;min-width:1.5em;text-align:center;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(47,111,78,.12);color:#1f3d2f}
-  .hes-section__summary{margin:0;font-size:14px;line-height:1.5}
-  .hes-section__diagnosis{margin:0;font-size:14px;line-height:1.5;font-weight:600;color:#1f3d2f}
-  .hes-section__recommendation{margin:6px 0 0;font-size:13px;line-height:1.45;opacity:.88}
-  .hes-section__cta{margin:8px 0 0;font-size:13px}
-  .hes-section__cta a{color:#2f6f4e;font-weight:700;text-decoration:none}
-  .hes-details{margin-top:10px;padding-top:10px;border-top:1px dashed rgba(0,0,0,.08)}
-  .hes-obs-cards{display:grid;gap:8px}
-  .hes-obs-card{padding:10px 12px;border-radius:8px;background:#f8faf9;border-inline-start:3px solid #2f6f4e}
-  .hes-obs-product{margin:0 0 4px;font-weight:700;font-size:13px}
-  .hes-obs-statement{margin:0 0 6px;font-size:13px;line-height:1.45}
-  .hes-obs-action{margin:8px 0 0;font-size:12px;line-height:1.45}
-  .hes-conf{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(0,0,0,.06)}
-  .hes-empty,.hes-details-note{margin:0;font-size:13px;opacity:.85}
-  .hes-ownership{margin:14px 0 0;font-size:12px;opacity:.7}
-  .hes-rv-audit{margin:0 0 12px;padding:10px 12px;border-radius:8px;border:1px solid rgba(53,92,125,.2);background:#f3f6f8;font-size:12px}
-  .hes-rv-audit[data-rv-status="CONSISTENT"]{border-color:rgba(47,111,78,.35);background:#f3faf6}
-  .hes-rv-audit[data-rv-status="INCONSISTENT"]{border-color:rgba(180,60,60,.4);background:#fff5f5}
-  .hes-rv-audit__status{margin:0 0 4px;font-weight:800;letter-spacing:.04em}
-  .hes-rv-audit__line,.hes-rv-audit__div,.hes-rv-audit__probe{margin:2px 0;line-height:1.45}
-  .hes-rv-audit code{font-size:10px;word-break:break-all}
-  .hes-situation-list{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px}
-  .hes-situation-card{padding:10px 12px;border-radius:8px;background:#f7faf8;border:1px solid rgba(47,111,78,.18)}
-  .hes-situation-card__title{margin:0 0 4px;font-weight:700;font-size:14px;color:#1f3d2f}
-  .hes-situation-card__statement{margin:0 0 6px;font-size:13px;line-height:1.45}
-  .hes-situation-card__meta{margin:0;font-size:11px;opacity:.8}
-  .hes-situation-id{font-family:ui-monospace,Consolas,monospace;font-size:10px;word-break:break-all}
+  /* Legacy HES equal-card dialect retired — see merchant_experience_home_v1.css */
   .cs-surface{padding:12px 14px}
   .cs-list{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:10px}
   .cs-card{padding:12px;border:1px solid rgba(53,92,125,.16);border-radius:10px;background:#fff}
@@ -163,7 +129,7 @@
     <span class="cf-rail__word ma-gtb-logo__word">CartFlow</span>
   </a>
 
-  <nav class="cf-rail__primary ma-gtb-sections" aria-label="أقسام لوحة التاجر">
+  <nav class="cf-rail__primary" aria-label="أقسام لوحة التاجر">
     <button type="button" class="ma-gtb-section cf-nav__section active" data-ma-section="home">الرئيسية</button>
     {% if merchant_cart_workspace_v1 %}
     <button type="button" class="ma-gtb-section cf-nav__section" data-ma-section="workspace">مساحة القرار</button>
@@ -1169,7 +1135,7 @@
 <script defer src="/static/merchant_experience_integration_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-dc2"></script>
 <script defer src="/static/observation_reality_validation_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-orv1hes"></script>
 <script defer src="/static/cf_signature_primitives_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-sig1"></script>
-<script defer src="/static/home_executive_summary_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-hes-sig1"></script>
+<script defer src="/static/home_executive_summary_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-cxh1"></script>
 <script defer src="/static/commerce_situations_surfaces_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-dwr1"></script>
 <script defer src="/static/merchant_dashboard_home_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_pulse_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
@@ -1178,11 +1144,11 @@
 <script defer src="/static/merchant_dashboard_lazy.js?v={{ merchant_setup_render_build | default('unknown') }}-dc2"></script>
 {% if merchant_cart_workspace_v1 %}
 <link rel="stylesheet" href="/static/cart_workspace_merchant_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-dsim1" />
-{# Workspace content hierarchy only — shell chrome owned by merchant_frame_v1 #}
-<link rel="stylesheet" href="/static/decision_workspace_visual_assimilation_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-dwa11" />
+{# Workspace presentation owned by merchant_experience_workspace_v1 — DWA override stack retired #}
+<link rel="stylesheet" href="/static/merchant_experience_workspace_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-cxw1" />
 <script defer src="/static/cart_workspace_projection_version_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-dwr1"></script>
-<script defer src="/static/cart_workspace_decision_card_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-sig1"></script>
-<script defer src="/static/cart_workspace_grid_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-sig1"></script>
+<script defer src="/static/cart_workspace_decision_card_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-cxw1"></script>
+<script defer src="/static/cart_workspace_grid_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-cxw1"></script>
 <script defer src="/static/cart_workspace_render_controller_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-sig1"></script>
 <script defer src="/static/cart_workspace_merchant_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-dwr1"></script>
 {% endif %}
