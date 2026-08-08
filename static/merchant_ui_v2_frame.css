@@ -46,6 +46,7 @@ body[data-cf-ui="v2"] .cf2-brand__mark {
   width: 28px;
   height: 28px;
   display: block;
+  filter: brightness(0) invert(1);
 }
 
 body[data-cf-ui="v2"] .cf2-brand__word {

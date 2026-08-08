@@ -324,10 +324,22 @@ body[data-cf-ui="v2"] .cf2-ws__next-note {
     max-width: none;
   }
 
+  body[data-cf-ui="v2"] .cf2-ws__mark {
+    padding-inline-end: 6px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ws__mark .cf2-co,
   body[data-cf-ui="v2"] .cf2-ws__mark .cf2-co__glyph {
-    --cf2-co-size: 32px;
-    width: 32px;
-    height: 32px;
+    --cf2-co-size: 28px;
+    width: 28px !important;
+    height: 28px !important;
+    max-width: 28px;
+    max-height: 28px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ws__mark .cf2-co__glyph svg {
+    width: 28px;
+    height: 28px;
   }
 
   body[data-cf-ui="v2"] .cf2-ws__title {

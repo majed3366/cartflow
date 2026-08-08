@@ -1,0 +1,50 @@
+{
+  "deploy": {
+    "ok": true,
+    "sha": "1a4df46874379211f5cba8d8f424427d0d115dfe",
+    "status": 200
+  },
+  "url": "https://smartreplyai.net/dashboard#workspace",
+  "desktop": {
+    "url": "https://smartreplyai.net/dashboard#workspace",
+    "ui": "v2",
+    "marker": "workspace-final-v1",
+    "coCount": 1,
+    "section": "مساحة القرار",
+    "progress": "evidence",
+    "title": "لا تغيّر سياسة الشحن حتى تتضح الأدلة.",
+    "confidence": "الأدلة ما زالت محدودة",
+    "hasMass": true,
+    "massReady": false,
+    "massForming": true,
+    "terminusArmed": false,
+    "evArriving": true,
+    "activeNode": true,
+    "ctxOff": true,
+    "emojiAccount": false,
+    "appbarAccountSvg": true,
+    "noOverflow": true,
+    "cacheBump": true
+  },
+  "mobile": {
+    "url": "https://smartreplyai.net/dashboard#workspace",
+    "ui": "v2",
+    "marker": "workspace-final-v1",
+    "coCount": 1,
+    "section": "مساحة القرار",
+    "progress": "evidence",
+    "title": "لا تغيّر سياسة الشحن حتى تتضح الأدلة.",
+    "confidence": "الأدلة ما زالت محدودة",
+    "hasMass": true,
+    "massReady": false,
+    "massForming": true,
+    "terminusArmed": false,
+    "evArriving": true,
+    "activeNode": true,
+    "ctxOff": true,
+    "emojiAccount": false,
+    "appbarAccountSvg": true,
+    "noOverflow": true,
+    "cacheBump": true
+  }
+}
