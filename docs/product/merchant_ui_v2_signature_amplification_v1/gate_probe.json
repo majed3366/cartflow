@@ -1,0 +1,51 @@
+{
+  "deploy": {
+    "ok": true,
+    "sha": "4667d8bc4584e38fe6373b5e476edaf6405d1242",
+    "status": 200
+  },
+  "desktop_home": {
+    "ui": "v2",
+    "rail": true,
+    "gravity": true,
+    "terminus": true,
+    "route": false,
+    "dmass": false,
+    "glyphW": "92px",
+    "edge": "8px",
+    "cache": true
+  },
+  "desktop_workspace": {
+    "ui": "v2",
+    "rail": true,
+    "gravity": true,
+    "terminus": true,
+    "route": true,
+    "dmass": true,
+    "glyphW": "92px",
+    "edge": "8px",
+    "cache": true
+  },
+  "mobile_home": {
+    "ui": "v2",
+    "rail": true,
+    "gravity": true,
+    "terminus": true,
+    "route": false,
+    "dmass": false,
+    "glyphW": "64px",
+    "edge": "8px",
+    "cache": true
+  },
+  "mobile_workspace": {
+    "ui": "v2",
+    "rail": true,
+    "gravity": true,
+    "terminus": true,
+    "route": true,
+    "dmass": true,
+    "glyphW": "64px",
+    "edge": "8px",
+    "cache": true
+  }
+}

@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs" / "product" / "merchant_ui_v2_signature_amplification_v1"
 BEFORE_SRC = ROOT / "docs" / "product" / "merchant_ui_v2_deepening_v1"
 BASE = "https://smartreplyai.net"
-EXPECTED_SHA_PREFIX = ""
+EXPECTED_SHA_PREFIX = "4667d8b"
 
 
 def wait_for_deploy(timeout_s: int = 480) -> dict:
