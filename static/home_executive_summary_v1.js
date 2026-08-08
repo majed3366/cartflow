@@ -71,6 +71,15 @@
       }
     }
     var dominant = sec.dominant || sec.id === "decisions" ? ' data-hes-dominant="1"' : "";
+    var gravity =
+      sec.dominant || sec.id === "decisions"
+        ? "primary"
+        : Number(sec.executive_rank || 99) <= 2
+          ? "secondary"
+          : "quiet";
+    var rank = Number(sec.executive_rank || 0) || (gravity === "primary" ? 1 : 2);
+    var momentum =
+      sec.recommendation_ar || sec.view_details_href ? "forward" : "forming";
     return (
       '<section class="hes-section' +
       (sec.dominant || sec.id === "decisions" ? " hes-section--dominant" : "") +
@@ -81,6 +90,19 @@
       (sec.executive_rank
         ? ' data-hes-rank="' + esc(String(sec.executive_rank)) + '"'
         : "") +
+      ' data-cf-sig="home-section"' +
+      ' data-cf-gravity="' +
+      esc(gravity) +
+      '"' +
+      ' data-cf-rank="' +
+      esc(String(rank)) +
+      '"' +
+      ' data-cf-momentum="' +
+      esc(momentum) +
+      '"' +
+      ' data-cf-has-decision="' +
+      (sec.id === "decisions" || sec.dominant ? "1" : "0") +
+      '"' +
       ' data-diagnosis="home_diagnosis_language_v1">' +
       '<div class="hes-section__head">' +
       "<h3>" +

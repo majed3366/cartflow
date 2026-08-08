@@ -127,6 +127,12 @@ def sanitize_merchant_story_text_v1(text: str) -> str:
     t = re.sub(r"\bpbl-?\d+\b", "", t, flags=re.IGNORECASE)
     t = re.sub(r"\bpipeline[_-][A-Za-z0-9_-]+\b", "", t, flags=re.IGNORECASE)
     t = re.sub(r"\s{2,}", " ", t).strip(" -—·|:")
+    # Drop Latin-majority engine phrases (e.g. "Business exception") from merchant face.
+    letters = [c for c in t if c.isalpha()]
+    if letters:
+        latin = sum(1 for c in letters if ("A" <= c <= "Z") or ("a" <= c <= "z"))
+        if (latin / len(letters)) > 0.42:
+            return ""
     return t
 
 

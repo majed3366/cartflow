@@ -4,7 +4,7 @@
  */
 
 :root {
-  --cfpds-shell-bg: var(--cfvi-chrome-bg, linear-gradient(165deg, #0f766e 0%, #134e4a 46%, #0f4229 100%));
+  --cfpds-shell-bg: var(--cfvi-chrome-bg, linear-gradient(165deg, #0a2d5c 0%, #082048 52%, #001838 100%));
   --cfpds-shell-shadow: var(--cfvi-chrome-shadow, 0 4px 24px rgba(11, 18, 32, 0.18));
   --cfpds-shell-active: var(--cfvi-chrome-active, rgba(255, 255, 255, 0.22));
   --cfpds-shell-hover: rgba(255, 255, 255, 0.12);

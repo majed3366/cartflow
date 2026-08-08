@@ -58,9 +58,16 @@
     var split = splitPrimaryNext(zoneB);
     var hasDecisions = !!(split.primary || (split.next && split.next.length));
 
+    var routeCount = hasDecisions ? Math.min(1 + split.next.length, 4) : 0;
     var html = [];
     html.push(
-      '<div class="cw-ops cw-ops--decisions-only cw-ops--v2 cw-ops--refinement cw-ops--r2 cw-ops--reality-ux cw-ops--operational cw-ops--storytelling cw-ops--simplification" dir="rtl" data-open-count="' +
+      '<div class="cw-ops cw-ops--decisions-only cw-ops--v2 cw-ops--refinement cw-ops--r2 cw-ops--reality-ux cw-ops--operational cw-ops--storytelling cw-ops--simplification" dir="rtl" data-cf-sig="workspace" data-cf-quiet="' +
+        (hasDecisions ? "0" : "1") +
+        '" data-cf-route-count="' +
+        esc(routeCount) +
+        '" data-cf-breathing="' +
+        (hasDecisions ? (routeCount === 1 ? "focused" : "active") : "open") +
+        '" data-open-count="' +
         esc(hasDecisions ? 1 + split.next.length : 0) +
         '" data-dw-v2="1" data-dw-refinement="1" data-dw-r2="1" data-dw-reality-ux="1" data-dw-operational="1" data-dw-storytelling="1" data-dw-simplification="1">'
     );

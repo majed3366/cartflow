@@ -17,12 +17,45 @@ from services.cart_workspace.projection_v1 import build_workspace_projection
 from services.cart_workspace.shadow_store_v1 import SHADOW_STORE, ShadowStoreV1
 
 
+def _merchant_why_here_ar(result_reason: str, action: str) -> str:
+    """Map engine admission reasons to Arabic merchant-facing copy (presentation)."""
+    reason = (result_reason or "").strip()
+    action_key = (action or "").strip()
+    by_reason = {
+        "Business exception": "طلب استثناء يحتاج قرارك قبل متابعة الاسترداد.",
+        "Human Gain justifies": "التدخل البشري هنا يرفع فرصة إتمام الشراء.",
+        "Human Gain (provide phone)": "بيانات التواصل ناقصة وتمنع متابعة الاسترداد.",
+        "Normal Admission": "وصلت الحالة إلى نقطة تحتاج قرارك الآن.",
+        "Automation exhausted": "استنفدت الأتمتة مسارها الآمن وتحتاج حكمك.",
+        "Override Admission": "عميل مهم يحتاج متابعة مباشرة منك.",
+    }
+    by_action = {
+        "approve_discount": "العميل يطلب خصماً قبل إتمام الشراء.",
+        "approve_or_deny_discount": "العميل يطلب خصماً قبل إتمام الشراء.",
+        "take_over_conversation": "عميل مهم ينتظر متابعة مباشرة منك.",
+        "override_decision_action": "عميل مهم ينتظر متابعة مباشرة منك.",
+        "provide_confirm_phone": "بيانات التواصل ناقصة وتمنع متابعة الاسترداد.",
+        "provide_information": "بيانات ناقصة تمنع متابعة الاسترداد.",
+        "fix_channel_configuration": "قناة واتساب غير جاهزة لإرسال المتابعة.",
+    }
+    if reason in by_reason:
+        return by_reason[reason]
+    # Reject Latin-majority engine crumbs from merchant face.
+    letters = [c for c in reason if c.isalpha()]
+    latin = sum(1 for c in letters if ("A" <= c <= "Z") or ("a" <= c <= "z"))
+    if letters and (latin / len(letters)) > 0.42:
+        return by_action.get(action_key, "يحتاج هذا القرار حكماً بشرياً الآن.")
+    if reason:
+        return reason
+    return by_action.get(action_key, "يحتاج هذا القرار حكماً بشرياً الآن.")
+
+
 def _explanation_for_admit(candidate: AdmissionCandidate, result_reason: str, action: str) -> DecisionExplanation:
     from services.cart_workspace.projection_v1 import ACTION_LABELS_AR
 
     label = ACTION_LABELS_AR.get(action, action)
     return DecisionExplanation(
-        why_here=result_reason if result_reason else "يحتاج هذا القرار حكماً بشرياً الآن.",
+        why_here=_merchant_why_here_ar(result_reason, action),
         cartflow_did="CartFlow تابع الاسترداد تلقائياً حتى وصل إلى نقطة لا يمكن تحسينها بأمان دون قرارك.",
         why_stopped="توقف الأتمتة لأن الحكم البشري هنا يرفع احتمالية الاسترداد (أو بسبب أولوية VIP).",
         expected_after=f"بعد «{label}» تعود المتابعة إلى CartFlow تلقائياً.",

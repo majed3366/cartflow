@@ -1,0 +1,579 @@
+/**
+ * CartFlow Platform Shell Visual Assimilation V1
+ * Shared merchant application shell — frozen Visual Constitution / Design System / Signature DNA.
+ * Presentation only. One platform shell for Home · Workspace · Products · Carts · Comms · Settings.
+ * Does not redesign page business content. Does not invent a new visual dialect.
+ */
+
+/* ——— Foundations (alias approved --cfvi-* tokens) ——— */
+body[data-cf-merchant-app="1"] {
+  --psva-navy: var(--cfvi-secondary, #082048);
+  --psva-navy-deep: var(--cfvi-secondary-deep, #001838);
+  --psva-teal: var(--cfvi-primary, #18b0a8);
+  --psva-teal-deep: var(--cfvi-primary-deep, #0e8e88);
+  --psva-teal-soft: var(--cfvi-primary-soft, rgba(24, 176, 168, 0.12));
+  --psva-bg: var(--cfvi-bg, #f4f7fa);
+  --psva-surface: var(--cfvi-surface, #ffffff);
+  --psva-ink: var(--cfvi-ink, #082048);
+  --psva-ink-soft: var(--cfvi-ink-soft, #3d4a63);
+  --psva-ink-whisper: var(--cfvi-ink-whisper, #8b95a8);
+  --psva-border: var(--cfvi-border, rgba(8, 32, 72, 0.1));
+  --psva-radius: var(--cfvi-card-radius, 16px);
+  --psva-radius-sm: 12px;
+  --psva-radius-xs: 10px;
+  --psva-shadow: var(--cfvi-card-shadow, 0 4px 24px rgba(11, 18, 32, 0.07));
+  --psva-shadow-raised: 0 10px 32px rgba(8, 32, 72, 0.12);
+  --psva-chrome-bg: var(
+    --cfvi-chrome-bg,
+    linear-gradient(165deg, #0a2d5c 0%, #082048 52%, #001838 100%)
+  );
+  --psva-chrome-active: var(--cfvi-chrome-active, rgba(24, 176, 168, 0.28));
+  --psva-chrome-hover: rgba(255, 255, 255, 0.12);
+  --psva-motion: var(--cfvi-motion-medium, 0.22s ease-out);
+  --psva-font: var(--cfvi-font-certified, "Tajawal", "Segoe UI", Tahoma, sans-serif);
+
+  /* Remap latent legacy greens so uncovered rules inherit CartFlow */
+  --green: var(--psva-navy);
+  --green-dark: var(--psva-navy-deep);
+  --green-mid: var(--psva-teal-deep);
+  --green-soft: var(--psva-teal-soft);
+
+  font-family: var(--psva-font);
+  color: var(--psva-ink);
+  background: var(--psva-bg);
+}
+
+/* ——— Application canvas ——— */
+body[data-cf-merchant-app="1"] .ma-app-shell,
+body[data-cf-merchant-app="1"] .ma-dashboard-frame,
+body[data-cf-merchant-app="1"] .ma-content-root,
+body[data-cf-merchant-app="1"] .main {
+  background: var(--psva-bg);
+  color: var(--psva-ink);
+}
+
+body[data-cf-merchant-app="1"] .ma-content-root {
+  max-width: var(--ma-content-max, 1120px);
+}
+
+/* ——— Top navigation ——— */
+body[data-cf-merchant-app="1"] .ma-global-topbar {
+  background: var(--psva-chrome-bg) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 24px rgba(8, 32, 72, 0.22);
+  color: #fff;
+}
+
+body[data-cf-merchant-app="1"] .ma-gtb-section {
+  border-radius: var(--psva-radius-xs);
+  color: rgba(255, 255, 255, 0.88);
+  transition:
+    background var(--psva-motion),
+    border-color var(--psva-motion),
+    color var(--psva-motion),
+    box-shadow var(--psva-motion);
+}
+
+body[data-cf-merchant-app="1"] .ma-gtb-section:hover {
+  background: var(--psva-chrome-hover);
+  color: #fff;
+}
+
+body[data-cf-merchant-app="1"] .ma-gtb-section.active {
+  background: var(--psva-chrome-active) !important;
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+body[data-cf-merchant-app="1"] .ma-gtb-util,
+body[data-cf-merchant-app="1"] .ma-gtb-util--text,
+body[data-cf-merchant-app="1"] .ma-gtb-menu {
+  border-radius: var(--psva-radius-xs);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.92);
+  transition:
+    background var(--psva-motion),
+    border-color var(--psva-motion);
+}
+
+body[data-cf-merchant-app="1"] .ma-gtb-util:hover,
+body[data-cf-merchant-app="1"] .ma-gtb-menu:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+body[data-cf-merchant-app="1"] .ma-gtb-date {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+/* ——— Canonical brand (all surfaces) ——— */
+body[data-cf-merchant-app="1"] .ma-gtb-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  text-decoration: none;
+  color: #fff;
+}
+
+body[data-cf-merchant-app="1"] .ma-gtb-logo__mark {
+  display: block !important;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+body[data-cf-merchant-app="1"] .ma-gtb-logo__word {
+  color: #fff;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+/* ——— Sidebar ——— */
+body[data-cf-merchant-app="1"] .ma-context-sidebar,
+body[data-cf-merchant-app="1"] .sidebar {
+  background: var(--psva-chrome-bg) !important;
+  box-shadow: 0 4px 24px rgba(8, 32, 72, 0.2);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+body[data-cf-merchant-app="1"] .ma-context-sidebar::after,
+body[data-cf-merchant-app="1"] .sidebar::after {
+  background: transparent !important;
+  opacity: 0 !important;
+}
+
+body[data-cf-merchant-app="1"] .ma-ctx-label {
+  color: rgba(255, 255, 255, 0.55);
+  letter-spacing: 0.04em;
+}
+
+body[data-cf-merchant-app="1"] .ma-ctx-hint {
+  color: rgba(255, 255, 255, 0.62) !important;
+}
+
+body[data-cf-merchant-app="1"] .nav-item {
+  border-radius: var(--psva-radius-xs);
+  color: rgba(255, 255, 255, 0.86);
+  text-align: right;
+  transition:
+    background var(--psva-motion),
+    border-color var(--psva-motion),
+    color var(--psva-motion);
+}
+
+body[data-cf-merchant-app="1"] .nav-item:hover {
+  background: var(--psva-chrome-hover);
+  color: #fff;
+}
+
+body[data-cf-merchant-app="1"] .nav-item.active {
+  background: var(--psva-chrome-active) !important;
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+body[data-cf-merchant-app="1"] .ma-scrim {
+  background: rgba(8, 32, 72, 0.45);
+  backdrop-filter: blur(4px);
+}
+
+/* ——— Shared surfaces / cards / panels ——— */
+body[data-cf-merchant-app="1"] .card,
+body[data-cf-merchant-app="1"] .setting-card,
+body[data-cf-merchant-app="1"] .ma-vi-card,
+body[data-cf-merchant-app="1"] .cf-product-card,
+body[data-cf-merchant-app="1"] .cs-card,
+body[data-cf-merchant-app="1"] .v2-card {
+  background: var(--psva-surface);
+  border: 1px solid var(--psva-border);
+  border-radius: var(--psva-radius);
+  box-shadow: var(--psva-shadow);
+  color: var(--psva-ink);
+}
+
+body[data-cf-merchant-app="1"] .ma-page-section,
+body[data-cf-merchant-app="1"] .page > .card {
+  margin-block: var(--cfvi-space-md, 20px);
+}
+
+/* ——— Typography hierarchy (shell-level) ——— */
+body[data-cf-merchant-app="1"] h1,
+body[data-cf-merchant-app="1"] .page-title,
+body[data-cf-merchant-app="1"] .ma-page-hero__title {
+  color: var(--psva-ink);
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+body[data-cf-merchant-app="1"] h2,
+body[data-cf-merchant-app="1"] h3 {
+  color: var(--psva-ink);
+}
+
+body[data-cf-merchant-app="1"] .muted,
+body[data-cf-merchant-app="1"] .hint,
+body[data-cf-merchant-app="1"] .ma-page-hero__purpose {
+  color: var(--psva-ink-soft);
+}
+
+/* ——— Buttons / primary / secondary ——— */
+body[data-cf-merchant-app="1"] .ma-fw-save,
+body[data-cf-merchant-app="1"] .btn-primary,
+body[data-cf-merchant-app="1"] .setting-btn.primary,
+body[data-cf-merchant-app="1"] .v2-btn--primary,
+body[data-cf-merchant-app="1"] button.primary {
+  background: linear-gradient(
+    135deg,
+    var(--psva-navy) 0%,
+    #0a3558 55%,
+    var(--psva-teal-deep) 100%
+  ) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #fff !important;
+  border-radius: var(--psva-radius-sm);
+  font-weight: 700;
+  box-shadow: 0 6px 18px rgba(8, 32, 72, 0.16);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    opacity 0.15s ease;
+}
+
+body[data-cf-merchant-app="1"] .ma-fw-save:hover,
+body[data-cf-merchant-app="1"] .btn-primary:hover,
+body[data-cf-merchant-app="1"] .v2-btn--primary:hover {
+  opacity: 0.96;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(8, 32, 72, 0.2);
+}
+
+body[data-cf-merchant-app="1"] .ma-fw-save:disabled,
+body[data-cf-merchant-app="1"] .btn-primary:disabled,
+body[data-cf-merchant-app="1"] .v2-btn--primary:disabled {
+  opacity: 0.45;
+  transform: none;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+body[data-cf-merchant-app="1"] .btn-secondary,
+body[data-cf-merchant-app="1"] .setting-btn,
+body[data-cf-merchant-app="1"] .v2-btn--secondary,
+body[data-cf-merchant-app="1"] .ghost-btn {
+  background: transparent;
+  border: 1px solid rgba(8, 32, 72, 0.16);
+  color: var(--psva-teal-deep);
+  border-radius: var(--psva-radius-sm);
+  font-weight: 650;
+}
+
+body[data-cf-merchant-app="1"] .btn-secondary:hover,
+body[data-cf-merchant-app="1"] .setting-btn:hover,
+body[data-cf-merchant-app="1"] .v2-btn--secondary:hover {
+  background: var(--psva-teal-soft);
+  border-color: rgba(14, 142, 136, 0.35);
+}
+
+/* ——— Inputs / selects / search ——— */
+body[data-cf-merchant-app="1"] input[type="text"],
+body[data-cf-merchant-app="1"] input[type="email"],
+body[data-cf-merchant-app="1"] input[type="number"],
+body[data-cf-merchant-app="1"] input[type="password"],
+body[data-cf-merchant-app="1"] input[type="search"],
+body[data-cf-merchant-app="1"] input[type="tel"],
+body[data-cf-merchant-app="1"] input[type="url"],
+body[data-cf-merchant-app="1"] select,
+body[data-cf-merchant-app="1"] textarea,
+body[data-cf-merchant-app="1"] .ma-fw-input {
+  border: 1px solid var(--psva-border);
+  border-radius: var(--psva-radius-xs);
+  background: var(--psva-surface);
+  color: var(--psva-ink);
+  font-family: inherit;
+  transition:
+    border-color var(--psva-motion),
+    box-shadow var(--psva-motion);
+}
+
+body[data-cf-merchant-app="1"] input:focus,
+body[data-cf-merchant-app="1"] select:focus,
+body[data-cf-merchant-app="1"] textarea:focus,
+body[data-cf-merchant-app="1"] .ma-fw-input:focus,
+body[data-cf-merchant-app="1"] input:focus-visible,
+body[data-cf-merchant-app="1"] select:focus-visible,
+body[data-cf-merchant-app="1"] textarea:focus-visible {
+  outline: none;
+  border-color: rgba(24, 176, 168, 0.55);
+  box-shadow: 0 0 0 3px rgba(24, 176, 168, 0.16);
+}
+
+body[data-cf-merchant-app="1"] input:disabled,
+body[data-cf-merchant-app="1"] select:disabled,
+body[data-cf-merchant-app="1"] textarea:disabled {
+  opacity: 0.55;
+  background: rgba(8, 32, 72, 0.03);
+  cursor: not-allowed;
+}
+
+/* ——— Filters / tabs / pills / badges ——— */
+body[data-cf-merchant-app="1"] .filter-btn {
+  border-radius: var(--psva-radius-xs);
+  border: 1px solid var(--psva-border);
+  background: var(--psva-surface);
+  color: var(--psva-ink-soft);
+  transition:
+    background var(--psva-motion),
+    border-color var(--psva-motion),
+    color var(--psva-motion);
+}
+
+body[data-cf-merchant-app="1"] .filter-btn:hover {
+  border-color: rgba(24, 176, 168, 0.35);
+  color: var(--psva-ink);
+}
+
+body[data-cf-merchant-app="1"] .filter-btn.active {
+  background: var(--psva-navy) !important;
+  border-color: var(--psva-navy) !important;
+  color: #fff !important;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(8, 32, 72, 0.14);
+}
+
+body[data-cf-merchant-app="1"] .chip,
+body[data-cf-merchant-app="1"] .wa-pill,
+body[data-cf-merchant-app="1"] .ma-sc-status-pill,
+body[data-cf-merchant-app="1"] .ma-sub-status-pill,
+body[data-cf-merchant-app="1"] .ma-sub-plan-pill,
+body[data-cf-merchant-app="1"] .ma-wa-connection-pill {
+  border-radius: 999px;
+  border: 1px solid var(--psva-border);
+  background: rgba(8, 32, 72, 0.04);
+  color: var(--psva-ink-soft);
+  font-weight: 650;
+}
+
+body[data-cf-merchant-app="1"] .wa-pill {
+  background: var(--psva-teal-soft);
+  border-color: rgba(14, 142, 136, 0.28);
+  color: var(--psva-teal-deep);
+}
+
+body[data-cf-merchant-app="1"] .wa-dot {
+  background: var(--psva-teal) !important;
+}
+
+body[data-cf-merchant-app="1"] .s-ok,
+body[data-cf-merchant-app="1"] .s-recovered {
+  background: var(--psva-teal-soft) !important;
+  color: var(--psva-teal-deep) !important;
+}
+
+body[data-cf-merchant-app="1"] .s-ok .sd,
+body[data-cf-merchant-app="1"] .s-recovered .sd {
+  background: var(--psva-teal) !important;
+}
+
+/* ——— Tables / lists ——— */
+body[data-cf-merchant-app="1"] table,
+body[data-cf-merchant-app="1"] .ma-fw-table {
+  border-color: var(--psva-border);
+  color: var(--psva-ink);
+}
+
+body[data-cf-merchant-app="1"] th {
+  color: var(--psva-ink-whisper);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border-bottom: 1px solid var(--psva-border);
+  background: rgba(8, 32, 72, 0.02);
+}
+
+body[data-cf-merchant-app="1"] td {
+  border-bottom: 1px solid rgba(8, 32, 72, 0.06);
+}
+
+body[data-cf-merchant-app="1"] tr:hover td {
+  background: rgba(24, 176, 168, 0.04);
+}
+
+/* ——— Dividers / borders / radius / elevation ——— */
+body[data-cf-merchant-app="1"] hr,
+body[data-cf-merchant-app="1"] .divider {
+  border: 0;
+  border-top: 1px solid var(--psva-border);
+}
+
+body[data-cf-merchant-app="1"] .panel,
+body[data-cf-merchant-app="1"] .ma-panel {
+  border: 1px solid var(--psva-border);
+  border-radius: var(--psva-radius);
+  background: var(--psva-surface);
+  box-shadow: var(--psva-shadow);
+}
+
+/* ——— Empty / loading / error / skeleton ——— */
+body[data-cf-merchant-app="1"] .empty-state,
+body[data-cf-merchant-app="1"] .ma-empty,
+body[data-cf-merchant-app="1"] .cw-card--quiet {
+  color: var(--psva-ink-soft);
+  border-color: rgba(24, 176, 168, 0.22);
+}
+
+body[data-cf-merchant-app="1"] .error,
+body[data-cf-merchant-app="1"] .ma-error,
+body[data-cf-merchant-app="1"] .alert-error {
+  background: var(--cfvi-critical-soft, #fef2f2);
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  color: var(--cfvi-critical, #dc2626);
+  border-radius: var(--psva-radius-sm);
+}
+
+body[data-cf-merchant-app="1"] .ma-dash-skel {
+  background: linear-gradient(
+    90deg,
+    rgba(8, 32, 72, 0.06) 0%,
+    rgba(24, 176, 168, 0.1) 45%,
+    rgba(8, 32, 72, 0.06) 100%
+  );
+  background-size: 200% 100%;
+  animation: psva-skel 1.4s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+@keyframes psva-skel {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+/* ——— Banners / notifications inside app ——— */
+body[data-cf-merchant-app="1"] .ops-banner,
+body[data-cf-merchant-app="1"] .cs-ops-banner,
+body[data-cf-merchant-app="1"] .ma-banner,
+body[data-cf-merchant-app="1"] .alert {
+  border-radius: var(--psva-radius-sm);
+  border: 1px solid var(--psva-border);
+  background: rgba(8, 32, 72, 0.03);
+  color: var(--psva-ink-soft);
+}
+
+/* ——— Modal / drawer shell ——— */
+body[data-cf-merchant-app="1"] .ma-msg-modal,
+body[data-cf-merchant-app="1"] .ma-account-identity-panel,
+body[data-cf-merchant-app="1"] .modal,
+body[data-cf-merchant-app="1"] .drawer {
+  background: var(--psva-surface);
+  border: 1px solid var(--psva-border);
+  border-radius: var(--psva-radius);
+  box-shadow: var(--psva-shadow-raised);
+  color: var(--psva-ink);
+}
+
+body[data-cf-merchant-app="1"] .ma-msg-modal-foot button,
+body[data-cf-merchant-app="1"] .ma-msg-modal-foot .btn-primary {
+  background: linear-gradient(
+    135deg,
+    var(--psva-navy) 0%,
+    #0a3558 55%,
+    var(--psva-teal-deep) 100%
+  ) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+  border-radius: var(--psva-radius-sm);
+}
+
+/* ——— Links (inside content, not chrome logo/nav) ——— */
+body[data-cf-merchant-app="1"] .ma-content-root a:not(.ma-gtb-logo):not(.nav-item):not(.cw-card__commit-link):not(.ma-gtb-util) {
+  color: var(--psva-teal-deep);
+}
+
+body[data-cf-merchant-app="1"] .ma-content-root a:not(.ma-gtb-logo):not(.nav-item):hover {
+  color: var(--psva-navy);
+}
+
+/* ——— Focus rings (accessibility, calm) ——— */
+body[data-cf-merchant-app="1"] .ma-gtb-section:focus-visible,
+body[data-cf-merchant-app="1"] .nav-item:focus-visible,
+body[data-cf-merchant-app="1"] .ma-gtb-util:focus-visible,
+body[data-cf-merchant-app="1"] button:focus-visible,
+body[data-cf-merchant-app="1"] a:focus-visible {
+  outline: 2px solid rgba(24, 176, 168, 0.65);
+  outline-offset: 2px;
+}
+
+/* ——— Soft-circle / glow dialect purge (shared hero leftovers) ——— */
+body[data-cf-merchant-app="1"] .ma-vi-hero::after,
+body[data-cf-merchant-app="1"] .ma-vi-hero__glow,
+body[data-cf-merchant-app="1"] .v2-hero-glow {
+  display: none !important;
+}
+
+/* ——— RTL first-class ——— */
+html[dir="rtl"] body[data-cf-merchant-app="1"] .nav-item,
+html[dir="rtl"] body[data-cf-merchant-app="1"] .ma-ctx-label,
+html[dir="rtl"] body[data-cf-merchant-app="1"] .filter-btn {
+  text-align: right;
+}
+
+html[dir="rtl"] body[data-cf-merchant-app="1"] .ma-gtb-logo {
+  flex-direction: row;
+}
+
+/* ——— Selected / hover list rows ——— */
+body[data-cf-merchant-app="1"] .list-item.active,
+body[data-cf-merchant-app="1"] .ma-list-item.is-selected,
+body[data-cf-merchant-app="1"] [aria-selected="true"] {
+  background: var(--psva-teal-soft);
+  border-color: rgba(14, 142, 136, 0.28);
+  color: var(--psva-ink);
+}
+
+/* ——— Account identity accents (replace teal-forest leftovers) ——— */
+body[data-cf-merchant-app="1"] .ma-account-identity-panel a,
+body[data-cf-merchant-app="1"] .ma-account-identity-panel .cta {
+  color: var(--psva-teal-deep);
+}
+
+/* ——— Signature micro-structure: content root edge silence ——— */
+body[data-cf-merchant-app="1"] .ma-content-root {
+  position: relative;
+}
+
+body[data-cf-merchant-app="1"] .ma-content-root::before {
+  content: "";
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  width: 2px;
+  height: 72px;
+  background: linear-gradient(180deg, var(--psva-navy), var(--psva-teal));
+  opacity: 0.35;
+  pointer-events: none;
+  border-radius: 2px;
+}
+
+@media (max-width: 1023px) {
+  body[data-cf-merchant-app="1"] .ma-content-root::before {
+    display: none;
+  }
+
+  body[data-cf-merchant-app="1"] .ma-context-sidebar,
+  body[data-cf-merchant-app="1"] .sidebar {
+    box-shadow:
+      -8px 0 32px rgba(8, 32, 72, 0.24),
+      0 4px 24px rgba(8, 32, 72, 0.2);
+  }
+}

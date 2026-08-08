@@ -1,0 +1,331 @@
+/**
+ * CartFlow Signature Primitives V1 — visual grammar (structure over theme).
+ * Must remain recognizable under grayscale + hidden logo (SL-03).
+ * Truth-bound via data-cf-* attributes from cf_signature_primitives_v1.js.
+ */
+
+/* ——— Shared structural tokens (weight/space — not color identity) ——— */
+body[data-cf-merchant-app="1"] {
+  --cf-sig-gap: 1.35rem;
+  --cf-sig-edge: 3px;
+  --cf-sig-dense-shadow: 0 14px 40px rgba(0, 0, 0, 0.14);
+  --cf-sig-soft-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
+  --cf-sig-route: rgba(0, 0, 0, 0.22);
+  --cf-sig-route-active: rgba(0, 0, 0, 0.55);
+}
+
+/* ============================================================
+ * WORKSPACE — Living Route + Core Silence + Densification
+ * ============================================================ */
+
+[data-cf-sig="workspace"] {
+  position: relative;
+}
+
+/* Visual Breathing — quiet / open silence */
+[data-cf-sig="workspace"][data-cf-quiet="1"],
+[data-cf-sig="workspace"][data-cf-breathing="open"] {
+  padding-block: 1.25rem;
+}
+
+[data-cf-sig="workspace"][data-cf-quiet="1"] .cw-card--quiet {
+  border-style: dashed;
+  border-width: 1px;
+  box-shadow: none;
+  opacity: 0.92;
+}
+
+/* Living Routes — one primary path emphasis (SL-05) */
+[data-cf-sig="workspace"][data-cf-route-count="1"] .cw-primary-slot {
+  position: relative;
+}
+
+/* Core Silence — controlled gap between primary and next (SL-07) */
+[data-cf-sig="workspace"] .cw-primary-slot {
+  margin-bottom: var(--cf-sig-gap);
+}
+
+[data-cf-sig="workspace"] .cw-primary-slot::after {
+  content: "";
+  display: block;
+  height: 1px;
+  margin: 1.1rem 22% 0;
+  /* Tapered Direction — structural, survives grayscale */
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--cf-sig-route) 22%,
+    var(--cf-sig-route-active) 50%,
+    var(--cf-sig-route) 78%,
+    transparent 100%
+  );
+}
+
+[data-cf-sig="workspace"][data-cf-route-count="0"] .cw-primary-slot::after,
+[data-cf-sig="workspace"][data-cf-quiet="1"] .cw-primary-slot::after {
+  display: none;
+}
+
+/* Inactive routes quieter */
+[data-cf-sig="workspace"] .cw-next-slot {
+  opacity: 0.7;
+  filter: contrast(0.92);
+}
+
+/* ============================================================
+ * DECISION CARD — Evidence → Understanding → Decision → Action
+ * ============================================================ */
+
+[data-cf-sig="decision-card"] {
+  position: relative;
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    opacity 0.2s ease;
+}
+
+/* Attention Gravity — primary mass (SL-06 / SL-08: weight not glow) */
+[data-cf-sig="decision-card"][data-cf-gravity="primary"],
+[data-cf-sig="decision-card"][data-cf-role="primary"] {
+  box-shadow: var(--cf-sig-dense-shadow);
+  transform: translateY(0);
+  /* Decision densification: primary claims more of the reading field */
+  max-width: 36rem;
+  margin-inline: auto;
+  padding: 1.05rem 1.2rem 0 !important;
+}
+
+[data-cf-sig="decision-card"][data-cf-role="next"],
+[data-cf-sig="decision-card"][data-cf-gravity="secondary"] {
+  box-shadow: var(--cf-sig-soft-shadow);
+  opacity: 0.86;
+}
+
+[data-cf-sig="decision-card"][data-cf-role="quiet"] {
+  box-shadow: none;
+  opacity: 0.9;
+}
+
+/* Open-C / Recovery Scoop micro-geometry — structural edge, not decoration */
+[data-cf-sig="decision-card"][data-cf-role="primary"]::before {
+  content: "";
+  position: absolute;
+  inset-block: 12% 18%;
+  inset-inline-start: 0;
+  width: var(--cf-sig-edge);
+  background: currentColor;
+  opacity: 0.55;
+  border-radius: 2px;
+  /* Scoop: thicker at bottom (recovery continuation) */
+  clip-path: polygon(0 0, 100% 8%, 100% 78%, 40% 100%, 0 92%);
+  pointer-events: none;
+}
+
+/* Decision Densification scale by real density ordinal */
+[data-cf-sig="decision-card"][data-cf-density="1"] .cw-beat--decision .cw-beat__decision,
+[data-cf-sig="decision-card"][data-cf-density="1"] .cw-card__story-decision {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+[data-cf-sig="decision-card"][data-cf-density="2"] .cw-beat--decision .cw-beat__decision,
+[data-cf-sig="decision-card"][data-cf-density="2"] .cw-card__story-decision {
+  font-weight: 700;
+  font-size: 1.12rem;
+}
+
+[data-cf-sig="decision-card"][data-cf-density="3"] .cw-beat--decision .cw-beat__decision,
+[data-cf-sig="decision-card"][data-cf-density="3"] .cw-card__story-decision {
+  font-weight: 750;
+  font-size: 1.22rem;
+}
+
+[data-cf-sig="decision-card"][data-cf-density="4"] .cw-beat--decision .cw-beat__decision,
+[data-cf-sig="decision-card"][data-cf-density="4"] .cw-card__story-decision,
+[data-cf-sig="decision-card"][data-cf-density="5"] .cw-beat--decision .cw-beat__decision,
+[data-cf-sig="decision-card"][data-cf-density="5"] .cw-card__story-decision {
+  font-weight: 800;
+  font-size: clamp(1.28rem, 2.4vw, 1.48rem);
+  letter-spacing: -0.02em;
+}
+
+/* Living Evidence / Evidence Density — marks scale with real evidence count */
+[data-cf-sig="decision-card"] .cw-beat--evidence {
+  position: relative;
+}
+
+[data-cf-sig="decision-card"] .cw-beat--evidence::before {
+  content: "";
+  position: absolute;
+  inset-inline-end: 0.75rem;
+  inset-block-start: 0.75rem;
+  display: flex;
+  gap: 3px;
+  height: 6px;
+  width: calc(var(--cf-evidence-marks, 1) * 8px);
+  background: repeating-linear-gradient(
+    90deg,
+    currentColor 0 5px,
+    transparent 5px 8px
+  );
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+[data-cf-sig="decision-card"][data-cf-evidence-n="0"] {
+  --cf-evidence-marks: 0;
+}
+[data-cf-sig="decision-card"][data-cf-evidence-n="1"] {
+  --cf-evidence-marks: 1;
+}
+[data-cf-sig="decision-card"][data-cf-evidence-n="2"] {
+  --cf-evidence-marks: 2;
+}
+[data-cf-sig="decision-card"][data-cf-evidence-n="3"] {
+  --cf-evidence-marks: 3;
+}
+[data-cf-sig="decision-card"][data-cf-evidence-n="4"],
+[data-cf-sig="decision-card"][data-cf-evidence-n="5"],
+[data-cf-sig="decision-card"][data-cf-evidence-n="6"] {
+  --cf-evidence-marks: 4;
+}
+
+[data-cf-sig="decision-card"][data-cf-evidence-n="0"] .cw-beat--evidence::before,
+[data-cf-sig="decision-card"][data-cf-evidence-gap="1"] .cw-beat--evidence::before {
+  opacity: 0.18;
+  width: 8px;
+}
+
+/* Evidence band lighter than understanding; understanding bridges */
+[data-cf-sig="decision-card"] .cw-beat--evidence {
+  font-weight: 500;
+}
+
+[data-cf-sig="decision-card"] .cw-beat--understanding {
+  font-weight: 650;
+  border-inline-start: 2px solid currentColor;
+  border-inline-start-color: color-mix(in srgb, currentColor 35%, transparent);
+}
+
+[data-cf-sig="decision-card"] .cw-beat--decision {
+  font-weight: 800;
+  background: color-mix(in srgb, currentColor 4%, transparent);
+}
+
+/* Decision Tension — held readiness compresses action band */
+[data-cf-sig="decision-card"][data-cf-tension="high"] .cw-beat--action,
+[data-cf-sig="decision-card"][data-cf-momentum="held"] .cw-beat--action {
+  opacity: 0.72;
+  border-style: dashed;
+}
+
+[data-cf-sig="decision-card"][data-cf-tension="resolved"] .cw-beat--action,
+[data-cf-sig="decision-card"][data-cf-momentum="forward"] .cw-beat--action {
+  border-block-start-width: 2px;
+  border-block-start-style: solid;
+}
+
+/* Commerce Momentum / Recovery Scoop — action as continuation, not orphan */
+[data-cf-sig="decision-card"] .cw-beat--action {
+  position: relative;
+}
+
+[data-cf-sig="decision-card"][data-cf-momentum="forward"] .cw-beat--action::after,
+[data-cf-sig="decision-card"][data-cf-momentum="external"] .cw-beat--action::after {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0.85rem;
+  inset-block-end: 0.35rem;
+  width: 28px;
+  height: 8px;
+  border-block-end: 2px solid currentColor;
+  border-inline-end: 2px solid currentColor;
+  border-end-end-radius: 10px;
+  opacity: 0.35;
+  transform: scaleX(-1);
+  pointer-events: none;
+}
+
+html[dir="rtl"] [data-cf-sig="decision-card"][data-cf-momentum="forward"] .cw-beat--action::after,
+html[dir="rtl"] [data-cf-sig="decision-card"][data-cf-momentum="external"] .cw-beat--action::after {
+  transform: none;
+}
+
+/* Progressive densification stack rhythm */
+[data-cf-sig="decision-card"] .cw-card__stack {
+  display: flex;
+  flex-direction: column;
+}
+
+[data-cf-sig="decision-card"][data-cf-density="5"] .cw-beat--decision {
+  padding-block: 0.95rem;
+}
+
+[data-cf-sig="decision-card"][data-cf-density="5"] .cw-beat--evidence {
+  padding-block: 0.55rem;
+}
+
+/* ============================================================
+ * HOME — Attention Gravity ladder (real HES rank/dominance)
+ * ============================================================ */
+
+[data-cf-sig="home-section"] {
+  position: relative;
+  transition: opacity 0.2s ease, box-shadow 0.2s ease;
+}
+
+[data-cf-sig="home-section"][data-cf-gravity="primary"] {
+  box-shadow: var(--cf-sig-dense-shadow);
+}
+
+[data-cf-sig="home-section"][data-cf-gravity="primary"]::before {
+  content: "";
+  position: absolute;
+  inset-block: 10% 14%;
+  inset-inline-start: 0;
+  width: var(--cf-sig-edge);
+  background: currentColor;
+  opacity: 0.5;
+  clip-path: polygon(0 0, 100% 10%, 100% 75%, 35% 100%, 0 90%);
+  pointer-events: none;
+}
+
+[data-cf-sig="home-section"][data-cf-gravity="secondary"] {
+  opacity: 0.92;
+  box-shadow: var(--cf-sig-soft-shadow);
+}
+
+[data-cf-sig="home-section"][data-cf-gravity="quiet"] {
+  opacity: 0.78;
+  box-shadow: none;
+}
+
+[data-cf-sig="home-section"][data-cf-rank="1"] .hes-section__diagnosis,
+[data-cf-sig="home-section"][data-cf-gravity="primary"] .hes-section__diagnosis {
+  font-weight: 700;
+}
+
+[data-cf-sig="home-section"][data-cf-momentum="forward"] .hes-section__cta a {
+  font-weight: 750;
+  text-decoration-thickness: 2px;
+}
+
+/* Structural gap between home sections when multiple exist */
+.hes-sections [data-cf-sig="home-section"] + [data-cf-sig="home-section"] {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+}
+
+/* ============================================================
+ * Grayscale recognition aid (proof mode)
+ * Applied only when body[data-cf-sig-proof="grayscale"]
+ * ============================================================ */
+body[data-cf-sig-proof="grayscale"] {
+  filter: grayscale(1) contrast(1.05);
+}
+
+body[data-cf-sig-proof="grayscale"] .ma-gtb-logo__mark,
+body[data-cf-sig-proof="grayscale"] .ma-gtb-logo__word {
+  visibility: hidden;
+}

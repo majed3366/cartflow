@@ -46,6 +46,13 @@
         String(projection && projection.projection_version != null ? projection.projection_version : "")
       );
       host.setAttribute("data-cw-quiet", projection && projection.quiet ? "1" : "0");
+      if (global.CFSignature && global.CFSignature.enhanceRenderedWorkspace) {
+        try {
+          global.CFSignature.enhanceRenderedWorkspace(host, projection);
+        } catch (eSig) {
+          /* presentation only — never block paint */
+        }
+      }
     }
 
     lastProjection = projection;

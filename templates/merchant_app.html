@@ -17,6 +17,8 @@
 <link rel="stylesheet" href="/static/merchant_visual_identity_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
 <link rel="stylesheet" href="/static/merchant_typography_certification_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
 <link rel="stylesheet" href="/static/merchant_shell_identity_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
+<link rel="stylesheet" href="/static/platform_shell_visual_assimilation_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-psva1">
+<link rel="stylesheet" href="/static/cf_signature_primitives_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-sig1">
 <link rel="stylesheet" href="/static/merchant_session_identity_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-msi1">
 <link rel="stylesheet" href="/static/merchant_card_system_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
 <link rel="stylesheet" href="/static/merchant_icon_language_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
@@ -162,7 +164,10 @@
 <header class="ma-global-topbar" role="banner">
   <div class="ma-gtb-start">
     <label for="ma-sidebar-toggle" class="ma-gtb-menu" aria-label="فتح القائمة">☰</label>
-    <a class="ma-gtb-logo" href="#home" onclick="if(window.goToSection){goToSection('home');return false;}">CartFlow</a>
+    <a class="ma-gtb-logo" href="#home" onclick="if(window.goToSection){goToSection('home');return false;}">
+      <img class="ma-gtb-logo__mark" src="/static/img/brand/cartflow_cf_mark.png" width="32" height="32" alt="" decoding="async" />
+      <span class="ma-gtb-logo__word">CartFlow</span>
+    </a>
   </div>
   <div class="ma-gtb-center">
     <nav class="ma-gtb-sections" aria-label="أقسام لوحة التاجر">
@@ -1156,7 +1161,8 @@
 <script defer src="/static/merchant_home_experience.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_experience_integration_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-dc2"></script>
 <script defer src="/static/observation_reality_validation_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-orv1hes"></script>
-<script defer src="/static/home_executive_summary_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-hes-d1"></script>
+<script defer src="/static/cf_signature_primitives_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-sig1"></script>
+<script defer src="/static/home_executive_summary_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-hes-sig1"></script>
 <script defer src="/static/commerce_situations_surfaces_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-dwr1"></script>
 <script defer src="/static/merchant_dashboard_home_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
 <script defer src="/static/merchant_pulse_v1.js?v={{ merchant_setup_render_build | default('unknown') }}"></script>
@@ -1165,10 +1171,11 @@
 <script defer src="/static/merchant_dashboard_lazy.js?v={{ merchant_setup_render_build | default('unknown') }}-dc2"></script>
 {% if merchant_cart_workspace_v1 %}
 <link rel="stylesheet" href="/static/cart_workspace_merchant_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-dsim1" />
+<link rel="stylesheet" href="/static/decision_workspace_visual_assimilation_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-dwa11" />
 <script defer src="/static/cart_workspace_projection_version_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-dwr1"></script>
-<script defer src="/static/cart_workspace_decision_card_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-dsim1"></script>
-<script defer src="/static/cart_workspace_grid_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-dsim1"></script>
-<script defer src="/static/cart_workspace_render_controller_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-dwr1"></script>
+<script defer src="/static/cart_workspace_decision_card_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-sig1"></script>
+<script defer src="/static/cart_workspace_grid_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-sig1"></script>
+<script defer src="/static/cart_workspace_render_controller_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-sig1"></script>
 <script defer src="/static/cart_workspace_merchant_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-dwr1"></script>
 {% endif %}
 <script defer src="/static/merchant_whatsapp_settings.js"></script>

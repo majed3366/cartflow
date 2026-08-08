@@ -5,10 +5,11 @@
   --ma-settings-max: 700px;
   --ma-topbar-h: var(--topbar-height);
   --ma-sidebar-w: var(--sidebar-width);
-  --green:       #166534;
-  --green-mid:   #16a34a;
-  --green-soft:  #dcfce7;
-  --green-dark:  #14532d;
+  /* CartFlow Platform Shell — legacy forest green remapped to frozen navy/teal */
+  --green:       #082048;
+  --green-mid:   #0e8e88;
+  --green-soft:  rgba(24, 176, 168, 0.12);
+  --green-dark:  #001838;
   --amber:       #d97706;
   --amber-soft:  #fef3c7;
   --red:         #dc2626;
@@ -92,9 +93,9 @@ body {
   align-items: center;
   gap: 12px 16px;
   padding: 0 18px;
-  background: linear-gradient(180deg, var(--green) 0%, var(--green-dark) 100%);
+  background: linear-gradient(165deg, #0a2d5c 0%, #082048 52%, #001838 100%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 4px 24px rgba(8, 32, 72, 0.22);
   color: #fff;
 }
 
@@ -300,13 +301,13 @@ body {
   width: var(--sidebar-width);
   height: calc(100vh - var(--topbar-height));
   height: calc(100dvh - var(--topbar-height));
-  background: var(--green);
+  background: linear-gradient(165deg, #0a2d5c 0%, #082048 52%, #001838 100%);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   z-index: 200;
-  border-left: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow: -2px 0 8px rgba(15, 23, 42, 0.06);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 24px rgba(8, 32, 72, 0.2);
 }
 
 .ma-dashboard-frame {

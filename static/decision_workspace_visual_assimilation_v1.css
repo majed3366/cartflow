@@ -1,0 +1,569 @@
+/**
+ * CartFlow Decision Workspace Visual Assimilation V1
+ * Presentation only — frozen Visual Constitution / Design System / Signature DNA.
+ * Scoped to Decision Workspace (body[data-ma-page="workspace"]).
+ * Does not expand Design System. Does not change product logic.
+ */
+
+/*
+ * Platform chrome / logo moved to platform_shell_visual_assimilation_v1.css.
+ * This file keeps Decision Workspace content hierarchy only.
+ */
+body[data-cf-merchant-app="1"][data-ma-page="workspace"] {
+  --dwa-navy: var(--psva-navy, var(--cfvi-secondary, #082048));
+  --dwa-navy-deep: var(--psva-navy-deep, var(--cfvi-secondary-deep, #001838));
+  --dwa-teal: var(--psva-teal, var(--cfvi-primary, #18b0a8));
+  --dwa-teal-deep: var(--psva-teal-deep, var(--cfvi-primary-deep, #0e8e88));
+  --dwa-teal-soft: var(--psva-teal-soft, var(--cfvi-primary-soft, rgba(24, 176, 168, 0.12)));
+  --dwa-bg: var(--psva-bg, var(--cfvi-bg, #f4f7fa));
+  --dwa-surface: var(--psva-surface, var(--cfvi-surface, #ffffff));
+  --dwa-ink: var(--psva-ink, var(--cfvi-ink, #082048));
+  --dwa-ink-soft: var(--psva-ink-soft, var(--cfvi-ink-soft, #3d4a63));
+  --dwa-ink-whisper: var(--psva-ink-whisper, var(--cfvi-ink-whisper, #8b95a8));
+  --dwa-border: var(--psva-border, var(--cfvi-border, rgba(8, 32, 72, 0.1)));
+  --dwa-radius: var(--psva-radius, var(--cfvi-card-radius, 16px));
+  --dwa-radius-sm: var(--psva-radius-sm, 12px);
+  --dwa-shadow: var(--psva-shadow, var(--cfvi-card-shadow, 0 4px 24px rgba(11, 18, 32, 0.07)));
+  --dwa-shadow-decision: 0 10px 36px rgba(8, 32, 72, 0.12);
+  --dwa-font: var(--psva-font, var(--cfvi-font-certified, "Tajawal", "Segoe UI", Tahoma, sans-serif));
+}
+
+/* ——— Page surface ——— */
+body[data-ma-page="workspace"] #page-workspace {
+  --cw-bg: var(--dwa-bg);
+  --cw-surface: var(--dwa-surface);
+  --cw-ink: var(--dwa-ink);
+  --cw-ink-soft: var(--dwa-ink-soft);
+  --cw-ink-whisper: var(--dwa-ink-whisper);
+  --cw-accent: var(--dwa-teal);
+  --cw-accent-deep: var(--dwa-teal-deep);
+  --cw-border: var(--dwa-border);
+  --cw-radius: var(--dwa-radius);
+  --cw-shadow: var(--dwa-shadow);
+  font-family: var(--dwa-font);
+  background:
+    radial-gradient(1200px 420px at 100% 0%, rgba(24, 176, 168, 0.06), transparent 55%),
+    radial-gradient(900px 380px at 0% 100%, rgba(8, 32, 72, 0.05), transparent 50%),
+    var(--dwa-bg);
+  color: var(--dwa-ink);
+  padding: 0.5rem 0.85rem 2rem;
+}
+
+/* Merchant question — calm, quieter than decision mass */
+body[data-ma-page="workspace"] #page-workspace .ma-workspace-question {
+  max-width: 42rem;
+  margin: 0.55rem auto 1rem;
+  color: var(--dwa-ink-whisper);
+  font-size: var(--cfvi-type-caption, 13px);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+/* Shell width — intentional silence around the decision */
+body[data-ma-page="workspace"] #page-workspace .cw-workspace-shell {
+  max-width: 42rem;
+  margin: 0 auto;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-ops--v2 {
+  max-width: 42rem;
+  margin: 0 auto;
+}
+
+/* Structural gap between primary decision and quieter next decisions (Signature: controlled gap) */
+body[data-ma-page="workspace"] #page-workspace .cw-primary-slot {
+  margin: 0 0 2rem;
+  position: relative;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-primary-slot::after {
+  content: "";
+  display: block;
+  height: 1px;
+  margin: 1.65rem 12% 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(8, 32, 72, 0.08) 18%,
+    rgba(24, 176, 168, 0.28) 50%,
+    rgba(8, 32, 72, 0.08) 82%,
+    transparent 100%
+  );
+}
+
+/* ——— Decision = densest mass ——— */
+body[data-ma-page="workspace"] #page-workspace .cw-primary-slot .cw-card--primary {
+  position: relative;
+  background: var(--dwa-surface);
+  border: 1px solid rgba(8, 32, 72, 0.1);
+  border-radius: var(--dwa-radius);
+  box-shadow: var(--dwa-shadow-decision);
+  padding: 1.35rem 1.45rem 1.5rem;
+  gap: 0.95rem;
+  overflow: hidden;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-primary-slot .cw-card--primary::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--dwa-navy) 0%, var(--dwa-teal) 100%);
+  border-radius: 2px 0 0 2px;
+  pointer-events: none;
+}
+
+[dir="rtl"] body[data-ma-page="workspace"] #page-workspace .cw-primary-slot .cw-card--primary::before,
+body[data-ma-page="workspace"] #page-workspace .cw-primary-slot .cw-card--primary[dir="rtl"]::before,
+body[data-ma-page="workspace"] #page-workspace .cw-ops[dir="rtl"] .cw-primary-slot .cw-card--primary::before {
+  border-radius: 0 2px 2px 0;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-card__rank--primary {
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  color: var(--dwa-teal-deep);
+  margin: 0 0 0.15rem;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-card__field-label,
+body[data-ma-page="workspace"] #page-workspace .cw-card__evidence-label,
+body[data-ma-page="workspace"] #page-workspace .cw-card__exec-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--dwa-ink-whisper);
+  margin: 0 0 0.3rem;
+}
+
+/* Evidence — lighter support density */
+body[data-ma-page="workspace"] #page-workspace .cw-card__evidence {
+  margin: 0.15rem 0 0.35rem;
+  padding: 0.65rem 0.85rem;
+  background: rgba(8, 32, 72, 0.03);
+  border: 1px solid rgba(8, 32, 72, 0.06);
+  border-radius: var(--dwa-radius-sm);
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-card__evidence-list {
+  margin: 0;
+  padding: 0 1.1rem 0 0;
+  color: var(--dwa-ink-soft);
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-card__evidence-list li {
+  font-size: clamp(0.98rem, 1.6vw, 1.08rem);
+  line-height: 1.5;
+  color: var(--dwa-ink-soft);
+}
+
+/* Knowledge / decision sentence — denser than evidence */
+body[data-ma-page="workspace"] #page-workspace .cw-card__field-value--commitment,
+body[data-ma-page="workspace"] #page-workspace .cw-card__story-decision,
+body[data-ma-page="workspace"] #page-workspace .cw-ops--refinement .cw-card__field-value--decision {
+  font-size: clamp(1.12rem, 2.1vw, 1.28rem);
+  font-weight: 750;
+  line-height: 1.45;
+  color: var(--dwa-ink);
+  letter-spacing: -0.01em;
+}
+
+/* Action — firm, calm, teal energy (not neon / not black SaaS blob) */
+body[data-ma-page="workspace"] #page-workspace .cw-card__commit-link {
+  display: inline-block;
+  margin-top: 0.45rem;
+  padding: 0.62rem 1.1rem;
+  border-radius: var(--dwa-radius-sm);
+  background: linear-gradient(135deg, var(--dwa-navy) 0%, #0a3558 55%, var(--dwa-teal-deep) 100%);
+  color: #fff !important;
+  font-weight: 700;
+  font-size: var(--cfvi-type-button, 13px);
+  text-decoration: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 6px 18px rgba(8, 32, 72, 0.18);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-card__commit-link:hover {
+  opacity: 0.96;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(8, 32, 72, 0.22);
+  text-decoration: none !important;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-card__action {
+  border: 1px solid var(--dwa-teal-deep);
+  border-radius: var(--dwa-radius-sm);
+  padding: 0.45rem 0.95rem;
+  font-size: var(--cfvi-type-button, 13px);
+  font-weight: 650;
+  background: transparent;
+  color: var(--dwa-teal-deep);
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-card__action:hover {
+  background: var(--dwa-teal-soft);
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-card--vip .cw-card__action {
+  border-color: var(--cfvi-warning, #ea580c);
+  background: var(--cfvi-warning, #ea580c);
+  color: #fff;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-card__ghost {
+  border: 1px solid var(--dwa-border);
+  background: transparent;
+  color: var(--dwa-ink-soft);
+  border-radius: 10px;
+  padding: 0.3rem 0.55rem;
+  font-size: var(--cfvi-type-whisper, 11px);
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-card__details {
+  color: var(--dwa-ink-whisper);
+  font-size: var(--cfvi-type-whisper, 11px);
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-card__detail-list {
+  border-top: 1px solid var(--dwa-border);
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-card__exec-block {
+  border-top: 1px solid rgba(139, 149, 168, 0.2);
+}
+
+/* ——— Secondary / future decisions — quieter ——— */
+body[data-ma-page="workspace"] #page-workspace .cw-next-slot {
+  opacity: 0.78;
+  padding-top: 0.15rem;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-next-slot__label {
+  color: var(--dwa-ink-whisper);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-card--next {
+  padding: 0.8rem 1rem;
+  border: 1px solid rgba(8, 32, 72, 0.08);
+  border-radius: var(--dwa-radius-sm);
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: none;
+  gap: 0.4rem;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-card--next .cw-card__field-value--decision,
+body[data-ma-page="workspace"] #page-workspace .cw-card--next .cw-card__story-decision {
+  font-size: var(--cfvi-type-card, 14px);
+  font-weight: 650;
+  color: var(--dwa-ink-soft);
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-card--next .cw-card__commit-link {
+  padding: 0.38rem 0.75rem;
+  font-size: var(--cfvi-type-caption, 13px);
+  background: transparent;
+  color: var(--dwa-teal-deep) !important;
+  border: 1px solid rgba(14, 142, 136, 0.35);
+  box-shadow: none;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-card--next .cw-card__commit-link:hover {
+  background: var(--dwa-teal-soft);
+  transform: none;
+}
+
+/* Generic cards in workspace grid */
+body[data-ma-page="workspace"] #page-workspace .cw-card {
+  background: var(--dwa-surface);
+  border: 1px solid var(--dwa-border);
+  border-radius: var(--dwa-radius);
+  box-shadow: var(--dwa-shadow);
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-card--quiet {
+  border-color: rgba(24, 176, 168, 0.22);
+  box-shadow: none;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-card__band {
+  display: inline-block;
+  margin: 0 0 0.45rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: rgba(8, 32, 72, 0.06);
+  color: var(--dwa-ink-soft);
+  border: 1px solid rgba(8, 32, 72, 0.08);
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-card__band--needs_action_now {
+  background: var(--dwa-teal-soft);
+  color: var(--dwa-teal-deep);
+  border-color: rgba(14, 142, 136, 0.28);
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-card__band--none {
+  background: rgba(8, 32, 72, 0.04);
+  color: var(--dwa-ink-whisper);
+}
+
+/* Status / empty — calm, not gamified */
+body[data-ma-page="workspace"] #page-workspace #cw-merchant-status {
+  color: var(--cfvi-warning, #ea580c);
+  font-size: var(--cfvi-type-caption, 13px);
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-ops__mission {
+  color: var(--dwa-ink);
+  font-weight: 750;
+}
+
+/* Dividers */
+body[data-ma-page="workspace"] #page-workspace .cw-ops__hdr {
+  border-bottom-color: var(--dwa-border);
+}
+
+/* Soft-circle / glow dialect purge on workspace hero leftovers */
+body[data-ma-page="workspace"] .ma-vi-hero::after,
+body[data-ma-page="workspace"] .ma-vi-hero__glow,
+body[data-ma-page="workspace"] .v2-hero-glow {
+  display: none !important;
+}
+
+/* RTL first-class: keep reading order, button alignment, numeric tabs */
+body[data-ma-page="workspace"] #page-workspace .cw-ops[dir="rtl"] .cw-card__evidence-list,
+body[data-ma-page="workspace"] #page-workspace[dir="rtl"] .cw-card__evidence-list {
+  padding: 0 0 0 1.1rem;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-card__foot {
+  align-items: flex-start;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-ops[dir="rtl"] .cw-card__foot {
+  align-items: flex-start;
+}
+
+@media (max-width: 720px) {
+  body[data-ma-page="workspace"] #page-workspace {
+    padding: 0.35rem 0.55rem 1.5rem;
+  }
+
+  body[data-ma-page="workspace"] #page-workspace .cw-primary-slot .cw-card--primary {
+    padding: 1.1rem 1.1rem 1.25rem;
+  }
+
+  body[data-ma-page="workspace"] #page-workspace .cw-primary-slot::after {
+    margin-inline: 6%;
+  }
+}
+
+/* =====================================================================
+ * V1.1 — Structural hierarchy correction (presentation only)
+ * Evidence → Understanding → Decision → Action densification stack
+ * ===================================================================== */
+
+body[data-ma-page="workspace"] #page-workspace {
+  padding: 0.35rem 0.85rem 1.35rem;
+  /* Reduce “empty canvas” feel — calm field, not a barren stage */
+  background:
+    linear-gradient(180deg, rgba(8, 32, 72, 0.03) 0%, transparent 28%),
+    var(--dwa-bg);
+}
+
+body[data-ma-page="workspace"] #page-workspace .ma-workspace-question {
+  max-width: 36rem;
+  margin: 0.35rem auto 0.75rem;
+  text-align: center;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-workspace-shell,
+body[data-ma-page="workspace"] #page-workspace .cw-ops--v2 {
+  max-width: 36rem;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-primary-slot {
+  margin: 0 0 1.35rem;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-primary-slot::after {
+  margin: 1.15rem 18% 0;
+}
+
+/* Primary decision = densest reading destination */
+body[data-ma-page="workspace"] #page-workspace .cw-primary-slot .cw-card--primary {
+  padding: 1.05rem 1.2rem 0;
+  gap: 0.55rem;
+  box-shadow:
+    0 12px 40px rgba(8, 32, 72, 0.14),
+    0 2px 0 rgba(24, 176, 168, 0.12);
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-card__rank--primary {
+  margin: 0 0 0.35rem;
+  padding-inline-start: 0.1rem;
+}
+
+/* Progressive densification stack */
+body[data-ma-page="workspace"] #page-workspace .cw-card__stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-beat {
+  margin: 0;
+  padding: 0.7rem 0.85rem;
+  border: 0;
+  border-block-end: 1px solid rgba(8, 32, 72, 0.06);
+  background: transparent;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-beat:last-child {
+  border-block-end: 0;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-beat__label {
+  margin: 0 0 0.28rem;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  color: var(--dwa-ink-whisper);
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-beat__list {
+  margin: 0;
+  padding: 0 1.05rem 0 0;
+  list-style: disc;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-ops[dir="rtl"] .cw-beat__list {
+  padding: 0 0 0 1.05rem;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-beat__list li {
+  margin: 0.12rem 0;
+  line-height: 1.45;
+  font-size: 0.98rem;
+  color: var(--dwa-ink-soft);
+  font-weight: 500;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-beat__body {
+  margin: 0;
+  font-size: 1.02rem;
+  line-height: 1.5;
+  font-weight: 600;
+  color: var(--dwa-ink-soft);
+}
+
+/* Evidence — lightest signal band */
+body[data-ma-page="workspace"] #page-workspace .cw-beat--evidence {
+  background: rgba(8, 32, 72, 0.028);
+  border-radius: 12px 12px 0 0;
+}
+
+/* Understanding — bridge mass */
+body[data-ma-page="workspace"] #page-workspace .cw-beat--understanding {
+  background: rgba(24, 176, 168, 0.05);
+  border-inline-start: 2px solid rgba(24, 176, 168, 0.35);
+}
+
+/* Decision — densest meaning */
+body[data-ma-page="workspace"] #page-workspace .cw-beat--decision {
+  background: rgba(8, 32, 72, 0.04);
+  padding-block: 0.85rem;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-beat__decision {
+  margin: 0;
+  font-size: clamp(1.22rem, 2.3vw, 1.42rem) !important;
+  font-weight: 800 !important;
+  line-height: 1.4 !important;
+  color: var(--dwa-ink) !important;
+  letter-spacing: -0.015em;
+}
+
+/* Action — consequence of understanding (not an orphan button) */
+body[data-ma-page="workspace"] #page-workspace .cw-beat--action {
+  background: linear-gradient(
+    180deg,
+    rgba(8, 32, 72, 0.03) 0%,
+    rgba(24, 176, 168, 0.07) 100%
+  );
+  border-radius: 0 0 14px 14px;
+  padding: 0.85rem 0.95rem 1.05rem;
+  border-block-start: 1px solid rgba(24, 176, 168, 0.18);
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-beat__action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-beat--action .cw-card__commit-link {
+  margin-top: 0;
+  min-width: 9.5rem;
+  text-align: center;
+  border-radius: 12px;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-beat--action .cw-card__action-wait {
+  margin: 0;
+  color: var(--dwa-ink-whisper);
+  font-size: 0.92rem;
+}
+
+/* Legacy evidence box styles yield to beat stack when present */
+body[data-ma-page="workspace"] #page-workspace .cw-card__stack .cw-card__evidence {
+  display: contents;
+}
+
+/* Next decisions — quieter, flatter, less “same card” */
+body[data-ma-page="workspace"] #page-workspace .cw-next-slot {
+  opacity: 0.72;
+  max-width: 34rem;
+  margin-inline: auto;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-card--next {
+  padding: 0.65rem 0.85rem;
+  background: rgba(255, 255, 255, 0.55);
+  border-color: rgba(8, 32, 72, 0.07);
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-card--next .cw-beat--decision .cw-beat__decision,
+body[data-ma-page="workspace"] #page-workspace .cw-card--next .cw-beat__decision {
+  font-size: 1.02rem !important;
+  font-weight: 700 !important;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-card--next .cw-beat--evidence,
+body[data-ma-page="workspace"] #page-workspace .cw-card--next .cw-beat--understanding {
+  padding: 0.45rem 0.55rem;
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-card--next .cw-beat--action {
+  padding: 0.55rem 0.65rem 0.7rem;
+  background: transparent;
+  border-block-start-color: rgba(8, 32, 72, 0.06);
+}
+
+body[data-ma-page="workspace"] #page-workspace .cw-card--quiet {
+  max-width: 36rem;
+  margin-inline: auto;
+  padding: 1rem 1.1rem;
+  box-shadow: none;
+}
