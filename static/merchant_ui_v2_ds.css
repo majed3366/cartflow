@@ -59,13 +59,15 @@ body[data-cf-ui="v2"] .cf2-btn {
   justify-content: center;
   gap: 8px;
   min-height: 40px;
-  padding: 0 16px;
-  border-radius: var(--cf2-r-sm);
+  padding: 0 18px 0 16px;
+  border-radius: 6px 14px 10px 4px;
   border: 1px solid transparent;
   background: var(--cf2-navy);
   color: #fff;
   font-size: 13px;
   font-weight: 700;
+  clip-path: polygon(0 0, 100% 0, 100% 72%, 96% 100%, 0 100%);
+}
   text-decoration: none;
   cursor: pointer;
   transition: background var(--cf2-dur) var(--cf2-ease), border-color var(--cf2-dur) ease,

@@ -36,8 +36,10 @@ class MerchantUiV2TemplateTests(unittest.TestCase):
         self.assertIn('data-cf-ui="v2"', V2_TEMPLATE)
         self.assertIn("merchant_ui_v2_ds.css", V2_TEMPLATE)
         self.assertIn("merchant_ui_v2_frame.css", V2_TEMPLATE)
+        self.assertIn("merchant_ui_v2_language.css", V2_TEMPLATE)
         self.assertIn("merchant_ui_v2_home.css", V2_TEMPLATE)
         self.assertIn("merchant_ui_v2_workspace.css", V2_TEMPLATE)
+        self.assertIn("merchant_ui_v2_language.js", V2_TEMPLATE)
         self.assertNotIn("merchant_frame_v1.css", V2_TEMPLATE)
         self.assertNotIn("merchant_pe_v2.css", V2_TEMPLATE)
         self.assertNotIn("decision_workspace_visual_assimilation", V2_TEMPLATE)
@@ -72,13 +74,43 @@ class MerchantUiV2RouteTests(unittest.TestCase):
         self.assertNotIn('data-cf-ui="v2"', html)
         self.assertIn("merchant_frame_v1.css", html)
 
+    def test_visual_language_primitives_exist(self) -> None:
+        lang_css = (ROOT / "static" / "merchant_ui_v2_language.css").read_text(
+            encoding="utf-8"
+        )
+        lang_js = (ROOT / "static" / "merchant_ui_v2_language.js").read_text(
+            encoding="utf-8"
+        )
+        home_js = (ROOT / "static" / "merchant_ui_v2_home.js").read_text(
+            encoding="utf-8"
+        )
+        ws_js = (ROOT / "static" / "merchant_ui_v2_workspace.js").read_text(
+            encoding="utf-8"
+        )
+        for token in (
+            "cf2-co--",
+            "cf2-evfield",
+            "cf2-route",
+            "cf2-dmass",
+            "cf2-mtrace",
+            "cf2-capsule",
+        ):
+            self.assertIn(token, lang_css)
+        self.assertIn("commerceObject", lang_js)
+        self.assertIn("cf2-scene", home_js)
+        self.assertIn("attention-gravity", home_js)
+        self.assertIn("cf2-dobj", ws_js)
+        self.assertIn("living-route", ws_js)
+
     def test_assets_exist(self) -> None:
         for rel in (
             "static/merchant_ui_v2_ds.css",
             "static/merchant_ui_v2_frame.css",
+            "static/merchant_ui_v2_language.css",
             "static/merchant_ui_v2_home.css",
             "static/merchant_ui_v2_workspace.css",
             "static/merchant_ui_v2_app.js",
+            "static/merchant_ui_v2_language.js",
             "static/merchant_ui_v2_home.js",
             "static/merchant_ui_v2_workspace.js",
             "templates/merchant_app_v2.html",

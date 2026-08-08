@@ -1,14 +1,55 @@
 /**
- * CartFlow Merchant UI V2 — Decision Workspace composition.
- * Evidence → Understanding → Decision → Action as structure.
+ * CartFlow Merchant UI V2 — Decision Object environment.
  */
 
-body[data-cf-ui="v2"] .cf2-ws {
+body[data-cf-ui="v2"] .cf2-ws--lang {
   width: 100%;
 }
 
+body[data-cf-ui="v2"] .cf2-dobj {
+  position: relative;
+  margin: 0;
+  padding: 4px 0 8px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+body[data-cf-ui="v2"] .cf2-dobj--primary {
+  padding: 12px 8px 20px 4px;
+  background:
+    radial-gradient(
+      90% 70% at 0% 10%,
+      rgba(24, 176, 168, 0.08) 0%,
+      transparent 50%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(8, 32, 72, 0.03) 0%,
+      transparent 40%
+    );
+  border-radius: 0 14px 14px 0;
+}
+
+body[data-cf-ui="v2"] .cf2-dobj--next {
+  opacity: 0.9;
+  padding-inline-start: 4px;
+}
+
+body[data-cf-ui="v2"] .cf2-dobj__rank {
+  margin: 0 0 14px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--cf2-teal-dark);
+}
+
+body[data-cf-ui="v2"] .cf2-dobj--next .cf2-dobj__rank {
+  color: var(--cf2-mute);
+}
+
 body[data-cf-ui="v2"] .cf2-ws__primary {
-  margin: 0 0 36px;
+  margin: 0 0 40px;
 }
 
 body[data-cf-ui="v2"] .cf2-ws__next-label {
@@ -22,73 +63,11 @@ body[data-cf-ui="v2"] .cf2-ws__next-label {
 body[data-cf-ui="v2"] .cf2-ws__next-list {
   display: flex;
   flex-direction: column;
-  gap: 28px;
-}
-
-body[data-cf-ui="v2"] .cf2-reason {
-  position: relative;
-  padding-inline-start: 20px;
-}
-
-body[data-cf-ui="v2"] .cf2-reason--primary::before {
-  content: "";
-  position: absolute;
-  inset-block: 4% 8%;
-  inset-inline-start: 0;
-  width: 3px;
-  background: linear-gradient(
-    180deg,
-    rgba(24, 176, 168, 0.2) 0%,
-    var(--cf2-navy) 30%,
-    var(--cf2-navy) 70%,
-    rgba(24, 176, 168, 0.35) 100%
-  );
-  clip-path: polygon(0 0, 100% 6%, 100% 78%, 45% 100%, 0 94%);
-}
-
-body[data-cf-ui="v2"] .cf2-reason--next {
-  padding-inline-start: 14px;
-  opacity: 0.88;
-}
-
-body[data-cf-ui="v2"] .cf2-reason--next::before {
-  content: "";
-  position: absolute;
-  inset-block: 12% 20%;
-  inset-inline-start: 0;
-  width: 2px;
-  background: rgba(8, 32, 72, 0.2);
-}
-
-body[data-cf-ui="v2"] .cf2-reason__rank {
-  margin: 0 0 16px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--cf2-teal-dark);
-}
-
-body[data-cf-ui="v2"] .cf2-reason--next .cf2-reason__rank {
-  color: var(--cf2-mute);
-}
-
-body[data-cf-ui="v2"] .cf2-reason__flow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0;
-}
-
-body[data-cf-ui="v2"] .cf2-beat {
-  margin: 0;
-  padding: 0 0 20px;
-}
-
-body[data-cf-ui="v2"] .cf2-beat:last-child {
-  padding-bottom: 0;
+  gap: 32px;
 }
 
 body[data-cf-ui="v2"] .cf2-beat__label {
-  margin: 0 0 8px;
+  margin: 0 0 10px;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.05em;
@@ -121,16 +100,11 @@ body[data-cf-ui="v2"] .cf2-beat__list li::before {
   background: var(--cf2-teal);
 }
 
-body[data-cf-ui="v2"] .cf2-reason[data-cf2-evidence="dense"] .cf2-beat__list {
+body[data-cf-ui="v2"] .cf2-dobj[data-cf2-evidence="dense"] .cf2-beat__list {
   gap: 6px;
 }
 
-body[data-cf-ui="v2"] .cf2-reason[data-cf2-evidence="dense"] .cf2-beat__list li {
-  font-size: 0.94rem;
-  line-height: 1.45;
-}
-
-body[data-cf-ui="v2"] .cf2-reason[data-cf2-evidence="sparse"] .cf2-beat__list {
+body[data-cf-ui="v2"] .cf2-dobj[data-cf2-evidence="sparse"] .cf2-beat__list {
   gap: 12px;
 }
 
@@ -141,31 +115,9 @@ body[data-cf-ui="v2"] .cf2-beat__body {
   line-height: 1.55;
   font-weight: 500;
   color: var(--cf2-ink-soft);
-}
-
-body[data-cf-ui="v2"] .cf2-beat__decision {
-  margin: 0;
-  max-width: 36rem;
-  font-size: clamp(1.2rem, 1.8vw, 1.45rem);
-  font-weight: 800;
-  line-height: 1.35;
-  letter-spacing: -0.015em;
-  color: var(--cf2-navy);
-}
-
-body[data-cf-ui="v2"] .cf2-reason[data-cf2-tension="resolved"] .cf2-beat__decision {
-  font-size: clamp(1.28rem, 2vw, 1.55rem);
-}
-
-body[data-cf-ui="v2"] .cf2-reason[data-cf2-tension="open"] .cf2-beat__decision,
-body[data-cf-ui="v2"] .cf2-reason[data-cf2-tension="high"] .cf2-beat__decision {
-  font-weight: 700;
-  opacity: 0.94;
-}
-
-body[data-cf-ui="v2"] .cf2-reason--next .cf2-beat__decision {
-  font-size: 1.12rem;
-  font-weight: 700;
+  padding: 10px 12px;
+  border-inline-start: 2px solid rgba(24, 176, 168, 0.35);
+  background: rgba(255, 255, 255, 0.4);
 }
 
 body[data-cf-ui="v2"] .cf2-beat__action {
@@ -182,59 +134,58 @@ body[data-cf-ui="v2"] .cf2-reason__wait p {
   color: var(--cf2-ink-soft);
 }
 
-body[data-cf-ui="v2"] .cf2-reason--quiet {
-  padding: 28px 4px;
-  opacity: 0.8;
-}
-
-body[data-cf-ui="v2"] .cf2-reason--quiet h3 {
-  margin: 0;
-  font-size: 1.15rem;
-  font-weight: 700;
+body[data-cf-ui="v2"] .cf2-dobj--quiet {
+  padding: 28px 8px;
 }
 
 @media (min-width: 1024px) {
-  body[data-cf-ui="v2"] .cf2-reason--primary .cf2-reason__flow {
+  body[data-cf-ui="v2"] .cf2-dobj--primary .cf2-route {
+    display: grid;
     grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-    column-gap: 48px;
+    column-gap: 40px;
   }
 
-  body[data-cf-ui="v2"] .cf2-reason--primary .cf2-beat--evidence {
+  body[data-cf-ui="v2"] .cf2-dobj--primary .cf2-route::before {
+    /* Keep living route on the start edge spanning both columns visually */
+    grid-column: 1 / -1;
+  }
+
+  body[data-cf-ui="v2"] .cf2-dobj--primary .cf2-route__node[data-cf2-node="evidence"] {
     grid-column: 1;
     grid-row: 1;
   }
 
-  body[data-cf-ui="v2"] .cf2-reason--primary .cf2-beat--understanding {
+  body[data-cf-ui="v2"] .cf2-dobj--primary .cf2-route__node[data-cf2-node="understanding"] {
     grid-column: 1;
     grid-row: 2;
   }
 
-  body[data-cf-ui="v2"] .cf2-reason--primary .cf2-beat--decision {
+  body[data-cf-ui="v2"] .cf2-dobj--primary .cf2-route__node[data-cf2-node="decision"] {
     grid-column: 2;
     grid-row: 1 / span 2;
     align-self: center;
-    padding-inline-start: 28px;
-    border-inline-start: 1px solid var(--cf2-border);
   }
 
-  body[data-cf-ui="v2"] .cf2-reason--primary .cf2-beat--action {
+  body[data-cf-ui="v2"] .cf2-dobj--primary .cf2-route__node[data-cf2-node="action"] {
     grid-column: 1 / -1;
-    padding-top: 12px;
-    margin-top: 8px;
+    grid-row: 3;
+    padding-top: 8px;
+    margin-top: 4px;
     border-block-start: 1px solid rgba(8, 32, 72, 0.06);
   }
 }
 
 @media (max-width: 1023px) {
-  body[data-cf-ui="v2"] .cf2-reason {
-    padding-inline-start: 14px;
-  }
-
-  body[data-cf-ui="v2"] .cf2-beat__decision {
-    font-size: 1.22rem;
+  body[data-cf-ui="v2"] .cf2-dobj--primary {
+    padding: 8px 0 12px;
+    border-radius: 0;
   }
 
   body[data-cf-ui="v2"] .cf2-ws__primary {
     margin-bottom: 28px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-dmass__text {
+    font-size: 1.22rem;
   }
 }
