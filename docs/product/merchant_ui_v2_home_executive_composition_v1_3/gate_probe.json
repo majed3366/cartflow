@@ -1,0 +1,35 @@
+{
+  "deploy": {
+    "ok": true,
+    "sha": "41b74f93e7bb26ea323e9c7236ddb8f89ea35f2d",
+    "status": 200
+  },
+  "desktop": {
+    "ui": "v2",
+    "version": "home-exec-v13",
+    "scene": true,
+    "monitor": true,
+    "lead": true,
+    "terminus": true,
+    "noRailColumn": true,
+    "monitorBelow": true,
+    "boardShare": 0.541,
+    "boardWidth": 736,
+    "cache": true,
+    "noOverflow": true
+  },
+  "mobile": {
+    "ui": "v2",
+    "version": "home-exec-v13",
+    "scene": true,
+    "monitor": true,
+    "lead": true,
+    "terminus": true,
+    "noRailColumn": true,
+    "monitorBelow": true,
+    "boardShare": 1,
+    "boardWidth": 358,
+    "cache": true,
+    "noOverflow": true
+  }
+}

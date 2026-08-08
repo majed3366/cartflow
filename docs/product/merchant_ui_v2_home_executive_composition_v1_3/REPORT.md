@@ -1,7 +1,7 @@
 # Merchant UI V2 — Home Executive Composition V1.3
 
 **Scope:** Home only  
-**Deploy:** pending  
+**Deploy:** `41b74f9`  
 **Living Store:** https://smartreplyai.net/dashboard?cf_ui=v2#home
 
 ## Composition
@@ -20,9 +20,10 @@ One executive scene (not a 67/33 column split):
 - No fake data or new merchant claims
 - No copy/language changes
 - No Workspace / Products / Carts / Communication / Settings changes
-- Mobile stacked; no forced desktop split
-- Board sized by IA (not full-stage fill)
-- Real Living Store validated
+- Mobile stacked; no forced desktop split; noOverflow: true
+- Board sized by IA (`boardShare ≈ 0.54`, width ≈ 736px — not full-stage fill)
+- No `.cf2-home__rail` column; monitor below scene
+- Real Living Store validated (`X-CartFlow-Git-Sha` `41b74f9`)
 
 ## Captures
 
