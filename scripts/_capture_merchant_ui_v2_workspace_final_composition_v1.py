@@ -20,7 +20,7 @@ BEFORE = (
     / "10_desktop_workspace.png"
 )
 BASE = "https://smartreplyai.net"
-EXPECTED_SHA_PREFIX = "0393308"
+EXPECTED_SHA_PREFIX = "d6c70dd"
 
 
 def wait_for_deploy(timeout_s: int = 720) -> dict:
@@ -95,8 +95,8 @@ def ws_probe(page) -> dict:
             emojiAccount,
             appbarAccountSvg: !!document.querySelector('.cf2-appbar__account-icon'),
             noOverflow: document.documentElement.scrollWidth <= window.innerWidth + 1,
-            cacheBump: [...document.querySelectorAll('link[rel=stylesheet]')]
-              .some(l => /uiv2p/.test(l.href || '')),
+              cacheBump: [...document.querySelectorAll('link[rel=stylesheet]')]
+              .some(l => /uiv2q/.test(l.href || '')),
           };
         }"""
     )

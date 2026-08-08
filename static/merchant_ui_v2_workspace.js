@@ -350,7 +350,7 @@
       '<section class="cf2-route__node cf2-beat cf2-beat--understanding" data-cf2-node="understanding">';
     html += '<p class="cf2-beat__label">ماذا يعني</p>';
     html +=
-      '<p class="cf2-beat__body">هذا صمت تشغيلي صادق — CartFlow يراقب، ولم يتكثّف دليل كافٍ لقرار.</p></section>";
+      '<p class="cf2-beat__body">هذا صمت تشغيلي صادق — CartFlow يراقب، ولم يتكثّف دليل كافٍ لقرار.</p></section>';
     html +=
       '<section class="cf2-route__node cf2-beat cf2-beat--decision" data-cf2-node="decision">';
     html += '<p class="cf2-beat__label">ما يقرره CartFlow</p>';
