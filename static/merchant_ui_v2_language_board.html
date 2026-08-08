@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>CartFlow Visual Language Maturity V1 — Object Family Board</title>
+<link rel="stylesheet" href="/static/merchant_ui_v2_ds.css">
+<link rel="stylesheet" href="/static/merchant_ui_v2_language.css">
+<style>
+  body { margin: 0; padding: 24px; background: #f3f6f9; color: #0b1f3a; font-family: "Segoe UI", Tahoma, sans-serif; }
+  h1 { font-size: 1.25rem; margin: 0 0 8px; }
+  h2 { font-size: 0.95rem; margin: 28px 0 12px; color: #0a6b66; }
+  .row { display: flex; flex-wrap: wrap; gap: 28px 32px; align-items: flex-start; }
+  .cf2-co__glyph { width: 72px; height: 72px; }
+  .note { font-size: 12px; color: #73859e; margin: 0 0 20px; max-width: 52rem; }
+  body[data-cf2-proof="grayscale"] { filter: grayscale(1); }
+</style>
+</head>
+<body data-cf-ui="v2">
+  <h1>01 — Commerce Object canonical family</h1>
+  <p class="note">Canonical CartFlow objects — open structure, controlled gap, silence, taper, densify, scoop. Not icons.</p>
+  <div id="family" class="row"></div>
+
+  <h2>02 — Evidence / Decision / Recovery state progression</h2>
+  <div id="transitions" class="row"></div>
+
+  <h2>03 — Evidence Field grammar</h2>
+  <div id="fields" class="row"></div>
+
+  <script src="/static/merchant_ui_v2_language.js"></script>
+  <script>
+    var L = window.CartFlowUiV2Lang;
+    var family = [
+      "attention","ev-sparse","ev-gathering","ev-aligned","ev-converging",
+      "insufficient","uncertainty","meaning","decision-forming","decision-ready",
+      "hesitation","waiting","recovery-opportunity","recovery-continue","return",
+      "momentum","movement","complete","blocked"
+    ];
+    var trans = ["ev-sparse","ev-gathering","ev-aligned","ev-converging","decision-forming","decision-ready","recovery-continue"];
+    var dens = ["sparse","gathering","mixed","aligned","converging","insufficient"];
+    document.getElementById("family").innerHTML = family.map(function(k){ return L.commerceObject(k); }).join("");
+    document.getElementById("transitions").innerHTML = trans.map(function(k){ return L.commerceObject(k); }).join("");
+    document.getElementById("fields").innerHTML = dens.map(function(d){
+      return '<div style="min-width:140px"><p style="font-size:11px;font-weight:700;margin:0 0 6px">'+d+'</p>'+L.evidenceField(d==="sparse"||d==="insufficient"?1:d==="converging"?5:3,d)+'</div>';
+    }).join("");
+  </script>
+</body>
+</html>

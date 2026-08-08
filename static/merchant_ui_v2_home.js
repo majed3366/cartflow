@@ -182,7 +182,7 @@
       var tension = weak ? "open" : "resolved";
       var evCount = parts.evidence.length + (why ? 2 : 1);
       var density = weak
-        ? "sparse"
+        ? "insufficient"
         : lang
           ? lang.densityFromCount(evCount)
           : "gathering";

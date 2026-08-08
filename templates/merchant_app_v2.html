@@ -9,11 +9,11 @@
 <script>window.CARTFLOW_STORE_SLUG = "{{ merchant_store_slug | default('demo') }}";</script>
 <script>window.CARTFLOW_UI_V2 = true;</script>
 {# Clean-slate V2 — no legacy merchant CSS cascade #}
-<link rel="stylesheet" href="/static/merchant_ui_v2_ds.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2f">
-<link rel="stylesheet" href="/static/merchant_ui_v2_frame.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2f">
-<link rel="stylesheet" href="/static/merchant_ui_v2_language.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2f">
-<link rel="stylesheet" href="/static/merchant_ui_v2_home.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2f">
-<link rel="stylesheet" href="/static/merchant_ui_v2_workspace.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2f">
+<link rel="stylesheet" href="/static/merchant_ui_v2_ds.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2g">
+<link rel="stylesheet" href="/static/merchant_ui_v2_frame.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2g">
+<link rel="stylesheet" href="/static/merchant_ui_v2_language.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2g">
+<link rel="stylesheet" href="/static/merchant_ui_v2_home.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2g">
+<link rel="stylesheet" href="/static/merchant_ui_v2_workspace.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2g">
 </head>
 <body data-cf-ui="v2" data-cf-merchant-app="1">
 <div class="cf2-root">
@@ -98,9 +98,9 @@
   </div>
 </aside>
 
-<script defer src="/static/merchant_ui_v2_language.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2f"></script>
-<script defer src="/static/merchant_ui_v2_home.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2f"></script>
-<script defer src="/static/merchant_ui_v2_workspace.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2f"></script>
-<script defer src="/static/merchant_ui_v2_app.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2f"></script>
+<script defer src="/static/merchant_ui_v2_language.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2g"></script>
+<script defer src="/static/merchant_ui_v2_home.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2g"></script>
+<script defer src="/static/merchant_ui_v2_workspace.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2g"></script>
+<script defer src="/static/merchant_ui_v2_app.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2g"></script>
 </body>
 </html>

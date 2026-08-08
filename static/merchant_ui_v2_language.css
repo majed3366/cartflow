@@ -1,338 +1,502 @@
 /**
- * CartFlow Merchant UI V2 — Visual Language primitives (deepened composition).
- * Binding: Figma 18–34. Same vocabulary; stronger structural roles.
+ * CartFlow Merchant UI V2 — Visual Language Maturity V1
+ * Canonical Commerce Objects + Evidence/Decision/Recovery/Motion grammar.
+ * DNA: open structure · controlled gap · central silence · taper · densify · scoop
  * Namespace: [data-cf-ui="v2"]
  */
 
 body[data-cf-ui="v2"] {
-  --cf2-lang-edge: 5px;
-  --cf2-lang-gap: 1.1rem;
-  --cf2-lang-route: rgba(8, 32, 72, 0.22);
-  --cf2-lang-route-strong: rgba(8, 32, 72, 0.55);
-  --cf2-lang-teal-soft: rgba(24, 176, 168, 0.35);
+  --cf2-lang-edge: 7px;
+  --cf2-lang-gap: 0.85rem;
+  --cf2-lang-route: rgba(8, 32, 72, 0.28);
+  --cf2-lang-route-strong: rgba(8, 32, 72, 0.62);
+  --cf2-lang-teal-soft: rgba(24, 176, 168, 0.38);
+  --cf2-co-size: 56px;
+  --cf2-co-stroke: 3px;
 }
 
-/* ——— Commerce Object ——— */
+/* ——— Commerce Object shell ——— */
 body[data-cf-ui="v2"] .cf2-co {
   position: relative;
   display: inline-flex;
   flex-direction: column;
   align-items: stretch;
   gap: 8px;
-  min-width: 56px;
+  min-width: var(--cf2-co-size);
   vertical-align: top;
 }
 
 body[data-cf-ui="v2"] .cf2-co__glyph {
   position: relative;
-  width: 52px;
-  height: 52px;
+  width: var(--cf2-co-size);
+  height: var(--cf2-co-size);
   flex: 0 0 auto;
+  overflow: visible;
 }
 
 body[data-cf-ui="v2"] .cf2-co__label {
   margin: 0;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   color: var(--cf2-mute);
-  max-width: 8rem;
-  line-height: 1.3;
+  max-width: 8.5rem;
+  line-height: 1.25;
 }
 
-/* Scene-scale objects (Home gravity rail / primary Decision Object) */
 body[data-cf-ui="v2"] .cf2-co-row--rail .cf2-co__glyph,
 body[data-cf-ui="v2"] .cf2-dobj--primary > .cf2-co-row .cf2-co__glyph {
-  width: 68px;
-  height: 68px;
+  --cf2-co-size: 88px;
+  width: 88px;
+  height: 88px;
 }
 
 body[data-cf-ui="v2"] .cf2-co-row--rail .cf2-co__label,
 body[data-cf-ui="v2"] .cf2-dobj--primary > .cf2-co-row .cf2-co__label {
   font-size: 12px;
-  color: var(--cf2-ink-soft);
+  font-weight: 800;
+  color: var(--cf2-ink);
 }
 
-body[data-cf-ui="v2"] .cf2-co--attention .cf2-co__glyph::before,
-body[data-cf-ui="v2"] .cf2-co--decision .cf2-co__glyph::before {
-  content: "";
-  position: absolute;
-  inset: 2px;
-  border-radius: 50%;
-  border: 2.5px dashed var(--cf2-teal);
-  border-left-color: transparent;
-  border-bottom-color: rgba(24, 176, 168, 0.25);
-  transform: rotate(-18deg);
+body[data-cf-ui="v2"] .cf2-co-row--rail {
+  gap: 32px;
 }
 
-body[data-cf-ui="v2"] .cf2-co--attention .cf2-co__glyph::after {
+/* Shared open-frame DNA (::before = mass wall with controlled gap) */
+body[data-cf-ui="v2"] .cf2-co__glyph::before {
   content: "";
   position: absolute;
-  width: 0;
-  height: 0;
-  border-inline-start: 6px solid transparent;
-  border-inline-end: 6px solid transparent;
-  border-block-end: 10px solid var(--cf2-navy);
-  top: 6px;
-  inset-inline-start: 50%;
-  transform: translateX(-50%);
-}
-
-body[data-cf-ui="v2"] .cf2-co--decision .cf2-co__glyph::after {
-  content: "";
-  position: absolute;
-  inset: 18px;
-  border-radius: 50%;
-  background: var(--cf2-navy);
+  inset: 6px;
+  border: var(--cf2-co-stroke) solid var(--cf2-navy);
+  border-radius: 4px 18px 10px 4px;
+  border-inline-start-color: transparent;
+  clip-path: polygon(8% 0, 100% 0, 100% 100%, 0 100%, 0 38%, 10% 28%, 10% 12%);
   opacity: 0.92;
 }
 
-body[data-cf-ui="v2"] .cf2-co--evidence .cf2-co__glyph,
-body[data-cf-ui="v2"] .cf2-co--convergence .cf2-co__glyph {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 6px;
-  padding-inline: 6px;
+body[data-cf-ui="v2"] .cf2-co__glyph::after {
+  content: "";
+  position: absolute;
+}
+
+/* ——— Attention: open-C gravity + directional interrupt ——— */
+body[data-cf-ui="v2"] .cf2-co--attention .cf2-co__glyph::before {
+  border-color: var(--cf2-teal);
+  border-inline-start-color: transparent;
+  transform: rotate(-8deg);
+  clip-path: polygon(12% 0, 100% 0, 100% 100%, 0 100%, 0 42%, 14% 30%, 14% 10%);
+}
+
+body[data-cf-ui="v2"] .cf2-co--attention .cf2-co__glyph::after {
+  width: 0;
+  height: 0;
+  border-inline-start: 7px solid transparent;
+  border-inline-end: 7px solid transparent;
+  border-block-end: 12px solid var(--cf2-navy);
+  top: 10%;
+  inset-inline-start: 42%;
+  transform: translateX(-50%) rotate(-12deg);
+}
+
+/* ——— Evidence family (state transformation on one grammar) ——— */
+body[data-cf-ui="v2"] .cf2-co--evidence,
+body[data-cf-ui="v2"] .cf2-co--ev-sparse,
+body[data-cf-ui="v2"] .cf2-co--ev-gathering,
+body[data-cf-ui="v2"] .cf2-co--ev-aligned,
+body[data-cf-ui="v2"] .cf2-co--ev-converging,
+body[data-cf-ui="v2"] .cf2-co--convergence,
+body[data-cf-ui="v2"] .cf2-co--insufficient {
+  /* marks via linear-gradient strips on ::before override */
 }
 
 body[data-cf-ui="v2"] .cf2-co--evidence .cf2-co__glyph::before,
-body[data-cf-ui="v2"] .cf2-co--evidence .cf2-co__glyph::after,
+body[data-cf-ui="v2"] .cf2-co--ev-sparse .cf2-co__glyph::before,
+body[data-cf-ui="v2"] .cf2-co--ev-gathering .cf2-co__glyph::before,
+body[data-cf-ui="v2"] .cf2-co--ev-aligned .cf2-co__glyph::before,
+body[data-cf-ui="v2"] .cf2-co--ev-converging .cf2-co__glyph::before,
 body[data-cf-ui="v2"] .cf2-co--convergence .cf2-co__glyph::before,
-body[data-cf-ui="v2"] .cf2-co--convergence .cf2-co__glyph::after {
-  content: "";
-  display: block;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--cf2-teal);
+body[data-cf-ui="v2"] .cf2-co--insufficient .cf2-co__glyph::before {
+  inset: 10px 8px;
+  border: none;
+  border-radius: 0;
+  clip-path: none;
+  background:
+    linear-gradient(var(--cf2-teal), var(--cf2-teal)) 0 18% / 42% 3px no-repeat,
+    linear-gradient(var(--cf2-teal), var(--cf2-teal)) 18% 48% / 28% 3px no-repeat;
+  opacity: 0.75;
+  transform: none;
 }
 
-body[data-cf-ui="v2"] .cf2-co--evidence .cf2-co__glyph::before {
-  width: 78%;
+body[data-cf-ui="v2"] .cf2-co--evidence .cf2-co__glyph::after,
+body[data-cf-ui="v2"] .cf2-co--ev-sparse .cf2-co__glyph::after {
+  inset: 8px;
+  border: var(--cf2-co-stroke) solid rgba(8, 32, 72, 0.35);
+  border-radius: 4px 14px 8px 4px;
+  border-inline-start-color: transparent;
+  clip-path: polygon(10% 0, 100% 0, 100% 100%, 0 100%, 0 40%, 12% 28%, 12% 10%);
+  background: transparent;
+}
+
+body[data-cf-ui="v2"] .cf2-co--ev-gathering .cf2-co__glyph::before,
+body[data-cf-ui="v2"] .cf2-co--evidence[data-cf2-state="gathering"] .cf2-co__glyph::before {
+  background:
+    linear-gradient(var(--cf2-teal), var(--cf2-teal)) 0 12% / 58% 3.5px no-repeat,
+    linear-gradient(var(--cf2-teal), var(--cf2-teal)) 8% 38% / 48% 3.5px no-repeat,
+    linear-gradient(var(--cf2-navy), var(--cf2-navy)) 4% 64% / 36% 3.5px no-repeat;
+  opacity: 0.88;
+}
+
+body[data-cf-ui="v2"] .cf2-co--ev-aligned .cf2-co__glyph::before {
+  background:
+    linear-gradient(var(--cf2-teal), var(--cf2-teal)) 0 14% / 78% 4px no-repeat,
+    linear-gradient(var(--cf2-teal), var(--cf2-teal)) 0 38% / 78% 4px no-repeat,
+    linear-gradient(var(--cf2-teal), var(--cf2-teal)) 0 62% / 78% 4px no-repeat,
+    linear-gradient(var(--cf2-navy), var(--cf2-navy)) 0 86% / 62% 4px no-repeat;
+  opacity: 1;
+}
+
+body[data-cf-ui="v2"] .cf2-co--ev-converging .cf2-co__glyph::before,
+body[data-cf-ui="v2"] .cf2-co--convergence .cf2-co__glyph::before {
+  background:
+    linear-gradient(90deg, var(--cf2-teal), var(--cf2-navy)) 0 16% / 92% 5px no-repeat,
+    linear-gradient(90deg, var(--cf2-teal), var(--cf2-navy)) 6% 40% / 86% 5px no-repeat,
+    linear-gradient(90deg, var(--cf2-teal), var(--cf2-navy)) 12% 64% / 78% 5px no-repeat,
+    linear-gradient(var(--cf2-navy), var(--cf2-navy)) 22% 86% / 58% 5px no-repeat;
+  opacity: 1;
+}
+
+body[data-cf-ui="v2"] .cf2-co--insufficient .cf2-co__glyph::before {
+  background:
+    linear-gradient(var(--cf2-mute), var(--cf2-mute)) 0 30% / 34% 3px no-repeat,
+    linear-gradient(var(--cf2-mute), var(--cf2-mute)) 28% 58% / 22% 3px no-repeat;
   opacity: 0.55;
 }
-body[data-cf-ui="v2"] .cf2-co--evidence .cf2-co__glyph::after {
-  width: 52%;
-  opacity: 0.9;
+
+body[data-cf-ui="v2"] .cf2-co--ev-gathering .cf2-co__glyph::after,
+body[data-cf-ui="v2"] .cf2-co--ev-aligned .cf2-co__glyph::after,
+body[data-cf-ui="v2"] .cf2-co--ev-converging .cf2-co__glyph::after,
+body[data-cf-ui="v2"] .cf2-co--convergence .cf2-co__glyph::after,
+body[data-cf-ui="v2"] .cf2-co--insufficient .cf2-co__glyph::after {
+  inset: 8px;
+  border: var(--cf2-co-stroke) solid rgba(8, 32, 72, 0.45);
+  border-radius: 4px 14px 8px 4px;
+  border-inline-start-color: transparent;
+  clip-path: polygon(10% 0, 100% 0, 100% 100%, 0 100%, 0 40%, 12% 28%, 12% 10%);
+  background: transparent;
 }
 
-body[data-cf-ui="v2"] .cf2-co--convergence .cf2-co__glyph::before {
-  width: 96%;
-  opacity: 0.95;
-}
-body[data-cf-ui="v2"] .cf2-co--convergence .cf2-co__glyph::after {
-  width: 84%;
-  opacity: 1;
-  background: var(--cf2-navy);
-}
-
-body[data-cf-ui="v2"] .cf2-co--uncertainty .cf2-co__glyph::before,
-body[data-cf-ui="v2"] .cf2-co--insufficient .cf2-co__glyph::before {
-  content: "";
-  position: absolute;
-  inset: 10px 8px;
-  border: 2px solid var(--cf2-mute);
-  border-radius: 50%;
-  border-style: dotted;
-  opacity: 0.75;
+/* ——— Uncertainty: open mass + central silence ——— */
+body[data-cf-ui="v2"] .cf2-co--uncertainty .cf2-co__glyph::before {
+  border-color: var(--cf2-mute);
+  border-style: solid;
+  opacity: 0.7;
+  clip-path: polygon(14% 0, 100% 0, 100% 100%, 0 100%, 0 48%, 16% 36%, 16% 14%);
 }
 
 body[data-cf-ui="v2"] .cf2-co--uncertainty .cf2-co__glyph::after {
-  content: "";
-  position: absolute;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--cf2-mute);
-  top: 50%;
-  inset-inline-start: 50%;
-  transform: translate(-50%, -50%);
-  opacity: 0.55;
+  inset: 28% 30%;
+  border: none;
+  background: transparent;
+  box-shadow: inset 0 0 0 2px rgba(115, 133, 158, 0.45);
+  border-radius: 50% 40% 50% 40%;
+  opacity: 0.5;
 }
 
-body[data-cf-ui="v2"] .cf2-co--hesitation .cf2-co__glyph::before {
-  content: "";
-  position: absolute;
-  inset: 8px 12px 22px;
-  border-block-end: 3px solid var(--cf2-warm);
-  border-inline-end: 3px solid transparent;
-  transform: skewX(-18deg);
+/* ——— Meaning forming ——— */
+body[data-cf-ui="v2"] .cf2-co--meaning .cf2-co__glyph::before {
+  border-color: var(--cf2-teal);
+  opacity: 0.85;
+}
+
+body[data-cf-ui="v2"] .cf2-co--meaning .cf2-co__glyph::after {
+  inset: 34% 22% 34% 28%;
+  background: linear-gradient(90deg, transparent, var(--cf2-teal) 30%, var(--cf2-navy));
+  border-radius: 2px;
+  clip-path: polygon(0 20%, 100% 0, 100% 100%, 0 80%);
+}
+
+/* ——— Decision forming / ready ——— */
+body[data-cf-ui="v2"] .cf2-co--decision-forming .cf2-co__glyph::before,
+body[data-cf-ui="v2"] .cf2-co--decision .cf2-co__glyph::before {
+  border-color: var(--cf2-navy);
+  clip-path: polygon(6% 0, 100% 0, 100% 100%, 0 100%, 0 22%, 8% 12%);
+}
+
+body[data-cf-ui="v2"] .cf2-co--decision-forming .cf2-co__glyph::after {
+  inset: 28% 18% 28% 32%;
+  background: rgba(8, 32, 72, 0.35);
+  border-radius: 2px 8px 6px 2px;
+  clip-path: polygon(0 0, 70% 0, 100% 100%, 0 100%);
+}
+
+body[data-cf-ui="v2"] .cf2-co--decision-ready .cf2-co__glyph::before,
+body[data-cf-ui="v2"] .cf2-co--decision .cf2-co__glyph::before {
+  background: linear-gradient(135deg, rgba(8, 32, 72, 0.12), transparent 55%);
+}
+
+body[data-cf-ui="v2"] .cf2-co--decision-ready .cf2-co__glyph::after,
+body[data-cf-ui="v2"] .cf2-co--decision .cf2-co__glyph::after {
+  inset: 24% 16% 24% 28%;
+  background: var(--cf2-navy);
+  border-radius: 3px 10px 8px 3px;
+  clip-path: polygon(0 0, 100% 8%, 100% 100%, 0 92%);
   opacity: 0.95;
 }
 
-body[data-cf-ui="v2"] .cf2-co--hesitation .cf2-co__glyph::after {
-  content: "";
-  position: absolute;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--cf2-warm);
-  bottom: 10px;
-  inset-inline-start: 22px;
+/* ——— Hesitation: controlled interrupt (warm scarce) ——— */
+body[data-cf-ui="v2"] .cf2-co--hesitation .cf2-co__glyph::before {
+  border-color: var(--cf2-navy);
+  opacity: 0.85;
 }
 
-body[data-cf-ui="v2"] .cf2-co--momentum .cf2-co__glyph::before,
-body[data-cf-ui="v2"] .cf2-co--movement .cf2-co__glyph::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  inset-inline: 4px 10px;
-  height: 4px;
-  background: linear-gradient(
+body[data-cf-ui="v2"] .cf2-co--hesitation .cf2-co__glyph::after {
+  inset: 22% 18% 48% 26%;
+  border-block-end: 3px solid var(--cf2-warm);
+  border-inline-end: 3px solid transparent;
+  transform: skewX(-16deg);
+  background: transparent;
+}
+
+/* ——— Waiting ——— */
+body[data-cf-ui="v2"] .cf2-co--waiting .cf2-co__glyph::before {
+  border-color: var(--cf2-mute);
+  opacity: 0.65;
+}
+
+body[data-cf-ui="v2"] .cf2-co--waiting .cf2-co__glyph::after {
+  inset-inline: 22% 18%;
+  top: 48%;
+  height: 3px;
+  background: repeating-linear-gradient(
     90deg,
-    transparent,
-    var(--cf2-teal) 30%,
-    var(--cf2-navy) 100%
+    var(--cf2-mute) 0 6px,
+    transparent 6px 12px
   );
   transform: translateY(-50%);
-  clip-path: polygon(0 0, 100% 18%, 100% 82%, 0 100%);
+  clip-path: polygon(0 20%, 100% 0, 100% 100%, 0 80%);
 }
 
-body[data-cf-ui="v2"] .cf2-co--momentum .cf2-co__glyph::after {
-  content: "";
-  position: absolute;
-  width: 0;
-  height: 0;
-  border-block: 6px solid transparent;
-  border-inline-start: 10px solid var(--cf2-navy);
-  top: 50%;
-  inset-inline-end: 2px;
-  transform: translateY(-50%);
-}
-
-body[data-cf-ui="v2"] .cf2-co--recovery .cf2-co__glyph::before {
-  content: "";
-  position: absolute;
+/* ——— Recovery opportunity / continuation / return ——— */
+body[data-cf-ui="v2"] .cf2-co--recovery .cf2-co__glyph::before,
+body[data-cf-ui="v2"] .cf2-co--recovery-opportunity .cf2-co__glyph::before,
+body[data-cf-ui="v2"] .cf2-co--recovery-continue .cf2-co__glyph::before,
+body[data-cf-ui="v2"] .cf2-co--return .cf2-co__glyph::before {
+  border: none;
   inset: 10px 8px 8px 12px;
   border: 3px solid var(--cf2-teal);
-  border-radius: 0 0 60% 40%;
+  border-radius: 0 0 62% 42%;
   border-top-color: transparent;
   border-inline-start-color: transparent;
-  transform: rotate(-12deg);
+  transform: rotate(-14deg);
+  clip-path: none;
+  background: transparent;
 }
 
-body[data-cf-ui="v2"] .cf2-co--recovery .cf2-co__glyph::after {
-  content: "";
-  position: absolute;
+body[data-cf-ui="v2"] .cf2-co--recovery .cf2-co__glyph::after,
+body[data-cf-ui="v2"] .cf2-co--recovery-opportunity .cf2-co__glyph::after {
   width: 12px;
   height: 3px;
   background: var(--cf2-navy);
-  bottom: 16px;
-  inset-inline-start: 16px;
-  transform: rotate(40deg);
+  bottom: 28%;
+  inset-inline-start: 28%;
+  transform: rotate(38deg);
 }
 
-body[data-cf-ui="v2"] .cf2-co--blocked .cf2-co__glyph::before {
-  content: "";
-  position: absolute;
-  inset-inline: 8px;
-  top: 50%;
+body[data-cf-ui="v2"] .cf2-co--recovery-continue .cf2-co__glyph::after,
+body[data-cf-ui="v2"] .cf2-co--return .cf2-co__glyph::after {
+  inset-inline: 30% 12%;
+  bottom: 30%;
   height: 3px;
-  background: var(--cf2-navy);
+  background: linear-gradient(90deg, var(--cf2-navy), var(--cf2-teal));
+  clip-path: polygon(0 20%, 100% 0, 100% 100%, 0 80%);
+  transform: rotate(18deg);
+}
+
+/* ——— Movement / momentum / complete ——— */
+body[data-cf-ui="v2"] .cf2-co--momentum .cf2-co__glyph::before,
+body[data-cf-ui="v2"] .cf2-co--movement .cf2-co__glyph::before {
+  border: none;
+  inset: 42% 10% 42% 12%;
+  height: auto;
+  background: linear-gradient(90deg, transparent, var(--cf2-teal) 28%, var(--cf2-navy));
+  clip-path: polygon(0 15%, 100% 0, 100% 100%, 0 85%);
+  border-radius: 0;
+  transform: none;
+}
+
+body[data-cf-ui="v2"] .cf2-co--momentum .cf2-co__glyph::after,
+body[data-cf-ui="v2"] .cf2-co--movement .cf2-co__glyph::after {
+  width: 0;
+  height: 0;
+  border-block: 7px solid transparent;
+  border-inline-start: 11px solid var(--cf2-navy);
+  top: 50%;
+  inset-inline-end: 6%;
   transform: translateY(-50%);
-  opacity: 0.35;
+}
+
+body[data-cf-ui="v2"] .cf2-co--complete .cf2-co__glyph::before {
+  background: var(--cf2-navy);
+  border: none;
+  clip-path: polygon(0 0, 100% 6%, 100% 100%, 0 94%);
+  inset: 22% 16% 22% 22%;
+  border-radius: 3px 10px 8px 3px;
+  opacity: 1;
+}
+
+body[data-cf-ui="v2"] .cf2-co--complete .cf2-co__glyph::after {
+  inset-inline: 55% 12%;
+  top: 48%;
+  height: 3px;
+  background: var(--cf2-teal);
+  transform: translateY(-50%);
+}
+
+/* ——— Blocked ——— */
+body[data-cf-ui="v2"] .cf2-co--blocked .cf2-co__glyph::before {
+  border-color: rgba(8, 32, 72, 0.35);
+  opacity: 0.55;
 }
 
 body[data-cf-ui="v2"] .cf2-co--blocked .cf2-co__glyph::after {
-  content: "";
-  position: absolute;
+  inset: 42% 18%;
+  height: 3px;
+  background: var(--cf2-navy);
+  opacity: 0.4;
+}
+
+body[data-cf-ui="v2"] .cf2-co--blocked .cf2-co__glyph {
+  background:
+    linear-gradient(var(--cf2-danger), var(--cf2-danger)) center / 16px 16px no-repeat;
+  background-blend-mode: normal;
+}
+
+body[data-cf-ui="v2"] .cf2-co--blocked .cf2-co__glyph {
+  background: none;
+}
+
+body[data-cf-ui="v2"] .cf2-co--blocked .cf2-co__glyph::after {
   width: 16px;
   height: 16px;
-  border: 2px solid var(--cf2-danger);
+  inset: auto;
   top: 50%;
   inset-inline-start: 50%;
   transform: translate(-50%, -50%);
+  border: 2.5px solid var(--cf2-danger);
+  background: transparent;
+  border-radius: 2px;
 }
 
-/* ——— Evidence Field: sparse → gathering → aligned → converging ——— */
+/* ——— Evidence Field (system behavior, not chart) ——— */
 body[data-cf-ui="v2"] .cf2-evfield {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  min-width: 140px;
+  gap: 11px;
+  min-width: 160px;
   max-width: 100%;
-  padding: 6px 0 10px;
+  padding: 10px 0 14px;
+  position: relative;
+}
+
+body[data-cf-ui="v2"] .cf2-evfield::before {
+  content: "";
+  position: absolute;
+  inset-block: 8px 12px;
+  inset-inline-start: 0;
+  width: 2px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    var(--cf2-lang-route-strong) 30%,
+    var(--cf2-navy) 70%,
+    transparent
+  );
+  opacity: 0.35;
 }
 
 body[data-cf-ui="v2"] .cf2-evfield__bar {
   display: block;
-  height: 7px;
-  border-radius: 2px;
+  height: 8px;
+  border-radius: 1px 6px 4px 1px;
   background: var(--cf2-teal);
   transform-origin: inline-start;
+  margin-inline-start: 8px;
+  clip-path: polygon(0 15%, 100% 0, 100% 100%, 0 85%);
 }
 
 body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="sparse"] {
-  gap: 14px;
-  padding-inline-end: 18%;
+  gap: 16px;
+  min-height: 100px;
 }
 
 body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="sparse"] .cf2-evfield__bar {
-  opacity: 0.4;
+  opacity: 0.42;
   height: 4px;
 }
 
 body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="sparse"] .cf2-evfield__bar:nth-child(2) {
-  margin-inline-start: 12%;
+  margin-inline-start: 18%;
 }
 body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="sparse"] .cf2-evfield__bar:nth-child(3) {
-  margin-inline-start: 22%;
-}
-
-body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="gathering"],
-body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="mid"] {
-  gap: 9px;
+  margin-inline-start: 30%;
 }
 
 body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="gathering"] .cf2-evfield__bar,
 body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="mid"] .cf2-evfield__bar {
-  opacity: 0.72;
-  height: 6px;
+  opacity: 0.78;
+  height: 7px;
 }
 
-body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="aligned"] {
-  gap: 7px;
+body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="mixed"] {
+  gap: 12px;
+}
+
+body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="mixed"] .cf2-evfield__bar:nth-child(odd) {
+  opacity: 0.9;
+  background: var(--cf2-navy);
+}
+body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="mixed"] .cf2-evfield__bar:nth-child(even) {
+  opacity: 0.45;
+  margin-inline-start: 16%;
 }
 
 body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="aligned"] .cf2-evfield__bar {
-  opacity: 0.88;
-  height: 7px;
-  background: linear-gradient(90deg, var(--cf2-teal) 70%, var(--cf2-navy));
+  opacity: 0.92;
+  height: 9px;
+  background: linear-gradient(90deg, var(--cf2-teal) 65%, var(--cf2-navy));
 }
 
 body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="converging"],
 body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="dense"] {
-  gap: 5px;
-  padding-inline-end: 0;
+  gap: 6px;
 }
 
 body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="converging"] .cf2-evfield__bar,
 body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="dense"] .cf2-evfield__bar {
   opacity: 1;
-  height: 8px;
+  height: 10px;
   background: linear-gradient(90deg, var(--cf2-teal), var(--cf2-navy));
 }
 
-body[data-cf-ui="v2"] .cf2-evcluster {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 14px;
-  align-items: flex-end;
+body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="insufficient"] .cf2-evfield__bar {
+  opacity: 0.35;
+  height: 3px;
+  background: var(--cf2-mute);
 }
 
-/* ——— Living Route: organizes composition ——— */
+/* ——— Living Route ——— */
 body[data-cf-ui="v2"] .cf2-route {
   position: relative;
   display: flex;
   flex-direction: column;
   gap: 0;
-  padding-inline-start: 28px;
+  padding-inline-start: 34px;
 }
 
 body[data-cf-ui="v2"] .cf2-route::before {
   content: "";
   position: absolute;
-  inset-block: 4px 8px;
+  inset-block: 2px 4px;
   inset-inline-start: 0;
   width: var(--cf2-lang-edge);
   background: linear-gradient(
@@ -342,96 +506,86 @@ body[data-cf-ui="v2"] .cf2-route::before {
     var(--cf2-navy) 55%,
     var(--cf2-teal) 100%
   );
-  clip-path: polygon(0 0, 100% 3%, 100% 72%, 35% 100%, 0 96%);
+  clip-path: polygon(0 0, 100% 3%, 100% 72%, 32% 100%, 0 96%);
 }
 
-/* Soft continuation wash — not a second diagram */
 body[data-cf-ui="v2"] .cf2-route::after {
   content: "";
   position: absolute;
-  inset-block: 4px 8px;
+  inset-block: 2px 4px;
   inset-inline-start: 0;
-  width: 18px;
+  width: 26px;
   background: linear-gradient(
     90deg,
-    rgba(24, 176, 168, 0.12),
-    transparent 85%
+    rgba(24, 176, 168, 0.16),
+    rgba(8, 32, 72, 0.05) 55%,
+    transparent 90%
   );
   pointer-events: none;
-  clip-path: polygon(0 0, 100% 8%, 70% 100%, 0 100%);
-  opacity: 0.85;
+  clip-path: polygon(0 0, 100% 8%, 68% 100%, 0 100%);
 }
 
 body[data-cf-ui="v2"] .cf2-route__node {
   position: relative;
-  padding: 0 0 26px;
+  padding: 0 0 28px;
 }
 
 body[data-cf-ui="v2"] .cf2-route__node:last-child {
   padding-bottom: 0;
 }
 
-/* Progressive alignment / densification along the route */
 body[data-cf-ui="v2"] .cf2-route__node[data-cf2-node="evidence"] {
-  padding-inline-end: 8%;
+  padding-inline-end: 6%;
   max-width: 42rem;
 }
 
 body[data-cf-ui="v2"] .cf2-route__node[data-cf2-node="understanding"] {
-  margin-inline-start: 10px;
-  padding-inline-end: 4%;
+  margin-inline-start: 12px;
   max-width: 40rem;
 }
 
 body[data-cf-ui="v2"] .cf2-route__node[data-cf2-node="decision"] {
-  margin-inline-start: 18px;
-  padding-block: 8px 28px;
+  margin-inline-start: 20px;
+  padding-block: 8px 24px;
 }
 
 body[data-cf-ui="v2"] .cf2-route__node[data-cf2-node="action"] {
-  margin-inline-start: 18px;
-  padding-top: 0;
+  margin-inline-start: 20px;
 }
 
 body[data-cf-ui="v2"] .cf2-route__node::before {
   content: "";
   position: absolute;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+  width: 11px;
+  height: 11px;
   background: var(--cf2-teal);
-  inset-inline-start: -33px;
+  inset-inline-start: -40px;
   top: 8px;
-  box-shadow: 0 0 0 4px rgba(24, 176, 168, 0.14);
   z-index: 1;
-}
-
-body[data-cf-ui="v2"] .cf2-route__node[data-cf2-node="understanding"]::before {
-  width: 9px;
-  height: 9px;
-  opacity: 0.9;
+  border-radius: 2px 7px 5px 2px;
+  clip-path: polygon(0 0, 100% 12%, 100% 100%, 0 88%);
+  box-shadow: 0 0 0 4px rgba(24, 176, 168, 0.14);
 }
 
 body[data-cf-ui="v2"] .cf2-route__node[data-cf2-node="decision"]::before {
   background: var(--cf2-navy);
-  width: 14px;
-  height: 14px;
-  top: 14px;
-  inset-inline-start: -35px;
-  box-shadow: 0 0 0 5px rgba(8, 32, 72, 0.12);
+  width: 16px;
+  height: 16px;
+  top: 12px;
+  inset-inline-start: -42px;
+  box-shadow: 0 0 0 6px rgba(8, 32, 72, 0.12);
 }
 
 body[data-cf-ui="v2"] .cf2-route__node[data-cf2-node="action"]::before {
   background: var(--cf2-teal);
-  border: none;
-  border-radius: 3px 10px 10px 3px;
-  width: 12px;
-  height: 12px;
-  clip-path: polygon(0 0, 100% 15%, 100% 85%, 0 100%);
+  width: 13px;
+  height: 13px;
+  border-radius: 2px 9px 9px 2px;
+  clip-path: polygon(0 0, 100% 18%, 100% 82%, 0 100%);
 }
 
 body[data-cf-ui="v2"] .cf2-route[data-cf2-tension="open"]::before {
-  opacity: 0.42;
+  opacity: 0.4;
   background: linear-gradient(
     180deg,
     rgba(115, 133, 158, 0.4),
@@ -439,37 +593,31 @@ body[data-cf-ui="v2"] .cf2-route[data-cf2-tension="open"]::before {
   );
 }
 
-body[data-cf-ui="v2"] .cf2-route[data-cf2-tension="open"]::after {
-  opacity: 0.45;
-}
-
-body[data-cf-ui="v2"] .cf2-route[data-cf2-tension="high"]::before {
-  opacity: 0.75;
-}
-
-body[data-cf-ui="v2"] .cf2-route[data-cf2-tension="resolved"]::before {
-  opacity: 1;
+body[data-cf-ui="v2"] .cf2-route[data-cf2-tension="waiting"]::before,
+body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="waiting"]::before {
+  opacity: 0.5;
+  background: repeating-linear-gradient(
+    180deg,
+    var(--cf2-mute) 0 4px,
+    transparent 4px 9px
+  );
 }
 
 /* ——— Decision Mass ——— */
 body[data-cf-ui="v2"] .cf2-dmass {
   position: relative;
-  padding: 18px 12px 20px 22px;
+  padding: 24px 16px 26px 26px;
   max-width: 40rem;
 }
 
 body[data-cf-ui="v2"] .cf2-dmass::before {
   content: "";
   position: absolute;
-  inset-block: 4% 8%;
+  inset-block: 3% 6%;
   inset-inline-start: 0;
-  width: 5px;
+  width: 6px;
   background: var(--cf2-navy);
-  clip-path: polygon(0 0, 100% 8%, 100% 70%, 30% 100%, 0 92%);
-}
-
-body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="open"] {
-  opacity: 0.92;
+  clip-path: polygon(0 0, 100% 8%, 100% 70%, 28% 100%, 0 92%);
 }
 
 body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="open"]::before {
@@ -477,79 +625,83 @@ body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="open"]::before {
   width: 2px;
 }
 
+body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="forming"],
+body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="low"],
+body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="high"] {
+  background: linear-gradient(
+    105deg,
+    rgba(24, 176, 168, 0.06) 0%,
+    transparent 70%
+  );
+}
+
+body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="forming"]::before,
 body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="low"]::before,
 body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="high"]::before {
   width: 4px;
   background: linear-gradient(180deg, var(--cf2-teal), var(--cf2-navy));
 }
 
-body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="resolved"] {
-  padding: 22px 16px 26px 28px;
+body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="resolved"],
+body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="ready"] {
+  padding: 28px 18px 32px 30px;
   background: linear-gradient(
     105deg,
-    rgba(8, 32, 72, 0.06) 0%,
-    rgba(24, 176, 168, 0.05) 45%,
+    rgba(8, 32, 72, 0.08) 0%,
+    rgba(24, 176, 168, 0.06) 45%,
     transparent 80%
   );
 }
 
-body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="resolved"]::before {
-  width: 6px;
+body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="resolved"]::before,
+body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="ready"]::before {
+  width: 7px;
 }
 
 body[data-cf-ui="v2"] .cf2-dmass__text {
   margin: 0;
-  font-size: clamp(1.35rem, 2.4vw, 1.85rem);
+  font-size: clamp(1.45rem, 2.6vw, 2.05rem);
   font-weight: 800;
   line-height: 1.28;
   color: var(--cf2-navy);
   letter-spacing: -0.025em;
 }
 
-body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="resolved"] .cf2-dmass__text {
-  font-size: clamp(1.5rem, 2.8vw, 2.05rem);
-  letter-spacing: -0.03em;
+body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="resolved"] .cf2-dmass__text,
+body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="ready"] .cf2-dmass__text {
+  font-size: clamp(1.6rem, 2.9vw, 2.25rem);
 }
 
 body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="open"] .cf2-dmass__text {
-  font-size: clamp(1.2rem, 2vw, 1.55rem);
+  font-size: clamp(1.25rem, 2.1vw, 1.65rem);
   font-weight: 700;
 }
 
-/* ——— Action terminus (emerges from decision) ——— */
+/* ——— Terminus ——— */
 body[data-cf-ui="v2"] .cf2-terminus,
 body[data-cf-ui="v2"] .cf2-beat--action .cf2-beat__action {
   position: relative;
   margin: 0;
-  padding: 16px 18px 18px 22px;
+  padding: 18px 18px 20px 24px;
   background: linear-gradient(
     100deg,
-    rgba(8, 32, 72, 0.07) 0%,
+    rgba(8, 32, 72, 0.08) 0%,
     rgba(24, 176, 168, 0.06) 40%,
     transparent 78%
   );
-  border-inline-start: 4px solid var(--cf2-navy);
+  border-inline-start: 5px solid var(--cf2-navy);
   clip-path: polygon(0 0, 100% 0, 100% 78%, 94% 100%, 0 100%);
 }
 
-body[data-cf-ui="v2"] .cf2-terminus .cf2-btn,
-body[data-cf-ui="v2"] .cf2-beat--action .cf2-btn {
-  margin-top: 2px;
-}
-
-body[data-cf-ui="v2"] .cf2-beat--action .cf2-reason__wait {
-  margin: 0;
-}
-
-/* ——— Momentum Trace (structural, not pills) ——— */
+/* ——— Momentum Trace (static motion) ——— */
 body[data-cf-ui="v2"] .cf2-mtrace {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 2px;
   margin: 16px 0 6px;
-  padding: 10px 0 4px;
-  border-block-start: 1px solid rgba(8, 32, 72, 0.08);
+  padding: 12px 0 4px;
+  border-block-start: 1px solid rgba(8, 32, 72, 0.1);
 }
 
 body[data-cf-ui="v2"] .cf2-mtrace__step {
@@ -557,31 +709,28 @@ body[data-cf-ui="v2"] .cf2-mtrace__step {
   font-weight: 700;
   color: var(--cf2-mute);
   padding: 2px 4px;
-  border-radius: 0;
   background: transparent;
-  letter-spacing: 0.02em;
 }
 
 body[data-cf-ui="v2"] .cf2-mtrace__step.is-active {
-  background: transparent;
   color: var(--cf2-navy);
   font-size: 13px;
-  box-shadow: inset 0 -2px 0 var(--cf2-teal);
+  box-shadow: inset 0 -3px 0 var(--cf2-navy);
 }
 
 body[data-cf-ui="v2"] .cf2-mtrace__arrow {
-  width: 26px;
+  width: 28px;
   height: 3px;
   background: linear-gradient(90deg, transparent, var(--cf2-lang-route-strong));
-  flex: 0 0 auto;
   clip-path: polygon(0 20%, 100% 0, 100% 100%, 0 80%);
+  flex: 0 0 auto;
 }
 
-/* ——— Knowledge Capsule (quiet secondary) ——— */
+/* ——— Capsules / silence / taper / rows ——— */
 body[data-cf-ui="v2"] .cf2-capsule {
   position: relative;
   padding: 0 0 0 14px;
-  opacity: 0.78;
+  opacity: 0.8;
 }
 
 body[data-cf-ui="v2"] .cf2-capsule::before {
@@ -620,28 +769,19 @@ body[data-cf-ui="v2"] .cf2-capsule .cf2-badge {
   padding: 0;
   background: transparent;
   border: none;
-  border-radius: 0;
   color: var(--cf2-mute);
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
-body[data-cf-ui="v2"] .cf2-capsule .cf2-co-row {
-  margin-bottom: 10px;
-  gap: 12px 14px;
 }
 
 body[data-cf-ui="v2"] .cf2-capsule .cf2-co__glyph {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
 }
 
-/* ——— Silence / Taper ——— */
 body[data-cf-ui="v2"] .cf2-silence {
   display: block;
   height: var(--cf2-lang-gap);
-  margin: 0;
   border: none;
   background: transparent;
 }
@@ -661,11 +801,10 @@ body[data-cf-ui="v2"] .cf2-taper {
   );
 }
 
-/* ——— Object rows ——— */
 body[data-cf-ui="v2"] .cf2-co-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 18px 24px;
+  gap: 18px 22px;
   align-items: flex-start;
   margin: 0 0 18px;
 }
@@ -675,207 +814,49 @@ body[data-cf-ui="v2"] .cf2-co-row--rail {
   flex-wrap: nowrap;
   gap: 28px;
   margin: 0;
-  height: 100%;
   justify-content: flex-start;
   padding-block: 4px 12px;
 }
 
-/* ============================================================
-   Signature Amplification V1 — same vocabulary, stronger mass.
-   ============================================================ */
-body[data-cf-ui="v2"] {
-  --cf2-lang-edge: 8px;
-  --cf2-lang-gap: 0.75rem;
-}
+/* ——— Runtime motion (semantic, reduced-motion safe) ——— */
+@media (prefers-reduced-motion: no-preference) {
+  body[data-cf-ui="v2"] .cf2-evfield.is-arriving .cf2-evfield__bar {
+    animation: cf2-ev-join 520ms ease-out both;
+  }
 
-body[data-cf-ui="v2"] .cf2-co-row--rail .cf2-co__glyph,
-body[data-cf-ui="v2"] .cf2-dobj--primary > .cf2-co-row .cf2-co__glyph {
-  width: 92px;
-  height: 92px;
-}
+  body[data-cf-ui="v2"] .cf2-dmass.is-forming {
+    animation: cf2-mass-settle 640ms ease-out both;
+  }
 
-body[data-cf-ui="v2"] .cf2-co-row--rail .cf2-co__label,
-body[data-cf-ui="v2"] .cf2-dobj--primary > .cf2-co-row .cf2-co__label {
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--cf2-ink);
-}
+  @keyframes cf2-ev-join {
+    from {
+      opacity: 0;
+      transform: scaleX(0.55);
+    }
+    to {
+      opacity: 1;
+      transform: scaleX(1);
+    }
+  }
 
-body[data-cf-ui="v2"] .cf2-co-row--rail {
-  gap: 36px;
-}
-
-body[data-cf-ui="v2"] .cf2-co--attention .cf2-co__glyph::before,
-body[data-cf-ui="v2"] .cf2-co--decision .cf2-co__glyph::before {
-  border-width: 3.5px;
-}
-
-body[data-cf-ui="v2"] .cf2-co--attention .cf2-co__glyph::after {
-  border-inline-start-width: 8px;
-  border-inline-end-width: 8px;
-  border-block-end-width: 14px;
-}
-
-body[data-cf-ui="v2"] .cf2-co--evidence .cf2-co__glyph::before,
-body[data-cf-ui="v2"] .cf2-co--evidence .cf2-co__glyph::after,
-body[data-cf-ui="v2"] .cf2-co--convergence .cf2-co__glyph::before,
-body[data-cf-ui="v2"] .cf2-co--convergence .cf2-co__glyph::after {
-  height: 6px;
-}
-
-/* Evidence field — system footprint */
-body[data-cf-ui="v2"] .cf2-evfield {
-  gap: 12px;
-  min-width: 180px;
-  padding: 10px 0 16px;
-}
-
-body[data-cf-ui="v2"] .cf2-evfield__bar {
-  height: 10px;
-}
-
-body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="sparse"] {
-  gap: 18px;
-  min-height: 110px;
-}
-
-body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="sparse"] .cf2-evfield__bar {
-  height: 5px;
-}
-
-body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="gathering"] .cf2-evfield__bar,
-body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="mid"] .cf2-evfield__bar {
-  height: 9px;
-}
-
-body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="aligned"] .cf2-evfield__bar {
-  height: 11px;
-}
-
-body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="converging"] .cf2-evfield__bar,
-body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="dense"] .cf2-evfield__bar {
-  height: 12px;
-}
-
-/* Living route — thicker spine, stronger wash */
-body[data-cf-ui="v2"] .cf2-route {
-  padding-inline-start: 36px;
-}
-
-body[data-cf-ui="v2"] .cf2-route::before {
-  width: var(--cf2-lang-edge);
-  inset-block: 2px 4px;
-}
-
-body[data-cf-ui="v2"] .cf2-route::after {
-  width: 28px;
-  opacity: 1;
-  background: linear-gradient(
-    90deg,
-    rgba(24, 176, 168, 0.18),
-    rgba(8, 32, 72, 0.06) 55%,
-    transparent 90%
-  );
-}
-
-body[data-cf-ui="v2"] .cf2-route__node {
-  padding-bottom: 32px;
-}
-
-body[data-cf-ui="v2"] .cf2-route__node::before {
-  width: 12px;
-  height: 12px;
-  inset-inline-start: -42px;
-  box-shadow: 0 0 0 5px rgba(24, 176, 168, 0.18);
-}
-
-body[data-cf-ui="v2"] .cf2-route__node[data-cf2-node="decision"]::before {
-  width: 18px;
-  height: 18px;
-  inset-inline-start: -45px;
-  box-shadow: 0 0 0 7px rgba(8, 32, 72, 0.14);
-}
-
-body[data-cf-ui="v2"] .cf2-route__node[data-cf2-node="action"]::before {
-  width: 14px;
-  height: 14px;
-  inset-inline-start: -43px;
-}
-
-body[data-cf-ui="v2"] .cf2-route__node[data-cf2-node="understanding"] {
-  margin-inline-start: 14px;
-}
-
-body[data-cf-ui="v2"] .cf2-route__node[data-cf2-node="decision"] {
-  margin-inline-start: 22px;
-}
-
-/* Decision mass — structural anchor */
-body[data-cf-ui="v2"] .cf2-dmass {
-  padding: 26px 18px 28px 28px;
-}
-
-body[data-cf-ui="v2"] .cf2-dmass::before {
-  width: 7px;
-  inset-block: 2% 6%;
-}
-
-body[data-cf-ui="v2"] .cf2-dmass__text {
-  font-size: clamp(1.55rem, 2.8vw, 2.15rem);
-}
-
-body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="resolved"] {
-  padding: 30px 20px 34px 32px;
-}
-
-body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="resolved"] .cf2-dmass__text {
-  font-size: clamp(1.7rem, 3.1vw, 2.35rem);
-}
-
-body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="resolved"]::before {
-  width: 8px;
-}
-
-body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="open"] .cf2-dmass__text {
-  font-size: clamp(1.35rem, 2.3vw, 1.75rem);
-}
-
-/* Terminus — continuous with decision */
-body[data-cf-ui="v2"] .cf2-terminus,
-body[data-cf-ui="v2"] .cf2-beat--action .cf2-beat__action {
-  padding: 20px 20px 22px 26px;
-  border-inline-start-width: 5px;
-  margin-block-start: 0;
-}
-
-body[data-cf-ui="v2"] .cf2-mtrace {
-  margin: 20px 0 8px;
-  padding-top: 14px;
-}
-
-body[data-cf-ui="v2"] .cf2-mtrace__step {
-  font-size: 13px;
-}
-
-body[data-cf-ui="v2"] .cf2-mtrace__step.is-active {
-  font-size: 14px;
-  box-shadow: inset 0 -3px 0 var(--cf2-navy);
-}
-
-body[data-cf-ui="v2"] .cf2-mtrace__arrow {
-  width: 34px;
-  height: 4px;
+  @keyframes cf2-mass-settle {
+    from {
+      opacity: 0.65;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
 }
 
 @media (max-width: 1023px) {
   body[data-cf-ui="v2"] .cf2-co-row--rail .cf2-co__glyph,
   body[data-cf-ui="v2"] .cf2-dobj--primary > .cf2-co-row .cf2-co__glyph {
+    --cf2-co-size: 64px;
     width: 64px;
     height: 64px;
-  }
-
-  body[data-cf-ui="v2"] .cf2-dmass__text {
-    font-size: 1.4rem;
   }
 
   body[data-cf-ui="v2"] .cf2-route {
@@ -887,6 +868,6 @@ body[data-cf-ui="v2"] .cf2-mtrace__arrow {
   }
 
   body[data-cf-ui="v2"] .cf2-route__node[data-cf2-node="decision"]::before {
-    inset-inline-start: -39px;
+    inset-inline-start: -38px;
   }
 }

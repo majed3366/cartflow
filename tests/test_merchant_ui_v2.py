@@ -99,6 +99,9 @@ class MerchantUiV2RouteTests(unittest.TestCase):
         ):
             self.assertIn(token, lang_css)
         self.assertIn("commerceObject", lang_js)
+        self.assertIn("ev-converging", lang_js)
+        self.assertIn("decision-ready", lang_js)
+        self.assertIn("mapWorkspaceObjects", lang_js)
         self.assertIn("cf2-scene", home_js)
         self.assertIn("attention-gravity", home_js)
         self.assertIn("cf2-dobj", ws_js)

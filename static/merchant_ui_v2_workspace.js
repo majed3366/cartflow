@@ -96,22 +96,32 @@
       ? card.action_wait_lines_ar
       : ["لا يوجد إجراء حالياً.", "سيخبرك CartFlow عندما يصبح القرار جاهزاً."];
 
-    var objs = [];
-    if (tension === "open" || tension === "high") {
-      objs = ["evidence", "insufficient", "uncertainty"];
-    } else if (tension === "resolved") {
-      objs = ["convergence", "decision", "momentum"];
-    } else {
-      objs = ["evidence", "attention", "decision"];
+    var objs = lang
+      ? lang.mapWorkspaceObjects
+        ? lang.mapWorkspaceObjects(card)
+        : []
+      : [];
+    if (!objs.length) {
+      if (tension === "open" || tension === "high") {
+        objs = ["ev-sparse", "insufficient", "uncertainty"];
+      } else if (tension === "ready" || tension === "resolved") {
+        objs = ["ev-converging", "decision-ready", "recovery-continue"];
+      } else {
+        objs = ["ev-aligned", "meaning", "decision-forming"];
+      }
     }
-    if (!actionReady) objs.push("blocked");
-    else objs.push("recovery");
+    if (tension === "waiting") objs = ["meaning", "waiting", "recovery-opportunity"];
+    if (!actionReady && objs.indexOf("blocked") < 0 && tension === "high") {
+      objs.push("blocked");
+    } else if (actionReady && objs.indexOf("recovery-continue") < 0) {
+      objs.push("recovery-continue");
+    }
 
     var html =
       '<article class="cf2-dobj' +
       (isPrimary ? " cf2-dobj--primary" : " cf2-dobj--next") +
       '" data-cf2-tension="' +
-      esc(tension) +
+      esc(tension === "ready" ? "resolved" : tension) +
       '" data-cf2-evidence="' +
       esc(density) +
       '" data-decision-id="' +
@@ -156,8 +166,10 @@
       '<section class="cf2-route__node cf2-beat cf2-beat--decision" data-cf2-node="decision">';
     html += '<p class="cf2-beat__label">القرار الآن · كتلة القرار</p>';
     html +=
-      '<div class="cf2-dmass" data-cf2-tension="' +
-      esc(tension) +
+      '<div class="cf2-dmass' +
+      (isPrimary ? " is-forming" : "") +
+      '" data-cf2-tension="' +
+      esc(tension === "ready" ? "resolved" : tension) +
       '"><p class="cf2-dmass__text">' +
       esc(decision) +
       "</p></div></section>";
@@ -200,6 +212,7 @@
       html += '<div class="cf2-co-row">';
       html += lang.commerceObject("attention");
       html += lang.commerceObject("uncertainty");
+      html += lang.commerceObject("waiting");
       html += lang.commerceObject("insufficient");
       html += "</div>";
     }
