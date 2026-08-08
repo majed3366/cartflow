@@ -102,8 +102,9 @@ class MerchantUiV2RouteTests(unittest.TestCase):
         self.assertIn("ev-converging", lang_js)
         self.assertIn("decision-ready", lang_js)
         self.assertIn("mapWorkspaceObjects", lang_js)
-        self.assertIn("cf2-scene", home_js)
-        self.assertIn("attention-gravity", home_js)
+        self.assertIn("cf2-home", home_js)
+        self.assertIn("الأهم الآن", home_js)
+        self.assertIn("الأدلة ما زالت محدودة", home_js)
         self.assertIn("cf2-dobj", ws_js)
         self.assertIn("living-route", ws_js)
 

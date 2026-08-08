@@ -1,6 +1,6 @@
 /**
- * CartFlow Merchant UI V2 — Home executive commerce scene.
- * Truth → Meaning → Gravity → Decision. Visual language primitives.
+ * CartFlow Merchant UI V2 — Final Home product composition.
+ * Merchant meaning first. Frozen visual grammar second (sparing).
  */
 (function (global) {
   "use strict";
@@ -23,6 +23,12 @@
     return "knowledge";
   }
 
+  function isWeakText(text) {
+    return /أدلة|غير كافية|insufficient|لا يكفي|منخفض|محدود/i.test(
+      String(text || "")
+    );
+  }
+
   function split(sections) {
     var list = (sections || []).slice().sort(function (a, b) {
       return (
@@ -42,110 +48,86 @@
     var rest = list.filter(function (s) {
       return s && s !== primary;
     });
-    var evidence = [];
-    var secondary = [];
+    var know = [];
+    var watch = [];
+    var learning = [];
     rest.forEach(function (sec) {
-      if (laneOf(sec) === "evidence" && evidence.length < 2) evidence.push(sec);
-      else secondary.push(sec);
+      var lane = laneOf(sec);
+      var diag = String(sec.diagnosis_ar || sec.summary_ar || "");
+      var status = String(sec.status_ar || "");
+      if (lane === "condition" || /يتطلب|متابعة|عاجل/i.test(status + diag)) {
+        know.push(sec);
+      } else if (lane === "evidence" || isWeakText(diag) || sec.empty) {
+        learning.push(sec);
+      } else {
+        watch.push(sec);
+      }
     });
-    return { primary: primary, evidence: evidence, secondary: secondary };
+    return {
+      primary: primary,
+      know: know.slice(0, 2),
+      watch: watch.slice(0, 2),
+      learning: learning.slice(0, 2),
+    };
   }
 
-  function objectRow(kinds, rail) {
-    if (!L() || !kinds || !kinds.length) return "";
-    var html =
-      '<div class="cf2-co-row' +
-      (rail ? " cf2-co-row--rail" : "") +
-      '" data-cf2-grammar="commerce-objects">';
-    kinds.forEach(function (k) {
-      html += L().commerceObject(k);
-    });
-    html += "</div>";
-    return html;
+  function confidenceCopy(weak, density) {
+    if (weak || density === "insufficient" || density === "sparse") {
+      return "الأدلة ما زالت محدودة";
+    }
+    if (density === "gathering") return "بدأت الإشارة تتكرر";
+    if (density === "aligned" || density === "mixed") {
+      return "الأدلة أصبحت أكثر اتساقًا";
+    }
+    if (density === "converging") return "توجد أدلة كافية لاتخاذ قرار";
+    return "الأدلة ما زالت محدودة";
   }
 
-  /** Momentum only from sections that exist — never invent a full fake journey. */
-  function buildMomentum(parts, weak) {
-    var all = []
-      .concat(parts.primary ? [parts.primary] : [])
-      .concat(parts.evidence || [])
-      .concat(parts.secondary || []);
-    var steps = [];
-    var active = 0;
-    var text = all
-      .map(function (s) {
-        return String(
-          (s && (s.diagnosis_ar || s.summary_ar || s.recommendation_ar)) || ""
-        );
-      })
-      .join(" ");
-    if (/تردّد|تردد|hesitat/i.test(text)) steps.push("تردّد");
-    if (all.some(function (s) {
-      return laneOf(s) === "evidence" || laneOf(s) === "condition";
-    })) {
-      steps.push("دليل");
-    }
-    if (all.some(function (s) {
-      return laneOf(s) === "decision";
-    })) {
-      steps.push("قرار");
-    }
-    if (all.some(function (s) {
-      return laneOf(s) === "momentum";
-    })) {
-      steps.push("حركة");
-    }
-    if (all.some(function (s) {
-      return laneOf(s) === "recovery";
-    })) {
-      steps.push("استرداد");
-    }
-    if (steps.length < 2) return { steps: [], active: 0 };
+  function actionCopy(weak, meaning) {
     if (weak) {
-      active = Math.max(0, steps.indexOf("دليل"));
-      if (active < 0) active = 0;
-    } else if (steps.indexOf("قرار") >= 0) {
-      active = steps.indexOf("قرار");
-    } else {
-      active = steps.length - 1;
+      return "لا يلزم تغيير تجاري الآن — واصل المراقبة حتى تتضح الإشارة.";
     }
-    return { steps: steps, active: active };
+    if (meaning) return meaning;
+    return "راجع التفاصيل عندما تكون جاهزًا لاتخاذ قرار.";
   }
 
-  function capsule(sec) {
-    if (!sec || !L()) return "";
+  /** One dominant object only — no gallery. Label hidden (grammar silent). */
+  function primaryMark(weak, lane) {
+    if (!L()) return "";
+    var kind = "attention";
+    if (!weak && lane === "decision") kind = "decision-ready";
+    else if (!weak && lane === "recovery") kind = "recovery-continue";
+    else if (weak) kind = "attention";
+    return (
+      '<div class="cf2-home__mark" aria-hidden="true">' +
+      L().commerceObject(kind, " ") +
+      "</div>"
+    );
+  }
+
+  function secondaryItem(sec, tier) {
     var diagnosis = String(sec.diagnosis_ar || sec.summary_ar || "").trim();
-    var kinds = L().mapHomeObjects(sec).slice(0, 2);
     var html =
-      '<article class="cf2-capsule" data-hes-section="' +
+      '<article class="cf2-home__item" data-hes-section="' +
       esc(sec.id || "") +
-      '" data-cf2-lane="' +
-      esc(laneOf(sec)) +
+      '" data-cf2-tier="' +
+      esc(tier) +
       '">';
-    html += objectRow(kinds);
     html +=
-      '<p class="cf2-capsule__lane">' +
+      '<p class="cf2-home__tier">' +
       esc(
-        laneOf(sec) === "evidence"
-          ? "دليل"
-          : laneOf(sec) === "momentum"
-            ? "حركة"
-            : laneOf(sec) === "recovery"
-              ? "استرداد"
-              : laneOf(sec) === "condition"
-                ? "حالة"
-                : "معرفة"
+        tier === "know"
+          ? "اعرف الآن"
+          : tier === "watch"
+            ? "راقب"
+            : "ما زال يتعلّم"
       ) +
       "</p>";
     html +=
-      '<h3 class="cf2-capsule__title">' + esc(sec.title_ar || "") + "</h3>";
-    if (sec.status_ar) {
-      html +=
-        '<span class="cf2-badge">' + esc(sec.status_ar) + "</span>";
-    }
+      '<h3 class="cf2-home__item-title">' + esc(sec.title_ar || "") + "</h3>";
     if (diagnosis) {
       html +=
-        '<p class="cf2-capsule__body">' + esc(diagnosis) + "</p>";
+        '<p class="cf2-home__item-body">' + esc(diagnosis) + "</p>";
     }
     html += "</article>";
     return html;
@@ -155,117 +137,129 @@
     var sections = Array.isArray(pkg.sections) ? pkg.sections : [];
     if (!sections.length) {
       return (
-        '<div class="cf2-scene"><p class="cf2-empty">' +
+        '<div class="cf2-home"><p class="cf2-empty">' +
         esc(pkg.lede_ar || "لا تتوفر معرفة كافية الآن.") +
         "</p></div>"
       );
     }
     var parts = split(sections);
     var lang = L();
-    var html =
-      '<section class="cf2-scene" data-cf2="home-scene" data-cf2-grammar="attention-gravity">';
-
-    html +=
-      '<header class="cf2-scene__spine">' +
-      '<p class="cf2-scene__kicker">مشهد تنفيذي</p>' +
-      '<p class="cf2-scene__spine-line">الحالة · الدليل · المعنى · القرار</p>' +
-      "</header>";
+    var html = '<section class="cf2-home" data-cf2="home-final">';
 
     if (parts.primary) {
       var p = parts.primary;
       var why = String(p.diagnosis_ar || p.summary_ar || "").trim();
       var meaning = String(p.recommendation_ar || "").trim();
       var href = String(p.view_details_href || "").trim();
-      var kinds = lang ? lang.mapHomeObjects(p) : ["attention", "decision"];
-      var weak =
-        /أدلة|غير كافية|insufficient|لا يكفي|منخفض/i.test(why + meaning);
+      var weak = isWeakText(why + meaning) || !!p.empty;
       var tension = weak ? "open" : "resolved";
-      var evCount = parts.evidence.length + (why ? 2 : 1);
+      var evCount = why ? 2 : 1;
+      if (parts.learning.length) evCount += 1;
+      if (parts.know.length) evCount += 1;
       var density = weak
         ? "insufficient"
         : lang
           ? lang.densityFromCount(evCount)
           : "gathering";
+      var confidence = confidenceCopy(weak, density);
+      var action = actionCopy(weak, meaning);
 
       html +=
-        '<div class="cf2-scene__gravity" data-cf2-tension="' +
+        '<div class="cf2-home__primary" data-cf2-tension="' +
         esc(tension) +
         '">';
+      html += '<div class="cf2-home__primary-main">';
+      html += primaryMark(weak, laneOf(p));
       html +=
-        '<div class="cf2-scene__co-rail" aria-hidden="false">' +
-        objectRow(kinds, true) +
-        "</div>";
-      html += '<div class="cf2-scene__gravity-main">';
-      html += '<p class="cf2-scene__lane">مركز الجاذبية</p>';
+        '<p class="cf2-home__eyebrow">الأهم الآن</p>';
       html +=
-        '<h2 class="cf2-scene__title">' + esc(p.title_ar || "") + "</h2>";
-      if (p.status_ar) {
-        html +=
-          '<div class="cf2-scene__meta"><span class="cf2-badge cf2-badge--info">' +
-          esc(p.status_ar) +
-          "</span></div>";
-      }
+        '<h2 class="cf2-home__title">' + esc(p.title_ar || "") + "</h2>";
       if (why) {
-        html += '<p class="cf2-scene__why">' + esc(why) + "</p>";
+        html += '<p class="cf2-home__why">' + esc(why) + "</p>";
       }
-      if (meaning) {
-        html +=
-          '<p class="cf2-scene__meaning" data-cf2-grammar="understanding">' +
-          esc(meaning) +
-          "</p>";
-      }
+      html +=
+        '<p class="cf2-home__confidence" data-cf2-density="' +
+        esc(density) +
+        '">' +
+        esc(confidence) +
+        "</p>";
       if (lang) {
-        var mom = buildMomentum(parts, weak);
-        if (mom.steps.length >= 2) {
-          html += lang.momentumTrace(mom.steps, mom.active);
-        }
+        html +=
+          '<div class="cf2-home__field" aria-hidden="true">' +
+          lang.evidenceField(evCount, density) +
+          "</div>";
       }
+      html +=
+        '<div class="cf2-home__stance"><p class="cf2-home__stance-label">ماذا تفعل؟</p><p class="cf2-home__stance-body">' +
+        esc(action) +
+        "</p></div>";
       if (href) {
         html +=
-          '<div class="cf2-scene__terminus cf2-terminus"><a class="cf2-btn" href="' +
+          '<div class="cf2-home__action cf2-terminus"><a class="cf2-btn" href="' +
           esc(href) +
-          '">عرض التفاصيل ←</a></div>';
+          '">' +
+          esc(weak ? "راجع التفاصيل" : "افتح القرار") +
+          "</a></div>";
       }
       html += "</div>";
 
-      html +=
-        '<aside class="cf2-scene__density cf2-evidence" data-cf2-grammar="evidence-density" data-cf2-density="' +
-        esc(density) +
-        '">';
-      html += '<p class="cf2-scene__lane">كثافة الدليل</p>';
-      if (lang) {
-        html += lang.evidenceField(evCount, density);
-      }
-      parts.evidence.forEach(function (sec) {
-        var d = String(sec.diagnosis_ar || sec.summary_ar || "").trim();
+      /* Supporting facts from related sections — merchant text only */
+      var support = parts.learning.concat(parts.know).slice(0, 2);
+      if (support.length) {
         html +=
-          '<div class="cf2-scene__ev-item"><p class="cf2-scene__ev-title">' +
-          esc(sec.title_ar || "") +
-          "</p>";
-        if (d) {
-          html += '<p class="cf2-scene__ev-body">' + esc(d) + "</p>";
-        }
-        html += "</div>";
-      });
-      if (!parts.evidence.length) {
-        html +=
-          '<p class="cf2-scene__ev-body">الأدلة ما زالت مفتوحة — عدم اليقين حالة صادقة.</p>';
-      }
-      html += "</aside>";
-
-      if (parts.secondary.length) {
-        html +=
-          '<div class="cf2-scene__orbit" data-cf2-grammar="secondary" aria-label="معرفة ثانوية">';
-        parts.secondary.forEach(function (sec) {
-          html += capsule(sec);
+          '<aside class="cf2-home__support" aria-label="ما يدعم هذا الحكم">';
+        html += '<p class="cf2-home__support-label">لماذا يقول CartFlow ذلك؟</p>';
+        support.forEach(function (sec) {
+          var d = String(sec.diagnosis_ar || sec.summary_ar || "").trim();
+          if (!d && !sec.title_ar) return;
+          html += '<div class="cf2-home__support-item">';
+          if (sec.title_ar) {
+            html +=
+              '<p class="cf2-home__support-title">' +
+              esc(sec.title_ar) +
+              "</p>";
+          }
+          if (d) {
+            html +=
+              '<p class="cf2-home__support-body">' + esc(d) + "</p>";
+          }
+          html += "</div>";
         });
-        html += "</div>";
+        html += "</aside>";
       }
-
       html += "</div>";
     }
 
-    html += '<hr class="cf2-taper" />';
+    var secondary =
+      parts.know.length || parts.watch.length || parts.learning.length;
+    if (secondary) {
+      html +=
+        '<div class="cf2-home__secondary" aria-label="معرفة إضافية">';
+      if (parts.know.length) {
+        html += '<div class="cf2-home__band" data-cf2-band="know">';
+        parts.know.forEach(function (sec) {
+          html += secondaryItem(sec, "know");
+        });
+        html += "</div>";
+      }
+      if (parts.watch.length) {
+        html += '<div class="cf2-home__band" data-cf2-band="watch">';
+        parts.watch.forEach(function (sec) {
+          html += secondaryItem(sec, "watch");
+        });
+        html += "</div>";
+      }
+      if (parts.learning.length) {
+        html += '<div class="cf2-home__band" data-cf2-band="learning">';
+        parts.learning.forEach(function (sec) {
+          /* skip if already used as primary support only once — still ok to show quieter */
+          html += secondaryItem(sec, "learning");
+        });
+        html += "</div>";
+      }
+      html += "</div>";
+    }
+
     html += "</section>";
     return html;
   }
@@ -280,7 +274,7 @@
         : null;
     if (!pkg || pkg.enabled === false) {
       root.innerHTML =
-        '<p class="cf2-empty">تعذّر تحميل الملخص التنفيذي.</p>';
+        '<p class="cf2-empty">تعذّر تحميل معرفة المتجر.</p>';
       return false;
     }
     root.innerHTML = render(pkg);
@@ -289,7 +283,7 @@
 
   async function loadAndPaint(root) {
     if (!root) return;
-    root.innerHTML = '<p class="cf2-loading">جاري تحميل المشهد…</p>';
+    root.innerHTML = '<p class="cf2-loading">جاري تحميل معرفة متجرك…</p>';
     try {
       var res = await fetch("/api/dashboard/summary", {
         credentials: "same-origin",
