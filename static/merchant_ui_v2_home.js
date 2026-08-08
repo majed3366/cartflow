@@ -1,7 +1,7 @@
 /**
- * CartFlow Merchant UI V2 — Final Home product composition V1.1
- * Merchant meaning first. Frozen visual grammar second (sparing).
- * Desktop: one executive composition — no duplicated truths.
+ * CartFlow Merchant UI V2 — Home executive composition V1.3
+ * One continuous scene: understand → evidence → stance → monitoring.
+ * No two-column SaaS split. Language / truth locked.
  */
 (function (global) {
   "use strict";
@@ -38,7 +38,6 @@
       .trim();
   }
 
-  /** Same commercial diagnosis in different clothing — drop it. */
   function isDuplicateTruth(primaryText, secText) {
     var a = String(primaryText || "")
       .replace(/\s+/g, " ")
@@ -118,6 +117,7 @@
     return "راجع التفاصيل عندما تكون جاهزًا لاتخاذ قرار.";
   }
 
+  /** Silent CO — participates in lead, not a corner ornament. */
   function primaryMark(weak, lane) {
     if (!L()) return "";
     var kind = "attention";
@@ -125,7 +125,9 @@
     else if (!weak && lane === "recovery") kind = "recovery-continue";
     else if (weak) kind = "attention";
     return (
-      '<div class="cf2-home__mark" aria-hidden="true">' +
+      '<div class="cf2-home__mark" data-cf2-state="' +
+      esc(weak ? "open" : "resolved") +
+      '" aria-hidden="true">' +
       L().commerceObject(kind, " ") +
       "</div>"
     );
@@ -137,10 +139,10 @@
     return "ما زال يتعلّم";
   }
 
-  function railItem(sec, tier) {
+  function monitorItem(sec, tier) {
     var diagnosis = truthText(sec);
     var html =
-      '<article class="cf2-home__rail-item" data-hes-section="' +
+      '<article class="cf2-home__monitor-item" data-hes-section="' +
       esc(sec.id || "") +
       '" data-cf2-tier="' +
       esc(tier) +
@@ -148,10 +150,12 @@
     html +=
       '<p class="cf2-home__tier">' + esc(tierLabel(tier)) + "</p>";
     html +=
-      '<h3 class="cf2-home__rail-title">' + esc(sec.title_ar || "") + "</h3>";
+      '<h3 class="cf2-home__monitor-title">' +
+      esc(sec.title_ar || "") +
+      "</h3>";
     if (diagnosis) {
       html +=
-        '<p class="cf2-home__rail-body">' + esc(diagnosis) + "</p>";
+        '<p class="cf2-home__monitor-body">' + esc(diagnosis) + "</p>";
     }
     html += "</article>";
     return html;
@@ -189,7 +193,7 @@
     var parts = split(sections);
     var lang = L();
     var html =
-      '<section class="cf2-home" data-cf2="home-density-v12">';
+      '<section class="cf2-home" data-cf2="home-exec-v13">';
 
     if (!parts.primary) {
       html += "</section>";
@@ -202,7 +206,8 @@
     var href = String(p.view_details_href || "").trim();
     var weak = isWeakText(why + meaning) || !!p.empty;
     var tension = weak ? "open" : "resolved";
-    var distinctCount = parts.know.length + parts.watch.length + parts.learning.length;
+    var distinctCount =
+      parts.know.length + parts.watch.length + parts.learning.length;
     var evCount = why ? 2 : 1;
     if (distinctCount) evCount += 1;
     var density = weak
@@ -213,51 +218,61 @@
     var confidence = confidenceCopy(weak, density);
     var action = actionCopy(weak, meaning);
 
-    /* Rail: distinct truths only — prefer operational KNOW, then WATCH, then LEARNING */
-    var rail = [];
+    var monitor = [];
     parts.know.forEach(function (sec) {
-      rail.push({ sec: sec, tier: "know" });
+      monitor.push({ sec: sec, tier: "know" });
     });
     parts.watch.forEach(function (sec) {
-      rail.push({ sec: sec, tier: "watch" });
+      monitor.push({ sec: sec, tier: "watch" });
     });
     parts.learning.forEach(function (sec) {
-      rail.push({ sec: sec, tier: "learning" });
+      monitor.push({ sec: sec, tier: "learning" });
     });
-    rail = rail.slice(0, 3);
-    var railIds = {};
-    rail.forEach(function (r) {
-      if (r.sec && r.sec.id) railIds[r.sec.id] = true;
+    monitor = monitor.slice(0, 3);
+    var monitorIds = {};
+    monitor.forEach(function (r) {
+      if (r.sec && r.sec.id) monitorIds[r.sec.id] = true;
     });
 
     html +=
       '<div class="cf2-home__board" data-cf2-tension="' +
       esc(tension) +
-      '" data-cf2-rail="' +
-      (rail.length ? "on" : "empty") +
+      '" data-cf2-monitor="' +
+      (monitor.length ? "on" : "empty") +
       '">';
 
-    html += '<div class="cf2-home__primary">';
+    /* ——— Primary reading path (one organism) ——— */
+    html += '<div class="cf2-home__scene">';
+    html += '<div class="cf2-home__lead">';
     html += primaryMark(weak, laneOf(p));
+    html += '<div class="cf2-home__lead-text">';
     html += '<p class="cf2-home__eyebrow">الأهم الآن</p>';
     html +=
       '<h2 class="cf2-home__title">' + esc(p.title_ar || "") + "</h2>";
+    html += "</div></div>";
+
     if (why) {
       html += '<p class="cf2-home__why">' + esc(why) + "</p>";
     }
+
     html +=
-      '<p class="cf2-home__confidence" data-cf2-density="' +
+      '<div class="cf2-home__evidence" data-cf2-density="' +
       esc(density) +
-      '">' +
-      esc(confidence) +
-      "</p>";
+      '">';
+    html +=
+      '<p class="cf2-home__confidence">' + esc(confidence) + "</p>";
     if (lang) {
       html +=
         '<div class="cf2-home__field" aria-hidden="true">' +
         lang.evidenceField(evCount, density) +
         "</div>";
     }
-    html += '<div class="cf2-home__stance">';
+    html += "</div>";
+
+    html +=
+      '<div class="cf2-home__stance cf2-terminus" data-cf2-tension="' +
+      esc(tension) +
+      '">';
     html +=
       '<p class="cf2-home__stance-label">' +
       esc(weak ? "الوضع الآن" : "ماذا تفعل؟") +
@@ -279,29 +294,28 @@
     html += "</div>";
     html += "</div>";
 
-    if (rail.length) {
+    /* ——— Monitoring: embedded continuation, not a sidebar column ——— */
+    if (monitor.length) {
       html +=
-        '<aside class="cf2-home__rail" aria-label="معرفة إضافية عن المتجر">';
+        '<aside class="cf2-home__monitor" aria-label="ما يراقبه CartFlow أيضًا">';
       html +=
-        '<p class="cf2-home__rail-label">ما يراقبه CartFlow أيضًا</p>';
-      rail.forEach(function (r) {
-        html += railItem(r.sec, r.tier);
+        '<p class="cf2-home__monitor-label">ما يراقبه CartFlow أيضًا</p>';
+      html += '<div class="cf2-home__monitor-row">';
+      monitor.forEach(function (r) {
+        html += monitorItem(r.sec, r.tier);
       });
-      html += "</aside>";
+      html += "</div></aside>";
     }
 
     html += "</div>";
 
-    /* Floor: only leftovers not already in the rail — rarely used */
-    function notInRail(sec) {
-      return !(sec && sec.id && railIds[sec.id]);
+    function notInMonitor(sec) {
+      return !(sec && sec.id && monitorIds[sec.id]);
     }
-    var floorKnow = parts.know.filter(notInRail);
-    var floorWatch = parts.watch.filter(notInRail);
-    var floorLearn = parts.learning.filter(notInRail);
-    var floor =
-      floorKnow.length || floorWatch.length || floorLearn.length;
-    if (floor) {
+    var floorKnow = parts.know.filter(notInMonitor);
+    var floorWatch = parts.watch.filter(notInMonitor);
+    var floorLearn = parts.learning.filter(notInMonitor);
+    if (floorKnow.length || floorWatch.length || floorLearn.length) {
       html +=
         '<div class="cf2-home__floor" aria-label="معرفة إضافية">';
       floorKnow.forEach(function (sec) {
