@@ -189,7 +189,7 @@
     var parts = split(sections);
     var lang = L();
     var html =
-      '<section class="cf2-home" data-cf2="home-final-v11">';
+      '<section class="cf2-home" data-cf2="home-density-v12">';
 
     if (!parts.primary) {
       html += "</section>";
