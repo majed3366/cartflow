@@ -293,19 +293,22 @@ def dashboard_test_widget(request: Request):
 @router.get("/dev/merchant-ui-v2")
 def merchant_ui_v2_review_entry(request: Request):
     """
-    Review entry for Merchant UI V2 vertical slice.
-    Sets cf_ui_v2 cookie and redirects into real /dashboard (does not replace V1 globally).
+    Force Merchant UI V2 cookie and open production Home.
+    V2 is already the default; this clears a prior V1 rollback cookie.
     """
     from services.merchant_ui_v2.flag_v1 import apply_merchant_ui_v2_cookie  # noqa: PLC0415
 
-    resp = RedirectResponse(url="/dashboard?cf_ui=v2#home", status_code=302)
+    resp = RedirectResponse(url="/dashboard#home", status_code=302)
     apply_merchant_ui_v2_cookie(resp, True)
     return resp
 
 
 @router.get("/dev/merchant-ui-v1")
 def merchant_ui_v1_review_entry(request: Request):
-    """Return review browser to legacy V1 dashboard presentation."""
+    """
+    Rollback entry: persist V1 UI cookie and open legacy dashboard presentation.
+    Also available via ?cf_ui=v1 or CARTFLOW_MERCHANT_UI_V2=0.
+    """
     from services.merchant_ui_v2.flag_v1 import apply_merchant_ui_v2_cookie  # noqa: PLC0415
 
     resp = RedirectResponse(url="/dashboard?cf_ui=v1#home", status_code=302)

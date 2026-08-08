@@ -4,7 +4,7 @@
 **Freeze date (UTC):** 2026-08-08  
 **Approved pack:** Home Desktop Stage Closure V1  
 **Deploy baseline:** `71cf4e3`  
-**Living Store:** https://smartreplyai.net/dashboard?cf_ui=v2#home
+**Living Store:** https://smartreplyai.net/dashboard#home (V2 default production Home)
 
 ## What is frozen
 

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Merchant UI V2 feature gate — clean-slate vertical slice (frame + Home + Workspace)."""
+"""Merchant UI V2 feature gate — production Home baseline with V1 rollback."""
 from __future__ import annotations
 
 import os
@@ -8,6 +8,9 @@ from typing import Any, Mapping, MutableMapping, Optional
 FLAG_MERCHANT_UI_V2 = "CARTFLOW_MERCHANT_UI_V2"
 COOKIE_MERCHANT_UI_V2 = "cf_ui_v2"
 QUERY_MERCHANT_UI_V2 = "cf_ui"
+
+# Production default after Home Desktop Stage Closure V1 approval (71cf4e3).
+DEFAULT_MERCHANT_UI_V2 = True
 
 
 def _truthy(raw: str) -> Optional[bool]:
@@ -20,9 +23,15 @@ def _truthy(raw: str) -> Optional[bool]:
 
 
 def merchant_ui_v2_env_enabled() -> bool:
-    """Explicit env only — default OFF so V1 remains production until approval."""
+    """
+    Env override for the production default.
+
+    - unset → DEFAULT_MERCHANT_UI_V2 (ON)
+    - CARTFLOW_MERCHANT_UI_V2=0|false|v1 → force V1 rollback
+    - CARTFLOW_MERCHANT_UI_V2=1|true|v2 → force V2
+    """
     decided = _truthy(os.environ.get(FLAG_MERCHANT_UI_V2) or "")
-    return bool(decided) if decided is not None else False
+    return bool(decided) if decided is not None else DEFAULT_MERCHANT_UI_V2
 
 
 def merchant_ui_v2_requested(
@@ -31,12 +40,12 @@ def merchant_ui_v2_requested(
     cookies: Optional[Mapping[str, Any]] = None,
 ) -> bool:
     """
-    Review/compare gate inside real /dashboard.
+    Production Home V2 is the default surface.
 
-    Priority:
-    1. ?cf_ui=v2|v1 (explicit)
-    2. cookie cf_ui_v2=1|0
-    3. env CARTFLOW_MERCHANT_UI_V2
+    Priority (highest first):
+    1. ?cf_ui=v2|v1 (explicit compare / rollback)
+    2. cookie cf_ui_v2=1|0 (persisted review choice)
+    3. env CARTFLOW_MERCHANT_UI_V2 (or DEFAULT_MERCHANT_UI_V2 when unset)
     """
     q = query or {}
     raw_q = ""
@@ -67,7 +76,7 @@ def apply_merchant_ui_v2_cookie(
     *,
     max_age: int = 60 * 60 * 24 * 14,
 ) -> Any:
-    """Attach review cookie so subsequent /dashboard loads keep V2 without query."""
+    """Persist explicit ?cf_ui= choice across subsequent /dashboard loads."""
     response.set_cookie(
         key=COOKIE_MERCHANT_UI_V2,
         value=merchant_ui_v2_cookie_value(enabled),
@@ -91,6 +100,13 @@ def merchant_ui_v2_flag_state(
         "enabled": merchant_ui_v2_requested(query=query, cookies=cookies),
         "env_enabled": merchant_ui_v2_env_enabled(),
         "env_raw": (os.environ.get(FLAG_MERCHANT_UI_V2) or "").strip() or None,
-        "default": False,
+        "default": DEFAULT_MERCHANT_UI_V2,
+        "rollback": {
+            "query": "?cf_ui=v1",
+            "cookie": f"{COOKIE_MERCHANT_UI_V2}=0",
+            "env": f"{FLAG_MERCHANT_UI_V2}=0",
+            "dev_route": "/dev/merchant-ui-v1",
+        },
         "surfaces": ["frame", "home", "workspace"],
+        "home_visual_baseline": "71cf4e3",
     }

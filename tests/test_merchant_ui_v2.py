@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from main import app
 from services.merchant_ui_v2.flag_v1 import (
+    DEFAULT_MERCHANT_UI_V2,
     FLAG_MERCHANT_UI_V2,
     merchant_ui_v2_requested,
 )
@@ -19,17 +20,25 @@ V1_TEMPLATE = (ROOT / "templates" / "merchant_app.html").read_text(encoding="utf
 
 
 class MerchantUiV2FlagTests(unittest.TestCase):
-    def test_default_off(self) -> None:
-        self.assertFalse(merchant_ui_v2_requested(query={}, cookies={}))
+    def test_default_on_production_baseline(self) -> None:
+        self.assertTrue(DEFAULT_MERCHANT_UI_V2)
+        self.assertTrue(merchant_ui_v2_requested(query={}, cookies={}))
 
     def test_query_v2(self) -> None:
         self.assertTrue(merchant_ui_v2_requested(query={"cf_ui": "v2"}, cookies={}))
+
+    def test_query_v1_rollback_overrides_default(self) -> None:
+        self.assertFalse(merchant_ui_v2_requested(query={"cf_ui": "v1"}, cookies={}))
 
     def test_query_v1_overrides_cookie(self) -> None:
         self.assertFalse(
             merchant_ui_v2_requested(query={"cf_ui": "v1"}, cookies={"cf_ui_v2": "1"})
         )
 
+    def test_cookie_v1_rollback(self) -> None:
+        self.assertFalse(
+            merchant_ui_v2_requested(query={}, cookies={"cf_ui_v2": "0"})
+        )
 
 class MerchantUiV2TemplateTests(unittest.TestCase):
     def test_v2_namespace_and_no_legacy_css(self) -> None:
@@ -69,8 +78,15 @@ class MerchantUiV2RouteTests(unittest.TestCase):
         self.assertIn("merchant_ui_v2_frame.css", html)
         self.assertNotIn("merchant_frame_v1.css", html)
 
-    def test_dashboard_default_serves_v1(self) -> None:
+    def test_dashboard_default_serves_v2_production_baseline(self) -> None:
         html = TestClient(app).get("/dashboard").text
+        self.assertIn('data-cf-ui="v2"', html)
+        self.assertIn("merchant_ui_v2_frame.css", html)
+        self.assertIn("merchant_ui_v2_home.css", html)
+        self.assertNotIn("merchant_frame_v1.css", html)
+
+    def test_dashboard_v1_query_rollback(self) -> None:
+        html = TestClient(app).get("/dashboard?cf_ui=v1").text
         self.assertNotIn('data-cf-ui="v2"', html)
         self.assertIn("merchant_frame_v1.css", html)
 
