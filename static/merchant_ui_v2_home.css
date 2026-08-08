@@ -42,11 +42,12 @@ body[data-cf-ui="v2"] .cf2-home__board[data-cf2-tension="resolved"] {
 }
 
 body[data-cf-ui="v2"] .cf2-home__board[data-cf2-rail="empty"] .cf2-home__primary {
-  max-width: 52rem;
+  max-width: none;
+  flex: 1 1 auto;
 }
 
 body[data-cf-ui="v2"] .cf2-home__primary {
-  flex: 1 1 36rem;
+  flex: 0 1 46rem;
   min-width: 0;
   max-width: 46rem;
   padding: 28px 28px 32px 24px;
@@ -55,14 +56,19 @@ body[data-cf-ui="v2"] .cf2-home__primary {
 }
 
 body[data-cf-ui="v2"] .cf2-home__rail {
-  flex: 0 0 19.5rem;
-  width: 19.5rem;
-  padding: 26px 22px 28px 20px;
+  flex: 1 1 20rem;
+  min-width: 18rem;
+  max-width: none;
+  padding: 26px 28px 28px 24px;
   background: rgba(8, 32, 72, 0.04);
   border-inline-start: 1px solid rgba(8, 32, 72, 0.1);
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+
+body[data-cf-ui="v2"] .cf2-home__rail-item {
+  max-width: 26rem;
 }
 
 body[data-cf-ui="v2"] .cf2-home__mark {
