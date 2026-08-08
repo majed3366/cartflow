@@ -1,0 +1,69 @@
+{
+  "deploy": {
+    "ok": true,
+    "sha": "425afabf9a33a2807ce93892235ade72d37f0fa1",
+    "status": 200
+  },
+  "assets": {
+    "/static/merchant_frame_v1.css": 200,
+    "/static/merchant_ds_v1.css": 200,
+    "/static/merchant_grammar_v1.css": 200,
+    "/static/merchant_experience_home_v1.css": 200,
+    "/static/merchant_experience_workspace_v1.css": 200,
+    "/static/home_executive_summary_v1.js": 200,
+    "/static/cart_workspace_decision_card_v1.js": 200,
+    "/static/cart_workspace_grid_v1.js": 200
+  },
+  "desktop_home": {
+    "frame": "v1",
+    "merchant": "1",
+    "page": "home",
+    "cxHome": true,
+    "cxInsightPrimary": true,
+    "cxWs": false,
+    "cxDecision": false,
+    "railPrimaryVisible": true,
+    "linksExperienceHome": true,
+    "linksExperienceWs": true,
+    "legacyLinked": []
+  },
+  "desktop_workspace": {
+    "frame": "v1",
+    "merchant": "1",
+    "page": "workspace",
+    "cxHome": true,
+    "cxInsightPrimary": true,
+    "cxWs": true,
+    "cxDecision": true,
+    "railPrimaryVisible": true,
+    "linksExperienceHome": true,
+    "linksExperienceWs": true,
+    "legacyLinked": []
+  },
+  "mobile_home": {
+    "frame": "v1",
+    "merchant": "1",
+    "page": "home",
+    "cxHome": true,
+    "cxInsightPrimary": true,
+    "cxWs": false,
+    "cxDecision": false,
+    "railPrimaryVisible": true,
+    "linksExperienceHome": true,
+    "linksExperienceWs": true,
+    "legacyLinked": []
+  },
+  "mobile_workspace": {
+    "frame": "v1",
+    "merchant": "1",
+    "page": "workspace",
+    "cxHome": true,
+    "cxInsightPrimary": true,
+    "cxWs": true,
+    "cxDecision": true,
+    "railPrimaryVisible": true,
+    "linksExperienceHome": true,
+    "linksExperienceWs": true,
+    "legacyLinked": []
+  }
+}

@@ -80,7 +80,14 @@ body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__core {
 body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__decision {
   position: relative;
   min-width: 0;
-  padding: 8px 0 8px 4px;
+  padding: 12px 8px 16px 4px;
+  background: linear-gradient(
+    105deg,
+    rgba(8, 32, 72, 0.035) 0%,
+    rgba(8, 32, 72, 0.01) 42%,
+    transparent 78%
+  );
+  border-radius: 0 12px 12px 0;
 }
 
 body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__decision::before {
@@ -109,10 +116,34 @@ body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__evidence {
 body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__secondary {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 28px 40px;
-  margin-top: 8px;
-  padding-top: 8px;
+  gap: 32px 48px;
+  margin-top: 20px;
+  margin-bottom: 8px;
+  padding-top: 24px;
+  border-block-start: 1px solid rgba(8, 32, 72, 0.07);
   opacity: 0.86;
+  clear: both;
+  position: relative;
+  z-index: 1;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__condition .cx-insight__action,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-insight--quiet .cx-insight__action {
+  margin-top: 12px;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cx-home__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  isolation: isolate;
+}
+
+/* Keep setup / alerts below the executive field — no collision */
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] #page-home .cx-home-root {
+  margin-bottom: 28px;
+  position: relative;
+  z-index: 2;
 }
 
 /* Insight atoms — open surfaces, not card chrome */
