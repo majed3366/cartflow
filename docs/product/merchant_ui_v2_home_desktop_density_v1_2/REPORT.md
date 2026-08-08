@@ -1,7 +1,7 @@
 # Merchant UI V2 — Home Desktop Density & Executive Balance V1.2
 
 **Scope:** Home only  
-**Deploy:** pending  
+**Deploy:** `2b6009b`  
 **Living Store:** https://smartreplyai.net/dashboard?cf_ui=v2#home
 
 ## Confirmations
@@ -10,10 +10,10 @@
 - No fake data / invented metrics
 - No new merchant claims (same HES truths)
 - No Workspace / Products / Carts / Communication / Settings changes
-- No mobile regression (stacked, no overflow)
-- Primary/secondary balance corrected (~65/35)
-- Empty visual area reduced (content-height board, no auto spacer)
-- Real Living Store validated
+- No mobile regression (stacked, noOverflow: true)
+- Primary/secondary balance corrected (desktop primaryShare ≈ 67%)
+- Empty visual area reduced (boardHeight ≈ 410px; deadBelowStance ≈ 19px)
+- Real Living Store validated (`X-CartFlow-Git-Sha` `2b6009b`)
 
 ## Composition changes vs V1.1
 

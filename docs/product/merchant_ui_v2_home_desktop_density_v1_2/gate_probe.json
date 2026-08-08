@@ -1,0 +1,37 @@
+{
+  "deploy": {
+    "ok": true,
+    "sha": "2b6009bfaee34d8ce424f21839d3b5d201b7c93b",
+    "status": 200
+  },
+  "desktop": {
+    "ui": "v2",
+    "version": "home-density-v12",
+    "board": true,
+    "rail": true,
+    "primaryShare": 0.669,
+    "boardHeight": 410,
+    "deadBelowStance": 19,
+    "railTitles": [
+      "حالة المتجر",
+      "السلال"
+    ],
+    "cache": true,
+    "noOverflow": true
+  },
+  "mobile": {
+    "ui": "v2",
+    "version": "home-density-v12",
+    "board": true,
+    "rail": true,
+    "primaryShare": 1,
+    "boardHeight": 631,
+    "deadBelowStance": 224,
+    "railTitles": [
+      "حالة المتجر",
+      "السلال"
+    ],
+    "cache": true,
+    "noOverflow": true
+  }
+}
