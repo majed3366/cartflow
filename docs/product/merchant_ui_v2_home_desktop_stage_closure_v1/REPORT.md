@@ -40,4 +40,9 @@
 
 ## STOP
 
-Await visual approval. Do not begin Workspace.
+**APPROVED.** Home visual composition is **FROZEN**.
+
+See [HOME_VISUAL_COMPOSITION_FREEZE.md](HOME_VISUAL_COMPOSITION_FREEZE.md).
+
+Language refinement remains separate. Next phase when tasked: Decision Workspace Final Product Composition V1.
+
