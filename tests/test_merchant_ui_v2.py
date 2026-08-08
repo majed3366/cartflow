@@ -105,6 +105,8 @@ class MerchantUiV2RouteTests(unittest.TestCase):
         self.assertIn("cf2-home", home_js)
         self.assertIn("الأهم الآن", home_js)
         self.assertIn("الأدلة ما زالت محدودة", home_js)
+        self.assertIn("isDuplicateTruth", home_js)
+        self.assertIn("ما يراقبه CartFlow أيضًا", home_js)
         self.assertIn("cf2-dobj", ws_js)
         self.assertIn("living-route", ws_js)
 

@@ -1,6 +1,7 @@
 /**
- * CartFlow Merchant UI V2 — Final Home product composition.
+ * CartFlow Merchant UI V2 — Final Home product composition V1.1
  * Merchant meaning first. Frozen visual grammar second (sparing).
+ * Desktop: one executive composition — no duplicated truths.
  */
 (function (global) {
   "use strict";
@@ -29,6 +30,31 @@
     );
   }
 
+  function truthText(sec) {
+    return String(
+      (sec && (sec.diagnosis_ar || sec.summary_ar || sec.recommendation_ar)) || ""
+    )
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  /** Same commercial diagnosis in different clothing — drop it. */
+  function isDuplicateTruth(primaryText, secText) {
+    var a = String(primaryText || "")
+      .replace(/\s+/g, " ")
+      .trim();
+    var b = String(secText || "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!a || !b) return false;
+    if (a === b) return true;
+    var short = a.length <= b.length ? a : b;
+    var long = a.length <= b.length ? b : a;
+    if (short.length < 28) return false;
+    var needle = short.slice(0, Math.min(56, short.length));
+    return long.indexOf(needle) !== -1;
+  }
+
   function split(sections) {
     var list = (sections || []).slice().sort(function (a, b) {
       return (
@@ -45,15 +71,16 @@
       }
     }
     if (!primary && list.length) primary = list[0];
+    var primaryTruth = truthText(primary);
     var rest = list.filter(function (s) {
-      return s && s !== primary;
+      return s && s !== primary && !isDuplicateTruth(primaryTruth, truthText(s));
     });
     var know = [];
     var watch = [];
     var learning = [];
     rest.forEach(function (sec) {
       var lane = laneOf(sec);
-      var diag = String(sec.diagnosis_ar || sec.summary_ar || "");
+      var diag = truthText(sec);
       var status = String(sec.status_ar || "");
       if (lane === "condition" || /يتطلب|متابعة|عاجل/i.test(status + diag)) {
         know.push(sec);
@@ -91,7 +118,6 @@
     return "راجع التفاصيل عندما تكون جاهزًا لاتخاذ قرار.";
   }
 
-  /** One dominant object only — no gallery. Label hidden (grammar silent). */
   function primaryMark(weak, lane) {
     if (!L()) return "";
     var kind = "attention";
@@ -105,8 +131,34 @@
     );
   }
 
-  function secondaryItem(sec, tier) {
-    var diagnosis = String(sec.diagnosis_ar || sec.summary_ar || "").trim();
+  function tierLabel(tier) {
+    if (tier === "know") return "اعرف الآن";
+    if (tier === "watch") return "راقب";
+    return "ما زال يتعلّم";
+  }
+
+  function railItem(sec, tier) {
+    var diagnosis = truthText(sec);
+    var html =
+      '<article class="cf2-home__rail-item" data-hes-section="' +
+      esc(sec.id || "") +
+      '" data-cf2-tier="' +
+      esc(tier) +
+      '">';
+    html +=
+      '<p class="cf2-home__tier">' + esc(tierLabel(tier)) + "</p>";
+    html +=
+      '<h3 class="cf2-home__rail-title">' + esc(sec.title_ar || "") + "</h3>";
+    if (diagnosis) {
+      html +=
+        '<p class="cf2-home__rail-body">' + esc(diagnosis) + "</p>";
+    }
+    html += "</article>";
+    return html;
+  }
+
+  function floorItem(sec, tier) {
+    var diagnosis = truthText(sec);
     var html =
       '<article class="cf2-home__item" data-hes-section="' +
       esc(sec.id || "") +
@@ -114,15 +166,7 @@
       esc(tier) +
       '">';
     html +=
-      '<p class="cf2-home__tier">' +
-      esc(
-        tier === "know"
-          ? "اعرف الآن"
-          : tier === "watch"
-            ? "راقب"
-            : "ما زال يتعلّم"
-      ) +
-      "</p>";
+      '<p class="cf2-home__tier">' + esc(tierLabel(tier)) + "</p>";
     html +=
       '<h3 class="cf2-home__item-title">' + esc(sec.title_ar || "") + "</h3>";
     if (diagnosis) {
@@ -144,127 +188,131 @@
     }
     var parts = split(sections);
     var lang = L();
-    var html = '<section class="cf2-home" data-cf2="home-final">';
+    var html =
+      '<section class="cf2-home" data-cf2="home-final-v11">';
 
-    if (parts.primary) {
-      var p = parts.primary;
-      var why = String(p.diagnosis_ar || p.summary_ar || "").trim();
-      var meaning = String(p.recommendation_ar || "").trim();
-      var href = String(p.view_details_href || "").trim();
-      var weak = isWeakText(why + meaning) || !!p.empty;
-      var tension = weak ? "open" : "resolved";
-      var evCount = why ? 2 : 1;
-      if (parts.learning.length) evCount += 1;
-      if (parts.know.length) evCount += 1;
-      var density = weak
-        ? "insufficient"
-        : lang
-          ? lang.densityFromCount(evCount)
-          : "gathering";
-      var confidence = confidenceCopy(weak, density);
-      var action = actionCopy(weak, meaning);
+    if (!parts.primary) {
+      html += "</section>";
+      return html;
+    }
 
+    var p = parts.primary;
+    var why = truthText(p);
+    var meaning = String(p.recommendation_ar || "").trim();
+    var href = String(p.view_details_href || "").trim();
+    var weak = isWeakText(why + meaning) || !!p.empty;
+    var tension = weak ? "open" : "resolved";
+    var distinctCount = parts.know.length + parts.watch.length + parts.learning.length;
+    var evCount = why ? 2 : 1;
+    if (distinctCount) evCount += 1;
+    var density = weak
+      ? "insufficient"
+      : lang
+        ? lang.densityFromCount(evCount)
+        : "gathering";
+    var confidence = confidenceCopy(weak, density);
+    var action = actionCopy(weak, meaning);
+
+    /* Rail: distinct truths only — prefer operational KNOW, then WATCH, then LEARNING */
+    var rail = [];
+    parts.know.forEach(function (sec) {
+      rail.push({ sec: sec, tier: "know" });
+    });
+    parts.watch.forEach(function (sec) {
+      rail.push({ sec: sec, tier: "watch" });
+    });
+    parts.learning.forEach(function (sec) {
+      rail.push({ sec: sec, tier: "learning" });
+    });
+    rail = rail.slice(0, 3);
+    var railIds = {};
+    rail.forEach(function (r) {
+      if (r.sec && r.sec.id) railIds[r.sec.id] = true;
+    });
+
+    html +=
+      '<div class="cf2-home__board" data-cf2-tension="' +
+      esc(tension) +
+      '" data-cf2-rail="' +
+      (rail.length ? "on" : "empty") +
+      '">';
+
+    html += '<div class="cf2-home__primary">';
+    html += primaryMark(weak, laneOf(p));
+    html += '<p class="cf2-home__eyebrow">الأهم الآن</p>';
+    html +=
+      '<h2 class="cf2-home__title">' + esc(p.title_ar || "") + "</h2>";
+    if (why) {
+      html += '<p class="cf2-home__why">' + esc(why) + "</p>";
+    }
+    html +=
+      '<p class="cf2-home__confidence" data-cf2-density="' +
+      esc(density) +
+      '">' +
+      esc(confidence) +
+      "</p>";
+    if (lang) {
       html +=
-        '<div class="cf2-home__primary" data-cf2-tension="' +
-        esc(tension) +
-        '">';
-      html += '<div class="cf2-home__primary-main">';
-      html += primaryMark(weak, laneOf(p));
+        '<div class="cf2-home__field" aria-hidden="true">' +
+        lang.evidenceField(evCount, density) +
+        "</div>";
+    }
+    html += '<div class="cf2-home__stance">';
+    html +=
+      '<p class="cf2-home__stance-label">' +
+      esc(weak ? "الوضع الآن" : "ماذا تفعل؟") +
+      "</p>";
+    html +=
+      '<p class="cf2-home__stance-body">' + esc(action) + "</p>";
+    if (href) {
+      var btnClass = weak ? "cf2-btn cf2-btn--quiet" : "cf2-btn";
+      var btnLabel = weak ? "عرض الأساس" : "افتح القرار";
       html +=
-        '<p class="cf2-home__eyebrow">الأهم الآن</p>';
-      html +=
-        '<h2 class="cf2-home__title">' + esc(p.title_ar || "") + "</h2>";
-      if (why) {
-        html += '<p class="cf2-home__why">' + esc(why) + "</p>";
-      }
-      html +=
-        '<p class="cf2-home__confidence" data-cf2-density="' +
-        esc(density) +
+        '<div class="cf2-home__action"><a class="' +
+        btnClass +
+        '" href="' +
+        esc(href) +
         '">' +
-        esc(confidence) +
-        "</p>";
-      if (lang) {
-        html +=
-          '<div class="cf2-home__field" aria-hidden="true">' +
-          lang.evidenceField(evCount, density) +
-          "</div>";
-      }
-      html +=
-        '<div class="cf2-home__stance"><p class="cf2-home__stance-label">ماذا تفعل؟</p><p class="cf2-home__stance-body">' +
-        esc(action) +
-        "</p></div>";
-      if (href) {
-        html +=
-          '<div class="cf2-home__action cf2-terminus"><a class="cf2-btn" href="' +
-          esc(href) +
-          '">' +
-          esc(weak ? "راجع التفاصيل" : "افتح القرار") +
-          "</a></div>";
-      }
-      html += "</div>";
+        esc(btnLabel) +
+        "</a></div>";
+    }
+    html += "</div>";
+    html += "</div>";
 
-      /* Supporting facts — merchant text only; never a second primary */
-      var support = parts.know.concat(parts.learning).slice(0, 2);
-      var supportIds = {};
-      if (support.length) {
-        html +=
-          '<aside class="cf2-home__support" aria-label="ما يدعم هذا الحكم">';
-        html += '<p class="cf2-home__support-label">لماذا يقول CartFlow ذلك؟</p>';
-        support.forEach(function (sec) {
-          if (sec && sec.id) supportIds[sec.id] = true;
-          var d = String(sec.diagnosis_ar || sec.summary_ar || "").trim();
-          if (!d && !sec.title_ar) return;
-          html += '<div class="cf2-home__support-item">';
-          if (sec.title_ar) {
-            html +=
-              '<p class="cf2-home__support-title">' +
-              esc(sec.title_ar) +
-              "</p>";
-          }
-          if (d) {
-            html +=
-              '<p class="cf2-home__support-body">' + esc(d) + "</p>";
-          }
-          html += "</div>";
-        });
-        html += "</aside>";
-      }
-      html += "</div>";
-    } else {
-      var supportIds = {};
+    if (rail.length) {
+      html +=
+        '<aside class="cf2-home__rail" aria-label="معرفة إضافية عن المتجر">';
+      html +=
+        '<p class="cf2-home__rail-label">ما يراقبه CartFlow أيضًا</p>';
+      rail.forEach(function (r) {
+        html += railItem(r.sec, r.tier);
+      });
+      html += "</aside>";
     }
 
-    function notInSupport(sec) {
-      return !(sec && sec.id && supportIds[sec.id]);
+    html += "</div>";
+
+    /* Floor: only leftovers not already in the rail — rarely used */
+    function notInRail(sec) {
+      return !(sec && sec.id && railIds[sec.id]);
     }
-    var knowRest = parts.know.filter(notInSupport);
-    var watchRest = parts.watch.filter(notInSupport);
-    var learnRest = parts.learning.filter(notInSupport);
-    var secondary = knowRest.length || watchRest.length || learnRest.length;
-    if (secondary) {
+    var floorKnow = parts.know.filter(notInRail);
+    var floorWatch = parts.watch.filter(notInRail);
+    var floorLearn = parts.learning.filter(notInRail);
+    var floor =
+      floorKnow.length || floorWatch.length || floorLearn.length;
+    if (floor) {
       html +=
-        '<div class="cf2-home__secondary" aria-label="معرفة إضافية">';
-      if (knowRest.length) {
-        html += '<div class="cf2-home__band" data-cf2-band="know">';
-        knowRest.forEach(function (sec) {
-          html += secondaryItem(sec, "know");
-        });
-        html += "</div>";
-      }
-      if (watchRest.length) {
-        html += '<div class="cf2-home__band" data-cf2-band="watch">';
-        watchRest.forEach(function (sec) {
-          html += secondaryItem(sec, "watch");
-        });
-        html += "</div>";
-      }
-      if (learnRest.length) {
-        html += '<div class="cf2-home__band" data-cf2-band="learning">';
-        learnRest.forEach(function (sec) {
-          html += secondaryItem(sec, "learning");
-        });
-        html += "</div>";
-      }
+        '<div class="cf2-home__floor" aria-label="معرفة إضافية">';
+      floorKnow.forEach(function (sec) {
+        html += floorItem(sec, "know");
+      });
+      floorWatch.forEach(function (sec) {
+        html += floorItem(sec, "watch");
+      });
+      floorLearn.forEach(function (sec) {
+        html += floorItem(sec, "learning");
+      });
       html += "</div>";
     }
 
