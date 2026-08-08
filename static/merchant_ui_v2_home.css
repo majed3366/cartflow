@@ -1,33 +1,34 @@
 /**
- * CartFlow Merchant UI V2 — Home executive composition V1.3
- * One scene organism. No 67/33 column split. Grammar frozen.
+ * CartFlow Merchant UI V2 — Home desktop stage closure V1
+ * Preserves V1.3 board organism. Closes accidental stage void at 1440.
  */
 
 body[data-cf-ui="v2"] .cf2-home {
   width: 100%;
-  max-width: 48rem;
+  max-width: none;
 }
 
-/* Single executive board — sized by reading path, not stage fill */
+/* Executive board — owns the authored stage surface */
 body[data-cf-ui="v2"] .cf2-home__board {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   min-height: 0;
+  width: 100%;
   background:
     radial-gradient(
-      42% 36% at 100% 0%,
-      rgba(24, 176, 168, 0.09) 0%,
-      transparent 55%
+      36% 40% at 100% 0%,
+      rgba(24, 176, 168, 0.1) 0%,
+      transparent 58%
     ),
     linear-gradient(
       168deg,
-      rgba(255, 255, 255, 0.92) 0%,
-      rgba(243, 246, 249, 0.55) 100%
+      rgba(255, 255, 255, 0.94) 0%,
+      rgba(243, 246, 249, 0.62) 100%
     );
-  border: 1px solid rgba(8, 32, 72, 0.1);
+  border: 1px solid rgba(8, 32, 72, 0.11);
   border-radius: 0 14px 14px 0;
-  border-inline-start: 5px solid rgba(8, 32, 72, 0.24);
+  border-inline-start: 5px solid rgba(8, 32, 72, 0.26);
   overflow: hidden;
 }
 
@@ -50,18 +51,23 @@ body[data-cf-ui="v2"] .cf2-home__lead {
   display: flex;
   flex-direction: row;
   align-items: flex-start;
-  gap: 12px;
+  gap: 10px;
   margin: 0 0 12px;
+  max-width: 42rem;
 }
 
 body[data-cf-ui="v2"] .cf2-home__mark {
   flex: 0 0 auto;
-  margin: 2px 0 0;
-  opacity: 0.88;
+  margin: 4px 0 0;
+  opacity: 0.9;
+  /* Structural attach to decision lead — not a floating ornament */
+  padding-inline-end: 2px;
+  border-inline-end: 2px solid rgba(24, 176, 168, 0.35);
 }
 
 body[data-cf-ui="v2"] .cf2-home__mark[data-cf2-state="open"] {
-  opacity: 0.62;
+  opacity: 0.68;
+  border-inline-end-color: rgba(115, 133, 158, 0.45);
 }
 
 body[data-cf-ui="v2"] .cf2-home__mark .cf2-co-row {
@@ -110,6 +116,7 @@ body[data-cf-ui="v2"] .cf2-home__why {
   font-weight: 600;
   line-height: 1.5;
   color: var(--cf2-ink);
+  max-width: 46rem;
 }
 
 /* Evidence qualifies understanding — same path, quieter */
@@ -146,7 +153,7 @@ body[data-cf-ui="v2"] .cf2-home__field .cf2-evfield {
 body[data-cf-ui="v2"] .cf2-home__stance.cf2-terminus {
   margin: 0 0 4px;
   padding: 12px 14px 14px 12px;
-  max-width: none;
+  max-width: 46rem;
   background: linear-gradient(
     105deg,
     rgba(8, 32, 72, 0.07) 0%,
@@ -278,24 +285,39 @@ body[data-cf-ui="v2"] .cf2-home__item-body {
 }
 
 @media (min-width: 1024px) {
+  /* Authored Home stage — board owns the surface; outer silence is deliberate */
+  body[data-cf-ui="v2"] .cf2-shell:has(.cf2-page[data-cf2-page="home"].is-active) .cf2-stage {
+    padding-block: 16px 32px;
+    padding-inline-start: 22px;
+    padding-inline-end: 40px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-shell:has(.cf2-page[data-cf2-page="home"].is-active) .cf2-stage__inner {
+    width: min(1240px, 100%);
+  }
+
   body[data-cf-ui="v2"] .cf2-page[data-cf2-page="home"] .cf2-page__question {
     margin: 2px 0 14px;
     font-size: clamp(1.1rem, 1.5vw, 1.28rem);
-    max-width: 36rem;
+    max-width: 40rem;
     color: var(--cf2-ink);
     font-weight: 800;
   }
 
-  body[data-cf-ui="v2"] .cf2-home {
+  body[data-cf-ui="v2"] .cf2-home__scene {
+    padding: 22px 28px 10px 24px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-home__monitor {
+    padding: 16px 28px 18px 24px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-home__evidence {
     max-width: 46rem;
   }
 }
 
 @media (max-width: 1023px) {
-  body[data-cf-ui="v2"] .cf2-home {
-    max-width: none;
-  }
-
   body[data-cf-ui="v2"] .cf2-home__board {
     border-radius: 0;
     border-inline-start: none;
@@ -310,11 +332,22 @@ body[data-cf-ui="v2"] .cf2-home__item-body {
   body[data-cf-ui="v2"] .cf2-home__lead {
     gap: 10px;
     margin-bottom: 10px;
+    max-width: none;
+  }
+
+  body[data-cf-ui="v2"] .cf2-home__mark {
+    border-inline-end: none;
+    padding-inline-end: 0;
   }
 
   body[data-cf-ui="v2"] .cf2-home__mark .cf2-co__glyph {
     width: 32px;
     height: 32px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-home__why,
+  body[data-cf-ui="v2"] .cf2-home__stance.cf2-terminus {
+    max-width: none;
   }
 
   body[data-cf-ui="v2"] .cf2-home__title {

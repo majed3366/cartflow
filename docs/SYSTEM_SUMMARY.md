@@ -568,6 +568,7 @@ Recovery: `recovery_delay`, `recovery_delay_unit`, `recovery_attempts`, `recover
 
 | Date (UTC) | Summary |
 |------------|---------|
+| 2026-08-08 | **Merchant UI V2 — Home Desktop Stage Closure V1:** Board owns authored Home stage (~1240px, RTL-biased margins). V1.3 internal scene preserved. Evidence: `docs/product/merchant_ui_v2_home_desktop_stage_closure_v1/`. **STOP — stage-closure visual approval.** |
 | 2026-08-08 | **Merchant UI V2 — Home Executive Composition V1.3 (deploy `41b74f9`):** One-scene reading path (understand→evidence→terminus stance→embedded monitoring strip). Removed 67/33 column feel. Language/truth locked. Evidence: `docs/product/merchant_ui_v2_home_executive_composition_v1_3/`. **STOP — Home V1.3 visual approval.** |
 | 2026-08-08 | **Merchant UI V2 — Home Desktop Density V1.2 (deploy `2b6009b`):** Content-height executive board, ~67/33 primary/secondary, tighter rhythm, no dead spacer below stance. Language locked. Evidence: `docs/product/merchant_ui_v2_home_desktop_density_v1_2/`. **STOP — Home V1.2 visual approval.** |
 | 2026-08-08 | **Merchant UI V2 — Final Home Composition V1.1 (deploy `e333cf6`):** Desktop executive board (primary + distinct filling rail), shipping-truth dedupe, quiet monitoring CTA. Language locked. Evidence: `docs/product/merchant_ui_v2_home_final_composition_v1_1/`. **STOP — final Home visual approval.** |

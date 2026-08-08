@@ -102,7 +102,7 @@ class MerchantUiV2RouteTests(unittest.TestCase):
         self.assertIn("ev-converging", lang_js)
         self.assertIn("decision-ready", lang_js)
         self.assertIn("mapWorkspaceObjects", lang_js)
-        self.assertIn("home-exec-v13", home_js)
+        self.assertIn("home-stage-closure-v1", home_js)
         self.assertIn("cf2-home__scene", home_js)
         self.assertIn("cf2-home__monitor", home_js)
         self.assertIn("الأهم الآن", home_js)
