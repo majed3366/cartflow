@@ -679,3 +679,214 @@ body[data-cf-ui="v2"] .cf2-co-row--rail {
   justify-content: flex-start;
   padding-block: 4px 12px;
 }
+
+/* ============================================================
+   Signature Amplification V1 — same vocabulary, stronger mass.
+   ============================================================ */
+body[data-cf-ui="v2"] {
+  --cf2-lang-edge: 8px;
+  --cf2-lang-gap: 0.75rem;
+}
+
+body[data-cf-ui="v2"] .cf2-co-row--rail .cf2-co__glyph,
+body[data-cf-ui="v2"] .cf2-dobj--primary > .cf2-co-row .cf2-co__glyph {
+  width: 92px;
+  height: 92px;
+}
+
+body[data-cf-ui="v2"] .cf2-co-row--rail .cf2-co__label,
+body[data-cf-ui="v2"] .cf2-dobj--primary > .cf2-co-row .cf2-co__label {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--cf2-ink);
+}
+
+body[data-cf-ui="v2"] .cf2-co-row--rail {
+  gap: 36px;
+}
+
+body[data-cf-ui="v2"] .cf2-co--attention .cf2-co__glyph::before,
+body[data-cf-ui="v2"] .cf2-co--decision .cf2-co__glyph::before {
+  border-width: 3.5px;
+}
+
+body[data-cf-ui="v2"] .cf2-co--attention .cf2-co__glyph::after {
+  border-inline-start-width: 8px;
+  border-inline-end-width: 8px;
+  border-block-end-width: 14px;
+}
+
+body[data-cf-ui="v2"] .cf2-co--evidence .cf2-co__glyph::before,
+body[data-cf-ui="v2"] .cf2-co--evidence .cf2-co__glyph::after,
+body[data-cf-ui="v2"] .cf2-co--convergence .cf2-co__glyph::before,
+body[data-cf-ui="v2"] .cf2-co--convergence .cf2-co__glyph::after {
+  height: 6px;
+}
+
+/* Evidence field — system footprint */
+body[data-cf-ui="v2"] .cf2-evfield {
+  gap: 12px;
+  min-width: 180px;
+  padding: 10px 0 16px;
+}
+
+body[data-cf-ui="v2"] .cf2-evfield__bar {
+  height: 10px;
+}
+
+body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="sparse"] {
+  gap: 18px;
+  min-height: 110px;
+}
+
+body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="sparse"] .cf2-evfield__bar {
+  height: 5px;
+}
+
+body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="gathering"] .cf2-evfield__bar,
+body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="mid"] .cf2-evfield__bar {
+  height: 9px;
+}
+
+body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="aligned"] .cf2-evfield__bar {
+  height: 11px;
+}
+
+body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="converging"] .cf2-evfield__bar,
+body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="dense"] .cf2-evfield__bar {
+  height: 12px;
+}
+
+/* Living route — thicker spine, stronger wash */
+body[data-cf-ui="v2"] .cf2-route {
+  padding-inline-start: 36px;
+}
+
+body[data-cf-ui="v2"] .cf2-route::before {
+  width: var(--cf2-lang-edge);
+  inset-block: 2px 4px;
+}
+
+body[data-cf-ui="v2"] .cf2-route::after {
+  width: 28px;
+  opacity: 1;
+  background: linear-gradient(
+    90deg,
+    rgba(24, 176, 168, 0.18),
+    rgba(8, 32, 72, 0.06) 55%,
+    transparent 90%
+  );
+}
+
+body[data-cf-ui="v2"] .cf2-route__node {
+  padding-bottom: 32px;
+}
+
+body[data-cf-ui="v2"] .cf2-route__node::before {
+  width: 12px;
+  height: 12px;
+  inset-inline-start: -42px;
+  box-shadow: 0 0 0 5px rgba(24, 176, 168, 0.18);
+}
+
+body[data-cf-ui="v2"] .cf2-route__node[data-cf2-node="decision"]::before {
+  width: 18px;
+  height: 18px;
+  inset-inline-start: -45px;
+  box-shadow: 0 0 0 7px rgba(8, 32, 72, 0.14);
+}
+
+body[data-cf-ui="v2"] .cf2-route__node[data-cf2-node="action"]::before {
+  width: 14px;
+  height: 14px;
+  inset-inline-start: -43px;
+}
+
+body[data-cf-ui="v2"] .cf2-route__node[data-cf2-node="understanding"] {
+  margin-inline-start: 14px;
+}
+
+body[data-cf-ui="v2"] .cf2-route__node[data-cf2-node="decision"] {
+  margin-inline-start: 22px;
+}
+
+/* Decision mass — structural anchor */
+body[data-cf-ui="v2"] .cf2-dmass {
+  padding: 26px 18px 28px 28px;
+}
+
+body[data-cf-ui="v2"] .cf2-dmass::before {
+  width: 7px;
+  inset-block: 2% 6%;
+}
+
+body[data-cf-ui="v2"] .cf2-dmass__text {
+  font-size: clamp(1.55rem, 2.8vw, 2.15rem);
+}
+
+body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="resolved"] {
+  padding: 30px 20px 34px 32px;
+}
+
+body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="resolved"] .cf2-dmass__text {
+  font-size: clamp(1.7rem, 3.1vw, 2.35rem);
+}
+
+body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="resolved"]::before {
+  width: 8px;
+}
+
+body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="open"] .cf2-dmass__text {
+  font-size: clamp(1.35rem, 2.3vw, 1.75rem);
+}
+
+/* Terminus — continuous with decision */
+body[data-cf-ui="v2"] .cf2-terminus,
+body[data-cf-ui="v2"] .cf2-beat--action .cf2-beat__action {
+  padding: 20px 20px 22px 26px;
+  border-inline-start-width: 5px;
+  margin-block-start: 0;
+}
+
+body[data-cf-ui="v2"] .cf2-mtrace {
+  margin: 20px 0 8px;
+  padding-top: 14px;
+}
+
+body[data-cf-ui="v2"] .cf2-mtrace__step {
+  font-size: 13px;
+}
+
+body[data-cf-ui="v2"] .cf2-mtrace__step.is-active {
+  font-size: 14px;
+  box-shadow: inset 0 -3px 0 var(--cf2-navy);
+}
+
+body[data-cf-ui="v2"] .cf2-mtrace__arrow {
+  width: 34px;
+  height: 4px;
+}
+
+@media (max-width: 1023px) {
+  body[data-cf-ui="v2"] .cf2-co-row--rail .cf2-co__glyph,
+  body[data-cf-ui="v2"] .cf2-dobj--primary > .cf2-co-row .cf2-co__glyph {
+    width: 64px;
+    height: 64px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-dmass__text {
+    font-size: 1.4rem;
+  }
+
+  body[data-cf-ui="v2"] .cf2-route {
+    padding-inline-start: 30px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-route__node::before {
+    inset-inline-start: -36px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-route__node[data-cf2-node="decision"]::before {
+    inset-inline-start: -39px;
+  }
+}
