@@ -1,0 +1,714 @@
+/**
+ * CartFlow Merchant App Frame V1
+ * Binding: Figma 25–34 (Constitution / DS / Signature / Assimilation).
+ * ONE shell geometry. Presentation only. Does not alter product truth.
+ *
+ * Layout law (DS-03): cards are not default brand language.
+ * Desktop: primary rail + wide content viewport.
+ * Mobile: compact app bar + drawer (no desktop nav squeezed into header).
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap");
+
+/* ——— DS-01 Foundations (frozen) ——— */
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] {
+  --cf-navy: #082048;
+  --cf-deep: #001838;
+  --cf-ink: #0a0f17;
+  --cf-panel: #121a29;
+  --cf-card: #1a2438;
+  --cf-teal: #18b0a8;
+  --cf-teal-dark: #10827c;
+  --cf-warm: #f2b861;
+  --cf-text: #ffffff;
+  --cf-text-mute: #b3c2d6;
+  --cf-text-soft: #73859e;
+  --cf-border: #384761;
+  --cf-danger: #db5959;
+  --cf-success: #4db88c;
+
+  /* Product canvas (light operational field — Living Store readability) */
+  --cf-canvas: #f4f7fa;
+  --cf-surface: #ffffff;
+  --cf-ink-on-canvas: #082048;
+  --cf-ink-soft-on-canvas: #3d4a63;
+  --cf-border-on-canvas: rgba(8, 32, 72, 0.1);
+
+  --cf-sp-4: 4px;
+  --cf-sp-8: 8px;
+  --cf-sp-12: 12px;
+  --cf-sp-16: 16px;
+  --cf-sp-20: 20px;
+  --cf-sp-24: 24px;
+  --cf-sp-32: 32px;
+  --cf-sp-40: 40px;
+  --cf-sp-48: 48px;
+
+  --cf-r-sm: 8px;
+  --cf-r-md: 12px;
+  --cf-r-lg: 16px;
+  --cf-r-xl: 20px;
+
+  --cf-e-1: 0 4px 18px rgba(8, 32, 72, 0.08);
+  --cf-e-2: 0 10px 28px rgba(8, 32, 72, 0.12);
+
+  --cf-dur-fast: 120ms;
+  --cf-dur-base: 200ms;
+  --cf-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --cf-rail-w: 208px;
+  --cf-topbar-h: 56px;
+  --cf-font: "Tajawal", "Segoe UI", Tahoma, sans-serif;
+
+  /* Legacy aliases — single system, no green dialect */
+  --cfvi-primary: var(--cf-teal);
+  --cfvi-primary-deep: var(--cf-teal-dark);
+  --cfvi-secondary: var(--cf-navy);
+  --cfvi-secondary-deep: var(--cf-deep);
+  --cfvi-bg: var(--cf-canvas);
+  --cfvi-surface: var(--cf-surface);
+  --cfvi-ink: var(--cf-ink-on-canvas);
+  --cfvi-ink-soft: var(--cf-ink-soft-on-canvas);
+  --cfvi-ink-whisper: var(--cf-text-soft);
+  --cfvi-border: var(--cf-border-on-canvas);
+  --cfvi-chrome-bg: linear-gradient(165deg, #0a2d5c 0%, #082048 52%, #001838 100%);
+  --cfvi-chrome-active: rgba(24, 176, 168, 0.28);
+  --cfvi-font-certified: var(--cf-font);
+  --green: var(--cf-navy);
+  --green-dark: var(--cf-deep);
+  --green-mid: var(--cf-teal-dark);
+  --green-soft: rgba(24, 176, 168, 0.12);
+  --bg: var(--cf-canvas);
+  --surface: var(--cf-surface);
+  --text: var(--cf-ink-on-canvas);
+  --muted: var(--cf-ink-soft-on-canvas);
+  --border: var(--cf-border-on-canvas);
+  --sidebar-width: var(--cf-rail-w);
+  --topbar-height: var(--cf-topbar-h);
+  --ma-sidebar-w: var(--cf-rail-w);
+  --ma-topbar-h: var(--cf-topbar-h);
+  --ma-content-max: none;
+
+  font-family: var(--cf-font);
+  color: var(--cf-ink-on-canvas);
+  background: var(--cf-canvas);
+  height: 100%;
+  overflow: hidden;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] * {
+  box-sizing: border-box;
+}
+
+/* ——— Kill legacy shell geometry (single system) ——— */
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-global-topbar,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-context-sidebar,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .sidebar,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-dashboard-frame,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-app-shell,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-content-root {
+  /* Reasserted below with frame rules — neutralize prior cascade max-widths */
+  max-width: none;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-content-head,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] #page-home,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] #page-workspace,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] #page-products,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] #page-carts,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] #page-communication,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .meif-surface {
+  max-width: none !important;
+  width: 100%;
+  margin-inline: 0;
+}
+
+/* Scrim */
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-scrim,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-scrim {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 340;
+  background: rgba(10, 15, 23, 0.48);
+  backdrop-filter: blur(4px);
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-scrim label,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-scrim label {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-sidebar-toggle {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ============================================================
+ * DESKTOP (≥1024): full-height rail + wide stage
+ * ============================================================ */
+@media (min-width: 1024px) {
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-rail,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-context-sidebar,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    inset-inline-end: 0;
+    inset-inline-start: auto;
+    width: var(--cf-rail-w);
+    height: 100vh;
+    height: 100dvh;
+    z-index: 300;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--cfvi-chrome-bg);
+    color: var(--cf-text-mute);
+    border-inline-start: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: none;
+    transform: none;
+    pointer-events: auto;
+    visibility: visible;
+    margin: 0;
+    right: 0;
+    left: auto;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-stage,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-dashboard-frame,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-app-shell {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    inset-inline-start: 0;
+    inset-inline-end: var(--cf-rail-w);
+    left: 0;
+    right: var(--cf-rail-w);
+    width: auto;
+    margin: 0;
+    overflow: hidden;
+    background: var(--cf-canvas);
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-global-topbar {
+    position: relative;
+    top: auto;
+    left: auto;
+    right: auto;
+    height: var(--cf-topbar-h);
+    flex: 0 0 var(--cf-topbar-h);
+    display: flex;
+    align-items: center;
+    gap: var(--cf-sp-12);
+    padding: 0 var(--cf-sp-24);
+    background: var(--cf-surface);
+    border-bottom: 1px solid var(--cf-border-on-canvas);
+    box-shadow: none;
+    color: var(--cf-ink-on-canvas);
+    z-index: 5;
+    grid-template-columns: none;
+  }
+
+  /* Desktop: brand lives in rail — hide duplicate topbar brand/menu/sections */
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar__menu,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-gtb-menu,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar__brand,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-gtb-logo,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar__sections,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-gtb-sections,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-gtb-center {
+    display: none !important;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar__title-slot {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar__section-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--cf-text-soft);
+    letter-spacing: 0.02em;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar__page-label {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--cf-ink-on-canvas);
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-rail__brand {
+    display: flex;
+    align-items: center;
+    gap: var(--cf-sp-12);
+    padding: var(--cf-sp-20) var(--cf-sp-16) var(--cf-sp-16);
+    text-decoration: none;
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-rail__account {
+    display: none;
+  }
+}
+
+/* ============================================================
+ * MOBILE / TABLET (≤1023): compact app bar + drawer
+ * ============================================================ */
+@media (max-width: 1023px) {
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-global-topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--cf-topbar-h);
+    z-index: 400;
+    display: flex;
+    align-items: center;
+    gap: var(--cf-sp-8);
+    padding: 0 var(--cf-sp-12);
+    background: var(--cfvi-chrome-bg);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 20px rgba(8, 32, 72, 0.22);
+    color: #fff;
+    grid-template-columns: none;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar__menu,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-gtb-menu {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--cf-r-sm);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    cursor: pointer;
+    flex-shrink: 0;
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar__brand,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-gtb-logo {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: #fff;
+    min-width: 0;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar__title-slot,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar__sections,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-gtb-sections,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-gtb-center,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-gtb-date,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar__utils .ma-gtb-util--text:not(.cf-topbar__account),
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] #ma-gtb-plans-btn,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar__utils a[href="/logout"] {
+    display: none !important;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar__utils {
+    margin-inline-start: auto;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar__account .ma-gtb-util-label {
+    display: none;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-stage,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-dashboard-frame,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-app-shell {
+    position: fixed;
+    top: var(--cf-topbar-h);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    margin: 0;
+    overflow: hidden;
+    background: var(--cf-canvas);
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-rail,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-context-sidebar,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    inset-inline-end: 0;
+    width: min(300px, 88vw);
+    height: 100vh;
+    height: 100dvh;
+    z-index: 360;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+    background: var(--cfvi-chrome-bg);
+    color: var(--cf-text-mute);
+    border-inline-start: 1px solid rgba(255, 255, 255, 0.1);
+    transform: translateX(100%);
+    transition: transform var(--cf-dur-base) var(--cf-ease);
+    pointer-events: none;
+    visibility: visible;
+    box-shadow: var(--cf-e-2);
+  }
+
+  html[dir="rtl"] body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-rail,
+  html[dir="rtl"] body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-context-sidebar {
+    transform: translateX(100%);
+  }
+
+  html[dir="ltr"] body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-rail,
+  html[dir="ltr"] body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-context-sidebar {
+    inset-inline-end: auto;
+    inset-inline-start: 0;
+    transform: translateX(-100%);
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] #ma-sidebar-toggle:checked ~ .cf-scrim,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] #ma-sidebar-toggle:checked ~ .ma-scrim {
+    display: block;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] #ma-sidebar-toggle:checked ~ .cf-rail,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] #ma-sidebar-toggle:checked ~ .ma-context-sidebar,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] #ma-sidebar-toggle:checked ~ .ma-global-topbar ~ .ma-context-sidebar,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] #ma-sidebar-toggle:checked ~ .cf-topbar ~ .cf-rail {
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-rail__brand {
+    display: flex;
+    align-items: center;
+    gap: var(--cf-sp-12);
+    padding: calc(var(--cf-topbar-h) + var(--cf-sp-12)) var(--cf-sp-16) var(--cf-sp-16);
+    text-decoration: none;
+    color: #fff;
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-rail__account {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cf-sp-8);
+    margin-top: auto;
+    padding: var(--cf-sp-16);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-rail__account a,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-rail__account button {
+    display: flex;
+    align-items: center;
+    gap: var(--cf-sp-8);
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: var(--cf-r-sm);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.92);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    text-align: start;
+  }
+}
+
+/* ——— Shared rail chrome ——— */
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-rail__mark,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-gtb-logo__mark {
+  display: block !important;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-rail__word,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-gtb-logo__word {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-rail__primary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 var(--cf-sp-12) var(--cf-sp-12);
+  flex-shrink: 0;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-rail__primary .ma-gtb-section,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-nav__section {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.78);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 12px;
+  border-radius: var(--cf-r-sm);
+  cursor: pointer;
+  text-align: start;
+  transition: background var(--cf-dur-fast) ease, color var(--cf-dur-fast) ease;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-rail__primary .ma-gtb-section:hover,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-nav__section:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-rail__primary .ma-gtb-section.active,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-nav__section.active {
+  background: var(--cfvi-chrome-active);
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-rail__divider {
+  height: 1px;
+  margin: 4px var(--cf-sp-16) var(--cf-sp-8);
+  background: rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-ctx-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 var(--cf-sp-12) var(--cf-sp-16);
+  overflow: auto;
+  min-height: 0;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-ctx-panel[hidden] {
+  display: none !important;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-ctx-label {
+  margin: var(--cf-sp-8) var(--cf-sp-4) var(--cf-sp-8);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-ctx-hint {
+  margin: var(--cf-sp-8) var(--cf-sp-4);
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.58) !important;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.82);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 9px 12px;
+  border-radius: var(--cf-r-sm);
+  cursor: pointer;
+  text-align: start;
+  transition: background var(--cf-dur-fast) ease;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .nav-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .nav-item.active {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-context-sidebar::after,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .sidebar::after {
+  display: none !important;
+}
+
+/* ——— Main viewport ——— */
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-main,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-content-root.main {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  max-width: none !important;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  background: var(--cf-canvas);
+  color: var(--cf-ink-on-canvas);
+  scrollbar-gutter: stable;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-page-header,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-content-head,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] #ma-page-hero-global {
+  padding: var(--cf-sp-20) var(--cf-sp-24) var(--cf-sp-8);
+  background: transparent;
+  max-width: none !important;
+  margin: 0;
+  width: 100%;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] #ma-page-hero-global.ma-vi-hero {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  padding: var(--cf-sp-20) var(--cf-sp-24) var(--cf-sp-8) !important;
+  margin: 0 !important;
+  max-width: none !important;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-vi-hero__glow {
+  display: none !important;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-content-title,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-page-hero__title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--cf-ink-on-canvas);
+  line-height: 1.3;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-page-hero__purpose,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-content-sub {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--cf-ink-soft-on-canvas);
+  font-weight: 500;
+  max-width: 46rem;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .page {
+  padding: 0 var(--cf-sp-24) var(--cf-sp-32);
+  width: 100%;
+  max-width: none;
+}
+
+@media (max-width: 1023px) {
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .page {
+    padding: 0 var(--cf-sp-16) var(--cf-sp-24);
+  }
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-page-header,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-content-head,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] #ma-page-hero-global,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] #ma-page-hero-global.ma-vi-hero {
+    padding: var(--cf-sp-16) var(--cf-sp-16) var(--cf-sp-8) !important;
+  }
+}
+
+/* Settings reading comfort — not a global content choke */
+@media (min-width: 1024px) {
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"][data-ma-page="settings"] #page-settings,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"][data-ma-page="whatsapp"] #page-whatsapp,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"][data-ma-page="whatsapp-connect"] #page-whatsapp-connect,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"][data-ma-page="widget"] #page-widget,
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"][data-ma-page="plans"] #page-plans {
+    max-width: 720px;
+  }
+}
+
+/* Topbar utils (desktop light chrome) */
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-topbar__utils,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-gtb-utils {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-inline-start: auto;
+  flex-shrink: 0;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-gtb-util {
+  border: 1px solid var(--cf-border-on-canvas);
+  background: var(--cf-surface);
+  color: var(--cf-ink-on-canvas);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 7px 10px;
+  border-radius: var(--cf-r-sm);
+  line-height: 1;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+@media (max-width: 1023px) {
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-gtb-util {
+    border-color: rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+  }
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-gtb-util:hover {
+  border-color: rgba(24, 176, 168, 0.45);
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-gtb-date {
+  font-size: 11px;
+  color: var(--cf-text-soft);
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  body[data-cf-merchant-app="1"][data-cf-frame="v1"] .ma-gtb-date {
+    display: none;
+  }
+}

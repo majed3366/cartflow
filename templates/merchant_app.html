@@ -10,24 +10,20 @@
 <script>window.CARTFLOW_DECISION_WORKSPACE_V2 = {{ 'true' if decision_workspace_v2 else 'false' }};</script>
 <script>window.CARTFLOW_MERCHANT_EXPERIENCE_INTEGRATION_V1 = {{ 'true' if merchant_experience_integration_v1 else 'false' }};</script>
 <script>window.CARTFLOW_DECISION_DUAL_STACK_V1 = {{ 'true' if decision_dual_stack_v1 else 'false' }};</script>
+{# Merchant Frontend Recomposition V1 — ONE visual system (Figma 25–34).
+   Legacy page content styles remain under merchant_app.css / feature CSS.
+   Shell chrome + DS components are authoritative; assimilation override stack removed. #}
 <link rel="stylesheet" href="/static/merchant_app.css">
 <link rel="stylesheet" href="/static/merchant_pe_v2.css?v={{ merchant_setup_render_build | default('unknown') }}">
 <link rel="stylesheet" href="/static/merchant_product_polish_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
-<link rel="stylesheet" href="/static/merchant_pds_compliance_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
-<link rel="stylesheet" href="/static/merchant_visual_identity_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
-<link rel="stylesheet" href="/static/merchant_typography_certification_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
-<link rel="stylesheet" href="/static/merchant_shell_identity_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
-<link rel="stylesheet" href="/static/platform_shell_visual_assimilation_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-psva1">
-<link rel="stylesheet" href="/static/cf_signature_primitives_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-sig1">
-<link rel="stylesheet" href="/static/merchant_session_identity_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-msi1">
-<link rel="stylesheet" href="/static/merchant_card_system_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
-<link rel="stylesheet" href="/static/merchant_icon_language_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
-<link rel="stylesheet" href="/static/merchant_spacing_certification_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
-<link rel="stylesheet" href="/static/merchant_responsive_layout_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
-<link rel="stylesheet" href="/static/merchant_workspace_expansion_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
 <link rel="stylesheet" href="/static/merchant_currency_certification_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
 <link rel="stylesheet" href="/static/merchant_pulse_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
 <link rel="stylesheet" href="/static/merchant_dashboard_home_v1.css?v={{ merchant_setup_render_build | default('unknown') }}">
+<link rel="stylesheet" href="/static/merchant_session_identity_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-msi1">
+<link rel="stylesheet" href="/static/cf_signature_primitives_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-sig1">
+<link rel="stylesheet" href="/static/merchant_frame_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-frame1">
+<link rel="stylesheet" href="/static/merchant_ds_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-ds1">
+<link rel="stylesheet" href="/static/merchant_grammar_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-g1">
 <style>
   /* MSR V1 — hierarchy only; consumes MEIF packages */
   .meif-trust{display:inline-block;font-size:11px;font-weight:700;margin-inline-end:8px;letter-spacing:.02em}
@@ -156,63 +152,47 @@
   .meif-home__ops{font-size:13px;margin:8px 0 0}
 </style>
 </head>
-<body data-cf-merchant-app="1" class="cf-pds-closure"{% if merchant_pulse_ui_v1 %} data-merchant-pulse-ui-v1="1"{% endif %}>
+<body data-cf-merchant-app="1" data-cf-frame="v1" class="cf-pds-closure"{% if merchant_pulse_ui_v1 %} data-merchant-pulse-ui-v1="1"{% endif %}>
 
 <input type="checkbox" id="ma-sidebar-toggle" class="ma-sidebar-toggle" autocomplete="off" aria-hidden="true">
-<div class="ma-scrim"><label for="ma-sidebar-toggle" aria-label="إغلاق القائمة"></label></div>
+<div class="cf-scrim ma-scrim"><label for="ma-sidebar-toggle" aria-label="إغلاق القائمة"></label></div>
 
-<header class="ma-global-topbar" role="banner">
-  <div class="ma-gtb-start">
-    <label for="ma-sidebar-toggle" class="ma-gtb-menu" aria-label="فتح القائمة">☰</label>
-    <a class="ma-gtb-logo" href="#home" onclick="if(window.goToSection){goToSection('home');return false;}">
-      <img class="ma-gtb-logo__mark" src="/static/img/brand/cartflow_cf_mark.png" width="32" height="32" alt="" decoding="async" />
-      <span class="ma-gtb-logo__word">CartFlow</span>
-    </a>
-  </div>
-  <div class="ma-gtb-center">
-    <nav class="ma-gtb-sections" aria-label="أقسام لوحة التاجر">
-      <button type="button" class="ma-gtb-section active" data-ma-section="home">الرئيسية</button>
-      {% if merchant_cart_workspace_v1 %}
-      <button type="button" class="ma-gtb-section" data-ma-section="workspace">مساحة القرار</button>
-      {% endif %}
-      <button type="button" class="ma-gtb-section" data-ma-section="products">المنتجات</button>
-      <button type="button" class="ma-gtb-section" data-ma-section="carts">السلال</button>
-      <button type="button" class="ma-gtb-section" data-ma-section="comms">التواصل</button>
-      <button type="button" class="ma-gtb-section" data-ma-section="settings">الإعدادات</button>
-    </nav>
-  </div>
-  <div class="ma-gtb-end">
-    <span class="ma-gtb-date ma-dash-skel" id="ma-topbar-date">{{ merchant_ar_date_header | default("") }}</span>
-    <div class="ma-gtb-utils" role="group" aria-label="أدوات الحساب">
-      <button type="button" class="ma-gtb-util" id="ma-gtb-notify" aria-label="الإشعارات" title="الإشعارات" hidden>🔔</button>
-      <button type="button" class="ma-gtb-util ma-gtb-util--text" id="ma-gtb-account-btn" title="هوية الحساب — {{ merchant_store_display_name | default('متجرك') | e }}" aria-haspopup="dialog" aria-expanded="false" aria-controls="ma-account-identity-panel">
-        <span class="ma-gtb-util-ico" aria-hidden="true">👤</span>
-        <span class="ma-gtb-util-label">{{ merchant_store_display_name | default("متجرك") }}</span>
-      </button>
-      <button type="button" class="ma-gtb-util ma-gtb-util--text" id="ma-gtb-plans-btn" onclick="if(window.goTo){goTo('plans');return false;}" title="الباقات والأسعار">الباقة</button>
-      <a class="ma-gtb-util ma-gtb-util--text" href="/logout" title="تسجيل الخروج">خروج</a>
-    </div>
-  </div>
-</header>
+<aside class="cf-rail ma-context-sidebar sidebar" id="ma-context-sidebar" aria-label="تنقل لوحة التاجر">
+  <a class="cf-rail__brand" href="#home" onclick="if(window.goToSection){goToSection('home');return false;}">
+    <img class="cf-rail__mark ma-gtb-logo__mark" src="/static/img/brand/cartflow_cf_mark.png" width="32" height="32" alt="" decoding="async" />
+    <span class="cf-rail__word ma-gtb-logo__word">CartFlow</span>
+  </a>
 
-<aside class="ma-context-sidebar sidebar" id="ma-context-sidebar" aria-label="قائمة القسم الحالي">
+  <nav class="cf-rail__primary ma-gtb-sections" aria-label="أقسام لوحة التاجر">
+    <button type="button" class="ma-gtb-section cf-nav__section active" data-ma-section="home">الرئيسية</button>
+    {% if merchant_cart_workspace_v1 %}
+    <button type="button" class="ma-gtb-section cf-nav__section" data-ma-section="workspace">مساحة القرار</button>
+    {% endif %}
+    <button type="button" class="ma-gtb-section cf-nav__section" data-ma-section="products">المنتجات</button>
+    <button type="button" class="ma-gtb-section cf-nav__section" data-ma-section="carts">السلال</button>
+    <button type="button" class="ma-gtb-section cf-nav__section" data-ma-section="comms">التواصل</button>
+    <button type="button" class="ma-gtb-section cf-nav__section" data-ma-section="settings">الإعدادات</button>
+  </nav>
+
+  <div class="cf-rail__divider" aria-hidden="true"></div>
+
   <nav class="ma-ctx-panel ma-sidebar-nav" data-ma-ctx="home" hidden aria-label="الرئيسية">
-    <p class="ma-ctx-label">الرئيسية</p>
+    <p class="ma-ctx-label">في هذا القسم</p>
     <button type="button" class="nav-item active" data-home-nav="overview" onclick="maHomeNav('overview')">نظرة عامة</button>
   </nav>
   {% if merchant_cart_workspace_v1 %}
   <nav class="ma-ctx-panel ma-sidebar-nav" data-ma-ctx="workspace" hidden aria-label="مساحة القرار">
-    <p class="ma-ctx-label">مساحة القرار</p>
+    <p class="ma-ctx-label">في هذا القسم</p>
     <button type="button" class="nav-item active" data-nav="workspace" onclick="if(window.goTo){goTo('workspace');return false;}">ما يحتاج قرارك</button>
-    <p class="ma-ctx-hint" style="padding:8px 12px;font-size:12px;color:#71717a;line-height:1.45;">قرار واحد واضح — ماذا تفعل، ولماذا، وهل الآن.</p>
+    <p class="ma-ctx-hint">قرار واحد واضح — ماذا تفعل، ولماذا، وهل الآن.</p>
   </nav>
   {% endif %}
   <nav class="ma-ctx-panel ma-sidebar-nav" data-ma-ctx="products" hidden aria-label="المنتجات">
-    <p class="ma-ctx-label">المنتجات</p>
+    <p class="ma-ctx-label">في هذا القسم</p>
     <button type="button" class="nav-item active" data-nav="products" onclick="if(window.goTo){goTo('products');return false;}">المنتجات التي تستحق انتباهك</button>
   </nav>
   <nav class="ma-ctx-panel ma-sidebar-nav" data-ma-ctx="carts" hidden aria-label="السلال">
-    <p class="ma-ctx-label">السلال</p>
+    <p class="ma-ctx-label">في هذا القسم</p>
     <button type="button" class="nav-item" data-nav="carts" data-cart-tab="all" onclick="goToCartTab('all')">الكل</button>
     <button type="button" class="nav-item" data-nav="followup" data-cart-tab="intervention" onclick="goToCartTab('intervention')">تفاعل العملاء<span class="nb nb-a" id="ma-nav-badge-followup" style="display:none;"></span></button>
     <button type="button" class="nav-item" data-nav="carts" data-cart-tab="waiting" onclick="goToCartTab('waiting')">بانتظار الإرسال<span class="nb nb-r" id="ma-nav-badge-abandoned" style="display:none;"></span></button>
@@ -220,26 +200,53 @@
     <button type="button" class="nav-item" data-nav="vip" data-cart-tab="vip" onclick="goToCartTab('vip')">VIP<span class="nb nb-a" id="ma-nav-badge-vip" style="display:none;"></span></button>
   </nav>
   <nav class="ma-ctx-panel ma-sidebar-nav" data-ma-ctx="comms" hidden aria-label="التواصل">
-    <p class="ma-ctx-label">التواصل</p>
+    <p class="ma-ctx-label">في هذا القسم</p>
     <button type="button" class="nav-item" data-nav="communication" onclick="goTo('communication')">حالة التواصل</button>
     <button type="button" class="nav-item" data-nav="messages" onclick="goTo('messages')">الرسائل</button>
     <button type="button" class="nav-item" data-nav="trigger-templates" onclick="goTo('trigger-templates')">قوالب المتابعة</button>
     <button type="button" class="nav-item" data-nav="reasons" onclick="goTo('reasons')" hidden aria-hidden="true" data-constitution-owner="workspace">أسباب التردد</button>
   </nav>
   <nav class="ma-ctx-panel ma-sidebar-nav" data-ma-ctx="settings" hidden aria-label="الإعدادات">
-    <p class="ma-ctx-label">الإعدادات</p>
+    <p class="ma-ctx-label">في هذا القسم</p>
     <button type="button" class="nav-item" data-nav="settings" onclick="goTo('settings')">الحساب والمتجر</button>
     <button type="button" class="nav-item" data-home-nav="setup" onclick="maHomeNav('setup')">إعداد المتجر</button>
     <button type="button" class="nav-item" data-nav="whatsapp" onclick="goTo('whatsapp')">واتساب</button>
     <button type="button" class="nav-item" data-nav="widget" onclick="goTo('widget')">الودجيت</button>
     <button type="button" class="nav-item" data-nav="plans" onclick="goTo('plans')">الباقات</button>
   </nav>
-  <div class="ma-ctx-future-reserve" aria-hidden="true" hidden></div>
+
+  <div class="cf-rail__account" aria-label="الحساب">
+    <button type="button" id="ma-rail-account-btn" title="هوية الحساب">{{ merchant_store_display_name | default("متجرك") }}</button>
+    <button type="button" onclick="if(window.goTo){goTo('plans');return false;}">الباقات والأسعار</button>
+    <a href="/logout">تسجيل الخروج</a>
+  </div>
 </aside>
 
-<div class="ma-dashboard-frame ma-app-shell" id="ma-dashboard-frame">
-  <main class="main ma-content-root" id="ma-content-root">
-    <header class="ma-content-head ma-page-hero" id="ma-page-hero-global">
+<div class="cf-stage ma-dashboard-frame ma-app-shell" id="ma-dashboard-frame">
+  <header class="cf-topbar ma-global-topbar" role="banner">
+    <label for="ma-sidebar-toggle" class="cf-topbar__menu ma-gtb-menu" aria-label="فتح القائمة">☰</label>
+    <a class="cf-topbar__brand ma-gtb-logo" href="#home" onclick="if(window.goToSection){goToSection('home');return false;}">
+      <img class="ma-gtb-logo__mark" src="/static/img/brand/cartflow_cf_mark.png" width="28" height="28" alt="" decoding="async" />
+      <span class="ma-gtb-logo__word">CartFlow</span>
+    </a>
+    <div class="cf-topbar__title-slot">
+      <span class="cf-topbar__section-label" id="cf-topbar-section-label">الرئيسية</span>
+      <span class="cf-topbar__page-label" id="cf-topbar-page-label">نظرة عامة</span>
+    </div>
+    <span class="ma-gtb-date ma-dash-skel" id="ma-topbar-date">{{ merchant_ar_date_header | default("") }}</span>
+    <div class="cf-topbar__utils ma-gtb-utils" role="group" aria-label="أدوات الحساب">
+      <button type="button" class="ma-gtb-util" id="ma-gtb-notify" aria-label="الإشعارات" title="الإشعارات" hidden>🔔</button>
+      <button type="button" class="ma-gtb-util ma-gtb-util--text cf-topbar__account" id="ma-gtb-account-btn" title="هوية الحساب — {{ merchant_store_display_name | default('متجرك') | e }}" aria-haspopup="dialog" aria-expanded="false" aria-controls="ma-account-identity-panel">
+        <span class="ma-gtb-util-ico" aria-hidden="true">👤</span>
+        <span class="ma-gtb-util-label">{{ merchant_store_display_name | default("متجرك") }}</span>
+      </button>
+      <button type="button" class="ma-gtb-util ma-gtb-util--text" id="ma-gtb-plans-btn" onclick="if(window.goTo){goTo('plans');return false;}" title="الباقات والأسعار">الباقة</button>
+      <a class="ma-gtb-util ma-gtb-util--text" href="/logout" title="تسجيل الخروج">خروج</a>
+    </div>
+  </header>
+
+  <main class="main ma-content-root cf-main" id="ma-content-root">
+    <header class="ma-content-head ma-page-hero cf-page-header" id="ma-page-hero-global">
       <h1 class="ma-page-hero__title ma-content-title" id="pageTitle">الرئيسية</h1>
       <p class="ma-page-hero__purpose" id="pagePurpose">ماذا يجب أن أعرف الآن عن متجري؟</p>
       <p class="ma-page-summary ma-content-sub" id="pageSub" hidden></p>
@@ -1171,6 +1178,7 @@
 <script defer src="/static/merchant_dashboard_lazy.js?v={{ merchant_setup_render_build | default('unknown') }}-dc2"></script>
 {% if merchant_cart_workspace_v1 %}
 <link rel="stylesheet" href="/static/cart_workspace_merchant_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-dsim1" />
+{# Workspace content hierarchy only — shell chrome owned by merchant_frame_v1 #}
 <link rel="stylesheet" href="/static/decision_workspace_visual_assimilation_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-dwa11" />
 <script defer src="/static/cart_workspace_projection_version_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-dwr1"></script>
 <script defer src="/static/cart_workspace_decision_card_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-sig1"></script>
@@ -1188,6 +1196,6 @@
 <script defer src="/static/merchant_trigger_templates.js"></script>
 <script defer src="/static/merchant_widget_panel.js"></script>
 <script defer src="/static/merchant_session_identity_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-msi1"></script>
-<script defer src="/static/merchant_app.js?v={{ merchant_setup_render_build | default('unknown') }}-dsim1"></script>
+<script defer src="/static/merchant_app.js?v={{ merchant_setup_render_build | default('unknown') }}-frame1"></script>
 </body>
 </html>

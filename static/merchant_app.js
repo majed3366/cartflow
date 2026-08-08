@@ -367,6 +367,20 @@
     applyCartFilterMode(initialMode);
   }
 
+  function syncFrameChrome(section, pageKey) {
+    var sec = section || "home";
+    var secLabel = byId("cf-topbar-section-label");
+    var pageLabel = byId("cf-topbar-page-label");
+    if (secLabel) secLabel.textContent = SECTION_LABELS[sec] || "";
+    if (pageLabel) {
+      var title =
+        (pageKey && TITLES[pageKey]) ||
+        SECTION_LABELS[sec] ||
+        "";
+      pageLabel.textContent = title;
+    }
+  }
+
   function setContextSection(section) {
     var sec = section || "home";
     document.body.setAttribute("data-ma-section", sec);
@@ -377,6 +391,7 @@
     document.querySelectorAll(".ma-gtb-section").forEach(function (btn) {
       btn.classList.toggle("active", btn.getAttribute("data-ma-section") === sec);
     });
+    syncFrameChrome(sec, document.body.getAttribute("data-ma-page") || "");
   }
 
   function setHomeNavActive(target) {
@@ -516,6 +531,7 @@
     var globalHero = byId("ma-page-hero-global");
     if (document.body && pageKey) {
       document.body.setAttribute("data-ma-page", pageKey);
+      syncFrameChrome(pageToSection(pageKey), pageKey);
     }
     if (pageKey && pageKey !== "carts" && globalHero) {
       globalHero.removeAttribute("data-shared-hero-carts");
@@ -897,6 +913,18 @@
         goToSection(btn.getAttribute("data-ma-section") || "home");
       });
     });
+    var railAccount = byId("ma-rail-account-btn");
+    if (railAccount && railAccount.getAttribute("data-cf-frame-bound") !== "1") {
+      railAccount.setAttribute("data-cf-frame-bound", "1");
+      railAccount.addEventListener("click", function () {
+        if (typeof window.maOpenAccountIdentityPanel === "function") {
+          window.maOpenAccountIdentityPanel();
+        } else {
+          var mainBtn = byId("ma-gtb-account-btn");
+          if (mainBtn) mainBtn.click();
+        }
+      });
+    }
   }
 
   document.addEventListener("DOMContentLoaded", function () {

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Visual Identity Unification V1 — presentation contract."""
+"""Visual Identity Unification V1 — tokens folded into Frame V1; CSS file offline."""
 from __future__ import annotations
 
 import unittest
@@ -10,45 +10,32 @@ from fastapi.testclient import TestClient
 from main import app
 
 _ROOT = Path(__file__).resolve().parent.parent
-_VI_CSS = (_ROOT / "static" / "merchant_visual_identity_v1.css").read_text(encoding="utf-8")
+_FRAME_CSS = (_ROOT / "static" / "merchant_frame_v1.css").read_text(encoding="utf-8")
 _APP_JS = (_ROOT / "static" / "merchant_app.js").read_text(encoding="utf-8")
 _TEMPLATE = (_ROOT / "templates" / "merchant_app.html").read_text(encoding="utf-8")
 
 
 class MerchantVisualIdentityV1Tests(unittest.TestCase):
-    def test_dashboard_shell_loads_visual_identity_css(self) -> None:
+    def test_dashboard_shell_loads_frame_not_vi_override(self) -> None:
         html = TestClient(app).get("/dashboard").text
-        self.assertIn("merchant_visual_identity_v1.css", html)
+        self.assertIn("merchant_frame_v1.css", html)
+        self.assertNotIn("merchant_visual_identity_v1.css", html)
 
-    def test_certified_font_token_arial(self) -> None:
-        self.assertIn("--cfvi-font-certified: Arial", _VI_CSS)
-
-    def test_unified_card_and_hero_classes(self) -> None:
-        for token in ("--cfvi-hero-bg", ".ma-vi-hero", ".ma-vi-card", "--cfvi-sidebar-bg"):
-            self.assertIn(token, _VI_CSS, msg=f"missing {token}")
+    def test_brand_tokens_live_in_frame(self) -> None:
+        for token in ("--cf-navy: #082048", "--cf-teal: #18b0a8", "--cfvi-chrome-bg"):
+            self.assertIn(token, _FRAME_CSS)
 
     def test_hero_sync_in_router(self) -> None:
         self.assertIn("syncVisualHero", _APP_JS)
         self.assertIn("ma-vi-hero", _APP_JS)
+        self.assertIn("syncFrameChrome", _APP_JS)
 
-    def test_carts_hero_unified(self) -> None:
-        self.assertIn("ma-vi-hero", _TEMPLATE)
-        self.assertIn("CartFlow يتابع سلال متجرك اليوم", _TEMPLATE)
+    def test_canonical_mark_in_rail(self) -> None:
+        self.assertIn("cartflow_cf_mark.png", _TEMPLATE)
+        self.assertIn("cf-rail__brand", _TEMPLATE)
 
-    def test_hardening_chrome_and_cards(self) -> None:
-        for token in (
-            "--cfvi-chrome-bg",
-            ".ma-global-topbar",
-            ".ma-wa-mode-card.is-selected",
-            ".ma-plan-card.is-current",
-            ".ma-journey-gate-card",
-        ):
-            self.assertIn(token, _VI_CSS, msg=f"missing {token}")
-
-    def test_page_purpose_hero_copy(self) -> None:
-        self.assertIn("صحة تواصل متجرك", _APP_JS)
-        self.assertIn("اشتراكك الحالي", _APP_JS)
-        self.assertIn("إعداد متجرك", _APP_JS)
+    def test_legacy_vi_file_still_exists_offline(self) -> None:
+        self.assertTrue((_ROOT / "static" / "merchant_visual_identity_v1.css").is_file())
 
 
 if __name__ == "__main__":

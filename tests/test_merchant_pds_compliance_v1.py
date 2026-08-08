@@ -18,12 +18,13 @@ _MI_CARTS_JS = (_ROOT / "static" / "merchant_intelligence_carts_v1.js").read_tex
 
 
 class MerchantPdsComplianceV1Tests(unittest.TestCase):
-    def test_dashboard_shell_loads_pds_assets(self) -> None:
+    def test_dashboard_shell_loads_format_js_frame_owns_visual(self) -> None:
         html = TestClient(app).get("/dashboard").text
-        self.assertIn("merchant_pds_compliance_v1.css", html)
         self.assertIn("merchant_pds_format_v1.js", html)
+        self.assertIn("merchant_frame_v1.css", html)
+        self.assertNotIn("merchant_pds_compliance_v1.css", html)
 
-    def test_pds_css_typography_tokens(self) -> None:
+    def test_pds_css_typography_tokens_offline(self) -> None:
         for token in (
             "--pds-font",
             "--pds-type-story",
@@ -32,6 +33,7 @@ class MerchantPdsComplianceV1Tests(unittest.TestCase):
             "body[data-cf-merchant-app",
         ):
             self.assertIn(token, _PDS_CSS, msg=f"missing {token}")
+        self.assertTrue((_ROOT / "static" / "merchant_pds_compliance_v1.css").is_file())
 
     def test_format_js_exports(self) -> None:
         self.assertIn("window.formatMerchantSar", _FORMAT_JS)

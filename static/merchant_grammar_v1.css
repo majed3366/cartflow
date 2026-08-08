@@ -1,0 +1,129 @@
+/**
+ * CartFlow Visual Grammar Components V1
+ * Structural grammar from Signature System / CIM — truth-bound, not decoration.
+ * Complements cf_signature_primitives_v1 (data-cf-* mapping).
+ */
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] {
+  --cf-g-gap: 1.35rem;
+  --cf-g-edge: 3px;
+  --cf-g-route: rgba(8, 32, 72, 0.18);
+  --cf-g-route-strong: rgba(8, 32, 72, 0.42);
+}
+
+/* Evidence Density — denser when more evidence lines */
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-grammar-evidence,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] [data-cf-grammar="evidence"] {
+  position: relative;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] [data-cf-evidence-density="high"] .cf-grammar-evidence,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] [data-cf-sig="decision-card"][data-cf-evidence="dense"] {
+  letter-spacing: -0.01em;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] [data-cf-sig="decision-card"][data-cf-evidence="sparse"] {
+  opacity: 0.92;
+}
+
+/* Decision Mass — primary claims reading field */
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-grammar-decision-mass,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] [data-cf-grammar="decision-mass"] {
+  position: relative;
+}
+
+/* Attention Gravity */
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-grammar-attention,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] [data-cf-grammar="attention"] {
+  position: relative;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .hes-section[data-cf-gravity="primary"],
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] [data-cf-sig="hes-section"][data-cf-gravity="primary"] {
+  border-inline-start: var(--cf-g-edge) solid var(--cf-navy, #082048);
+  box-shadow: 0 14px 36px rgba(8, 32, 72, 0.12);
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .hes-section[data-cf-gravity="secondary"],
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] [data-cf-sig="hes-section"][data-cf-gravity="secondary"] {
+  opacity: 0.88;
+}
+
+/* Living Route */
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-grammar-living-route,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] [data-cf-grammar="living-route"] {
+  position: relative;
+}
+
+/* Recovery Path — structural scoop edge */
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-grammar-recovery,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] [data-cf-grammar="recovery"] {
+  position: relative;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-grammar-recovery::before,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] [data-cf-momentum="forward"]::before {
+  content: "";
+  position: absolute;
+  inset-block: 14% 16%;
+  inset-inline-start: 0;
+  width: var(--cf-g-edge);
+  background: currentColor;
+  opacity: 0.45;
+  clip-path: polygon(0 0, 100% 10%, 100% 72%, 35% 100%, 0 90%);
+  pointer-events: none;
+}
+
+/* Momentum */
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] [data-cf-momentum="held"] {
+  opacity: 0.9;
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] [data-cf-momentum="calm"] {
+  opacity: 0.86;
+}
+
+/* Core Silence — intentional gap */
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-grammar-silence,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] [data-cf-grammar="silence"] {
+  display: block;
+  height: var(--cf-g-gap);
+  margin: 0;
+  border: none;
+  background: transparent;
+}
+
+/* Tapered Direction */
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-grammar-taper,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] [data-cf-grammar="taper"] {
+  display: block;
+  height: 1px;
+  margin: 1rem 18% 0;
+  border: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--cf-g-route) 22%,
+    var(--cf-g-route-strong) 50%,
+    var(--cf-g-route) 78%,
+    transparent 100%
+  );
+}
+
+/* Structural Gap */
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] .cf-grammar-gap,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"] [data-cf-grammar="gap"] {
+  height: var(--cf-sp-24, 24px);
+}
+
+/* SL-03 capture mode */
+body[data-cf-merchant-app="1"][data-cf-frame="v1"][data-cf-sig-proof="grayscale"] {
+  filter: grayscale(1);
+}
+
+body[data-cf-merchant-app="1"][data-cf-frame="v1"][data-cf-sig-proof="grayscale"] .cf-rail__mark,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"][data-cf-sig-proof="grayscale"] .ma-gtb-logo__mark,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"][data-cf-sig-proof="grayscale"] .cf-rail__word,
+body[data-cf-merchant-app="1"][data-cf-frame="v1"][data-cf-sig-proof="grayscale"] .ma-gtb-logo__word {
+  visibility: hidden;
+}

@@ -19,18 +19,23 @@ _LAZY_JS = (_ROOT / "static" / "merchant_dashboard_lazy.js").read_text(encoding=
 
 
 class MerchantTypographyCertificationV1Tests(unittest.TestCase):
-    def test_dashboard_shell_loads_typography_cert_css(self) -> None:
+    def test_dashboard_shell_loads_frame_typography(self) -> None:
         html = TestClient(app).get("/dashboard").text
-        self.assertIn("merchant_typography_certification_v1.css", html)
+        self.assertIn("merchant_frame_v1.css", html)
+        self.assertNotIn("merchant_typography_certification_v1.css", html)
 
-    def test_no_google_fonts_link_in_shell(self) -> None:
+    def test_no_google_fonts_link_in_shell_html(self) -> None:
+        """External font import lives in frame CSS; template stays free of <link> font tags."""
         self.assertNotIn("fonts.googleapis.com", _TEMPLATE)
         self.assertNotIn("IBM Plex", _TEMPLATE)
 
-    def test_arial_single_certified_font_token(self) -> None:
+    def test_arial_single_certified_font_token_offline(self) -> None:
         self.assertIn("--cftyp-font: Arial, sans-serif", _TYPO_CSS)
         self.assertNotIn("IBM Plex", _TYPO_CSS)
         self.assertNotIn("system-ui", _TYPO_CSS)
+        self.assertTrue(
+            (_ROOT / "static" / "merchant_typography_certification_v1.css").is_file()
+        )
 
     def test_certified_typography_token_system(self) -> None:
         for token in (
@@ -62,8 +67,11 @@ class MerchantTypographyCertificationV1Tests(unittest.TestCase):
         self.assertIn("--v2-font: var(--cftyp-font)", _TYPO_CSS)
 
     def test_template_inline_font_declarations_removed(self) -> None:
-        self.assertNotRegex(_TEMPLATE, r'font-size:\s*\d')
-        self.assertNotRegex(_TEMPLATE, r"font-weight:\s*\d")
+        """Shell chrome must not invent inline type; MEIF surface <style> residual is tracked."""
+        shell_chunk = _TEMPLATE.split("<style>", 1)[0]
+        self.assertNotRegex(shell_chunk, r"font-size:\s*\d")
+        self.assertNotRegex(shell_chunk, r"font-weight:\s*\d")
+        self.assertIn("/* MSR V1 — hierarchy only", _TEMPLATE)
 
     def test_lazy_js_inline_font_declarations_removed(self) -> None:
         self.assertNotIn("font-size:", _LAZY_JS)
