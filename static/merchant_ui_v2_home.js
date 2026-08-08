@@ -252,17 +252,16 @@
           '<p class="cf2-scene__ev-body">الأدلة ما زالت مفتوحة — عدم اليقين حالة صادقة.</p>';
       }
       html += "</aside>";
-      html += "</div>";
-    }
 
-    html += '<div class="cf2-silence" aria-hidden="true"></div>';
+      if (parts.secondary.length) {
+        html +=
+          '<div class="cf2-scene__orbit" data-cf2-grammar="secondary" aria-label="معرفة ثانوية">';
+        parts.secondary.forEach(function (sec) {
+          html += capsule(sec);
+        });
+        html += "</div>";
+      }
 
-    if (parts.secondary.length) {
-      html +=
-        '<div class="cf2-scene__orbit" data-cf2-grammar="secondary" aria-label="معرفة ثانوية">';
-      parts.secondary.forEach(function (sec) {
-        html += capsule(sec);
-      });
       html += "</div>";
     }
 

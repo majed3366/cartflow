@@ -17,8 +17,7 @@ body[data-cf-ui="v2"] .cf2-dobj {
 }
 
 body[data-cf-ui="v2"] .cf2-dobj--primary {
-  padding: 16px 12px 24px 6px;
-  min-height: min(56vh, 480px);
+  padding: 16px 12px 20px 6px;
   background:
     radial-gradient(
       80% 65% at 0% 12%,

@@ -33,11 +33,13 @@ body[data-cf-ui="v2"] .cf2-scene__spine-line {
 body[data-cf-ui="v2"] .cf2-scene__gravity {
   display: grid;
   grid-template-columns: auto minmax(0, 1.45fr) minmax(220px, 0.9fr);
-  gap: 0 32px;
-  align-items: stretch;
+  grid-template-areas:
+    "rail main density"
+    "orbit orbit orbit";
+  gap: 0 28px;
+  align-items: start;
   margin: 0;
-  min-height: min(58vh, 520px);
-  padding: 28px 20px 32px 12px;
+  padding: 22px 18px 18px 10px;
   background:
     radial-gradient(
       90% 70% at 100% 8%,
@@ -58,28 +60,54 @@ body[data-cf-ui="v2"] .cf2-scene__gravity {
   border-inline-start: 3px solid rgba(8, 32, 72, 0.14);
 }
 
+body[data-cf-ui="v2"] .cf2-scene__co-rail {
+  grid-area: rail;
+  flex: 0 0 auto;
+  padding-inline-end: 8px;
+  border-inline-end: 1px solid rgba(8, 32, 72, 0.08);
+  min-width: 84px;
+  align-self: stretch;
+}
+
+body[data-cf-ui="v2"] .cf2-scene__gravity-main {
+  grid-area: main;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  min-width: 0;
+  padding-inline-end: 8px;
+  padding-block-end: 8px;
+}
+
+body[data-cf-ui="v2"] .cf2-scene__density {
+  grid-area: density;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 4px 4px 8px 18px;
+  border-inline-start: 1px solid rgba(8, 32, 72, 0.1);
+  align-self: stretch;
+}
+
+body[data-cf-ui="v2"] .cf2-scene__orbit {
+  grid-area: orbit;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 32px;
+  margin-top: 14px;
+  padding: 14px 4px 4px 4px;
+  border-block-start: 1px solid rgba(8, 32, 72, 0.08);
+  opacity: 0.88;
+}
+
 body[data-cf-ui="v2"] .cf2-scene__gravity[data-cf2-tension="open"] {
   border-inline-start-color: rgba(115, 133, 158, 0.45);
 }
 
 body[data-cf-ui="v2"] .cf2-scene__gravity[data-cf2-tension="resolved"] {
   border-inline-start-color: var(--cf2-navy);
-}
-
-body[data-cf-ui="v2"] .cf2-scene__co-rail {
-  flex: 0 0 auto;
-  padding-inline-end: 8px;
-  border-inline-end: 1px solid rgba(8, 32, 72, 0.08);
-  min-width: 84px;
-}
-
-body[data-cf-ui="v2"] .cf2-scene__gravity-main {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  min-width: 0;
-  padding-inline-end: 8px;
 }
 
 body[data-cf-ui="v2"] .cf2-scene__lane {
@@ -130,19 +158,8 @@ body[data-cf-ui="v2"] .cf2-scene__terminus {
   max-width: 22rem;
 }
 
-/* Evidence density zone — structural companion, not a sidebar card */
-body[data-cf-ui="v2"] .cf2-scene__density {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  padding: 8px 4px 8px 20px;
-  border-inline-start: 1px solid rgba(8, 32, 72, 0.1);
-  min-height: 100%;
-}
-
 body[data-cf-ui="v2"] .cf2-scene__density .cf2-evfield {
-  margin: 4px 0 20px;
+  margin: 4px 0 18px;
   flex: 0 0 auto;
 }
 
@@ -171,16 +188,6 @@ body[data-cf-ui="v2"] .cf2-scene__ev-body {
   color: var(--cf2-ink-soft);
 }
 
-/* Secondary orbit — quieter, closer, not equal islands */
-body[data-cf-ui="v2"] .cf2-scene__orbit {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px 36px;
-  margin-top: 0;
-  padding-inline-start: 12px;
-  opacity: 0.92;
-}
-
 body[data-cf-ui="v2"] .cf2-dobj__ev-row {
   display: grid;
   grid-template-columns: minmax(120px, 160px) minmax(0, 1fr);
@@ -190,8 +197,8 @@ body[data-cf-ui="v2"] .cf2-dobj__ev-row {
 
 @media (min-width: 1024px) {
   body[data-cf-ui="v2"] #page-home .cf2-page__question {
-    margin-bottom: 10px;
-    font-size: clamp(1.15rem, 1.7vw, 1.38rem);
+    margin-bottom: 8px;
+    font-size: clamp(1.1rem, 1.6vw, 1.32rem);
     max-width: 36rem;
     color: var(--cf2-ink-soft);
     font-weight: 700;
@@ -201,9 +208,13 @@ body[data-cf-ui="v2"] .cf2-dobj__ev-row {
 @media (max-width: 1023px) {
   body[data-cf-ui="v2"] .cf2-scene__gravity {
     grid-template-columns: 1fr;
-    gap: 18px;
-    min-height: 0;
-    padding: 12px 0 16px;
+    grid-template-areas:
+      "rail"
+      "main"
+      "density"
+      "orbit";
+    gap: 16px;
+    padding: 10px 0 12px;
     border-radius: 0;
     border-inline-start: none;
   }
@@ -230,12 +241,13 @@ body[data-cf-ui="v2"] .cf2-dobj__ev-row {
     border-inline-start: none;
     padding-inline-start: 0;
     border-block-start: 1px solid rgba(8, 32, 72, 0.1);
-    padding-block-start: 16px;
+    padding-block-start: 14px;
   }
 
   body[data-cf-ui="v2"] .cf2-scene__orbit {
     grid-template-columns: 1fr;
-    gap: 18px;
+    gap: 16px;
+    margin-top: 4px;
     padding-inline-start: 0;
   }
 
