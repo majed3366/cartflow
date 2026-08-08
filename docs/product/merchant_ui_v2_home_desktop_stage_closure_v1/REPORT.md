@@ -1,16 +1,22 @@
 # Merchant UI V2 — Home Desktop Stage Closure V1
 
 **Scope:** Home only (stage relationship)  
-**Deploy:** pending  
+**Deploy:** `71cf4e3`  
 **Living Store:** https://smartreplyai.net/dashboard?cf_ui=v2#home
 
 ## What changed
 
-- Board fills the authored Home stage surface (controlled max ~1240px)
-- RTL-biased outer margins (deliberate left silence, not accidental void)
+- Board fills the authored Home stage surface (`boardWidth: 1240`, `boardShareStage: 1`)
+- RTL-biased outer margins (`rightMargin ≈ 22`, deliberate `leftVoid ≈ 178`)
 - V1.3 internal board preserved (scene → evidence → stance → monitoring)
 - Primary reading measure capped; monitoring uses full board width
 - Commerce Object structurally attached to the decision lead
+
+## Gate (Living Store)
+
+- Desktop `boardShareViewport ≈ 0.86` (was ≈ 0.54 in V1.3)
+- Laptop usable (`boardWidth ≈ 1218`)
+- Mobile `noOverflow: true`, scene + monitor present
 
 ## Confirmations
 
@@ -18,7 +24,7 @@
 - No new content, copy, primitives, or fake metrics
 - No Workspace / Products / Carts / Communication / Settings changes
 - Mobile sequencing preserved
-- Real Living Store validated
+- Real Living Store validated (`X-CartFlow-Git-Sha` `71cf4e3`)
 
 ## Captures
 

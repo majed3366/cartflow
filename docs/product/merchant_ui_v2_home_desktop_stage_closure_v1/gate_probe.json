@@ -1,0 +1,49 @@
+{
+  "deploy": {
+    "ok": true,
+    "sha": "71cf4e318c25f16432f295123b0788fa145db08a",
+    "status": 200
+  },
+  "desktop": {
+    "ui": "v2",
+    "version": "home-stage-closure-v1",
+    "scene": true,
+    "monitor": true,
+    "noRail": true,
+    "boardShareStage": 1,
+    "boardShareViewport": 0.861,
+    "boardWidth": 1240,
+    "leftVoid": 178,
+    "rightMargin": 22,
+    "cache": true,
+    "noOverflow": true
+  },
+  "laptop": {
+    "ui": "v2",
+    "version": "home-stage-closure-v1",
+    "scene": true,
+    "monitor": true,
+    "noRail": true,
+    "boardShareStage": 1,
+    "boardShareViewport": 0.952,
+    "boardWidth": 1218,
+    "leftVoid": 40,
+    "rightMargin": 22,
+    "cache": true,
+    "noOverflow": true
+  },
+  "mobile": {
+    "ui": "v2",
+    "version": "home-stage-closure-v1",
+    "scene": true,
+    "monitor": true,
+    "noRail": true,
+    "boardShareStage": 1,
+    "boardShareViewport": 0.918,
+    "boardWidth": 358,
+    "leftVoid": 16,
+    "rightMargin": 16,
+    "cache": true,
+    "noOverflow": true
+  }
+}
