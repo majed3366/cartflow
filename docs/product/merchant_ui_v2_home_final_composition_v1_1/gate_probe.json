@@ -1,0 +1,29 @@
+{
+  "deploy": {
+    "ok": true,
+    "sha": "e333cf6a494322f99c0f19e08c7621bd128a8053",
+    "status": 200
+  },
+  "desktop": {
+    "ui": "v2",
+    "home": true,
+    "board": true,
+    "rail": true,
+    "railLabel": "ما يراقبه CartFlow أيضًا",
+    "quietCta": true,
+    "shippingDup": false,
+    "cache": true,
+    "version": "home-final-v11"
+  },
+  "mobile": {
+    "ui": "v2",
+    "home": true,
+    "board": true,
+    "rail": true,
+    "railLabel": "ما يراقبه CartFlow أيضًا",
+    "quietCta": true,
+    "shippingDup": false,
+    "cache": true,
+    "version": "home-final-v11"
+  }
+}
