@@ -1,0 +1,76 @@
+{
+  "deploy": {
+    "ok": true,
+    "sha": "4fb6604c7a74d8e801c932eaf9ad35fdc0feca88",
+    "status": 200
+  },
+  "assets": {
+    "/static/merchant_ui_v2_ds.css": 200,
+    "/static/merchant_ui_v2_frame.css": 200,
+    "/static/merchant_ui_v2_home.css": 200,
+    "/static/merchant_ui_v2_workspace.css": 200,
+    "/static/merchant_ui_v2_app.js": 200,
+    "/static/merchant_ui_v2_home.js": 200,
+    "/static/merchant_ui_v2_workspace.js": 200
+  },
+  "desktop_home": {
+    "ui": "v2",
+    "appbar": true,
+    "ctx": true,
+    "stage": true,
+    "home": true,
+    "workspace": false,
+    "drawerOpen": false,
+    "legacyFrameLinked": false,
+    "legacyPeLinked": false,
+    "v2CssLinked": true
+  },
+  "desktop_workspace": {
+    "ui": "v2",
+    "appbar": true,
+    "ctx": true,
+    "stage": true,
+    "home": true,
+    "workspace": true,
+    "drawerOpen": false,
+    "legacyFrameLinked": false,
+    "legacyPeLinked": false,
+    "v2CssLinked": true
+  },
+  "mobile_home": {
+    "ui": "v2",
+    "appbar": true,
+    "ctx": true,
+    "stage": true,
+    "home": true,
+    "workspace": false,
+    "drawerOpen": false,
+    "legacyFrameLinked": false,
+    "legacyPeLinked": false,
+    "v2CssLinked": true
+  },
+  "mobile_workspace": {
+    "ui": "v2",
+    "appbar": true,
+    "ctx": true,
+    "stage": true,
+    "home": true,
+    "workspace": true,
+    "drawerOpen": false,
+    "legacyFrameLinked": false,
+    "legacyPeLinked": false,
+    "v2CssLinked": true
+  },
+  "mobile_drawer": {
+    "ui": "v2",
+    "appbar": true,
+    "ctx": true,
+    "stage": true,
+    "home": true,
+    "workspace": true,
+    "drawerOpen": true,
+    "legacyFrameLinked": false,
+    "legacyPeLinked": false,
+    "v2CssLinked": true
+  }
+}

@@ -337,7 +337,8 @@ body[data-cf-ui="v2"] .cf2-drawer {
     position: fixed;
     top: 0;
     bottom: auto;
-    inset-inline-end: 0;
+    inset-inline-start: 0;
+    inset-inline-end: auto;
     width: min(320px, 88vw);
     max-height: min(78vh, 560px);
     background: var(--cf2-surface);
