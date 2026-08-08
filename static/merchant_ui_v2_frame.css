@@ -54,6 +54,18 @@ body[data-cf-ui="v2"] .cf2-brand__word {
   letter-spacing: 0.01em;
 }
 
+body[data-cf-ui="v2"] .cf2-appbar__section {
+  display: none;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 body[data-cf-ui="v2"] .cf2-nav {
   display: flex;
   align-items: center;
@@ -146,14 +158,48 @@ body[data-cf-ui="v2"] .cf2-menu-btn {
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  font-size: 18px;
-  line-height: 1;
+  padding: 0;
   cursor: pointer;
+  align-items: center;
+  justify-content: center;
+}
+
+body[data-cf-ui="v2"] .cf2-menu-btn__bars {
+  display: block;
+  width: 16px;
+  height: 2px;
+  background: currentColor;
+  border-radius: 1px;
+  box-shadow: 0 -5px 0 currentColor, 0 5px 0 currentColor;
 }
 
 body[data-cf-ui="v2"] .cf2-menu-btn:focus-visible {
   outline: 2px solid var(--cf2-teal);
   outline-offset: 2px;
+}
+
+body[data-cf-ui="v2"] .cf2-appbar__account {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  padding: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+body[data-cf-ui="v2"] .cf2-appbar__account:focus-visible {
+  outline: 2px solid var(--cf2-teal);
+  outline-offset: 2px;
+}
+
+body[data-cf-ui="v2"] .cf2-appbar__account-icon {
+  display: block;
 }
 
 /* ——— Shell: contextual sidebar + stage ——— */
@@ -284,8 +330,10 @@ body[data-cf-ui="v2"] .cf2-drawer {
 
   body[data-cf-ui="v2"] .cf2-menu-btn {
     display: inline-flex;
-    align-items: center;
-    justify-content: center;
+  }
+
+  body[data-cf-ui="v2"] .cf2-appbar__account {
+    display: inline-flex;
   }
 
   body[data-cf-ui="v2"] .cf2-nav,
@@ -294,17 +342,41 @@ body[data-cf-ui="v2"] .cf2-drawer {
     display: none !important;
   }
 
+  body[data-cf-ui="v2"] .cf2-appbar__section {
+    display: block;
+    flex: 1 1 auto;
+    text-align: center;
+    font-size: 14px;
+    padding: 0 4px;
+  }
+
   body[data-cf-ui="v2"] .cf2-brand {
-    margin-inline: auto 0;
+    flex: 0 0 auto;
+    margin: 0;
+    gap: 6px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-brand__word {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  body[data-cf-ui="v2"] .cf2-brand__mark {
+    width: 26px;
+    height: 26px;
   }
 
   body[data-cf-ui="v2"] .cf2-appbar {
-    padding: 0 12px;
-    gap: 8px;
+    padding: 0 10px;
+    gap: 6px;
   }
 
   body[data-cf-ui="v2"] .cf2-appbar__actions {
     margin-inline-start: 0;
+    flex: 0 0 auto;
   }
 
   body[data-cf-ui="v2"] .cf2-shell {

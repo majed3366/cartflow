@@ -828,6 +828,18 @@ body[data-cf-ui="v2"] .cf2-co-row--rail {
     animation: cf2-mass-settle 640ms ease-out both;
   }
 
+  body[data-cf-ui="v2"] .cf2-dmass.is-ready {
+    animation: cf2-mass-ready 520ms ease-out both;
+  }
+
+  body[data-cf-ui="v2"] .cf2-terminus.is-armed {
+    animation: cf2-terminus-arm 480ms ease-out both;
+  }
+
+  body[data-cf-ui="v2"] .cf2-route__node.is-active {
+    animation: cf2-node-focus 420ms ease-out both;
+  }
+
   @keyframes cf2-ev-join {
     from {
       opacity: 0;
@@ -847,6 +859,35 @@ body[data-cf-ui="v2"] .cf2-co-row--rail {
     to {
       opacity: 1;
       transform: none;
+    }
+  }
+
+  @keyframes cf2-mass-ready {
+    from {
+      opacity: 0.75;
+      transform: translateY(3px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes cf2-terminus-arm {
+    from {
+      opacity: 0.7;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes cf2-node-focus {
+    from {
+      opacity: 0.55;
+    }
+    to {
+      opacity: 1;
     }
   }
 }

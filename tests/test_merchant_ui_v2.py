@@ -56,10 +56,14 @@ class MerchantUiV2TemplateTests(unittest.TestCase):
 
     def test_v2_frame_separates_appbar_and_ctx(self) -> None:
         self.assertIn("cf2-appbar", V2_TEMPLATE)
+        self.assertIn("cf2-appbar__section", V2_TEMPLATE)
+        self.assertIn("cf2-appbar__account", V2_TEMPLATE)
+        self.assertIn("cf2-menu-btn__bars", V2_TEMPLATE)
         self.assertIn("cf2-ctx", V2_TEMPLATE)
         self.assertIn("cf2-stage", V2_TEMPLATE)
         self.assertIn("cf2-drawer", V2_TEMPLATE)
         self.assertIn("cf2-nav", V2_TEMPLATE)
+        self.assertNotIn("👤", V2_TEMPLATE)
 
     def test_v2_slice_pages_only(self) -> None:
         self.assertIn('data-cf2-page="home"', V2_TEMPLATE)
@@ -127,6 +131,16 @@ class MerchantUiV2RouteTests(unittest.TestCase):
         self.assertIn("ما يراقبه CartFlow أيضًا", home_js)
         self.assertIn("cf2-dobj", ws_js)
         self.assertIn("living-route", ws_js)
+        self.assertIn("workspace-final-v1", ws_js)
+        self.assertIn("unwrapProjection", ws_js)
+        self.assertIn("is-ready", ws_js)
+        self.assertIn("is-armed", ws_js)
+        self.assertIn("is-arriving", ws_js)
+        app_js = (ROOT / "static" / "merchant_ui_v2_app.js").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("cf2-appbar-section", app_js)
+        self.assertIn('section === "home" || section === "workspace"', app_js)
 
     def test_assets_exist(self) -> None:
         for rel in (

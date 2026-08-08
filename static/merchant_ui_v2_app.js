@@ -40,26 +40,37 @@
     return h;
   }
 
+  function sectionLabel(section) {
+    for (var i = 0; i < SECTIONS.length; i++) {
+      if (SECTIONS[i].id === section) return SECTIONS[i].label;
+    }
+    return "CartFlow";
+  }
+
   function setActiveNav(section) {
     $all("[data-cf2-nav]").forEach(function (btn) {
       var on = btn.getAttribute("data-cf2-nav") === section;
       btn.classList.toggle("is-active", on);
       btn.setAttribute("aria-current", on ? "page" : "false");
     });
+    var title = $("#cf2-appbar-section");
+    if (title) title.textContent = sectionLabel(section);
   }
 
   function setContext(section) {
     var shell = $(".cf2-shell");
     var ctx = $(".cf2-ctx");
-    var conf = CTX[section];
     if (!shell || !ctx) return;
-    if (!conf) {
+    // Home + Workspace: stage owns the field — no legacy ctx rail.
+    if (section === "home" || section === "workspace") {
       shell.setAttribute("data-cf2-ctx", "off");
+      ctx.innerHTML = "";
       return;
     }
-    // Home: collapse contextual rail — stage owns the executive field.
-    if (section === "home") {
+    var conf = CTX[section];
+    if (!conf) {
       shell.setAttribute("data-cf2-ctx", "off");
+      ctx.innerHTML = "";
       return;
     }
     shell.setAttribute("data-cf2-ctx", "on");

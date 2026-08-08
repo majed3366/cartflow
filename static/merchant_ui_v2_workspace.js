@@ -1,6 +1,6 @@
 /**
- * CartFlow Merchant UI V2 — Decision Workspace as Decision Objects.
- * Evidence → Understanding → Decision → Action via living route geometry.
+ * CartFlow Merchant UI V2 — Decision Workspace Final Product Composition V1
+ * Merchant meaning first. Living route + one state object. Home frozen.
  */
 (function (global) {
   "use strict";
@@ -30,6 +30,14 @@
     var total = t.replace(/\s+/g, "").length || 1;
     if (latin / total > 0.42) return fallback || "";
     return t;
+  }
+
+  function unwrapProjection(payload) {
+    if (!payload || typeof payload !== "object") return {};
+    if (payload.projection && typeof payload.projection === "object") {
+      return payload.projection;
+    }
+    return payload;
   }
 
   function evidenceLines(card) {
@@ -66,15 +74,80 @@
     );
   }
 
+  function confidenceCopy(density, tension) {
+    if (tension === "open" || density === "insufficient" || density === "sparse") {
+      return "الأدلة ما زالت محدودة";
+    }
+    if (density === "gathering") return "بدأت الإشارة تتكرر";
+    if (density === "aligned" || density === "mixed") {
+      return "الأدلة أصبحت أكثر اتساقًا";
+    }
+    if (density === "converging" || tension === "ready" || tension === "resolved") {
+      return "توجد أدلة كافية لاتخاذ قرار";
+    }
+    return "الأدلة ما زالت محدودة";
+  }
+
+  function stanceEyebrow(tension, actionReady) {
+    if (actionReady || tension === "ready" || tension === "resolved") {
+      return "جاهز للقرار";
+    }
+    if (tension === "waiting") return "بانتظار إشارة";
+    if (tension === "high") return "يتطلب انتباهك";
+    if (tension === "open") return "يحتاج مزيدًا من الأدلة";
+    return "يتشكّل القرار";
+  }
+
+  /** One dominant Commerce Object — merchant state, not a gallery. */
+  function primaryObjectKind(tension, actionReady) {
+    if (actionReady || tension === "ready" || tension === "resolved") {
+      return "decision-ready";
+    }
+    if (tension === "waiting") return "waiting";
+    if (tension === "high") return "blocked";
+    if (tension === "open") return "insufficient";
+    return "decision-forming";
+  }
+
+  function routeProgress(tension, actionReady) {
+    if (actionReady || tension === "ready" || tension === "resolved") {
+      return "action";
+    }
+    if (tension === "waiting" || tension === "forming") return "decision";
+    if (tension === "high") return "understanding";
+    return "evidence";
+  }
+
+  function nodeState(progress, name) {
+    var order = ["evidence", "understanding", "decision", "action"];
+    var pi = order.indexOf(progress);
+    var ni = order.indexOf(name);
+    if (ni < 0) return "";
+    if (ni < pi) return " is-complete";
+    if (ni === pi) return " is-active";
+    return "";
+  }
+
+  function silentMark(kind) {
+    if (!L()) return "";
+    return (
+      '<div class="cf2-ws__mark" aria-hidden="true">' +
+      L().commerceObject(kind, " ") +
+      "</div>"
+    );
+  }
+
   function renderDecisionObject(card, isPrimary) {
     var lang = L();
     var lines = evidenceLines(card);
     var density = lang
       ? lang.densityFromCount(lines.length)
       : lines.length >= 3
-        ? "dense"
-        : "sparse";
-    var tension = lang ? lang.tensionFromCard(card) : "low";
+        ? "converging"
+        : lines.length <= 1
+          ? "sparse"
+          : "gathering";
+    var tension = lang ? lang.tensionFromCard(card) : "forming";
     var decision = safeAr(
       card.decision_sentence_ar ||
         card.operational_guidance_ar ||
@@ -82,165 +155,212 @@
         "",
       "راجع القرار المطلوب الآن"
     );
-    var rank = safeAr(
-      card.priority_rank_label_ar,
-      isPrimary ? "الأولوية الأولى" : "الأولوية الثانية"
-    );
     var actionReady =
       card.execution_available === true ||
-      String(card.execution_readiness || "") === "READY" ||
+      String(card.execution_readiness || "") === "READY";
+    var waitingExt =
       String(card.execution_readiness || "") === "EXTERNAL_DEPENDENCY";
     var href = String(card.view_details_href || "").trim();
-    var label = safeAr(card.view_details_ar || "", "افتح");
+    var label = safeAr(card.view_details_ar || "", "افتح القرار");
     var wait = Array.isArray(card.action_wait_lines_ar)
       ? card.action_wait_lines_ar
       : ["لا يوجد إجراء حالياً.", "سيخبرك CartFlow عندما يصبح القرار جاهزاً."];
+    var conf = confidenceCopy(density, tension);
+    var eyebrow = stanceEyebrow(tension, actionReady);
+    var kind = primaryObjectKind(tension, actionReady || waitingExt);
+    var progress = routeProgress(tension, actionReady);
+    var showLines = isPrimary ? lines.slice(0, 3) : lines.slice(0, 1);
+    var tensionAttr = tension === "ready" ? "resolved" : tension;
 
-    var objs = lang
-      ? lang.mapWorkspaceObjects
-        ? lang.mapWorkspaceObjects(card)
-        : []
-      : [];
-    if (!objs.length) {
-      if (tension === "open" || tension === "high") {
-        objs = ["ev-sparse", "insufficient", "uncertainty"];
-      } else if (tension === "ready" || tension === "resolved") {
-        objs = ["ev-converging", "decision-ready", "recovery-continue"];
+    if (!isPrimary) {
+      var nextHtml =
+        '<article class="cf2-dobj cf2-dobj--next" data-cf2-tension="' +
+        esc(tensionAttr) +
+        '" data-decision-id="' +
+        esc(card.decision_id || "") +
+        '">';
+      nextHtml +=
+        '<p class="cf2-ws__next-title">' + esc(decision) + "</p>";
+      if (actionReady && href) {
+        nextHtml +=
+          '<a class="cf2-btn cf2-btn--quiet" href="' +
+          esc(href) +
+          '">' +
+          esc(label) +
+          "</a>";
       } else {
-        objs = ["ev-aligned", "meaning", "decision-forming"];
+        nextHtml +=
+          '<p class="cf2-ws__next-note">' +
+          esc(safeAr(wait[0], "انتظر الإشارة.")) +
+          "</p>";
       }
-    }
-    if (tension === "waiting") objs = ["meaning", "waiting", "recovery-opportunity"];
-    if (!actionReady && objs.indexOf("blocked") < 0 && tension === "high") {
-      objs.push("blocked");
-    } else if (actionReady && objs.indexOf("recovery-continue") < 0) {
-      objs.push("recovery-continue");
+      nextHtml += "</article>";
+      return nextHtml;
     }
 
     var html =
-      '<article class="cf2-dobj' +
-      (isPrimary ? " cf2-dobj--primary" : " cf2-dobj--next") +
-      '" data-cf2-tension="' +
-      esc(tension === "ready" ? "resolved" : tension) +
+      '<article class="cf2-dobj cf2-dobj--primary" data-cf2-tension="' +
+      esc(tensionAttr) +
       '" data-cf2-evidence="' +
       esc(density) +
+      '" data-cf2-progress="' +
+      esc(progress) +
       '" data-decision-id="' +
       esc(card.decision_id || "") +
       '">';
 
-    html += '<p class="cf2-dobj__rank">' + esc(rank) + "</p>";
-    if (lang) {
-      html += '<div class="cf2-co-row">';
-      objs.slice(0, 4).forEach(function (k) {
-        html += lang.commerceObject(k);
-      });
-      html += "</div>";
-    }
+    html += '<header class="cf2-ws__head">';
+    html += silentMark(kind);
+    html += '<div class="cf2-ws__head-text">';
+    html += '<p class="cf2-ws__eyebrow">' + esc(eyebrow) + "</p>";
+    html +=
+      '<h2 class="cf2-ws__title">' + esc(decision) + "</h2>";
+    html += "</div></header>";
 
     html +=
       '<div class="cf2-route" data-cf2-tension="' +
       esc(tension) +
-      '" data-cf2-grammar="living-route">';
+      '" data-cf2-grammar="living-route" data-cf2-progress="' +
+      esc(progress) +
+      '">';
 
-    /* Evidence */
+    /* Evidence — feeds the decision */
     html +=
-      '<section class="cf2-route__node cf2-beat cf2-beat--evidence" data-cf2-node="evidence">';
-    html += '<p class="cf2-beat__label">الملاحظة · كثافة الدليل</p>';
+      '<section class="cf2-route__node cf2-beat cf2-beat--evidence' +
+      nodeState(progress, "evidence") +
+      '" data-cf2-node="evidence">';
+    html += '<p class="cf2-beat__label">ما يظهر الآن</p>';
+    html +=
+      '<p class="cf2-ws__confidence">' + esc(conf) + "</p>";
     html += '<div class="cf2-dobj__ev-row">';
-    if (lang) html += lang.evidenceField(lines.length, density);
+    if (lang) {
+      html += lang
+        .evidenceField(lines.length, density)
+        .replace(
+          'class="cf2-evfield"',
+          'class="cf2-evfield is-arriving"'
+        );
+    }
     html += '<ul class="cf2-beat__list">';
-    lines.forEach(function (line) {
+    showLines.forEach(function (line) {
       html += "<li>" + esc(line) + "</li>";
     });
     html += "</ul></div></section>";
 
-    /* Understanding */
+    /* Meaning */
     html +=
-      '<section class="cf2-route__node cf2-beat cf2-beat--understanding" data-cf2-node="understanding">';
-    html += '<p class="cf2-beat__label">ما يعنيه ذلك · توطيد المعنى</p>';
+      '<section class="cf2-route__node cf2-beat cf2-beat--understanding' +
+      nodeState(progress, "understanding") +
+      '" data-cf2-node="understanding">';
+    html += '<p class="cf2-beat__label">ماذا يعني</p>';
     html +=
       '<p class="cf2-beat__body">' + esc(understanding(card)) + "</p></section>";
 
-    /* Decision mass */
+    /* Decision mass — dominant */
     html +=
-      '<section class="cf2-route__node cf2-beat cf2-beat--decision" data-cf2-node="decision">';
-    html += '<p class="cf2-beat__label">القرار الآن · كتلة القرار</p>';
+      '<section class="cf2-route__node cf2-beat cf2-beat--decision' +
+      nodeState(progress, "decision") +
+      '" data-cf2-node="decision">';
+    html += '<p class="cf2-beat__label">ما يقرره CartFlow</p>';
+    var massClass = "cf2-dmass";
+    if (actionReady) massClass += " is-ready";
+    else massClass += " is-forming";
     html +=
-      '<div class="cf2-dmass' +
-      (isPrimary ? " is-forming" : "") +
+      '<div class="' +
+      massClass +
       '" data-cf2-tension="' +
-      esc(tension === "ready" ? "resolved" : tension) +
+      esc(tensionAttr) +
       '"><p class="cf2-dmass__text">' +
       esc(decision) +
       "</p></div></section>";
 
     /* Action terminus */
     html +=
-      '<section class="cf2-route__node cf2-beat cf2-beat--action" data-cf2-node="action">';
-    html += '<p class="cf2-beat__label">خطوتك · نهاية المسار</p>';
-    html += '<div class="cf2-beat__action cf2-terminus">';
+      '<section class="cf2-route__node cf2-beat cf2-beat--action' +
+      nodeState(progress, "action") +
+      '" data-cf2-node="action">';
+    html += '<p class="cf2-beat__label">خطوتك الآن</p>';
+    html +=
+      '<div class="cf2-beat__action cf2-terminus' +
+      (actionReady ? " is-armed" : "") +
+      '">';
     if (actionReady && href) {
       html +=
-        '<a class="cf2-btn' +
-        (isPrimary ? "" : " cf2-btn--secondary") +
-        '" href="' +
+        '<a class="cf2-btn" href="' +
         esc(href) +
         '">' +
-        esc(label || "افتح") +
+        esc(label || "افتح القرار") +
         "</a>";
-    } else if (!actionReady) {
+    } else if (waitingExt && href) {
+      html +=
+        '<a class="cf2-btn cf2-btn--secondary" href="' +
+        esc(href) +
+        '">' +
+        esc(label || "راجع التفاصيل") +
+        "</a>";
+      html +=
+        '<p class="cf2-ws__wait-note">' +
+        esc(safeAr(wait[0], "بانتظار اكتمال شرط خارجي.")) +
+        "</p>";
+    } else {
       html +=
         '<div class="cf2-reason__wait" data-cf2-grammar="recovery-wait"><p>' +
-        esc(safeAr(wait[0], "لا يوجد إجراء حالياً.")) +
+        esc(safeAr(wait[0], "لا يلزم إجراء الآن — واصل المراقبة.")) +
         "</p><p>" +
         esc(safeAr(wait[1], "سيخبرك CartFlow عندما يصبح القرار جاهزاً.")) +
         "</p></div>";
     }
     html += "</div></section>";
 
-    html += "</div>";
-    html += "</article>";
+    html += "</div></article>";
     return html;
   }
 
   function renderQuietEnvironment() {
     var lang = L();
     var html =
-      '<article class="cf2-dobj cf2-dobj--primary cf2-dobj--quiet" data-cf2-tension="open" data-cf2-evidence="sparse" data-cf2-grammar="core-silence">';
-    html += '<p class="cf2-dobj__rank">هدوء تشغيلي · صمت القرار</p>';
+      '<article class="cf2-dobj cf2-dobj--primary cf2-dobj--quiet" data-cf2-tension="open" data-cf2-evidence="sparse" data-cf2-progress="evidence" data-cf2-grammar="core-silence">';
+    html += '<header class="cf2-ws__head">';
+    html += silentMark("waiting");
+    html += '<div class="cf2-ws__head-text">';
+    html += '<p class="cf2-ws__eyebrow">لا قرار عاجل</p>';
+    html +=
+      '<h2 class="cf2-ws__title">لا يوجد قرار يحتاج انتباهك الآن</h2>';
+    html += "</div></header>";
+    html +=
+      '<div class="cf2-route" data-cf2-tension="open" data-cf2-grammar="living-route" data-cf2-progress="evidence">';
+    html +=
+      '<section class="cf2-route__node cf2-beat cf2-beat--evidence is-active" data-cf2-node="evidence">';
+    html += '<p class="cf2-beat__label">ما يظهر الآن</p>';
+    html +=
+      '<p class="cf2-ws__confidence">الأدلة ما زالت محدودة</p>';
+    html += '<div class="cf2-dobj__ev-row">';
     if (lang) {
-      html += '<div class="cf2-co-row">';
-      html += lang.commerceObject("attention");
-      html += lang.commerceObject("uncertainty");
-      html += lang.commerceObject("waiting");
-      html += lang.commerceObject("insufficient");
-      html += "</div>";
+      html += lang
+        .evidenceField(1, "sparse")
+        .replace(
+          'class="cf2-evfield"',
+          'class="cf2-evfield is-arriving"'
+        );
     }
     html +=
-      '<div class="cf2-route" data-cf2-tension="open" data-cf2-grammar="living-route">';
-    html +=
-      '<section class="cf2-route__node cf2-beat cf2-beat--evidence" data-cf2-node="evidence">';
-    html += '<p class="cf2-beat__label">الملاحظة · كثافة الدليل</p>';
-    html += '<div class="cf2-dobj__ev-row">';
-    if (lang) html += lang.evidenceField(1, "sparse");
-    html +=
-      '<ul class="cf2-beat__list"><li>لا توجد سلة أو إشارة تشغيلية جاهزة للتكثيف إلى قرار الآن.</li></ul>';
+      '<ul class="cf2-beat__list"><li>لا توجد سلة أو إشارة تشغيلية جاهزة للتحوّل إلى قرار الآن.</li></ul>';
     html += "</div></section>";
     html +=
       '<section class="cf2-route__node cf2-beat cf2-beat--understanding" data-cf2-node="understanding">';
-    html += '<p class="cf2-beat__label">ما يعنيه ذلك · توطيد المعنى</p>';
+    html += '<p class="cf2-beat__label">ماذا يعني</p>';
     html +=
-      '<p class="cf2-beat__body">الصمت هنا حالة صادقة: لا معنى جاهز للتجميع لأن الأدلة لم تتجمّع بعد في مسار قرار.</p></section>';
+      '<p class="cf2-beat__body">هذا صمت تشغيلي صادق — CartFlow يراقب، ولم يتكثّف دليل كافٍ لقرار.</p></section>";
     html +=
       '<section class="cf2-route__node cf2-beat cf2-beat--decision" data-cf2-node="decision">';
-    html += '<p class="cf2-beat__label">القرار الآن · كتلة القرار</p>';
+    html += '<p class="cf2-beat__label">ما يقرره CartFlow</p>';
     html +=
-      '<div class="cf2-dmass" data-cf2-tension="open"><p class="cf2-dmass__text">لا يوجد قرار يحتاج انتباهك الآن.</p></div></section>';
+      '<div class="cf2-dmass is-forming" data-cf2-tension="open"><p class="cf2-dmass__text">واصل المراقبة — لا إجراء مطلوب الآن.</p></div></section>';
     html +=
       '<section class="cf2-route__node cf2-beat cf2-beat--action" data-cf2-node="action">';
-    html += '<p class="cf2-beat__label">خطوتك · نهاية المسار</p>';
+    html += '<p class="cf2-beat__label">خطوتك الآن</p>';
     html +=
-      '<div class="cf2-beat__action cf2-terminus"><div class="cf2-reason__wait" data-cf2-grammar="recovery-wait"><p>لا يوجد إجراء حالياً.</p><p>سيخبرك CartFlow عندما يتكثّف دليل جديد إلى قرار.</p></div></div></section>';
+      '<div class="cf2-beat__action cf2-terminus"><div class="cf2-reason__wait"><p>لا يوجد إجراء حالياً.</p><p>سيظهر القرار هنا عندما تتكثّف الإشارة.</p></div></div></section>';
     html += "</div></article>";
     return html;
   }
@@ -257,37 +377,36 @@
       primary = zoneB[0];
       next = zoneB.slice(1);
     }
-    return { primary: primary, next: next.slice(0, 3) };
+    return { primary: primary, next: next.slice(0, 2) };
   }
 
-  function render(projection) {
-    var zoneB = Array.isArray(projection && projection.zone_b)
-      ? projection.zone_b
-      : [];
+  function render(payload) {
+    var projection = unwrapProjection(payload);
+    var zoneB = Array.isArray(projection.zone_b) ? projection.zone_b : [];
     var split = splitPrimary(zoneB);
     var html =
-      '<div class="cf2-ws cf2-ws--lang" data-cf2="workspace-scene">';
+      '<div class="cf2-ws cf2-ws--lang" data-cf2="workspace-final-v1">';
     if (!split.primary) {
       html +=
-        '<section class="cf2-ws__primary" aria-label="صمت القرار">' +
+        '<section class="cf2-ws__primary" aria-label="هدوء القرار">' +
         renderQuietEnvironment() +
         "</section>";
-      html += '<hr class="cf2-taper" /></div>';
+      html += "</div>";
       return html;
     }
     html +=
-      '<section class="cf2-ws__primary" aria-label="الأولوية الآن">' +
+      '<section class="cf2-ws__primary" aria-label="القرار الأساسي">' +
       renderDecisionObject(split.primary, true) +
       "</section>";
     if (split.next.length) {
       html +=
-        '<section class="cf2-ws__next" aria-label="بعده"><p class="cf2-ws__next-label">بعده · مسارات أخف</p><div class="cf2-ws__next-list">';
+        '<section class="cf2-ws__next" aria-label="قرارات تالية"><p class="cf2-ws__next-label">بعده</p><div class="cf2-ws__next-list">';
       split.next.forEach(function (c) {
         html += renderDecisionObject(c, false);
       });
       html += "</div></section>";
     }
-    html += '<hr class="cf2-taper" /></div>';
+    html += "</div>";
     return html;
   }
 
@@ -310,5 +429,6 @@
   global.CartFlowUiV2Workspace = {
     loadAndPaint: loadAndPaint,
     render: render,
+    unwrapProjection: unwrapProjection,
   };
 })(typeof window !== "undefined" ? window : globalThis);
