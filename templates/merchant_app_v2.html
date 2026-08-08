@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="cartflow-merchant-setup-build" content="{{ merchant_setup_render_build | default('unknown') }}">
+<meta name="cartflow-ui" content="v2">
+<title>{{ merchant_html_title | default("CartFlow — لوحة التاجر") }}</title>
+<script>window.CARTFLOW_STORE_SLUG = "{{ merchant_store_slug | default('demo') }}";</script>
+<script>window.CARTFLOW_UI_V2 = true;</script>
+{# Clean-slate V2 — no legacy merchant CSS cascade #}
+<link rel="stylesheet" href="/static/merchant_ui_v2_ds.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2">
+<link rel="stylesheet" href="/static/merchant_ui_v2_frame.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2">
+<link rel="stylesheet" href="/static/merchant_ui_v2_home.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2">
+<link rel="stylesheet" href="/static/merchant_ui_v2_workspace.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2">
+</head>
+<body data-cf-ui="v2" data-cf-merchant-app="1">
+<div class="cf2-root">
+  <header class="cf2-appbar" role="banner">
+    <button type="button" class="cf2-menu-btn" aria-label="فتح القائمة">☰</button>
+    <a class="cf2-brand" href="#home" data-cf2-nav-brand>
+      <img class="cf2-brand__mark" src="/static/img/brand/cartflow_cf_mark.png" width="28" height="28" alt="" decoding="async" />
+      <span class="cf2-brand__word">CartFlow</span>
+    </a>
+    <nav class="cf2-nav" aria-label="أقسام المنتج">
+      <button type="button" class="cf2-nav__item" data-cf2-nav="home">الرئيسية</button>
+      <button type="button" class="cf2-nav__item" data-cf2-nav="workspace">مساحة القرار</button>
+      <button type="button" class="cf2-nav__item" data-cf2-nav="products">المنتجات</button>
+      <button type="button" class="cf2-nav__item" data-cf2-nav="carts">السلال</button>
+      <button type="button" class="cf2-nav__item" data-cf2-nav="comms">التواصل</button>
+      <button type="button" class="cf2-nav__item" data-cf2-nav="settings">الإعدادات</button>
+    </nav>
+    <div class="cf2-appbar__actions">
+      <span class="cf2-appbar__date cf2-appbar__desktop-only">{{ merchant_ar_date_header | default("") }}</span>
+      <button type="button" class="cf2-appbar__ghost cf2-appbar__desktop-only" id="cf2-account-btn" title="الحساب">{{ merchant_store_display_name | default("متجرك") }}</button>
+      <a class="cf2-appbar__ghost cf2-appbar__desktop-only" href="#settings" data-cf2-nav="settings">الباقة</a>
+      <a class="cf2-appbar__ghost cf2-appbar__desktop-only" href="/logout">خروج</a>
+      <button type="button" class="cf2-btn cf2-btn--icon cf2-appbar__mobile-only cf2-appbar__ghost" id="cf2-mobile-account" aria-label="الحساب" title="الحساب">👤</button>
+    </div>
+  </header>
+
+  <div class="cf2-shell" data-cf2-ctx="off">
+    <aside class="cf2-ctx" aria-label="سياق القسم"></aside>
+    <main class="cf2-stage" id="cf2-stage">
+      <div class="cf2-stage__inner">
+        <section class="cf2-page is-active" data-cf2-page="home" aria-label="الرئيسية">
+          <p class="cf2-page__question">ماذا يجب أن أعرف الآن عن متجري؟</p>
+          <div id="cf2-home-root" aria-live="polite">
+            <p class="cf2-loading">جاري تحميل الملخص…</p>
+          </div>
+        </section>
+
+        <section class="cf2-page" data-cf2-page="workspace" hidden aria-label="مساحة القرار">
+          <p class="cf2-page__question" id="cf2-workspace-question">ما القرار الذي يجب أن أتخذه الآن، ولماذا؟</p>
+          <div id="cf2-workspace-root" aria-live="polite">
+            <p class="cf2-loading">جاري تحميل مساحة القرار…</p>
+          </div>
+        </section>
+
+        <section class="cf2-page" data-cf2-page="products" hidden>
+          <p class="cf2-stub">قسم المنتجات خارج شريحة V2 الحالية — الإطار فقط يثبت التنقّل.</p>
+        </section>
+        <section class="cf2-page" data-cf2-page="carts" hidden>
+          <p class="cf2-stub">قسم السلال خارج شريحة V2 الحالية — الإطار فقط يثبت التنقّل.</p>
+        </section>
+        <section class="cf2-page" data-cf2-page="comms" hidden>
+          <p class="cf2-stub">قسم التواصل خارج شريحة V2 الحالية — الإطار فقط يثبت التنقّل.</p>
+        </section>
+        <section class="cf2-page" data-cf2-page="settings" hidden>
+          <p class="cf2-stub">الإعدادات خارج شريحة V2 الحالية. للحساب: <a href="/logout">تسجيل الخروج</a>.</p>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="cf2-drawer-backdrop" aria-hidden="true"></div>
+<aside class="cf2-drawer" aria-label="قائمة التنقل">
+  <div class="cf2-drawer__head">
+    <p class="cf2-drawer__title">CartFlow</p>
+    <button type="button" class="cf2-drawer__close" aria-label="إغلاق">×</button>
+  </div>
+  <div class="cf2-drawer__section">
+    <p class="cf2-drawer__label">الأقسام</p>
+    <button type="button" class="cf2-drawer__item" data-cf2-nav="home">الرئيسية</button>
+    <button type="button" class="cf2-drawer__item" data-cf2-nav="workspace">مساحة القرار</button>
+    <button type="button" class="cf2-drawer__item" data-cf2-nav="products">المنتجات</button>
+    <button type="button" class="cf2-drawer__item" data-cf2-nav="carts">السلال</button>
+    <button type="button" class="cf2-drawer__item" data-cf2-nav="comms">التواصل</button>
+    <button type="button" class="cf2-drawer__item" data-cf2-nav="settings">الإعدادات</button>
+  </div>
+  <hr class="cf2-drawer__divider" />
+  <div class="cf2-drawer__section">
+    <p class="cf2-drawer__label">الحساب</p>
+    <button type="button" class="cf2-drawer__item" data-cf2-nav="settings">الملف والباقة</button>
+    <a class="cf2-drawer__item" href="/logout">تسجيل الخروج</a>
+  </div>
+</aside>
+
+<script defer src="/static/merchant_ui_v2_home.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2"></script>
+<script defer src="/static/merchant_ui_v2_workspace.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2"></script>
+<script defer src="/static/merchant_ui_v2_app.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2"></script>
+</body>
+</html>

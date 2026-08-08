@@ -1,0 +1,217 @@
+/**
+ * CartFlow Merchant UI V2 — Design tokens + primitives.
+ * Namespace: [data-cf-ui="v2"] — no legacy cascade.
+ * Binding: Figma 25–26 / 29 / 31 / 33–34.
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap");
+
+body[data-cf-ui="v2"] {
+  --cf2-navy: #082048;
+  --cf2-deep: #001838;
+  --cf2-ink: #082048;
+  --cf2-ink-soft: #3d4a63;
+  --cf2-mute: #73859e;
+  --cf2-teal: #18b0a8;
+  --cf2-teal-dark: #10827c;
+  --cf2-warm: #f2b861;
+  --cf2-danger: #db5959;
+  --cf2-success: #4db88c;
+  --cf2-canvas: #f3f6f9;
+  --cf2-surface: #ffffff;
+  --cf2-border: rgba(8, 32, 72, 0.1);
+  --cf2-border-strong: rgba(8, 32, 72, 0.18);
+  --cf2-appbar-h: 52px;
+  --cf2-ctx-w: 168px;
+  --cf2-stage-max: 1120px;
+  --cf2-r-sm: 8px;
+  --cf2-r-md: 12px;
+  --cf2-font: "Tajawal", "Segoe UI", Tahoma, sans-serif;
+  --cf2-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --cf2-dur: 160ms;
+
+  margin: 0;
+  min-height: 100%;
+  font-family: var(--cf2-font);
+  color: var(--cf2-ink);
+  background: var(--cf2-canvas);
+  -webkit-font-smoothing: antialiased;
+}
+
+body[data-cf-ui="v2"] *,
+body[data-cf-ui="v2"] *::before,
+body[data-cf-ui="v2"] *::after {
+  box-sizing: border-box;
+}
+
+body[data-cf-ui="v2"] a {
+  color: inherit;
+}
+
+body[data-cf-ui="v2"] button {
+  font: inherit;
+}
+
+/* ——— Buttons ——— */
+body[data-cf-ui="v2"] .cf2-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: var(--cf2-r-sm);
+  border: 1px solid transparent;
+  background: var(--cf2-navy);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--cf2-dur) var(--cf2-ease), border-color var(--cf2-dur) ease,
+    opacity var(--cf2-dur) ease, box-shadow var(--cf2-dur) ease;
+}
+
+body[data-cf-ui="v2"] .cf2-btn:hover {
+  background: var(--cf2-deep);
+}
+
+body[data-cf-ui="v2"] .cf2-btn:focus-visible {
+  outline: 2px solid var(--cf2-teal);
+  outline-offset: 2px;
+}
+
+body[data-cf-ui="v2"] .cf2-btn:disabled,
+body[data-cf-ui="v2"] .cf2-btn[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+body[data-cf-ui="v2"] .cf2-btn--secondary {
+  background: var(--cf2-surface);
+  color: var(--cf2-ink);
+  border-color: var(--cf2-border);
+}
+
+body[data-cf-ui="v2"] .cf2-btn--secondary:hover {
+  border-color: rgba(24, 176, 168, 0.45);
+  background: #fff;
+}
+
+body[data-cf-ui="v2"] .cf2-btn--quiet {
+  background: transparent;
+  color: var(--cf2-teal-dark);
+  border-color: transparent;
+  min-height: 36px;
+  padding: 0 10px;
+}
+
+body[data-cf-ui="v2"] .cf2-btn--quiet:hover {
+  background: rgba(24, 176, 168, 0.1);
+}
+
+body[data-cf-ui="v2"] .cf2-btn--icon {
+  width: 40px;
+  min-width: 40px;
+  padding: 0;
+}
+
+body[data-cf-ui="v2"] .cf2-btn--loading {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+}
+
+body[data-cf-ui="v2"] .cf2-btn--loading::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  animation: cf2-spin 0.7s linear infinite;
+}
+
+@keyframes cf2-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ——— Badge / Status ——— */
+body[data-cf-ui="v2"] .cf2-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(8, 32, 72, 0.06);
+  color: var(--cf2-ink);
+}
+
+body[data-cf-ui="v2"] .cf2-badge--info {
+  background: rgba(24, 176, 168, 0.12);
+  color: var(--cf2-teal-dark);
+}
+
+body[data-cf-ui="v2"] .cf2-badge--warn {
+  background: rgba(242, 184, 97, 0.18);
+  color: #8a5a12;
+}
+
+/* ——— Surfaces (open — not default white cards) ——— */
+body[data-cf-ui="v2"] .cf2-panel,
+body[data-cf-ui="v2"] .cf2-evidence,
+body[data-cf-ui="v2"] .cf2-knowledge,
+body[data-cf-ui="v2"] .cf2-decision,
+body[data-cf-ui="v2"] .cf2-recovery {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
+}
+
+body[data-cf-ui="v2"] .cf2-divider {
+  height: 1px;
+  border: none;
+  margin: 24px 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(8, 32, 72, 0.14) 22%,
+    rgba(8, 32, 72, 0.28) 50%,
+    rgba(8, 32, 72, 0.14) 78%,
+    transparent 100%
+  );
+}
+
+body[data-cf-ui="v2"] .cf2-empty,
+body[data-cf-ui="v2"] .cf2-loading,
+body[data-cf-ui="v2"] .cf2-error {
+  padding: 28px 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--cf2-ink-soft);
+}
+
+body[data-cf-ui="v2"] .cf2-error {
+  color: #9b2c2c;
+  background: rgba(219, 89, 89, 0.08);
+  border: 1px solid rgba(219, 89, 89, 0.28);
+  border-radius: var(--cf2-r-md);
+  padding: 12px 14px;
+}
+
+/* Grayscale / logo-free proof mode */
+body[data-cf-ui="v2"][data-cf2-proof="grayscale"] {
+  filter: grayscale(1);
+}
+
+body[data-cf-ui="v2"][data-cf2-proof="grayscale"] .cf2-brand__mark,
+body[data-cf-ui="v2"][data-cf2-proof="grayscale"] .cf2-brand__word {
+  visibility: hidden;
+}

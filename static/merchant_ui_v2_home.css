@@ -1,0 +1,189 @@
+/**
+ * CartFlow Merchant UI V2 — Home executive composition.
+ * Truth → Meaning → Priority → Decision → Action. Not equal cards.
+ */
+
+body[data-cf-ui="v2"] .cf2-home {
+  position: relative;
+  width: 100%;
+}
+
+body[data-cf-ui="v2"] .cf2-home__spine {
+  margin: 0 0 28px;
+  padding-bottom: 16px;
+  border-block-end: 1px solid var(--cf2-border);
+}
+
+body[data-cf-ui="v2"] .cf2-home__kicker {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--cf2-teal-dark);
+}
+
+body[data-cf-ui="v2"] .cf2-home__spine-line {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--cf2-ink-soft);
+  max-width: 36rem;
+}
+
+body[data-cf-ui="v2"] .cf2-home__dominant {
+  position: relative;
+  margin: 0 0 32px;
+  padding: 8px 4px 8px 18px;
+  max-width: 46rem;
+}
+
+body[data-cf-ui="v2"] .cf2-home__dominant::before {
+  content: "";
+  position: absolute;
+  inset-block: 8% 12%;
+  inset-inline-start: 0;
+  width: 3px;
+  background: var(--cf2-navy);
+  clip-path: polygon(0 0, 100% 8%, 100% 72%, 40% 100%, 0 92%);
+}
+
+body[data-cf-ui="v2"] .cf2-home__lane {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--cf2-teal-dark);
+}
+
+body[data-cf-ui="v2"] .cf2-home__title {
+  margin: 0 0 10px;
+  font-size: clamp(1.35rem, 2.2vw, 1.75rem);
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+body[data-cf-ui="v2"] .cf2-home__why {
+  margin: 0 0 12px;
+  font-size: clamp(1.08rem, 1.5vw, 1.22rem);
+  font-weight: 700;
+  line-height: 1.5;
+  max-width: 40rem;
+}
+
+body[data-cf-ui="v2"] .cf2-home__meaning {
+  margin: 0 0 16px;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--cf2-ink-soft);
+  max-width: 38rem;
+}
+
+body[data-cf-ui="v2"] .cf2-home__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+body[data-cf-ui="v2"] .cf2-home__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 36px 48px;
+  align-items: start;
+  margin: 0 0 8px;
+}
+
+body[data-cf-ui="v2"] .cf2-home__evidence {
+  position: relative;
+  padding-inline-start: 14px;
+  border-inline-start: 1px solid var(--cf2-border);
+}
+
+body[data-cf-ui="v2"] .cf2-home__block {
+  margin: 0 0 22px;
+}
+
+body[data-cf-ui="v2"] .cf2-home__block:last-child {
+  margin-bottom: 0;
+}
+
+body[data-cf-ui="v2"] .cf2-home__block-title {
+  margin: 0 0 8px;
+  font-size: 1.02rem;
+  font-weight: 700;
+}
+
+body[data-cf-ui="v2"] .cf2-home__block-body {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--cf2-ink-soft);
+}
+
+body[data-cf-ui="v2"] .cf2-home__secondary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px 40px;
+  margin-top: 8px;
+  padding-top: 22px;
+  opacity: 0.88;
+}
+
+body[data-cf-ui="v2"] .cf2-home__secondary .cf2-home__block-title {
+  font-size: 0.98rem;
+}
+
+body[data-cf-ui="v2"] .cf2-home__secondary .cf2-home__block-body {
+  font-size: 0.9rem;
+}
+
+body[data-cf-ui="v2"] .cf2-home__action {
+  margin-top: 14px;
+}
+
+body[data-cf-ui="v2"] .cf2-home__ops {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-block-start: 1px dashed var(--cf2-border);
+}
+
+body[data-cf-ui="v2"] .cf2-home__ops-title {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #8a5a12;
+}
+
+body[data-cf-ui="v2"] .cf2-home__ops-body {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--cf2-ink-soft);
+}
+
+@media (max-width: 1023px) {
+  body[data-cf-ui="v2"] .cf2-home__grid,
+  body[data-cf-ui="v2"] .cf2-home__secondary {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-home__evidence {
+    border-inline-start: none;
+    padding-inline-start: 0;
+    border-block-start: 1px solid var(--cf2-border);
+    padding-block-start: 18px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-home__dominant {
+    padding-inline-start: 14px;
+    margin-bottom: 24px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-home__title {
+    font-size: 1.4rem;
+  }
+}

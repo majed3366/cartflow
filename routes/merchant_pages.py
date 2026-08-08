@@ -60,14 +60,20 @@ def dashboard(request: Request):
         merchant_experience_integration_v1_enabled,
     )
 
+    from services.merchant_ui_v2.flag_v1 import (  # noqa: PLC0415
+        apply_merchant_ui_v2_cookie,
+        merchant_ui_v2_requested,
+    )
+
     _meif_on = merchant_experience_integration_v1_enabled()
     # MEIF V1: Decision Workspace must be navigable (MEV1-D01).
     _cw_on = bool(cart_workspace_v1_enabled() or _meif_on)
     _dual = decision_dual_stack_v1_enabled()
-    resp = templates.TemplateResponse(
-        request,
-        "merchant_app.html",
-        {
+    _ui_v2 = merchant_ui_v2_requested(
+        query=request.query_params, cookies=request.cookies
+    )
+    _template = "merchant_app_v2.html" if _ui_v2 else "merchant_app.html"
+    _ctx = {
             "request": request,
             "merchant_html_title": "CartFlow — لوحة التاجر",
             "merchant_setup_render_build": MERCHANT_SETUP_RENDER_BUILD,
@@ -78,6 +84,7 @@ def dashboard(request: Request):
             "merchant_cart_workspace_v1": _cw_on,
             "decision_workspace_v2": bool(decision_workspace_v2_enabled()),
             "decision_dual_stack_v1": _dual,
+            "merchant_ui_v2": _ui_v2,
             "merchant_cart_workspace_silent_success": (
                 _cw_on and cart_workspace_silent_success_enabled()
             ),
@@ -122,8 +129,16 @@ def dashboard(request: Request):
             "merchant_month_recovery_pct_fmt": "…",
             "merchant_month_revenue_fmt": "…",
             **shell_store,
-        },
+        }
+    resp = templates.TemplateResponse(
+        request,
+        _template,
+        _ctx,
     )
+    # Persist review toggle when ?cf_ui= is present.
+    _q = (request.query_params.get("cf_ui") or "").strip().lower()
+    if _q in {"v2", "1", "true", "on", "v1", "0", "false", "off"}:
+        apply_merchant_ui_v2_cookie(resp, _ui_v2)
     stall_trace_checkpoint("dashboard_after_template_before_shell_profile")
     _log_dashboard_shell_profile(wall_perf_start=wall0)
     stall_trace_checkpoint("dashboard_response_ready")
@@ -273,3 +288,27 @@ def dashboard_test_widget(request: Request):
     if not slug:
         return RedirectResponse(url="/dashboard#settings", status_code=302)
     return RedirectResponse(url=merchant_activation_test_store_url(slug), status_code=302)
+
+
+@router.get("/dev/merchant-ui-v2")
+def merchant_ui_v2_review_entry(request: Request):
+    """
+    Review entry for Merchant UI V2 vertical slice.
+    Sets cf_ui_v2 cookie and redirects into real /dashboard (does not replace V1 globally).
+    """
+    from services.merchant_ui_v2.flag_v1 import apply_merchant_ui_v2_cookie  # noqa: PLC0415
+
+    resp = RedirectResponse(url="/dashboard?cf_ui=v2#home", status_code=302)
+    apply_merchant_ui_v2_cookie(resp, True)
+    return resp
+
+
+@router.get("/dev/merchant-ui-v1")
+def merchant_ui_v1_review_entry(request: Request):
+    """Return review browser to legacy V1 dashboard presentation."""
+    from services.merchant_ui_v2.flag_v1 import apply_merchant_ui_v2_cookie  # noqa: PLC0415
+
+    resp = RedirectResponse(url="/dashboard?cf_ui=v1#home", status_code=302)
+    apply_merchant_ui_v2_cookie(resp, False)
+    return resp
+

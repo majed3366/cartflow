@@ -1,0 +1,240 @@
+/**
+ * CartFlow Merchant UI V2 — Decision Workspace composition.
+ * Evidence → Understanding → Decision → Action as structure.
+ */
+
+body[data-cf-ui="v2"] .cf2-ws {
+  width: 100%;
+}
+
+body[data-cf-ui="v2"] .cf2-ws__primary {
+  margin: 0 0 36px;
+}
+
+body[data-cf-ui="v2"] .cf2-ws__next-label {
+  margin: 0 0 16px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--cf2-mute);
+}
+
+body[data-cf-ui="v2"] .cf2-ws__next-list {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+body[data-cf-ui="v2"] .cf2-reason {
+  position: relative;
+  padding-inline-start: 20px;
+}
+
+body[data-cf-ui="v2"] .cf2-reason--primary::before {
+  content: "";
+  position: absolute;
+  inset-block: 4% 8%;
+  inset-inline-start: 0;
+  width: 3px;
+  background: linear-gradient(
+    180deg,
+    rgba(24, 176, 168, 0.2) 0%,
+    var(--cf2-navy) 30%,
+    var(--cf2-navy) 70%,
+    rgba(24, 176, 168, 0.35) 100%
+  );
+  clip-path: polygon(0 0, 100% 6%, 100% 78%, 45% 100%, 0 94%);
+}
+
+body[data-cf-ui="v2"] .cf2-reason--next {
+  padding-inline-start: 14px;
+  opacity: 0.88;
+}
+
+body[data-cf-ui="v2"] .cf2-reason--next::before {
+  content: "";
+  position: absolute;
+  inset-block: 12% 20%;
+  inset-inline-start: 0;
+  width: 2px;
+  background: rgba(8, 32, 72, 0.2);
+}
+
+body[data-cf-ui="v2"] .cf2-reason__rank {
+  margin: 0 0 16px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--cf2-teal-dark);
+}
+
+body[data-cf-ui="v2"] .cf2-reason--next .cf2-reason__rank {
+  color: var(--cf2-mute);
+}
+
+body[data-cf-ui="v2"] .cf2-reason__flow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+body[data-cf-ui="v2"] .cf2-beat {
+  margin: 0;
+  padding: 0 0 20px;
+}
+
+body[data-cf-ui="v2"] .cf2-beat:last-child {
+  padding-bottom: 0;
+}
+
+body[data-cf-ui="v2"] .cf2-beat__label {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--cf2-mute);
+}
+
+body[data-cf-ui="v2"] .cf2-beat__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+body[data-cf-ui="v2"] .cf2-beat__list li {
+  position: relative;
+  padding-inline-start: 14px;
+  font-size: 0.98rem;
+  line-height: 1.5;
+}
+
+body[data-cf-ui="v2"] .cf2-beat__list li::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  top: 0.55em;
+  width: 5px;
+  height: 2px;
+  background: var(--cf2-teal);
+}
+
+body[data-cf-ui="v2"] .cf2-reason[data-cf2-evidence="dense"] .cf2-beat__list {
+  gap: 6px;
+}
+
+body[data-cf-ui="v2"] .cf2-reason[data-cf2-evidence="dense"] .cf2-beat__list li {
+  font-size: 0.94rem;
+  line-height: 1.45;
+}
+
+body[data-cf-ui="v2"] .cf2-reason[data-cf2-evidence="sparse"] .cf2-beat__list {
+  gap: 12px;
+}
+
+body[data-cf-ui="v2"] .cf2-beat__body {
+  margin: 0;
+  max-width: 38rem;
+  font-size: 1.02rem;
+  line-height: 1.55;
+  font-weight: 500;
+  color: var(--cf2-ink-soft);
+}
+
+body[data-cf-ui="v2"] .cf2-beat__decision {
+  margin: 0;
+  max-width: 36rem;
+  font-size: clamp(1.2rem, 1.8vw, 1.45rem);
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: -0.015em;
+  color: var(--cf2-navy);
+}
+
+body[data-cf-ui="v2"] .cf2-reason[data-cf2-tension="resolved"] .cf2-beat__decision {
+  font-size: clamp(1.28rem, 2vw, 1.55rem);
+}
+
+body[data-cf-ui="v2"] .cf2-reason[data-cf2-tension="open"] .cf2-beat__decision,
+body[data-cf-ui="v2"] .cf2-reason[data-cf2-tension="high"] .cf2-beat__decision {
+  font-weight: 700;
+  opacity: 0.94;
+}
+
+body[data-cf-ui="v2"] .cf2-reason--next .cf2-beat__decision {
+  font-size: 1.12rem;
+  font-weight: 700;
+}
+
+body[data-cf-ui="v2"] .cf2-beat__action {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+body[data-cf-ui="v2"] .cf2-reason__wait p {
+  margin: 0 0 4px;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--cf2-ink-soft);
+}
+
+body[data-cf-ui="v2"] .cf2-reason--quiet {
+  padding: 28px 4px;
+  opacity: 0.8;
+}
+
+body[data-cf-ui="v2"] .cf2-reason--quiet h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+@media (min-width: 1024px) {
+  body[data-cf-ui="v2"] .cf2-reason--primary .cf2-reason__flow {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    column-gap: 48px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-reason--primary .cf2-beat--evidence {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  body[data-cf-ui="v2"] .cf2-reason--primary .cf2-beat--understanding {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  body[data-cf-ui="v2"] .cf2-reason--primary .cf2-beat--decision {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+    padding-inline-start: 28px;
+    border-inline-start: 1px solid var(--cf2-border);
+  }
+
+  body[data-cf-ui="v2"] .cf2-reason--primary .cf2-beat--action {
+    grid-column: 1 / -1;
+    padding-top: 12px;
+    margin-top: 8px;
+    border-block-start: 1px solid rgba(8, 32, 72, 0.06);
+  }
+}
+
+@media (max-width: 1023px) {
+  body[data-cf-ui="v2"] .cf2-reason {
+    padding-inline-start: 14px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-beat__decision {
+    font-size: 1.22rem;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ws__primary {
+    margin-bottom: 28px;
+  }
+}
