@@ -1,7 +1,7 @@
 {
   "deploy": {
     "ok": true,
-    "sha": "8cc5ad1bddf47cb23b0de37283f28406100212ab",
+    "sha": "59e46c71f78c2b4f9b6830ab17f216ac7a485186",
     "status": 200
   },
   "url": "https://smartreplyai.net/dashboard#workspace",
@@ -26,6 +26,27 @@
     "noOverflow": true,
     "cacheBump": true
   },
+  "desktop_scroll": {
+    "docScrollable": false,
+    "bodyOverflowY": "auto",
+    "htmlOverflowY": "auto",
+    "stageOverflowY": "visible",
+    "stageIsScrollTrap": false,
+    "bodyHeight": "900px",
+    "rootHeight": "900px",
+    "scrollHeight": 900,
+    "clientHeight": 900,
+    "noOverflowX": true,
+    "drawerOpenClass": false,
+    "cacheBump": true
+  },
+  "desktop_scroll_exercise": {
+    "before": 0,
+    "scrolled_down": 0,
+    "after_top": 0,
+    "moved_down": false,
+    "returned_top": true
+  },
   "mobile": {
     "url": "https://smartreplyai.net/dashboard#workspace",
     "ui": "v2",
@@ -46,5 +67,41 @@
     "appbarAccountSvg": true,
     "noOverflow": true,
     "cacheBump": true
+  },
+  "mobile_scroll": {
+    "docScrollable": true,
+    "bodyOverflowY": "auto",
+    "htmlOverflowY": "auto",
+    "stageOverflowY": "visible",
+    "stageIsScrollTrap": false,
+    "bodyHeight": "930.906px",
+    "rootHeight": "930.906px",
+    "scrollHeight": 931,
+    "clientHeight": 844,
+    "noOverflowX": true,
+    "drawerOpenClass": false,
+    "cacheBump": true
+  },
+  "mobile_scroll_exercise": {
+    "before": 0,
+    "scrolled_down": 87,
+    "after_top": 0,
+    "moved_down": true,
+    "returned_top": true
+  },
+  "mobile_drawer_scroll": {
+    "while_open": {
+      "drawerOpen": true,
+      "bodyOverflow": "hidden",
+      "inlineOverflow": "hidden"
+    },
+    "after_close": {
+      "drawerOpen": false,
+      "bodyOverflowY": "auto",
+      "inlineOverflow": ""
+    },
+    "can_scroll_after_close": true,
+    "lock_while_open": true,
+    "unlocked_after_close": true
   }
 }

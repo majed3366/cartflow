@@ -1,6 +1,7 @@
 # Merchant UI V2 — Decision Workspace Final Product Composition V1
 
 **Status:** Living Store evidence captured — STOP for Workspace visual review  
+**Deploy:** `59e46c7`  
 **URL:** https://smartreplyai.net/dashboard#workspace  
 **Home:** FROZEN — visual composition unchanged; shared frame scroll contract repaired
 
@@ -35,15 +36,16 @@ Drawer `body.style.overflow = hidden` compounded the problem because body CSS wa
 
 ### Acceptance validation (Living Store)
 
+Validated on deploy `59e46c7` (`production_probe.json`):
+
 | Check | Result |
 |------|--------|
-| Desktop: scroll top → bottom → top | `desktop_scroll_exercise` in `production_probe.json` |
-| Mobile: scroll top → bottom → top | `mobile_scroll_exercise` |
-| Stage is not a scroll trap | `stageIsScrollTrap: false` |
-| Body overflow not permanently hidden | `bodyOverflowY != hidden` when drawer closed |
-| Drawer open locks background | `mobile_drawer_scroll.lock_while_open` |
-| Drawer close restores scrolling | `unlocked_after_close` + `can_scroll_after_close` |
-| No horizontal overflow | `noOverflow` / `noOverflowX` |
+| Desktop: document scroll contract | `bodyOverflowY/htmlOverflowY: auto`, `stageOverflowY: visible`, `stageIsScrollTrap: false` |
+| Desktop: content shorter than 1440×900 in this Living Store state | `docScrollable: false` (no trap; grows when content exceeds viewport) |
+| Mobile: scroll top → bottom → top | `moved_down: true`, `returned_top: true` (`scrolled_down: 87`) |
+| Drawer open locks background | `lock_while_open: true`, `bodyOverflow: hidden` |
+| Drawer close restores scrolling | `unlocked_after_close: true`, `can_scroll_after_close: true` |
+| No horizontal overflow | desktop + mobile `noOverflow: true` |
 
 Evidence shots: `11_desktop_scroll_bottom.png`, `12_mobile_scroll_bottom.png`.
 
