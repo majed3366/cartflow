@@ -1,7 +1,8 @@
 # Merchant UI V2 — Home Production Baseline Promotion V1
 
-**Status:** pending deploy validation  
-**Visual freeze baseline:** `71cf4e3` (Home Desktop Stage Closure V1)  
+**Status:** VALIDATED  
+**Promotion deploy:** `4103274`  
+**Visual freeze baseline:** `71cf4e3` (Home Desktop Stage Closure V1 — unchanged)  
 **Living Store default URL:** https://smartreplyai.net/dashboard#home
 
 ## Objective
@@ -12,8 +13,9 @@ Promote approved Merchant UI V2 Home to the **default** production `/dashboard` 
 
 - Default: **V2 ON** (`DEFAULT_MERCHANT_UI_V2 = True`)
 - Merchants no longer need `?cf_ui=v2`
+- Probe confirmed `hasCfUiQuery: false` on desktop / laptop / mobile
 
-## Rollback path (preserved)
+## Rollback path (preserved & verified)
 
 | Method | How |
 |--------|-----|
@@ -22,14 +24,18 @@ Promote approved Merchant UI V2 Home to the **default** production `/dashboard` 
 | Env | `CARTFLOW_MERCHANT_UI_V2=0` |
 | Dev route | `/dev/merchant-ui-v1` |
 
-## Confirmations (fill after Living Store validation)
+Rollback smoke: `?cf_ui=v1` served `merchant_frame_v1` without V2 Home CSS.
 
-- Deployed SHA: _pending_
-- Default UI mode: V2
-- Living Store validated without `cf_ui` query: _pending_
-- Rollback path verified: _pending_
-- No visual drift from frozen Home (`home-stage-closure-v1`): _pending_
-- No behavioral regression / no legacy CSS mix: _pending_
+## Confirmations
+
+- Deployed SHA: **`4103274`**
+- Default UI mode: **V2**
+- Living Store validated **without** `cf_ui` query (desktop / laptop / mobile)
+- Rollback path verified
+- No visual drift: `data-cf2="home-stage-closure-v1"` present
+- No legacy CSS / no mixed V1+V2 styles
+- No overflow
+- Home scene + stance + monitor present; navigation Home active
 
 ## Evidence
 
@@ -43,4 +49,4 @@ Promote approved Merchant UI V2 Home to the **default** production `/dashboard` 
 
 ## STOP
 
-Do not start Decision Workspace Final Product Composition V1.
+Production validation complete. Do **not** start Decision Workspace Final Product Composition V1 until tasked.
