@@ -1,7 +1,7 @@
 # Merchant UI V2 — Decision Workspace Final Product Composition V1
 
 **Status:** Living Store evidence captured — STOP for Workspace visual review  
-**Deploy:** `1a4df46` (+ follow-up polish push for App Bar mark contrast / mobile CO density)  
+**Deploy:** `8cc5ad1`  
 **URL:** https://smartreplyai.net/dashboard#workspace  
 **Home:** FROZEN — not modified
 

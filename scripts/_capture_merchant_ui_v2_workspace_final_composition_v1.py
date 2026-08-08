@@ -20,7 +20,7 @@ BEFORE = (
     / "10_desktop_workspace.png"
 )
 BASE = "https://smartreplyai.net"
-EXPECTED_SHA_PREFIX = "1a4df46"
+EXPECTED_SHA_PREFIX = "8cc5ad1"
 
 
 def wait_for_deploy(timeout_s: int = 720) -> dict:
