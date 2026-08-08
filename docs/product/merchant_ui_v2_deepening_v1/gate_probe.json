@@ -1,0 +1,55 @@
+{
+  "deploy": {
+    "ok": true,
+    "sha": "32b25e8223367efe3eb2f571b20eec09f51d6f87",
+    "status": 200
+  },
+  "desktop_home": {
+    "ui": "v2",
+    "rail": true,
+    "gravity": true,
+    "terminus": true,
+    "route": false,
+    "dmass": false,
+    "evfield": true,
+    "density": "sparse",
+    "co": 9,
+    "cache": true
+  },
+  "desktop_workspace": {
+    "ui": "v2",
+    "rail": true,
+    "gravity": true,
+    "terminus": true,
+    "route": true,
+    "dmass": true,
+    "evfield": true,
+    "density": "sparse",
+    "co": 12,
+    "cache": true
+  },
+  "mobile_home": {
+    "ui": "v2",
+    "rail": true,
+    "gravity": true,
+    "terminus": true,
+    "route": false,
+    "dmass": false,
+    "evfield": true,
+    "density": "sparse",
+    "co": 9,
+    "cache": true
+  },
+  "mobile_workspace": {
+    "ui": "v2",
+    "rail": true,
+    "gravity": true,
+    "terminus": true,
+    "route": true,
+    "dmass": true,
+    "evfield": true,
+    "density": "sparse",
+    "co": 12,
+    "cache": true
+  }
+}
