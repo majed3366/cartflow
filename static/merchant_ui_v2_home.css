@@ -1,5 +1,6 @@
 /**
- * CartFlow Merchant UI V2 — Home executive commerce scene layout.
+ * CartFlow Merchant UI V2 — Home executive commerce scene (composition deepened).
+ * One organism: Attention → Evidence → Meaning → Decision → Movement.
  */
 
 body[data-cf-ui="v2"] .cf2-scene {
@@ -8,13 +9,13 @@ body[data-cf-ui="v2"] .cf2-scene {
 }
 
 body[data-cf-ui="v2"] .cf2-scene__spine {
-  margin: 0 0 28px;
-  padding-bottom: 16px;
-  border-block-end: 1px solid var(--cf2-border);
+  margin: 0 0 14px;
+  padding-bottom: 10px;
+  border-block-end: 1px solid rgba(8, 32, 72, 0.08);
 }
 
 body[data-cf-ui="v2"] .cf2-scene__kicker {
-  margin: 0 0 4px;
+  margin: 0 0 2px;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -23,47 +24,81 @@ body[data-cf-ui="v2"] .cf2-scene__kicker {
 
 body[data-cf-ui="v2"] .cf2-scene__spine-line {
   margin: 0;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 500;
-  color: var(--cf2-ink-soft);
+  color: var(--cf2-mute);
 }
 
+/* Dominant commerce organism — fills the composed field */
 body[data-cf-ui="v2"] .cf2-scene__gravity {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(180px, 0.75fr);
-  gap: 36px 48px;
-  align-items: start;
-  margin: 0 0 8px;
-  padding: 12px 8px 20px 4px;
+  grid-template-columns: auto minmax(0, 1.45fr) minmax(220px, 0.9fr);
+  gap: 0 32px;
+  align-items: stretch;
+  margin: 0;
+  min-height: min(58vh, 520px);
+  padding: 28px 20px 32px 12px;
   background:
     radial-gradient(
-      120% 80% at 100% 0%,
-      rgba(24, 176, 168, 0.07) 0%,
-      transparent 55%
+      90% 70% at 100% 8%,
+      rgba(24, 176, 168, 0.1) 0%,
+      transparent 50%
     ),
     linear-gradient(
-      105deg,
-      rgba(8, 32, 72, 0.04) 0%,
-      transparent 55%
+      118deg,
+      rgba(8, 32, 72, 0.055) 0%,
+      transparent 48%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.35) 0%,
+      transparent 30%
     );
-  border-radius: 0 16px 16px 0;
+  border-radius: 0 18px 18px 0;
+  border-inline-start: 3px solid rgba(8, 32, 72, 0.14);
+}
+
+body[data-cf-ui="v2"] .cf2-scene__gravity[data-cf2-tension="open"] {
+  border-inline-start-color: rgba(115, 133, 158, 0.45);
+}
+
+body[data-cf-ui="v2"] .cf2-scene__gravity[data-cf2-tension="resolved"] {
+  border-inline-start-color: var(--cf2-navy);
+}
+
+body[data-cf-ui="v2"] .cf2-scene__co-rail {
+  flex: 0 0 auto;
+  padding-inline-end: 8px;
+  border-inline-end: 1px solid rgba(8, 32, 72, 0.08);
+  min-width: 84px;
+}
+
+body[data-cf-ui="v2"] .cf2-scene__gravity-main {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding-inline-end: 8px;
 }
 
 body[data-cf-ui="v2"] .cf2-scene__lane {
   margin: 0 0 6px;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   color: var(--cf2-teal-dark);
+  opacity: 0.75;
 }
 
 body[data-cf-ui="v2"] .cf2-scene__title {
-  margin: 0 0 12px;
-  font-size: clamp(1.45rem, 2.4vw, 1.9rem);
+  margin: 0 0 14px;
+  font-size: clamp(1.65rem, 2.8vw, 2.15rem);
   font-weight: 800;
-  line-height: 1.2;
-  letter-spacing: -0.025em;
+  line-height: 1.18;
+  letter-spacing: -0.03em;
   color: var(--cf2-navy);
+  max-width: 22ch;
 }
 
 body[data-cf-ui="v2"] .cf2-scene__meta {
@@ -71,42 +106,61 @@ body[data-cf-ui="v2"] .cf2-scene__meta {
 }
 
 body[data-cf-ui="v2"] .cf2-scene__why {
-  margin: 0 0 12px;
-  font-size: clamp(1.08rem, 1.5vw, 1.22rem);
+  margin: 0 0 14px;
+  font-size: clamp(1.12rem, 1.6vw, 1.28rem);
   font-weight: 700;
-  line-height: 1.5;
-  max-width: 40rem;
+  line-height: 1.48;
+  max-width: 38rem;
 }
 
 body[data-cf-ui="v2"] .cf2-scene__meaning {
-  margin: 0 0 8px;
-  font-size: 1rem;
+  margin: 0 0 4px;
+  font-size: 1.02rem;
   line-height: 1.5;
   color: var(--cf2-ink-soft);
-  max-width: 38rem;
-  padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.55);
-  border-inline-start: 2px solid rgba(24, 176, 168, 0.45);
+  max-width: 36rem;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.5);
+  border-inline-start: 3px solid rgba(24, 176, 168, 0.55);
 }
 
 body[data-cf-ui="v2"] .cf2-scene__terminus {
   margin: 18px 0 0;
+  align-self: flex-start;
+  max-width: 22rem;
 }
 
+/* Evidence density zone — structural companion, not a sidebar card */
 body[data-cf-ui="v2"] .cf2-scene__density {
   position: relative;
-  padding: 8px 4px 8px 16px;
-  border-inline-start: 1px solid var(--cf2-border);
-  min-height: 160px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 8px 4px 8px 20px;
+  border-inline-start: 1px solid rgba(8, 32, 72, 0.1);
+  min-height: 100%;
+}
+
+body[data-cf-ui="v2"] .cf2-scene__density .cf2-evfield {
+  margin: 4px 0 20px;
+  flex: 0 0 auto;
 }
 
 body[data-cf-ui="v2"] .cf2-scene__ev-item {
-  margin-top: 16px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-block-start: 1px solid rgba(8, 32, 72, 0.06);
+}
+
+body[data-cf-ui="v2"] .cf2-scene__ev-item:first-of-type {
+  margin-top: 0;
+  padding-top: 0;
+  border-block-start: none;
 }
 
 body[data-cf-ui="v2"] .cf2-scene__ev-title {
   margin: 0 0 4px;
-  font-size: 0.95rem;
+  font-size: 0.98rem;
   font-weight: 700;
 }
 
@@ -117,49 +171,80 @@ body[data-cf-ui="v2"] .cf2-scene__ev-body {
   color: var(--cf2-ink-soft);
 }
 
+/* Secondary orbit — quieter, closer, not equal islands */
 body[data-cf-ui="v2"] .cf2-scene__orbit {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 28px 40px;
-  margin-top: 4px;
+  gap: 18px 36px;
+  margin-top: 0;
+  padding-inline-start: 12px;
+  opacity: 0.92;
 }
 
 body[data-cf-ui="v2"] .cf2-dobj__ev-row {
   display: grid;
-  grid-template-columns: minmax(100px, 140px) minmax(0, 1fr);
-  gap: 16px 20px;
+  grid-template-columns: minmax(120px, 160px) minmax(0, 1fr);
+  gap: 16px 22px;
   align-items: start;
+}
+
+@media (min-width: 1024px) {
+  body[data-cf-ui="v2"] #page-home .cf2-page__question {
+    margin-bottom: 10px;
+    font-size: clamp(1.15rem, 1.7vw, 1.38rem);
+    max-width: 36rem;
+    color: var(--cf2-ink-soft);
+    font-weight: 700;
+  }
 }
 
 @media (max-width: 1023px) {
   body[data-cf-ui="v2"] .cf2-scene__gravity {
     grid-template-columns: 1fr;
-    gap: 22px;
-    padding: 8px 0 12px;
+    gap: 18px;
+    min-height: 0;
+    padding: 12px 0 16px;
     border-radius: 0;
+    border-inline-start: none;
+  }
+
+  body[data-cf-ui="v2"] .cf2-scene__co-rail {
+    border-inline-end: none;
+    padding-inline-end: 0;
+    min-width: 0;
+  }
+
+  body[data-cf-ui="v2"] .cf2-scene__co-rail .cf2-co-row--rail {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 16px 20px;
+    height: auto;
+  }
+
+  body[data-cf-ui="v2"] .cf2-scene__co-rail .cf2-co__glyph {
+    width: 52px;
+    height: 52px;
   }
 
   body[data-cf-ui="v2"] .cf2-scene__density {
     border-inline-start: none;
     padding-inline-start: 0;
-    border-block-start: 1px solid var(--cf2-border);
-    padding-block-start: 18px;
+    border-block-start: 1px solid rgba(8, 32, 72, 0.1);
+    padding-block-start: 16px;
   }
 
   body[data-cf-ui="v2"] .cf2-scene__orbit {
     grid-template-columns: 1fr;
-    gap: 22px;
+    gap: 18px;
+    padding-inline-start: 0;
   }
 
   body[data-cf-ui="v2"] .cf2-scene__title {
-    font-size: 1.4rem;
+    font-size: 1.45rem;
+    max-width: none;
   }
 
   body[data-cf-ui="v2"] .cf2-dobj__ev-row {
     grid-template-columns: 1fr;
-  }
-
-  body[data-cf-ui="v2"] .cf2-co-row {
-    gap: 12px 16px;
   }
 }

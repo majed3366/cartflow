@@ -166,7 +166,7 @@
     html +=
       '<section class="cf2-route__node cf2-beat cf2-beat--action" data-cf2-node="action">';
     html += '<p class="cf2-beat__label">خطوتك · نهاية المسار</p>';
-    html += '<div class="cf2-beat__action">';
+    html += '<div class="cf2-beat__action cf2-terminus">';
     if (actionReady && href) {
       html +=
         '<a class="cf2-btn' +
@@ -227,7 +227,7 @@
       '<section class="cf2-route__node cf2-beat cf2-beat--action" data-cf2-node="action">';
     html += '<p class="cf2-beat__label">خطوتك · نهاية المسار</p>';
     html +=
-      '<div class="cf2-beat__action"><div class="cf2-reason__wait" data-cf2-grammar="recovery-wait"><p>لا يوجد إجراء حالياً.</p><p>سيخبرك CartFlow عندما يتكثّف دليل جديد إلى قرار.</p></div></div></section>';
+      '<div class="cf2-beat__action cf2-terminus"><div class="cf2-reason__wait" data-cf2-grammar="recovery-wait"><p>لا يوجد إجراء حالياً.</p><p>سيخبرك CartFlow عندما يتكثّف دليل جديد إلى قرار.</p></div></div></section>';
     html += "</div></article>";
     return html;
   }

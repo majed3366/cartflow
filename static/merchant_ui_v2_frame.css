@@ -225,12 +225,16 @@ body[data-cf-ui="v2"] .cf2-stage {
   overflow: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  padding: 22px 28px 48px;
+  padding: 16px 28px 36px;
 }
 
 body[data-cf-ui="v2"] .cf2-stage__inner {
   width: min(var(--cf2-stage-max), 100%);
   margin: 0;
+}
+
+body[data-cf-ui="v2"] .cf2-shell[data-cf2-ctx="off"] .cf2-stage__inner {
+  width: min(1280px, 100%);
 }
 
 body[data-cf-ui="v2"] .cf2-page {
@@ -242,8 +246,8 @@ body[data-cf-ui="v2"] .cf2-page.is-active {
 }
 
 body[data-cf-ui="v2"] .cf2-page__question {
-  margin: 0 0 28px;
-  font-size: clamp(1.25rem, 2vw, 1.55rem);
+  margin: 0 0 14px;
+  font-size: clamp(1.2rem, 1.9vw, 1.45rem);
   font-weight: 800;
   line-height: 1.35;
   letter-spacing: -0.02em;

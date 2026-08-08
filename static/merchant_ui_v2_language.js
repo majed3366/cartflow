@@ -45,20 +45,25 @@
   }
 
   function densityFromCount(n) {
-    if (n >= 3) return "dense";
+    if (n >= 4) return "converging";
+    if (n >= 3) return "aligned";
     if (n <= 1) return "sparse";
-    return "mid";
+    return "gathering";
   }
 
   function evidenceField(count, density) {
     var n = Math.max(1, Math.min(5, Number(count) || 1));
     var d = density || densityFromCount(n);
+    if (d === "mid") d = "gathering";
+    if (d === "dense") d = "converging";
     var widths =
-      d === "dense"
-        ? [94, 88, 80, 72, 64]
-        : d === "sparse"
-          ? [42, 28, 18]
-          : [70, 58, 46, 34];
+      d === "converging"
+        ? [98, 92, 86, 78, 70]
+        : d === "aligned"
+          ? [88, 80, 72, 62]
+          : d === "sparse"
+            ? [48, 32, 20]
+            : [72, 60, 48, 36];
     var html =
       '<div class="cf2-evfield" data-cf2-density="' +
       esc(d) +

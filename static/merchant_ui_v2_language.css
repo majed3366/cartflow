@@ -1,54 +1,65 @@
 /**
- * CartFlow Merchant UI V2 — Visual Language primitives.
- * Binding: Figma 18–34 (DNA / CIM / Constitution / Signature / Assimilation).
- * Structural motion, density, silence — not decorative icons.
+ * CartFlow Merchant UI V2 — Visual Language primitives (deepened composition).
+ * Binding: Figma 18–34. Same vocabulary; stronger structural roles.
  * Namespace: [data-cf-ui="v2"]
  */
 
 body[data-cf-ui="v2"] {
-  --cf2-lang-edge: 3px;
-  --cf2-lang-gap: 1.4rem;
+  --cf2-lang-edge: 5px;
+  --cf2-lang-gap: 1.1rem;
   --cf2-lang-route: rgba(8, 32, 72, 0.22);
   --cf2-lang-route-strong: rgba(8, 32, 72, 0.55);
   --cf2-lang-teal-soft: rgba(24, 176, 168, 0.35);
 }
 
-/* ——— Commerce Object (semantic geometry, not icon) ——— */
+/* ——— Commerce Object ——— */
 body[data-cf-ui="v2"] .cf2-co {
   position: relative;
   display: inline-flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 6px;
-  min-width: 52px;
+  gap: 8px;
+  min-width: 56px;
   vertical-align: top;
 }
 
 body[data-cf-ui="v2"] .cf2-co__glyph {
   position: relative;
-  width: 44px;
-  height: 44px;
+  width: 52px;
+  height: 52px;
   flex: 0 0 auto;
 }
 
 body[data-cf-ui="v2"] .cf2-co__label {
   margin: 0;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--cf2-mute);
-  max-width: 7.5rem;
+  max-width: 8rem;
   line-height: 1.3;
 }
 
-/* Open-C / attention ring */
+/* Scene-scale objects (Home gravity rail / primary Decision Object) */
+body[data-cf-ui="v2"] .cf2-co-row--rail .cf2-co__glyph,
+body[data-cf-ui="v2"] .cf2-dobj--primary > .cf2-co-row .cf2-co__glyph {
+  width: 68px;
+  height: 68px;
+}
+
+body[data-cf-ui="v2"] .cf2-co-row--rail .cf2-co__label,
+body[data-cf-ui="v2"] .cf2-dobj--primary > .cf2-co-row .cf2-co__label {
+  font-size: 12px;
+  color: var(--cf2-ink-soft);
+}
+
 body[data-cf-ui="v2"] .cf2-co--attention .cf2-co__glyph::before,
 body[data-cf-ui="v2"] .cf2-co--decision .cf2-co__glyph::before {
   content: "";
   position: absolute;
   inset: 2px;
   border-radius: 50%;
-  border: 2px dashed var(--cf2-teal);
+  border: 2.5px dashed var(--cf2-teal);
   border-left-color: transparent;
   border-bottom-color: rgba(24, 176, 168, 0.25);
   transform: rotate(-18deg);
@@ -59,10 +70,10 @@ body[data-cf-ui="v2"] .cf2-co--attention .cf2-co__glyph::after {
   position: absolute;
   width: 0;
   height: 0;
-  border-inline-start: 5px solid transparent;
-  border-inline-end: 5px solid transparent;
-  border-block-end: 8px solid var(--cf2-navy);
-  top: 4px;
+  border-inline-start: 6px solid transparent;
+  border-inline-end: 6px solid transparent;
+  border-block-end: 10px solid var(--cf2-navy);
+  top: 6px;
   inset-inline-start: 50%;
   transform: translateX(-50%);
 }
@@ -70,20 +81,19 @@ body[data-cf-ui="v2"] .cf2-co--attention .cf2-co__glyph::after {
 body[data-cf-ui="v2"] .cf2-co--decision .cf2-co__glyph::after {
   content: "";
   position: absolute;
-  inset: 12px;
+  inset: 18px;
   border-radius: 50%;
   background: var(--cf2-navy);
   opacity: 0.92;
 }
 
-/* Evidence gathering — dash bars */
 body[data-cf-ui="v2"] .cf2-co--evidence .cf2-co__glyph,
 body[data-cf-ui="v2"] .cf2-co--convergence .cf2-co__glyph {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 5px;
-  padding-inline: 4px;
+  gap: 6px;
+  padding-inline: 6px;
 }
 
 body[data-cf-ui="v2"] .cf2-co--evidence .cf2-co__glyph::before,
@@ -92,47 +102,46 @@ body[data-cf-ui="v2"] .cf2-co--convergence .cf2-co__glyph::before,
 body[data-cf-ui="v2"] .cf2-co--convergence .cf2-co__glyph::after {
   content: "";
   display: block;
-  height: 3px;
+  height: 4px;
   border-radius: 2px;
   background: var(--cf2-teal);
 }
 
 body[data-cf-ui="v2"] .cf2-co--evidence .cf2-co__glyph::before {
-  width: 72%;
+  width: 78%;
   opacity: 0.55;
 }
 body[data-cf-ui="v2"] .cf2-co--evidence .cf2-co__glyph::after {
-  width: 48%;
-  opacity: 0.85;
+  width: 52%;
+  opacity: 0.9;
 }
 
 body[data-cf-ui="v2"] .cf2-co--convergence .cf2-co__glyph::before {
-  width: 92%;
-  opacity: 0.9;
+  width: 96%;
+  opacity: 0.95;
 }
 body[data-cf-ui="v2"] .cf2-co--convergence .cf2-co__glyph::after {
-  width: 78%;
+  width: 84%;
   opacity: 1;
   background: var(--cf2-navy);
 }
 
-/* Uncertainty — open sparse marks */
 body[data-cf-ui="v2"] .cf2-co--uncertainty .cf2-co__glyph::before,
 body[data-cf-ui="v2"] .cf2-co--insufficient .cf2-co__glyph::before {
   content: "";
   position: absolute;
-  inset: 8px 6px;
+  inset: 10px 8px;
   border: 2px solid var(--cf2-mute);
   border-radius: 50%;
   border-style: dotted;
-  opacity: 0.7;
+  opacity: 0.75;
 }
 
 body[data-cf-ui="v2"] .cf2-co--uncertainty .cf2-co__glyph::after {
   content: "";
   position: absolute;
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: var(--cf2-mute);
   top: 50%;
@@ -141,11 +150,10 @@ body[data-cf-ui="v2"] .cf2-co--uncertainty .cf2-co__glyph::after {
   opacity: 0.55;
 }
 
-/* Hesitation — warm scarce interrupt */
 body[data-cf-ui="v2"] .cf2-co--hesitation .cf2-co__glyph::before {
   content: "";
   position: absolute;
-  inset: 6px 10px 18px;
+  inset: 8px 12px 22px;
   border-block-end: 3px solid var(--cf2-warm);
   border-inline-end: 3px solid transparent;
   transform: skewX(-18deg);
@@ -155,22 +163,21 @@ body[data-cf-ui="v2"] .cf2-co--hesitation .cf2-co__glyph::before {
 body[data-cf-ui="v2"] .cf2-co--hesitation .cf2-co__glyph::after {
   content: "";
   position: absolute;
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   background: var(--cf2-warm);
-  bottom: 8px;
-  inset-inline-start: 18px;
+  bottom: 10px;
+  inset-inline-start: 22px;
 }
 
-/* Momentum / purchase movement — taper dash */
 body[data-cf-ui="v2"] .cf2-co--momentum .cf2-co__glyph::before,
 body[data-cf-ui="v2"] .cf2-co--movement .cf2-co__glyph::before {
   content: "";
   position: absolute;
   top: 50%;
-  inset-inline: 4px 8px;
-  height: 3px;
+  inset-inline: 4px 10px;
+  height: 4px;
   background: linear-gradient(
     90deg,
     transparent,
@@ -178,7 +185,7 @@ body[data-cf-ui="v2"] .cf2-co--movement .cf2-co__glyph::before {
     var(--cf2-navy) 100%
   );
   transform: translateY(-50%);
-  clip-path: polygon(0 0, 100% 20%, 100% 80%, 0 100%);
+  clip-path: polygon(0 0, 100% 18%, 100% 82%, 0 100%);
 }
 
 body[data-cf-ui="v2"] .cf2-co--momentum .cf2-co__glyph::after {
@@ -186,18 +193,17 @@ body[data-cf-ui="v2"] .cf2-co--momentum .cf2-co__glyph::after {
   position: absolute;
   width: 0;
   height: 0;
-  border-block: 5px solid transparent;
-  border-inline-start: 8px solid var(--cf2-navy);
+  border-block: 6px solid transparent;
+  border-inline-start: 10px solid var(--cf2-navy);
   top: 50%;
   inset-inline-end: 2px;
   transform: translateY(-50%);
 }
 
-/* Recovery scoop */
 body[data-cf-ui="v2"] .cf2-co--recovery .cf2-co__glyph::before {
   content: "";
   position: absolute;
-  inset: 8px 6px 6px 10px;
+  inset: 10px 8px 8px 12px;
   border: 3px solid var(--cf2-teal);
   border-radius: 0 0 60% 40%;
   border-top-color: transparent;
@@ -208,19 +214,18 @@ body[data-cf-ui="v2"] .cf2-co--recovery .cf2-co__glyph::before {
 body[data-cf-ui="v2"] .cf2-co--recovery .cf2-co__glyph::after {
   content: "";
   position: absolute;
-  width: 10px;
+  width: 12px;
   height: 3px;
   background: var(--cf2-navy);
-  bottom: 14px;
-  inset-inline-start: 14px;
+  bottom: 16px;
+  inset-inline-start: 16px;
   transform: rotate(40deg);
 }
 
-/* Blocked progression */
 body[data-cf-ui="v2"] .cf2-co--blocked .cf2-co__glyph::before {
   content: "";
   position: absolute;
-  inset-inline: 6px;
+  inset-inline: 8px;
   top: 50%;
   height: 3px;
   background: var(--cf2-navy);
@@ -231,48 +236,80 @@ body[data-cf-ui="v2"] .cf2-co--blocked .cf2-co__glyph::before {
 body[data-cf-ui="v2"] .cf2-co--blocked .cf2-co__glyph::after {
   content: "";
   position: absolute;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border: 2px solid var(--cf2-danger);
   top: 50%;
   inset-inline-start: 50%;
   transform: translate(-50%, -50%);
 }
 
-/* ——— Evidence Field / Cluster ——— */
+/* ——— Evidence Field: sparse → gathering → aligned → converging ——— */
 body[data-cf-ui="v2"] .cf2-evfield {
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  min-width: 120px;
-  max-width: 220px;
-  padding: 4px 0;
+  gap: 10px;
+  min-width: 140px;
+  max-width: 100%;
+  padding: 6px 0 10px;
 }
 
 body[data-cf-ui="v2"] .cf2-evfield__bar {
   display: block;
-  height: 4px;
+  height: 7px;
   border-radius: 2px;
   background: var(--cf2-teal);
   transform-origin: inline-start;
 }
 
+body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="sparse"] {
+  gap: 14px;
+  padding-inline-end: 18%;
+}
+
 body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="sparse"] .cf2-evfield__bar {
-  opacity: 0.45;
-  height: 3px;
+  opacity: 0.4;
+  height: 4px;
 }
 
+body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="sparse"] .cf2-evfield__bar:nth-child(2) {
+  margin-inline-start: 12%;
+}
+body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="sparse"] .cf2-evfield__bar:nth-child(3) {
+  margin-inline-start: 22%;
+}
+
+body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="gathering"],
+body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="mid"] {
+  gap: 9px;
+}
+
+body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="gathering"] .cf2-evfield__bar,
 body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="mid"] .cf2-evfield__bar {
-  opacity: 0.75;
+  opacity: 0.72;
+  height: 6px;
 }
 
+body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="aligned"] {
+  gap: 7px;
+}
+
+body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="aligned"] .cf2-evfield__bar {
+  opacity: 0.88;
+  height: 7px;
+  background: linear-gradient(90deg, var(--cf2-teal) 70%, var(--cf2-navy));
+}
+
+body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="converging"],
 body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="dense"] {
   gap: 5px;
+  padding-inline-end: 0;
 }
 
+body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="converging"] .cf2-evfield__bar,
 body[data-cf-ui="v2"] .cf2-evfield[data-cf2-density="dense"] .cf2-evfield__bar {
   opacity: 1;
-  height: 4px;
+  height: 8px;
   background: linear-gradient(90deg, var(--cf2-teal), var(--cf2-navy));
 }
 
@@ -283,79 +320,131 @@ body[data-cf-ui="v2"] .cf2-evcluster {
   align-items: flex-end;
 }
 
-/* ——— Living Route ——— */
+/* ——— Living Route: organizes composition ——— */
 body[data-cf-ui="v2"] .cf2-route {
   position: relative;
   display: flex;
   flex-direction: column;
   gap: 0;
-  padding-inline-start: 22px;
+  padding-inline-start: 28px;
 }
 
 body[data-cf-ui="v2"] .cf2-route::before {
   content: "";
   position: absolute;
-  inset-block: 8px 12px;
+  inset-block: 4px 8px;
   inset-inline-start: 0;
   width: var(--cf2-lang-edge);
   background: linear-gradient(
     180deg,
     var(--cf2-lang-teal-soft) 0%,
-    var(--cf2-lang-route-strong) 28%,
-    var(--cf2-navy) 62%,
+    var(--cf2-lang-route-strong) 22%,
+    var(--cf2-navy) 55%,
     var(--cf2-teal) 100%
   );
-  clip-path: polygon(0 0, 100% 4%, 100% 78%, 40% 100%, 0 94%);
+  clip-path: polygon(0 0, 100% 3%, 100% 72%, 35% 100%, 0 96%);
+}
+
+/* Soft continuation wash — not a second diagram */
+body[data-cf-ui="v2"] .cf2-route::after {
+  content: "";
+  position: absolute;
+  inset-block: 4px 8px;
+  inset-inline-start: 0;
+  width: 18px;
+  background: linear-gradient(
+    90deg,
+    rgba(24, 176, 168, 0.12),
+    transparent 85%
+  );
+  pointer-events: none;
+  clip-path: polygon(0 0, 100% 8%, 70% 100%, 0 100%);
+  opacity: 0.85;
 }
 
 body[data-cf-ui="v2"] .cf2-route__node {
   position: relative;
-  padding: 0 0 22px;
+  padding: 0 0 26px;
 }
 
 body[data-cf-ui="v2"] .cf2-route__node:last-child {
   padding-bottom: 0;
 }
 
+/* Progressive alignment / densification along the route */
+body[data-cf-ui="v2"] .cf2-route__node[data-cf2-node="evidence"] {
+  padding-inline-end: 8%;
+  max-width: 42rem;
+}
+
+body[data-cf-ui="v2"] .cf2-route__node[data-cf2-node="understanding"] {
+  margin-inline-start: 10px;
+  padding-inline-end: 4%;
+  max-width: 40rem;
+}
+
+body[data-cf-ui="v2"] .cf2-route__node[data-cf2-node="decision"] {
+  margin-inline-start: 18px;
+  padding-block: 8px 28px;
+}
+
+body[data-cf-ui="v2"] .cf2-route__node[data-cf2-node="action"] {
+  margin-inline-start: 18px;
+  padding-top: 0;
+}
+
 body[data-cf-ui="v2"] .cf2-route__node::before {
   content: "";
   position: absolute;
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: var(--cf2-teal);
-  inset-inline-start: -26px;
-  top: 6px;
-  box-shadow: 0 0 0 3px rgba(24, 176, 168, 0.15);
+  inset-inline-start: -33px;
+  top: 8px;
+  box-shadow: 0 0 0 4px rgba(24, 176, 168, 0.14);
+  z-index: 1;
+}
+
+body[data-cf-ui="v2"] .cf2-route__node[data-cf2-node="understanding"]::before {
+  width: 9px;
+  height: 9px;
+  opacity: 0.9;
 }
 
 body[data-cf-ui="v2"] .cf2-route__node[data-cf2-node="decision"]::before {
   background: var(--cf2-navy);
-  width: 10px;
-  height: 10px;
-  top: 8px;
-  inset-inline-start: -27px;
+  width: 14px;
+  height: 14px;
+  top: 14px;
+  inset-inline-start: -35px;
+  box-shadow: 0 0 0 5px rgba(8, 32, 72, 0.12);
 }
 
 body[data-cf-ui="v2"] .cf2-route__node[data-cf2-node="action"]::before {
-  background: transparent;
-  border: 2px solid var(--cf2-teal);
-  border-radius: 2px 8px 8px 2px;
-  width: 10px;
-  height: 10px;
+  background: var(--cf2-teal);
+  border: none;
+  border-radius: 3px 10px 10px 3px;
+  width: 12px;
+  height: 12px;
+  clip-path: polygon(0 0, 100% 15%, 100% 85%, 0 100%);
 }
 
 body[data-cf-ui="v2"] .cf2-route[data-cf2-tension="open"]::before {
-  opacity: 0.45;
+  opacity: 0.42;
   background: linear-gradient(
     180deg,
-    rgba(115, 133, 158, 0.35),
-    rgba(8, 32, 72, 0.25)
+    rgba(115, 133, 158, 0.4),
+    rgba(8, 32, 72, 0.28)
   );
 }
 
+body[data-cf-ui="v2"] .cf2-route[data-cf2-tension="open"]::after {
+  opacity: 0.45;
+}
+
 body[data-cf-ui="v2"] .cf2-route[data-cf2-tension="high"]::before {
-  opacity: 0.7;
+  opacity: 0.75;
 }
 
 body[data-cf-ui="v2"] .cf2-route[data-cf2-tension="resolved"]::before {
@@ -365,22 +454,22 @@ body[data-cf-ui="v2"] .cf2-route[data-cf2-tension="resolved"]::before {
 /* ——— Decision Mass ——— */
 body[data-cf-ui="v2"] .cf2-dmass {
   position: relative;
-  padding: 10px 4px 10px 16px;
-  max-width: 36rem;
+  padding: 18px 12px 20px 22px;
+  max-width: 40rem;
 }
 
 body[data-cf-ui="v2"] .cf2-dmass::before {
   content: "";
   position: absolute;
-  inset-block: 6% 10%;
+  inset-block: 4% 8%;
   inset-inline-start: 0;
-  width: 4px;
+  width: 5px;
   background: var(--cf2-navy);
-  clip-path: polygon(0 0, 100% 8%, 100% 70%, 35% 100%, 0 92%);
+  clip-path: polygon(0 0, 100% 8%, 100% 70%, 30% 100%, 0 92%);
 }
 
 body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="open"] {
-  opacity: 0.9;
+  opacity: 0.92;
 }
 
 body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="open"]::before {
@@ -388,61 +477,117 @@ body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="open"]::before {
   width: 2px;
 }
 
-body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="resolved"] .cf2-dmass__text {
-  font-size: clamp(1.35rem, 2.2vw, 1.7rem);
-  letter-spacing: -0.025em;
+body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="low"]::before,
+body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="high"]::before {
+  width: 4px;
+  background: linear-gradient(180deg, var(--cf2-teal), var(--cf2-navy));
+}
+
+body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="resolved"] {
+  padding: 22px 16px 26px 28px;
+  background: linear-gradient(
+    105deg,
+    rgba(8, 32, 72, 0.06) 0%,
+    rgba(24, 176, 168, 0.05) 45%,
+    transparent 80%
+  );
+}
+
+body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="resolved"]::before {
+  width: 6px;
 }
 
 body[data-cf-ui="v2"] .cf2-dmass__text {
   margin: 0;
-  font-size: clamp(1.2rem, 1.9vw, 1.5rem);
+  font-size: clamp(1.35rem, 2.4vw, 1.85rem);
   font-weight: 800;
-  line-height: 1.3;
+  line-height: 1.28;
   color: var(--cf2-navy);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
 }
 
-/* ——— Momentum Trace ——— */
+body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="resolved"] .cf2-dmass__text {
+  font-size: clamp(1.5rem, 2.8vw, 2.05rem);
+  letter-spacing: -0.03em;
+}
+
+body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="open"] .cf2-dmass__text {
+  font-size: clamp(1.2rem, 2vw, 1.55rem);
+  font-weight: 700;
+}
+
+/* ——— Action terminus (emerges from decision) ——— */
+body[data-cf-ui="v2"] .cf2-terminus,
+body[data-cf-ui="v2"] .cf2-beat--action .cf2-beat__action {
+  position: relative;
+  margin: 0;
+  padding: 16px 18px 18px 22px;
+  background: linear-gradient(
+    100deg,
+    rgba(8, 32, 72, 0.07) 0%,
+    rgba(24, 176, 168, 0.06) 40%,
+    transparent 78%
+  );
+  border-inline-start: 4px solid var(--cf2-navy);
+  clip-path: polygon(0 0, 100% 0, 100% 78%, 94% 100%, 0 100%);
+}
+
+body[data-cf-ui="v2"] .cf2-terminus .cf2-btn,
+body[data-cf-ui="v2"] .cf2-beat--action .cf2-btn {
+  margin-top: 2px;
+}
+
+body[data-cf-ui="v2"] .cf2-beat--action .cf2-reason__wait {
+  margin: 0;
+}
+
+/* ——— Momentum Trace (structural, not pills) ——— */
 body[data-cf-ui="v2"] .cf2-mtrace {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 4px;
-  margin: 12px 0 4px;
+  gap: 4px 2px;
+  margin: 16px 0 6px;
+  padding: 10px 0 4px;
+  border-block-start: 1px solid rgba(8, 32, 72, 0.08);
 }
 
 body[data-cf-ui="v2"] .cf2-mtrace__step {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  color: var(--cf2-ink-soft);
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: rgba(8, 32, 72, 0.04);
+  color: var(--cf2-mute);
+  padding: 2px 4px;
+  border-radius: 0;
+  background: transparent;
+  letter-spacing: 0.02em;
 }
 
 body[data-cf-ui="v2"] .cf2-mtrace__step.is-active {
-  background: rgba(24, 176, 168, 0.14);
+  background: transparent;
   color: var(--cf2-navy);
+  font-size: 13px;
+  box-shadow: inset 0 -2px 0 var(--cf2-teal);
 }
 
 body[data-cf-ui="v2"] .cf2-mtrace__arrow {
-  width: 18px;
-  height: 2px;
+  width: 26px;
+  height: 3px;
   background: linear-gradient(90deg, transparent, var(--cf2-lang-route-strong));
   flex: 0 0 auto;
+  clip-path: polygon(0 20%, 100% 0, 100% 100%, 0 80%);
 }
 
 /* ——— Knowledge Capsule (quiet secondary) ——— */
 body[data-cf-ui="v2"] .cf2-capsule {
   position: relative;
-  padding: 0 0 0 12px;
-  opacity: 0.88;
+  padding: 0 0 0 14px;
+  opacity: 0.78;
 }
 
 body[data-cf-ui="v2"] .cf2-capsule::before {
   content: "";
   position: absolute;
-  inset-block: 12% 18%;
+  inset-block: 10% 16%;
   inset-inline-start: 0;
   width: 2px;
   background: var(--cf2-lang-route);
@@ -458,8 +603,15 @@ body[data-cf-ui="v2"] .cf2-capsule__lane {
 
 body[data-cf-ui="v2"] .cf2-capsule__title {
   margin: 0 0 6px;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 700;
+}
+
+body[data-cf-ui="v2"] .cf2-capsule__body {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--cf2-ink-soft);
 }
 
 body[data-cf-ui="v2"] .cf2-capsule .cf2-badge {
@@ -475,6 +627,16 @@ body[data-cf-ui="v2"] .cf2-capsule .cf2-badge {
   letter-spacing: 0.04em;
 }
 
+body[data-cf-ui="v2"] .cf2-capsule .cf2-co-row {
+  margin-bottom: 10px;
+  gap: 12px 14px;
+}
+
+body[data-cf-ui="v2"] .cf2-capsule .cf2-co__glyph {
+  width: 36px;
+  height: 36px;
+}
+
 /* ——— Silence / Taper ——— */
 body[data-cf-ui="v2"] .cf2-silence {
   display: block;
@@ -487,7 +649,7 @@ body[data-cf-ui="v2"] .cf2-silence {
 body[data-cf-ui="v2"] .cf2-taper {
   display: block;
   height: 1px;
-  margin: 1.25rem 12% 0;
+  margin: 1rem 10% 0;
   border: none;
   background: linear-gradient(
     90deg,
@@ -499,11 +661,21 @@ body[data-cf-ui="v2"] .cf2-taper {
   );
 }
 
-/* ——— Object row ——— */
+/* ——— Object rows ——— */
 body[data-cf-ui="v2"] .cf2-co-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px 22px;
+  gap: 18px 24px;
   align-items: flex-start;
   margin: 0 0 18px;
+}
+
+body[data-cf-ui="v2"] .cf2-co-row--rail {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 28px;
+  margin: 0;
+  height: 100%;
+  justify-content: flex-start;
+  padding-block: 4px 12px;
 }

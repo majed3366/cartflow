@@ -51,9 +51,12 @@
     return { primary: primary, evidence: evidence, secondary: secondary };
   }
 
-  function objectRow(kinds) {
+  function objectRow(kinds, rail) {
     if (!L() || !kinds || !kinds.length) return "";
-    var html = '<div class="cf2-co-row" data-cf2-grammar="commerce-objects">';
+    var html =
+      '<div class="cf2-co-row' +
+      (rail ? " cf2-co-row--rail" : "") +
+      '" data-cf2-grammar="commerce-objects">';
     kinds.forEach(function (k) {
       html += L().commerceObject(k);
     });
@@ -178,14 +181,21 @@
         /أدلة|غير كافية|insufficient|لا يكفي|منخفض/i.test(why + meaning);
       var tension = weak ? "open" : "resolved";
       var evCount = parts.evidence.length + (why ? 2 : 1);
+      var density = weak
+        ? "sparse"
+        : lang
+          ? lang.densityFromCount(evCount)
+          : "gathering";
 
       html +=
         '<div class="cf2-scene__gravity" data-cf2-tension="' +
         esc(tension) +
         '">';
       html +=
-        '<div class="cf2-scene__gravity-main">';
-      html += objectRow(kinds);
+        '<div class="cf2-scene__co-rail" aria-hidden="false">' +
+        objectRow(kinds, true) +
+        "</div>";
+      html += '<div class="cf2-scene__gravity-main">';
       html += '<p class="cf2-scene__lane">مركز الجاذبية</p>';
       html +=
         '<h2 class="cf2-scene__title">' + esc(p.title_ar || "") + "</h2>";
@@ -212,17 +222,19 @@
       }
       if (href) {
         html +=
-          '<p class="cf2-scene__terminus"><a class="cf2-btn" href="' +
+          '<div class="cf2-scene__terminus cf2-terminus"><a class="cf2-btn" href="' +
           esc(href) +
-          '">عرض التفاصيل ←</a></p>';
+          '">عرض التفاصيل ←</a></div>';
       }
       html += "</div>";
 
       html +=
-        '<aside class="cf2-scene__density cf2-evidence" data-cf2-grammar="evidence-density">';
+        '<aside class="cf2-scene__density cf2-evidence" data-cf2-grammar="evidence-density" data-cf2-density="' +
+        esc(density) +
+        '">';
       html += '<p class="cf2-scene__lane">كثافة الدليل</p>';
       if (lang) {
-        html += lang.evidenceField(evCount, weak ? "sparse" : "mid");
+        html += lang.evidenceField(evCount, density);
       }
       parts.evidence.forEach(function (sec) {
         var d = String(sec.diagnosis_ar || sec.summary_ar || "").trim();

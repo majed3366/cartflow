@@ -94,6 +94,8 @@ class MerchantUiV2RouteTests(unittest.TestCase):
             "cf2-dmass",
             "cf2-mtrace",
             "cf2-capsule",
+            "cf2-terminus",
+            "cf2-co-row--rail",
         ):
             self.assertIn(token, lang_css)
         self.assertIn("commerceObject", lang_js)
