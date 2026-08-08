@@ -1,0 +1,31 @@
+{
+  "deploy": {
+    "ok": true,
+    "sha": "f5133e79755ba105d3fd9fa0e86393ace204bbc5",
+    "status": 200
+  },
+  "desktop": {
+    "ui": "v2",
+    "home": true,
+    "primary": true,
+    "eyebrow": true,
+    "confidence": "الأدلة ما زالت محدودة",
+    "stance": true,
+    "coCount": 1,
+    "noSceneGallery": true,
+    "cache": true,
+    "visibleDesignVocab": false
+  },
+  "mobile": {
+    "ui": "v2",
+    "home": true,
+    "primary": true,
+    "eyebrow": true,
+    "confidence": "الأدلة ما زالت محدودة",
+    "stance": true,
+    "coCount": 1,
+    "noSceneGallery": true,
+    "cache": true,
+    "visibleDesignVocab": false
+  }
+}

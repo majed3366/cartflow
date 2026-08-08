@@ -20,19 +20,22 @@ BEFORE = (
     / "09_desktop_home.png"
 )
 BASE = "https://smartreplyai.net"
-EXPECTED_SHA_PREFIX = ""
+EXPECTED_SHA_PREFIX = "pending"
 
 
-def wait_for_deploy(timeout_s: int = 480) -> dict:
+def wait_for_deploy(timeout_s: int = 600) -> dict:
     deadline = time.time() + timeout_s
     last: dict = {}
     while time.time() < deadline:
-        req = urllib.request.Request(f"{BASE}/", method="GET")
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            sha = (resp.headers.get("X-CartFlow-Git-Sha") or "").strip()
-            last = {"sha": sha, "status": resp.status}
-            if not EXPECTED_SHA_PREFIX or sha.startswith(EXPECTED_SHA_PREFIX):
-                return {"ok": True, **last}
+        try:
+            req = urllib.request.Request(f"{BASE}/", method="GET")
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                sha = (resp.headers.get("X-CartFlow-Git-Sha") or "").strip()
+                last = {"sha": sha, "status": resp.status}
+                if not EXPECTED_SHA_PREFIX or sha.startswith(EXPECTED_SHA_PREFIX):
+                    return {"ok": True, **last}
+        except Exception as exc:  # noqa: BLE001 — deploy flap (502/timeout)
+            last = {"sha": last.get("sha", ""), "status": "error", "error": str(exc)}
         time.sleep(12)
     return {"ok": False, **last}
 
@@ -85,8 +88,16 @@ def main() -> int:
                     stance: !!document.querySelector('.cf2-home__stance'),
                     coCount: document.querySelectorAll('.cf2-home__primary [data-cf2-co]').length,
                     noSceneGallery: !document.querySelector('.cf2-scene__co-rail'),
-                    cache: [...document.querySelectorAll('link[rel=stylesheet]')].some(l => (l.href||'').includes('uiv2h')),
+                    cache: [...document.querySelectorAll('link[rel=stylesheet]')].some(l => (l.href||'').includes('uiv2i')),
                     visibleDesignVocab,
+                    support: !!document.querySelector('.cf2-home__support'),
+                    secondaryDup: (() => {
+                      const supportTitles = [...document.querySelectorAll('.cf2-home__support-title')]
+                        .map(el => (el.textContent || '').trim());
+                      const secondaryTitles = [...document.querySelectorAll('.cf2-home__item-title')]
+                        .map(el => (el.textContent || '').trim());
+                      return supportTitles.some(t => t && secondaryTitles.includes(t));
+                    })(),
                   };
                 }"""
             )
@@ -139,6 +150,7 @@ def main() -> int:
             d.get("cache"),
             (d.get("coCount") or 0) <= 2,
             not d.get("visibleDesignVocab"),
+            not d.get("secondaryDup"),
             "أدلة" in (d.get("confidence") or "") or "إشارة" in (d.get("confidence") or "") or "اتخاذ" in (d.get("confidence") or ""),
         ]
     )

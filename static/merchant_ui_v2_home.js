@@ -203,13 +203,15 @@
       }
       html += "</div>";
 
-      /* Supporting facts from related sections — merchant text only */
-      var support = parts.learning.concat(parts.know).slice(0, 2);
+      /* Supporting facts — merchant text only; never a second primary */
+      var support = parts.know.concat(parts.learning).slice(0, 2);
+      var supportIds = {};
       if (support.length) {
         html +=
           '<aside class="cf2-home__support" aria-label="ما يدعم هذا الحكم">';
         html += '<p class="cf2-home__support-label">لماذا يقول CartFlow ذلك؟</p>';
         support.forEach(function (sec) {
+          if (sec && sec.id) supportIds[sec.id] = true;
           var d = String(sec.diagnosis_ar || sec.summary_ar || "").trim();
           if (!d && !sec.title_ar) return;
           html += '<div class="cf2-home__support-item">';
@@ -228,31 +230,37 @@
         html += "</aside>";
       }
       html += "</div>";
+    } else {
+      var supportIds = {};
     }
 
-    var secondary =
-      parts.know.length || parts.watch.length || parts.learning.length;
+    function notInSupport(sec) {
+      return !(sec && sec.id && supportIds[sec.id]);
+    }
+    var knowRest = parts.know.filter(notInSupport);
+    var watchRest = parts.watch.filter(notInSupport);
+    var learnRest = parts.learning.filter(notInSupport);
+    var secondary = knowRest.length || watchRest.length || learnRest.length;
     if (secondary) {
       html +=
         '<div class="cf2-home__secondary" aria-label="معرفة إضافية">';
-      if (parts.know.length) {
+      if (knowRest.length) {
         html += '<div class="cf2-home__band" data-cf2-band="know">';
-        parts.know.forEach(function (sec) {
+        knowRest.forEach(function (sec) {
           html += secondaryItem(sec, "know");
         });
         html += "</div>";
       }
-      if (parts.watch.length) {
+      if (watchRest.length) {
         html += '<div class="cf2-home__band" data-cf2-band="watch">';
-        parts.watch.forEach(function (sec) {
+        watchRest.forEach(function (sec) {
           html += secondaryItem(sec, "watch");
         });
         html += "</div>";
       }
-      if (parts.learning.length) {
+      if (learnRest.length) {
         html += '<div class="cf2-home__band" data-cf2-band="learning">';
-        parts.learning.forEach(function (sec) {
-          /* skip if already used as primary support only once — still ok to show quieter */
+        learnRest.forEach(function (sec) {
           html += secondaryItem(sec, "learning");
         });
         html += "</div>";
