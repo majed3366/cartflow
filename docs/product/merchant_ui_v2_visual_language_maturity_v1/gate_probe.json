@@ -1,0 +1,24 @@
+{
+  "deploy": {
+    "ok": true,
+    "sha": "41777ae8c8a51bd44c6e3d7f02189eea8dec504e",
+    "status": 200
+  },
+  "board": {
+    "ui": "v2",
+    "cos": 26,
+    "fields": 6,
+    "openFrame": true
+  },
+  "desktop_home": {
+    "ui": "v2",
+    "maturity": true,
+    "openCo": true,
+    "gravity": true
+  },
+  "desktop_workspace": {
+    "route": true,
+    "dmass": true,
+    "scoop": true
+  }
+}
