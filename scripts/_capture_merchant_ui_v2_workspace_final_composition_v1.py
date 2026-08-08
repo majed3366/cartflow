@@ -20,7 +20,7 @@ BEFORE = (
     / "10_desktop_workspace.png"
 )
 BASE = "https://smartreplyai.net"
-EXPECTED_SHA_PREFIX = "8cc5ad1"
+EXPECTED_SHA_PREFIX = ""  # set after deploy
 
 
 def wait_for_deploy(timeout_s: int = 720) -> dict:
@@ -58,10 +58,109 @@ def session_cookie(page) -> dict:
     }
 
 
+def scroll_probe(page) -> dict:
+    return page.evaluate(
+        """() => {
+          const body = document.body;
+          const html = document.documentElement;
+          const stage = document.querySelector('.cf2-stage');
+          const stageStyle = stage ? getComputedStyle(stage) : null;
+          const bodyStyle = getComputedStyle(body);
+          const docScrollable =
+            Math.max(body.scrollHeight, html.scrollHeight) > window.innerHeight + 8;
+          const stageOverflowY = stageStyle ? stageStyle.overflowY : '';
+          const bodyOverflowY = bodyStyle.overflowY;
+          const stageIsScrollTrap =
+            !!stage &&
+            (stageOverflowY === 'auto' || stageOverflowY === 'scroll') &&
+            stage.scrollHeight > stage.clientHeight + 8 &&
+            stage.clientHeight <= window.innerHeight + 2;
+          return {
+            docScrollable,
+            bodyOverflowY,
+            htmlOverflowY: getComputedStyle(html).overflowY,
+            stageOverflowY,
+            stageIsScrollTrap,
+            bodyHeight: bodyStyle.height,
+            rootHeight: getComputedStyle(document.querySelector('.cf2-root') || body).height,
+            scrollHeight: Math.max(body.scrollHeight, html.scrollHeight),
+            clientHeight: window.innerHeight,
+            noOverflowX: html.scrollWidth <= window.innerWidth + 1,
+            drawerOpenClass: body.classList.contains('is-drawer-open'),
+            cacheBump: [...document.querySelectorAll('link[rel=stylesheet]')]
+              .some(l => /uiv2s/.test(l.href || '')),
+          };
+        }"""
+    )
+
+
+def exercise_document_scroll(page) -> dict:
+    before = page.evaluate("() => window.scrollY || document.documentElement.scrollTop || 0")
+    page.evaluate("() => window.scrollTo(0, document.documentElement.scrollHeight)")
+    page.wait_for_timeout(350)
+    mid = page.evaluate("() => window.scrollY || document.documentElement.scrollTop || 0")
+    page.evaluate("() => window.scrollTo(0, 0)")
+    page.wait_for_timeout(350)
+    after = page.evaluate("() => window.scrollY || document.documentElement.scrollTop || 0")
+    return {
+        "before": before,
+        "scrolled_down": mid,
+        "after_top": after,
+        "moved_down": mid > before + 40,
+        "returned_top": after < 20,
+    }
+
+
+def exercise_drawer_scroll_lock(page) -> dict:
+    # Mobile only — drawer controls exist
+    menu = page.query_selector(".cf2-menu-btn")
+    if not menu:
+        return {"skipped": True}
+    page.evaluate("() => window.scrollTo(0, 120)")
+    page.wait_for_timeout(200)
+    menu.click()
+    page.wait_for_timeout(400)
+    while_open = page.evaluate(
+        """() => ({
+          drawerOpen: document.body.classList.contains('is-drawer-open'),
+          bodyOverflow: getComputedStyle(document.body).overflow,
+          inlineOverflow: document.body.style.overflow || '',
+        })"""
+    )
+    close = page.query_selector(".cf2-drawer__close")
+    if close:
+        close.click()
+    else:
+        backdrop = page.query_selector(".cf2-drawer-backdrop")
+        if backdrop:
+            backdrop.click()
+    page.wait_for_timeout(400)
+    after_close = page.evaluate(
+        """() => ({
+          drawerOpen: document.body.classList.contains('is-drawer-open'),
+          bodyOverflowY: getComputedStyle(document.body).overflowY,
+          inlineOverflow: document.body.style.overflow || '',
+        })"""
+    )
+    page.evaluate("() => window.scrollTo(0, document.documentElement.scrollHeight)")
+    page.wait_for_timeout(300)
+    can_scroll_after = page.evaluate(
+        "() => (window.scrollY || document.documentElement.scrollTop || 0) > 40"
+    )
+    page.evaluate("() => window.scrollTo(0, 0)")
+    return {
+        "while_open": while_open,
+        "after_close": after_close,
+        "can_scroll_after_close": can_scroll_after,
+        "lock_while_open": bool(while_open.get("drawerOpen")),
+        "unlocked_after_close": not after_close.get("drawerOpen")
+        and after_close.get("bodyOverflowY") != "hidden",
+    }
+
+
 def ws_probe(page) -> dict:
     return page.evaluate(
         """() => {
-          const root = document.querySelector('#cf2-workspace-root');
           const ws = document.querySelector('[data-cf2=\"workspace-final-v1\"]');
           const coCount = document.querySelectorAll(
             '#cf2-workspace-root .cf2-co__glyph'
@@ -95,8 +194,8 @@ def ws_probe(page) -> dict:
             emojiAccount,
             appbarAccountSvg: !!document.querySelector('.cf2-appbar__account-icon'),
             noOverflow: document.documentElement.scrollWidth <= window.innerWidth + 1,
-              cacheBump: [...document.querySelectorAll('link[rel=stylesheet]')]
-              .some(l => /uiv2r/.test(l.href || '')),
+            cacheBump: [...document.querySelectorAll('link[rel=stylesheet]')]
+              .some(l => /uiv2s/.test(l.href || '')),
           };
         }"""
     )
@@ -126,11 +225,17 @@ def main() -> int:
         page = ctx.new_page()
         goto_workspace(page)
         probe["desktop"] = ws_probe(page)
+        probe["desktop_scroll"] = scroll_probe(page)
+        probe["desktop_scroll_exercise"] = exercise_document_scroll(page)
         page.screenshot(path=str(OUT / "01_desktop_workspace_full.png"), full_page=True)
         page.screenshot(path=str(OUT / "02_desktop_primary_decision.png"), full_page=False)
         primary = page.query_selector(".cf2-dobj--primary") or page.query_selector(".cf2-ws")
         if primary:
             primary.screenshot(path=str(OUT / "03_desktop_route_progression.png"))
+        page.evaluate("() => window.scrollTo(0, document.documentElement.scrollHeight)")
+        page.wait_for_timeout(250)
+        page.screenshot(path=str(OUT / "11_desktop_scroll_bottom.png"), full_page=False)
+        page.evaluate("() => window.scrollTo(0, 0)")
         # Motion A/B: same Living Store truth — arrival vs settled (no invented readiness)
         page.reload(wait_until="domcontentloaded", timeout=120000)
         page.wait_for_selector("[data-cf2='workspace-final-v1']", timeout=60000)
@@ -150,7 +255,7 @@ def main() -> int:
         page.screenshot(path=str(OUT / "09_grayscale_logo_hidden.png"), full_page=False)
         ctx.close()
 
-        # Mobile first viewport + progression + appbar
+        # Mobile first viewport + progression + appbar + scroll/drawer
         mctx = browser.new_context(
             viewport={"width": 390, "height": 844},
             locale="ar-SA",
@@ -161,11 +266,17 @@ def main() -> int:
         mpage = mctx.new_page()
         goto_workspace(mpage)
         probe["mobile"] = ws_probe(mpage)
+        probe["mobile_scroll"] = scroll_probe(mpage)
+        probe["mobile_scroll_exercise"] = exercise_document_scroll(mpage)
+        probe["mobile_drawer_scroll"] = exercise_drawer_scroll_lock(mpage)
         mpage.screenshot(path=str(OUT / "04_mobile_first_viewport.png"), full_page=False)
         mpage.screenshot(path=str(OUT / "05_mobile_decision_progression.png"), full_page=True)
         appbar = mpage.query_selector(".cf2-appbar")
         if appbar:
             appbar.screenshot(path=str(OUT / "06_mobile_appbar.png"))
+        mpage.evaluate("() => window.scrollTo(0, document.documentElement.scrollHeight)")
+        mpage.wait_for_timeout(250)
+        mpage.screenshot(path=str(OUT / "12_mobile_scroll_bottom.png"), full_page=False)
         mctx.close()
         browser.close()
 
@@ -200,6 +311,23 @@ def main() -> int:
 
     d = probe.get("desktop") or {}
     m = probe.get("mobile") or {}
+    ds = probe.get("desktop_scroll") or {}
+    dse = probe.get("desktop_scroll_exercise") or {}
+    ms = probe.get("mobile_scroll") or {}
+    mse = probe.get("mobile_scroll_exercise") or {}
+    md = probe.get("mobile_drawer_scroll") or {}
+
+    def scroll_ok(layout: dict, exercise: dict) -> bool:
+        if layout.get("stageIsScrollTrap"):
+            return False
+        if layout.get("bodyOverflowY") == "hidden":
+            return False
+        if not layout.get("noOverflowX", True):
+            return False
+        if layout.get("docScrollable"):
+            return bool(exercise.get("moved_down")) and bool(exercise.get("returned_top"))
+        return True
+
     ok = all(
         [
             bool(probe.get("deploy", {}).get("ok")),
@@ -215,6 +343,14 @@ def main() -> int:
             not m.get("emojiAccount"),
             m.get("noOverflow"),
             m.get("coCount", 99) <= 2,
+            scroll_ok(ds, dse),
+            scroll_ok(ms, mse),
+            bool(md.get("skipped"))
+            or (
+                bool(md.get("lock_while_open"))
+                and bool(md.get("unlocked_after_close"))
+                and bool(md.get("can_scroll_after_close"))
+            ),
         ]
     )
     return 0 if ok else 2

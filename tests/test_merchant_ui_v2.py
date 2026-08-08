@@ -141,6 +141,17 @@ class MerchantUiV2RouteTests(unittest.TestCase):
         )
         self.assertIn("cf2-appbar-section", app_js)
         self.assertIn('section === "home" || section === "workspace"', app_js)
+        self.assertIn("is-drawer-open", app_js)
+        frame_css = (ROOT / "static" / "merchant_ui_v2_frame.css").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("document (html/body) scrolls vertically", frame_css)
+        self.assertIn("overflow: visible", frame_css)
+        self.assertNotRegex(
+            frame_css,
+            r'body\[data-cf-ui="v2"\]\s*\{[^}]*overflow:\s*hidden',
+        )
+        self.assertIn("body[data-cf-ui=\"v2\"].is-drawer-open", frame_css)
 
     def test_assets_exist(self) -> None:
         for rel in (

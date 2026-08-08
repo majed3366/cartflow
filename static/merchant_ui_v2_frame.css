@@ -3,24 +3,43 @@
  * Desktop: horizontal App Bar + optional contextual sidebar (SEPARATE).
  * Mobile: compact app bar + content-sized drawer.
  * Namespace: [data-cf-ui="v2"]
+ *
+ * Scroll contract: document (html/body) scrolls vertically.
+ * Stage height is content-driven — never a fixed viewport trap.
+ * Drawer may lock body scroll only while open.
  */
 
+html:has(body[data-cf-ui="v2"]) {
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 body[data-cf-ui="v2"] {
-  height: 100%;
+  height: auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+body[data-cf-ui="v2"].is-drawer-open {
   overflow: hidden;
 }
 
 body[data-cf-ui="v2"] .cf2-root {
   display: flex;
   flex-direction: column;
-  height: 100%;
   min-height: 100vh;
   min-height: 100dvh;
+  height: auto;
 }
 
 /* ——— Desktop App Bar ——— */
 body[data-cf-ui="v2"] .cf2-appbar {
   flex: 0 0 auto;
+  position: sticky;
+  top: 0;
   height: var(--cf2-appbar-h);
   display: flex;
   align-items: center;
@@ -205,7 +224,7 @@ body[data-cf-ui="v2"] .cf2-appbar__account-icon {
 
 /* ——— Shell: contextual sidebar + stage ——— */
 body[data-cf-ui="v2"] .cf2-shell {
-  flex: 1 1 auto;
+  flex: 1 0 auto;
   min-height: 0;
   display: grid;
   grid-template-columns: var(--cf2-ctx-w) minmax(0, 1fr);
@@ -220,7 +239,8 @@ body[data-cf-ui="v2"] .cf2-ctx {
   border-inline-end: 1px solid var(--cf2-border);
   background: #f7f9fc;
   padding: 18px 14px;
-  overflow: auto;
+  /* Sidebar may scroll independently only when present; stage uses document scroll. */
+  overflow: visible;
 }
 
 body[data-cf-ui="v2"] .cf2-shell[data-cf2-ctx="off"] .cf2-ctx {
@@ -269,9 +289,7 @@ body[data-cf-ui="v2"] .cf2-ctx__note {
 
 body[data-cf-ui="v2"] .cf2-stage {
   min-width: 0;
-  overflow: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
+  overflow: visible;
   padding: 12px 24px 28px;
 }
 

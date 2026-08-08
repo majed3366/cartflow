@@ -104,6 +104,7 @@
     var b = $(".cf2-drawer-backdrop");
     if (d) d.classList.remove("is-open");
     if (b) b.classList.remove("is-open");
+    document.body.classList.remove("is-drawer-open");
     document.body.style.overflow = "";
   }
 
@@ -112,6 +113,7 @@
     var b = $(".cf2-drawer-backdrop");
     if (d) d.classList.add("is-open");
     if (b) b.classList.add("is-open");
+    document.body.classList.add("is-drawer-open");
     document.body.style.overflow = "hidden";
   }
 

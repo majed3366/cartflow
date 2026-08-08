@@ -1,13 +1,51 @@
 # Merchant UI V2 — Decision Workspace Final Product Composition V1
 
 **Status:** Living Store evidence captured — STOP for Workspace visual review  
-**Deploy:** `8cc5ad1`  
 **URL:** https://smartreplyai.net/dashboard#workspace  
-**Home:** FROZEN — not modified
+**Home:** FROZEN — visual composition unchanged; shared frame scroll contract repaired
 
 ## Objective
 
 Turn Decision Workspace into a living operational decision surface using the approved CartFlow visual language — not a static infographic board.
+
+## Vertical page scroll (blocking functional fix)
+
+### Defect
+
+The Workspace page itself could not scroll vertically. This was **not** animation — it was a layout trap.
+
+### Root cause
+
+V2 frame used a fixed viewport shell:
+
+1. `body[data-cf-ui="v2"] { height: 100%; overflow: hidden; }` locked document scroll
+2. `.cf2-root { height: 100% }` filled the viewport
+3. `.cf2-shell { flex: 1 1 auto; min-height: 0 }` constrained remaining height
+4. `.cf2-stage { overflow: auto }` became a nested artificial scroll region
+
+Drawer `body.style.overflow = hidden` compounded the problem because body CSS was already permanently locked.
+
+### Fix
+
+- Document (`html`/`body`) owns vertical scrolling; height is content-driven
+- `.cf2-stage` is `overflow: visible` — no nested main scroll region
+- App Bar may remain `position: sticky`
+- Drawer locks scroll **only while open** via `body.is-drawer-open` + inline overflow; close clears both immediately
+- Cache bump `uiv2s`
+
+### Acceptance validation (Living Store)
+
+| Check | Result |
+|------|--------|
+| Desktop: scroll top → bottom → top | `desktop_scroll_exercise` in `production_probe.json` |
+| Mobile: scroll top → bottom → top | `mobile_scroll_exercise` |
+| Stage is not a scroll trap | `stageIsScrollTrap: false` |
+| Body overflow not permanently hidden | `bodyOverflowY != hidden` when drawer closed |
+| Drawer open locks background | `mobile_drawer_scroll.lock_while_open` |
+| Drawer close restores scrolling | `unlocked_after_close` + `can_scroll_after_close` |
+| No horizontal overflow | `noOverflow` / `noOverflowX` |
+
+Evidence shots: `11_desktop_scroll_bottom.png`, `12_mobile_scroll_bottom.png`.
 
 ## Report answers
 
@@ -21,10 +59,11 @@ Turn Decision Workspace into a living operational decision surface using the app
 ### 2. What previously made Workspace feel static?
 
 - CO **gallery / rail** treated as decoration beside a text stack.
-- Design-vocabulary beat labels (“كثافة الدليل”, etc.) instead of merchant questions.
+- Design-vocabulary beat labels instead of merchant questions.
 - Projection paint often missed real `zone_b` because the API envelope was not unwrapped (`projection.zone_b`).
 - Vertical route + objects read as one frozen poster without state-driven emphasis.
 - Mobile spent first-viewport budget on oversized visual vocabulary.
+- **Also:** page scroll was trapped, so the surface felt frozen even when content existed below.
 
 ### 3. Which elements now react to real product state?
 
@@ -55,6 +94,7 @@ No fake counters, invented metrics, or looping decoration.
 - Desktop board chrome removed on mobile (transparent primary, no heavy card frame)
 - Secondary “بعده” compressed to title + link/note rows (no object rail)
 - First viewport targets: attention · evidence state · CartFlow conclusion · act/wait
+- Document scroll restored so content below the first viewport is reachable without shrinking the decision
 
 ### 6. Which Commerce Objects remain and what merchant meaning does each one carry?
 
@@ -92,13 +132,15 @@ Node emphasis (`is-active` / `is-complete`) follows real tension/readiness. Merc
 | [08_motion_state_b.png](08_motion_state_b.png) | Motion — settled paint |
 | [09_grayscale_logo_hidden.png](09_grayscale_logo_hidden.png) | Grayscale / logo hidden |
 | [10_before_after.png](10_before_after.png) | Before (maturity) vs after |
-| [production_probe.json](production_probe.json) | Living Store probe |
+| [11_desktop_scroll_bottom.png](11_desktop_scroll_bottom.png) | Desktop scrolled to bottom |
+| [12_mobile_scroll_bottom.png](12_mobile_scroll_bottom.png) | Mobile scrolled to bottom |
+| [production_probe.json](production_probe.json) | Living Store probe + scroll/drawer gates |
 
 ## Truth / architecture lock
 
-Unchanged: APIs, decision logic, projections, readiness/admission rules, merchant actions, business truth, **Home**.
+Unchanged: APIs, decision logic, projections, readiness/admission rules, merchant actions, business truth, Home visual composition.
 
 ## STOP
 
-Decision Workspace Final Product Composition V1 is ready for visual review.  
+Decision Workspace Final Product Composition V1 (including vertical page scroll fix) is ready for visual/functional review.  
 Do **not** start Products, Carts, Communication, or Settings.
