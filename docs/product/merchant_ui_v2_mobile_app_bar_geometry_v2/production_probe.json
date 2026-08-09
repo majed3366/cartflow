@@ -1,0 +1,269 @@
+{
+  "deploy": {
+    "ok": true,
+    "sha": "971b1a7520f0e619251ca0e5d3045b98b82a8579",
+    "status": 200
+  },
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "probes": {
+    "home_closed": {
+      "marker": "mobile-geometry-v2",
+      "sectionText": "الرئيسية",
+      "drawerOpen": false,
+      "boxes": {
+        "bar": {
+          "left": 0,
+          "right": 390,
+          "top": 0,
+          "bottom": 52,
+          "w": 390,
+          "h": 52
+        },
+        "account": {
+          "left": 10,
+          "right": 50,
+          "top": 6,
+          "bottom": 46,
+          "w": 40,
+          "h": 40
+        },
+        "core": {
+          "left": 188,
+          "right": 336,
+          "top": 13,
+          "bottom": 39,
+          "w": 148,
+          "h": 26
+        },
+        "brand": {
+          "left": 251,
+          "right": 336,
+          "top": 15,
+          "bottom": 37,
+          "w": 85,
+          "h": 22
+        },
+        "section": {
+          "left": 188,
+          "right": 234,
+          "top": 18,
+          "bottom": 33,
+          "w": 45,
+          "h": 14
+        },
+        "menu": {
+          "left": 340,
+          "right": 380,
+          "top": 6,
+          "bottom": 46,
+          "w": 40,
+          "h": 40
+        }
+      },
+      "geometry": {
+        "accountLeftOfCore": true,
+        "coreLeftOfMenu": true,
+        "menuNearRightEdge": true,
+        "accountNearLeftEdge": true,
+        "coreNotViewportCentered": true
+      },
+      "noWrap": true,
+      "noOverflow": true
+    },
+    "home_drawer": {
+      "marker": "mobile-geometry-v2",
+      "sectionText": "الرئيسية",
+      "drawerOpen": true,
+      "boxes": {
+        "bar": {
+          "left": 0,
+          "right": 390,
+          "top": 0,
+          "bottom": 52,
+          "w": 390,
+          "h": 52
+        },
+        "account": {
+          "left": 372,
+          "right": 372,
+          "top": 6,
+          "bottom": 46,
+          "w": 0,
+          "h": 40
+        },
+        "core": {
+          "left": 376,
+          "right": 376,
+          "top": 15,
+          "bottom": 37,
+          "w": 0,
+          "h": 22
+        },
+        "brand": {
+          "left": 291,
+          "right": 376,
+          "top": 15,
+          "bottom": 37,
+          "w": 85,
+          "h": 22
+        },
+        "section": {
+          "left": 274,
+          "right": 274,
+          "top": 18,
+          "bottom": 33,
+          "w": 0,
+          "h": 14
+        },
+        "menu": {
+          "left": 380,
+          "right": 380,
+          "top": 6,
+          "bottom": 46,
+          "w": 0,
+          "h": 40
+        }
+      },
+      "geometry": {
+        "accountLeftOfCore": true,
+        "coreLeftOfMenu": true,
+        "menuNearRightEdge": true,
+        "accountNearLeftEdge": false,
+        "coreNotViewportCentered": true
+      },
+      "noWrap": true,
+      "noOverflow": true
+    },
+    "workspace_closed": {
+      "marker": "mobile-geometry-v2",
+      "sectionText": "مساحة القرار",
+      "drawerOpen": false,
+      "boxes": {
+        "bar": {
+          "left": 0,
+          "right": 390,
+          "top": 0,
+          "bottom": 52,
+          "w": 390,
+          "h": 52
+        },
+        "account": {
+          "left": 10,
+          "right": 50,
+          "top": 6,
+          "bottom": 46,
+          "w": 40,
+          "h": 40
+        },
+        "core": {
+          "left": 165,
+          "right": 336,
+          "top": 13,
+          "bottom": 39,
+          "w": 171,
+          "h": 26
+        },
+        "brand": {
+          "left": 251,
+          "right": 336,
+          "top": 15,
+          "bottom": 37,
+          "w": 85,
+          "h": 22
+        },
+        "section": {
+          "left": 165,
+          "right": 234,
+          "top": 18,
+          "bottom": 33,
+          "w": 69,
+          "h": 14
+        },
+        "menu": {
+          "left": 340,
+          "right": 380,
+          "top": 6,
+          "bottom": 46,
+          "w": 40,
+          "h": 40
+        }
+      },
+      "geometry": {
+        "accountLeftOfCore": true,
+        "coreLeftOfMenu": true,
+        "menuNearRightEdge": true,
+        "accountNearLeftEdge": true,
+        "coreNotViewportCentered": true
+      },
+      "noWrap": true,
+      "noOverflow": true
+    },
+    "workspace_drawer": {
+      "marker": "mobile-geometry-v2",
+      "sectionText": "مساحة القرار",
+      "drawerOpen": true,
+      "boxes": {
+        "bar": {
+          "left": 0,
+          "right": 390,
+          "top": 0,
+          "bottom": 52,
+          "w": 390,
+          "h": 52
+        },
+        "account": {
+          "left": 372,
+          "right": 372,
+          "top": 6,
+          "bottom": 46,
+          "w": 0,
+          "h": 40
+        },
+        "core": {
+          "left": 376,
+          "right": 376,
+          "top": 15,
+          "bottom": 37,
+          "w": 0,
+          "h": 22
+        },
+        "brand": {
+          "left": 291,
+          "right": 376,
+          "top": 15,
+          "bottom": 37,
+          "w": 85,
+          "h": 22
+        },
+        "section": {
+          "left": 274,
+          "right": 274,
+          "top": 18,
+          "bottom": 33,
+          "w": 0,
+          "h": 14
+        },
+        "menu": {
+          "left": 380,
+          "right": 380,
+          "top": 6,
+          "bottom": 46,
+          "w": 0,
+          "h": 40
+        }
+      },
+      "geometry": {
+        "accountLeftOfCore": true,
+        "coreLeftOfMenu": true,
+        "menuNearRightEdge": true,
+        "accountNearLeftEdge": false,
+        "coreNotViewportCentered": true
+      },
+      "noWrap": true,
+      "noOverflow": true
+    }
+  }
+}
