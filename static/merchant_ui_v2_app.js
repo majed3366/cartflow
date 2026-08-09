@@ -85,7 +85,7 @@
     var ctx = $("#cf2-ctx");
     var sheetBody = $("#cf2-ctx-sheet-body");
     var sheetTitle = $("#cf2-ctx-sheet-title");
-    var chrome = $("#cf2-section-chrome");
+    var pageChrome = $("#cf2-page-chrome");
     var trigger = $("#cf2-ctx-trigger");
     var triggerText = $("#cf2-ctx-trigger-text");
     if (!shell || !ctx) return;
@@ -98,17 +98,16 @@
       ctx.innerHTML = "";
       if (sheetBody) sheetBody.innerHTML = "";
       if (sheetTitle) sheetTitle.textContent = "";
-      if (chrome) chrome.hidden = true;
-      if (trigger) {
-        trigger.hidden = true;
-        trigger.setAttribute("aria-expanded", "false");
-      }
+      if (pageChrome) pageChrome.hidden = true;
+      if (trigger) trigger.setAttribute("aria-expanded", "false");
+      if (triggerText) triggerText.textContent = "";
       return;
     }
 
     shell.setAttribute("data-cf2-ctx", "on");
     var activeId = conf.items[0].id;
     var title = conf.title || sectionLabel(section);
+    var activeLabel = conf.items[0].label || "";
     var itemsHtml = paintCtxItems(conf, activeId);
 
     ctx.innerHTML =
@@ -120,12 +119,10 @@
 
     if (sheetBody) sheetBody.innerHTML = itemsHtml;
     if (sheetTitle) sheetTitle.textContent = title;
-    // Quiet page-level control — never paint section title into App Bar.
-    if (chrome) chrome.hidden = false;
-    if (trigger) {
-      trigger.hidden = false;
-      if (triggerText) triggerText.textContent = "في هذا القسم";
-    }
+    // Frame page-chrome only — never inject into App Bar or page content title row.
+    if (pageChrome) pageChrome.hidden = false;
+    if (triggerText) triggerText.textContent = activeLabel;
+    if (trigger) trigger.setAttribute("aria-expanded", "false");
   }
 
   function showPage(section) {

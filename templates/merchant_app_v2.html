@@ -9,16 +9,16 @@
 <script>window.CARTFLOW_STORE_SLUG = "{{ merchant_store_slug | default('demo') }}";</script>
 <script>window.CARTFLOW_UI_V2 = true;</script>
 {# Clean-slate V2 — no legacy merchant CSS cascade #}
-<link rel="stylesheet" href="/static/merchant_ui_v2_ds.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2w">
-<link rel="stylesheet" href="/static/merchant_ui_v2_frame.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2w">
-<link rel="stylesheet" href="/static/merchant_ui_v2_language.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2w">
-<link rel="stylesheet" href="/static/merchant_ui_v2_home.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2w">
-<link rel="stylesheet" href="/static/merchant_ui_v2_workspace.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2w">
+<link rel="stylesheet" href="/static/merchant_ui_v2_ds.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2x">
+<link rel="stylesheet" href="/static/merchant_ui_v2_frame.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2x">
+<link rel="stylesheet" href="/static/merchant_ui_v2_language.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2x">
+<link rel="stylesheet" href="/static/merchant_ui_v2_home.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2x">
+<link rel="stylesheet" href="/static/merchant_ui_v2_workspace.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2x">
 </head>
 <body data-cf-ui="v2" data-cf-merchant-app="1">
 <div class="cf2-root">
   {# GLOBAL UPBAR — platform destinations only. Never host section/context pills. #}
-  <header class="cf2-appbar" role="banner" data-cf2-appbar="nav-closure-v2">
+  <header class="cf2-appbar" role="banner" data-cf2-appbar="nav-ctx-chrome-v3">
     <button type="button" class="cf2-menu-btn" aria-label="فتح القائمة" aria-controls="cf2-drawer" aria-expanded="false">
       <span class="cf2-menu-btn__bars" aria-hidden="true"></span>
     </button>
@@ -52,17 +52,33 @@
     </button>
   </header>
 
+  {# PAGE CHROME — mobile contextual nav (frame layer). Not App Bar. Not page content. #}
+  <nav class="cf2-page-chrome" id="cf2-page-chrome" hidden aria-label="تنقل القسم الحالي">
+    <button
+      type="button"
+      class="cf2-page-chrome__nav"
+      id="cf2-ctx-trigger"
+      aria-controls="cf2-ctx-sheet"
+      aria-expanded="false"
+      aria-label="فتح تنقل القسم"
+    >
+      <span class="cf2-page-chrome__glyph" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M5 7h14M5 12h10M5 17h14" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <span class="cf2-page-chrome__copy">
+        <span class="cf2-page-chrome__kicker">تنقل القسم</span>
+        <span class="cf2-page-chrome__active" id="cf2-ctx-trigger-text"></span>
+      </span>
+      <span class="cf2-page-chrome__chev" aria-hidden="true"></span>
+    </button>
+  </nav>
+
   <div class="cf2-shell" data-cf2-ctx="off">
     <aside class="cf2-ctx" id="cf2-ctx" aria-label="سياق القسم"></aside>
     <main class="cf2-stage" id="cf2-stage">
       <div class="cf2-stage__inner">
-        {# PAGE/SECTION context control — not App Bar; opens Contextual Sheet only #}
-        <div class="cf2-section-chrome" id="cf2-section-chrome" hidden>
-          <button type="button" class="cf2-ctx-trigger" id="cf2-ctx-trigger" aria-controls="cf2-ctx-sheet" aria-expanded="false" aria-label="التنقل داخل القسم">
-            <span class="cf2-ctx-trigger__text" id="cf2-ctx-trigger-text">في هذا القسم</span>
-          </button>
-        </div>
-
         <section class="cf2-page is-active" data-cf2-page="home" aria-label="الرئيسية">
           <p class="cf2-page__question">ماذا يجب أن أعرف الآن عن متجري؟</p>
           <div id="cf2-home-root" aria-live="polite">
@@ -129,9 +145,9 @@
   <div class="cf2-ctx-sheet__body" id="cf2-ctx-sheet-body"></div>
 </aside>
 
-<script defer src="/static/merchant_ui_v2_language.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2w"></script>
-<script defer src="/static/merchant_ui_v2_home.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2w"></script>
-<script defer src="/static/merchant_ui_v2_workspace.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2w"></script>
-<script defer src="/static/merchant_ui_v2_app.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2w"></script>
+<script defer src="/static/merchant_ui_v2_language.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2x"></script>
+<script defer src="/static/merchant_ui_v2_home.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2x"></script>
+<script defer src="/static/merchant_ui_v2_workspace.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2x"></script>
+<script defer src="/static/merchant_ui_v2_app.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2x"></script>
 </body>
 </html>
