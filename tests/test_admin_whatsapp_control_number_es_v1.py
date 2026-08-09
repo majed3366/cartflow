@@ -67,6 +67,7 @@ class PublicConfigTests(unittest.TestCase):
         self._keys = [
             "META_WHATSAPP_APP_ID",
             "META_WHATSAPP_CONFIGURATION_ID",
+            "META_WHATSAPP_CONTROL_CONFIGURATION_ID",
             "META_WHATSAPP_APP_SECRET",
         ]
         self._prev = {k: os.environ.get(k) for k in self._keys}
@@ -78,18 +79,30 @@ class PublicConfigTests(unittest.TestCase):
             else:
                 os.environ[k] = v
 
-    def test_public_config_isolation_flags(self) -> None:
+    def test_public_config_uses_control_configuration_id_only(self) -> None:
         os.environ["META_WHATSAPP_APP_ID"] = "1485048632921274"
         os.environ["META_WHATSAPP_CONFIGURATION_ID"] = "27774549568822736"
+        os.environ["META_WHATSAPP_CONTROL_CONFIGURATION_ID"] = "999888777666555"
         os.environ["META_WHATSAPP_APP_SECRET"] = "unit-test-secret-value-not-real"
         cfg = public_control_config()
         self.assertTrue(cfg["ready"])
-        self.assertEqual(cfg["recovery_marker"], RECOVERY_MARKER)
-        self.assertFalse(cfg["register_allowed"])
-        self.assertTrue(cfg["isolates_production_env"])
-        self.assertEqual(cfg["control_phone_e164"], CONTROL_PHONE_E164)
+        self.assertEqual(cfg["configuration_id"], "999888777666555")
+        self.assertEqual(
+            cfg["configuration_id_source"], "META_WHATSAPP_CONTROL_CONFIGURATION_ID"
+        )
+        self.assertFalse(cfg["uses_recovery_configuration_id"])
+        self.assertNotEqual(cfg["configuration_id"], "27774549568822736")
         self.assertNotIn("app_secret", cfg)
         self.assertNotIn("unit-test-secret-value-not-real", str(cfg))
+
+    def test_ready_false_without_control_configuration_id(self) -> None:
+        os.environ["META_WHATSAPP_APP_ID"] = "1485048632921274"
+        os.environ["META_WHATSAPP_CONFIGURATION_ID"] = "27774549568822736"
+        os.environ.pop("META_WHATSAPP_CONTROL_CONFIGURATION_ID", None)
+        os.environ["META_WHATSAPP_APP_SECRET"] = "unit-test-secret-value-not-real"
+        cfg = public_control_config()
+        self.assertFalse(cfg["ready"])
+        self.assertIsNone(cfg["configuration_id"])
 
 
 class CompleteControlEsTests(unittest.TestCase):
@@ -97,11 +110,13 @@ class CompleteControlEsTests(unittest.TestCase):
         self._keys = [
             "META_WHATSAPP_APP_ID",
             "META_WHATSAPP_CONFIGURATION_ID",
+            "META_WHATSAPP_CONTROL_CONFIGURATION_ID",
             "META_WHATSAPP_APP_SECRET",
         ]
         self._prev = {k: os.environ.get(k) for k in self._keys}
         os.environ["META_WHATSAPP_APP_ID"] = "1485048632921274"
         os.environ["META_WHATSAPP_CONFIGURATION_ID"] = "27774549568822736"
+        os.environ["META_WHATSAPP_CONTROL_CONFIGURATION_ID"] = "999888777666555"
         os.environ["META_WHATSAPP_APP_SECRET"] = "unit-test-secret-value-not-real"
 
     def tearDown(self) -> None:

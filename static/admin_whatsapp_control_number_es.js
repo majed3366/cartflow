@@ -317,6 +317,10 @@
         setText("cnes-app-id", state.appId || "missing");
         setText("cnes-config-id", state.configurationId || "missing");
         setText(
+          "cnes-config-source",
+          body.configuration_id_source || "META_WHATSAPP_CONTROL_CONFIGURATION_ID"
+        );
+        setText(
           "cnes-secret",
           body.app_secret_configured ? "configured (server-only)" : "MISSING"
         );
@@ -324,8 +328,8 @@
         setText(
           "cnes-config-status",
           state.ready
-            ? "Config ready — isolated control path (production env IDs untouched)"
-            : "Config incomplete — check Railway META_WHATSAPP_* secrets"
+            ? "Config ready — C2 uses META_WHATSAPP_CONTROL_CONFIGURATION_ID (recovery config untouched)"
+            : "Config incomplete — set Railway META_WHATSAPP_CONTROL_CONFIGURATION_ID (+ App ID/Secret)"
         );
 
         if (!state.appId || !state.configurationId) {

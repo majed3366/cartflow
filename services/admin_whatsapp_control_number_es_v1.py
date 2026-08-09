@@ -14,6 +14,7 @@ Does NOT:
 from __future__ import annotations
 
 import logging
+import os
 import re
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -38,6 +39,10 @@ CONTROL_WABA_ID = PRODUCTION_WABA_ID  # same WABA required
 CONTROL_PHONE_E164 = "+966533132601"
 CONTROL_PHONE_DISPLAY_HINT = "+966 53 313 2601"
 
+# Dedicated C2 Login for Business configuration (WhatsApp ES template).
+# Never fall back to META_WHATSAPP_CONFIGURATION_ID (Phase 2B recovery).
+CONTROL_CONFIGURATION_ENV_KEY = "META_WHATSAPP_CONTROL_CONFIGURATION_ID"
+
 RECOVERY_MARKER = "control-number-es-v1"
 PHASE = "c2_control_number_es"
 RESOLUTION_BROWSER = "browser_session"
@@ -48,6 +53,11 @@ FB_SDK_VERSION = "v21.0"
 
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def read_control_configuration_id() -> str:
+    """C2-only config_id. Does not read META_WHATSAPP_CONFIGURATION_ID."""
+    return (os.getenv(CONTROL_CONFIGURATION_ENV_KEY) or "").strip()
 
 
 def normalize_e164(raw: Any) -> str:
@@ -66,16 +76,24 @@ def normalize_e164(raw: Any) -> str:
 
 
 def public_control_config() -> dict[str, Any]:
-    """Admin bootstrap — secrets never included."""
+    """Admin bootstrap — secrets never included.
+
+    configuration_id comes ONLY from META_WHATSAPP_CONTROL_CONFIGURATION_ID.
+    Phase 2B META_WHATSAPP_CONFIGURATION_ID is intentionally unused here.
+    """
     env = read_embedded_signup_env()
+    control_configuration_id = read_control_configuration_id()
     ready = bool(
-        env["app_id"] and env["configuration_id"] and env["app_secret_configured"]
+        env["app_id"] and control_configuration_id and env["app_secret_configured"]
     )
     return {
         "ok": True,
         "ready": ready,
         "app_id": env["app_id"] or None,
-        "configuration_id": env["configuration_id"] or None,
+        "configuration_id": control_configuration_id or None,
+        "configuration_id_env": CONTROL_CONFIGURATION_ENV_KEY,
+        "configuration_id_source": CONTROL_CONFIGURATION_ENV_KEY,
+        "uses_recovery_configuration_id": False,
         "app_secret_configured": env["app_secret_configured"],
         "graph_version": env["graph_version"],
         "fb_sdk_version": FB_SDK_VERSION,
@@ -623,6 +641,7 @@ def complete_control_number_es(
 
 
 __all__ = [
+    "CONTROL_CONFIGURATION_ENV_KEY",
     "CONTROL_PHONE_E164",
     "CONTROL_WABA_ID",
     "PHASE",
@@ -632,4 +651,5 @@ __all__ = [
     "complete_control_number_es",
     "normalize_e164",
     "public_control_config",
+    "read_control_configuration_id",
 ]
