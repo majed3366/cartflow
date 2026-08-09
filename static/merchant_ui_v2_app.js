@@ -1,14 +1,14 @@
 /**
  * CartFlow Merchant UI V2 — App shell router.
- * Exactly TWO navigation levels from ONE registry:
- *   1) GLOBAL — Upbar / Mobile Global control / optional utility drawer
- *   2) CONTEXTUAL — Sidebar (desktop column / mobile overlay)
+ * Approved MerchantShell ownership:
+ *   UtilityRow → GlobalUpbar → ContextualSidebar → PageStage
+ * One GlobalNavigation model + one ContextualNavigation model.
  * Presentation may differ by breakpoint; ownership must not.
  */
 (function () {
   "use strict";
 
-  /** Canonical navigation registry — every Global host consumes this only. */
+  /** Canonical navigation registry — desktop and mobile consume this only. */
   var NAV = {
     global: [
       { id: "home", label: "الرئيسية", slice: true },
@@ -21,7 +21,10 @@
     contextual: {
       home: {
         title: "الرئيسية",
-        items: [{ id: "overview", label: "نظرة عامة" }],
+        items: [
+          { id: "overview", label: "نظرة عامة" },
+          { id: "summary", label: "الملخص" },
+        ],
       },
       workspace: {
         title: "مساحة القرار",
@@ -35,6 +38,7 @@
   };
 
   var SECTIONS = NAV.global;
+  var activeCtxItem = null;
 
   function $(sel, root) {
     return (root || document).querySelector(sel);
@@ -67,8 +71,7 @@
   function anyOverlayOpen() {
     return (
       document.body.classList.contains("is-drawer-open") ||
-      document.body.classList.contains("is-ctx-open") ||
-      document.body.classList.contains("is-global-nav-open")
+      document.body.classList.contains("is-ctx-open")
     );
   }
 
@@ -94,78 +97,28 @@
     });
   }
 
-  /** Paint Global destinations from NAV.global into every mount. */
+  /** Paint Global destinations into the single GlobalUpbar mount. */
   function paintGlobalNavigation(activeSection) {
     var active = activeSection || currentHash();
-
     var upbar = $("#cf2-nav");
-    if (upbar) {
-      upbar.innerHTML = NAV.global
-        .map(function (item) {
-          var on = item.id === active;
-          return (
-            '<button type="button" class="cf2-nav__item' +
-            (on ? " is-active" : "") +
-            '" data-cf2-nav="' +
-            item.id +
-            '"' +
-            (on ? ' aria-current="page"' : ' aria-current="false"') +
-            ">" +
-            item.label +
-            "</button>"
-          );
-        })
-        .join("");
-      bindGlobalNavClicks(upbar);
-    }
-
-    var mobileList = $("#cf2-global-panel-list");
-    if (mobileList) {
-      mobileList.innerHTML = NAV.global
-        .map(function (item) {
-          var on = item.id === active;
-          return (
-            '<button type="button" class="cf2-global-panel__item' +
-            (on ? " is-active" : "") +
-            '" data-cf2-nav="' +
-            item.id +
-            '"' +
-            (on ? ' aria-current="page"' : ' aria-current="false"') +
-            ">" +
-            item.label +
-            "</button>"
-          );
-        })
-        .join("");
-      bindGlobalNavClicks(mobileList);
-    }
-
-    var drawerMount = $("#cf2-drawer-global");
-    if (drawerMount) {
-      var label = drawerMount.querySelector(".cf2-drawer__label");
-      var labelHtml = label
-        ? '<p class="cf2-drawer__label">' + (label.textContent || "أقسام المنصة") + "</p>"
-        : '<p class="cf2-drawer__label">أقسام المنصة</p>';
-      drawerMount.innerHTML =
-        labelHtml +
-        NAV.global
-          .map(function (item) {
-            var on = item.id === active;
-            return (
-              '<button type="button" class="cf2-drawer__item' +
-              (on ? " is-active" : "") +
-              '" data-cf2-nav="' +
-              item.id +
-              '"' +
-              (on ? ' aria-current="page"' : ' aria-current="false"') +
-              ">" +
-              item.label +
-              "</button>"
-            );
-          })
-          .join("");
-      bindGlobalNavClicks(drawerMount);
-    }
+    if (!upbar) return;
+    upbar.innerHTML = NAV.global
+      .map(function (item) {
+        var on = item.id === active;
+        return (
+          '<button type="button" class="cf2-nav__item' +
+          (on ? " is-active" : "") +
+          '" data-cf2-nav="' +
+          item.id +
+          '"' +
+          (on ? ' aria-current="page"' : ' aria-current="false"') +
+          ">" +
+          item.label +
+          "</button>"
+        );
+      })
+      .join("");
+    bindGlobalNavClicks(upbar);
   }
 
   function paintCtxMarkup(conf, activeId) {
@@ -193,10 +146,28 @@
     return html;
   }
 
+  function bindCtxItems() {
+    $all("[data-cf2-ctx-item]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        activeCtxItem = btn.getAttribute("data-cf2-ctx-item");
+        var conf = contextualFor(currentHash());
+        if (!conf) return;
+        var ctx = $("#cf2-ctx");
+        if (!ctx) return;
+        ctx.innerHTML = paintCtxMarkup(conf, activeCtxItem);
+        bindCtxClose();
+        bindCtxItems();
+        if (window.matchMedia("(max-width: 1023px)").matches) {
+          closeCtxDrawer();
+        }
+      });
+    });
+  }
+
   function setContext(section) {
     var shell = $(".cf2-shell");
     var ctx = $("#cf2-ctx");
-    var ctxBtn = $("#cf2-ctx-btn");
+    var handle = $("#cf2-ctx-handle");
     if (!shell || !ctx) return;
 
     closeCtxDrawer();
@@ -206,21 +177,24 @@
       shell.setAttribute("data-cf2-ctx", "off");
       ctx.innerHTML = "";
       ctx.hidden = true;
-      if (ctxBtn) {
-        ctxBtn.hidden = true;
-        ctxBtn.setAttribute("aria-expanded", "false");
+      activeCtxItem = null;
+      if (handle) {
+        handle.hidden = true;
+        handle.setAttribute("aria-expanded", "false");
       }
       return;
     }
 
     shell.setAttribute("data-cf2-ctx", "on");
     ctx.hidden = false;
-    ctx.innerHTML = paintCtxMarkup(conf, conf.items[0].id);
+    activeCtxItem = conf.items[0].id;
+    ctx.innerHTML = paintCtxMarkup(conf, activeCtxItem);
     bindCtxClose();
-    if (ctxBtn) {
-      ctxBtn.hidden = false;
-      ctxBtn.setAttribute("aria-expanded", "false");
-      ctxBtn.setAttribute(
+    bindCtxItems();
+    if (handle) {
+      handle.hidden = false;
+      handle.setAttribute("aria-expanded", "false");
+      handle.setAttribute(
         "aria-label",
         "فتح شريط " + (conf.title || sectionLabel(section))
       );
@@ -246,55 +220,7 @@
     var menu = $(".cf2-menu-btn");
     if (!menu) return;
     menu.setAttribute("aria-expanded", open ? "true" : "false");
-    menu.setAttribute("aria-label", open ? "إغلاق القائمة" : "فتح القائمة");
-  }
-
-  function setGlobalBtnExpanded(open) {
-    var btn = $("#cf2-global-btn");
-    if (!btn) return;
-    btn.setAttribute("aria-expanded", open ? "true" : "false");
-    btn.setAttribute(
-      "aria-label",
-      open ? "إغلاق أقسام المنصة" : "أقسام المنصة"
-    );
-  }
-
-  function closeGlobalNav() {
-    var panel = $("#cf2-global-panel");
-    var backdrop = $("#cf2-global-backdrop");
-    document.body.classList.remove("is-global-nav-open");
-    if (panel) {
-      panel.classList.remove("is-open");
-      panel.hidden = true;
-    }
-    if (backdrop) {
-      backdrop.classList.remove("is-open");
-      backdrop.hidden = true;
-    }
-    setGlobalBtnExpanded(false);
-    unlockScrollIfIdle();
-  }
-
-  function openGlobalNav() {
-    closeDrawer();
-    closeCtxDrawer();
-    var panel = $("#cf2-global-panel");
-    var backdrop = $("#cf2-global-backdrop");
-    if (!panel) return;
-    panel.hidden = false;
-    panel.classList.add("is-open");
-    if (backdrop) {
-      backdrop.hidden = false;
-      backdrop.classList.add("is-open");
-    }
-    document.body.classList.add("is-global-nav-open");
-    document.body.style.overflow = "hidden";
-    setGlobalBtnExpanded(true);
-  }
-
-  function toggleGlobalNav() {
-    if (document.body.classList.contains("is-global-nav-open")) closeGlobalNav();
-    else openGlobalNav();
+    menu.setAttribute("aria-label", open ? "إغلاق قائمة الحساب" : "فتح قائمة الحساب");
   }
 
   function closeDrawer() {
@@ -309,7 +235,6 @@
 
   function openDrawer() {
     closeCtxDrawer();
-    closeGlobalNav();
     var d = $(".cf2-drawer");
     var b = $(".cf2-drawer-backdrop");
     if (d) d.classList.add("is-open");
@@ -324,26 +249,29 @@
     else openDrawer();
   }
 
+  function setCtxHandleExpanded(open) {
+    var handle = $("#cf2-ctx-handle");
+    if (!handle) return;
+    handle.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+
   function closeCtxDrawer() {
     var ctx = $("#cf2-ctx");
     var backdrop = $("#cf2-ctx-backdrop");
-    var ctxBtn = $("#cf2-ctx-btn");
     document.body.classList.remove("is-ctx-open");
     if (ctx) ctx.classList.remove("is-open");
     if (backdrop) {
       backdrop.classList.remove("is-open");
       backdrop.hidden = true;
     }
-    if (ctxBtn) ctxBtn.setAttribute("aria-expanded", "false");
+    setCtxHandleExpanded(false);
     unlockScrollIfIdle();
   }
 
   function openCtxDrawer() {
     closeDrawer();
-    closeGlobalNav();
     var ctx = $("#cf2-ctx");
     var backdrop = $("#cf2-ctx-backdrop");
-    var ctxBtn = $("#cf2-ctx-btn");
     if (!ctx || ctx.hidden || !ctx.querySelector("[data-cf2-ctx-item]")) return;
     ctx.classList.add("is-open");
     if (backdrop) {
@@ -352,7 +280,7 @@
     }
     document.body.classList.add("is-ctx-open");
     document.body.style.overflow = "hidden";
-    if (ctxBtn) ctxBtn.setAttribute("aria-expanded", "true");
+    setCtxHandleExpanded(true);
   }
 
   function toggleCtxDrawer() {
@@ -367,7 +295,6 @@
     showPage(section);
     closeDrawer();
     closeCtxDrawer();
-    closeGlobalNav();
 
     if (section === "home") {
       var homeRoot = $("#cf2-home-root");
@@ -395,14 +322,6 @@
 
   function bind() {
     paintGlobalNavigation(currentHash());
-    bindGlobalNavClicks(document);
-
-    var globalBtn = $("#cf2-global-btn");
-    if (globalBtn) globalBtn.addEventListener("click", toggleGlobalNav);
-    var globalClose = $("#cf2-global-panel-close");
-    if (globalClose) globalClose.addEventListener("click", closeGlobalNav);
-    var globalBackdrop = $("#cf2-global-backdrop");
-    if (globalBackdrop) globalBackdrop.addEventListener("click", closeGlobalNav);
 
     var menu = $(".cf2-menu-btn");
     if (menu) menu.addEventListener("click", toggleDrawer);
@@ -415,8 +334,15 @@
     var backdrop = $(".cf2-drawer-backdrop");
     if (backdrop) backdrop.addEventListener("click", closeDrawer);
 
-    var ctxBtn = $("#cf2-ctx-btn");
-    if (ctxBtn) ctxBtn.addEventListener("click", toggleCtxDrawer);
+    var utilSettings = $('[data-cf2-util="settings"]');
+    if (utilSettings) {
+      utilSettings.addEventListener("click", function () {
+        go("settings");
+      });
+    }
+
+    var handle = $("#cf2-ctx-handle");
+    if (handle) handle.addEventListener("click", toggleCtxDrawer);
     var ctxBackdrop = $("#cf2-ctx-backdrop");
     if (ctxBackdrop) ctxBackdrop.addEventListener("click", closeCtxDrawer);
 
@@ -443,8 +369,6 @@
     sections: SECTIONS,
     ctx: NAV.contextual,
     paintGlobalNavigation: paintGlobalNavigation,
-    openGlobalNav: openGlobalNav,
-    closeGlobalNav: closeGlobalNav,
     openCtxDrawer: openCtxDrawer,
     closeCtxDrawer: closeCtxDrawer,
   };

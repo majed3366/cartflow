@@ -21,8 +21,11 @@ body[data-cf-ui="v2"] {
   --cf2-surface: #ffffff;
   --cf2-border: rgba(8, 32, 72, 0.1);
   --cf2-border-strong: rgba(8, 32, 72, 0.18);
-  --cf2-appbar-h: 52px;
+  --cf2-appbar-h: 92px;
+  --cf2-util-h: 44px;
+  --cf2-global-h: 48px;
   --cf2-ctx-w: 168px;
+  --cf2-ctx-rail: 28px;
   --cf2-stage-max: 1120px;
   --cf2-r-sm: 8px;
   --cf2-r-md: 12px;

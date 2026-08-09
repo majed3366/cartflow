@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CartFlow — Merchant Shell Prototype V1</title>
+<meta name="cartflow-prototype" content="merchant-shell-v1">
+<style>
+  :root {
+    --navy-0: #0a2d5c;
+    --navy-1: #082048;
+    --navy-2: #001838;
+    --teal: #18b0a8;
+    --ink: #0f1c2e;
+    --ink-soft: #3a4a63;
+    --mute: #6b7a90;
+    --canvas: #eef2f7;
+    --surface: #ffffff;
+    --border: #d7dee8;
+    --ctx-w: 188px;
+    --ctx-rail: 28px;
+    --util-h: 44px;
+    --global-h: 48px;
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --font: "Segoe UI", "Tahoma", "Arial", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    min-height: 100%;
+    font-family: var(--font);
+    color: var(--ink);
+    background: var(--canvas);
+  }
+
+  body.is-overlay-open { overflow: hidden; }
+
+  .shell {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ——— NAVY SHELL: Utility + Global ——— */
+  .chrome {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: linear-gradient(165deg, var(--navy-0) 0%, var(--navy-1) 55%, var(--navy-2) 100%);
+    color: #fff;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  /* ROW 1 — Utility only */
+  .utility {
+    height: var(--util-h);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .utility__brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #fff;
+    text-decoration: none;
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .utility__mark {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.12);
+    display: grid;
+    place-items: center;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+  }
+
+  .utility__word {
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+  }
+
+  .utility__spacer { flex: 1 1 auto; }
+
+  .utility__account,
+  .utility__menu {
+    appearance: none;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .utility__account:focus-visible,
+  .utility__menu:focus-visible,
+  .global__item:focus-visible,
+  .ctx-handle:focus-visible,
+  .ctx__item:focus-visible {
+    outline: 2px solid var(--teal);
+    outline-offset: 2px;
+  }
+
+  .utility__menu-bars {
+    width: 14px;
+    height: 2px;
+    background: currentColor;
+    border-radius: 1px;
+    box-shadow: 0 -4px 0 currentColor, 0 4px 0 currentColor;
+  }
+
+  /* ROW 2 — Global Upbar (always visible destinations) */
+  .global {
+    height: var(--global-h);
+    display: flex;
+    align-items: center;
+    padding: 0 8px 0 12px;
+  }
+
+  .global__list {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .global__list::-webkit-scrollbar { height: 3px; }
+  .global__list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.28);
+    border-radius: 99px;
+  }
+
+  .global__item {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.78);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex: 0 0 auto;
+  }
+
+  .global__item:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+  .global__item.is-active {
+    background: rgba(24, 176, 168, 0.28);
+    color: #fff;
+  }
+
+  /* ——— Body: Contextual + Stage ——— */
+  .body {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: var(--ctx-w) minmax(0, 1fr);
+    min-height: 0;
+    position: relative;
+  }
+
+  .body[data-ctx="off"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ctx {
+    background: #f7f9fc;
+    border-inline-end: 1px solid var(--border);
+    padding: 18px 12px;
+    min-height: 0;
+  }
+
+  .ctx[hidden] { display: none !important; }
+
+  .ctx__title {
+    margin: 0 4px 14px;
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--navy-1);
+    line-height: 1.3;
+  }
+
+  .ctx__item {
+    display: block;
+    width: 100%;
+    text-align: start;
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--ink-soft);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 10px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  .ctx__item:hover { background: rgba(8, 32, 72, 0.05); color: var(--ink); }
+  .ctx__item.is-active {
+    background: rgba(24, 176, 168, 0.12);
+    color: var(--navy-1);
+  }
+
+  .ctx-handle {
+    display: none;
+  }
+
+  .stage {
+    min-width: 0;
+    padding: 20px 24px 40px;
+  }
+
+  .stage__inner {
+    width: min(920px, 100%);
+  }
+
+  .proto-badge {
+    display: inline-block;
+    margin: 0 0 12px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: rgba(8, 32, 72, 0.06);
+    color: var(--mute);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .page-title {
+    margin: 0 0 18px;
+    font-size: clamp(1.15rem, 1.8vw, 1.45rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+
+  .block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 16px;
+    margin-bottom: 14px;
+  }
+
+  .block__label {
+    margin: 0 0 8px;
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--mute);
+    letter-spacing: 0.04em;
+  }
+
+  .block__body {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--ink-soft);
+  }
+
+  /* Utility menu — account only */
+  .util-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 32, 72, 0.42);
+    z-index: 50;
+  }
+  .util-backdrop.is-open { display: block; }
+
+  .util-drawer {
+    display: none;
+    position: fixed;
+    top: 0;
+    inset-inline-start: 0;
+    width: min(300px, 86vw);
+    max-height: min(70vh, 420px);
+    background: var(--surface);
+    color: var(--ink);
+    z-index: 60;
+    border-radius: 0 0 16px 16px;
+    box-shadow: 0 18px 40px rgba(8, 32, 72, 0.22);
+    padding: 14px 12px 16px;
+    overflow: auto;
+  }
+  .util-drawer.is-open { display: block; }
+
+  .util-drawer__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .util-drawer__title {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 800;
+  }
+  .util-drawer__close {
+    appearance: none;
+    border: none;
+    background: rgba(8, 32, 72, 0.06);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+  .util-drawer__item {
+    display: block;
+    width: 100%;
+    text-align: start;
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 11px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .util-drawer__item:hover { background: rgba(8, 32, 72, 0.05); }
+
+  .ctx-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 32, 72, 0.42);
+    z-index: 45;
+  }
+  .ctx-backdrop.is-open { display: block; }
+
+  /* ——— Tablet / Mobile: off-canvas contextual ——— */
+  @media (max-width: 1023px) {
+    :root {
+      --util-h: 48px;
+      --global-h: 46px;
+    }
+
+    .utility { padding: 0 10px; gap: 6px; }
+
+    .body {
+      grid-template-columns: minmax(0, 1fr);
+      padding-inline-start: var(--ctx-rail);
+    }
+
+    .body[data-ctx="off"] {
+      padding-inline-start: 0;
+    }
+
+    /* Collapsed contextual handle — Page Stage edge, NOT in Upbar */
+    .ctx-handle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: absolute;
+      top: 72px;
+      inset-inline-start: 0;
+      width: var(--ctx-rail);
+      height: 56px;
+      margin: 0;
+      padding: 0;
+      border: none;
+      border-inline-end: 1px solid var(--border);
+      border-start-end-radius: 10px;
+      border-end-end-radius: 10px;
+      background: #f7f9fc;
+      color: var(--ink-soft);
+      cursor: pointer;
+      z-index: 20;
+      box-shadow: 2px 0 10px rgba(8, 32, 72, 0.06);
+    }
+
+    .body[data-ctx="off"] .ctx-handle { display: none; }
+
+    .ctx-handle__glyph {
+      width: 3px;
+      height: 18px;
+      border-radius: 99px;
+      background: rgba(8, 32, 72, 0.28);
+      box-shadow: 6px 0 0 rgba(8, 32, 72, 0.18);
+    }
+
+    .ctx {
+      display: none;
+      position: fixed;
+      top: calc(var(--util-h) + var(--global-h));
+      bottom: 0;
+      inset-inline-start: 0;
+      width: min(280px, 82vw);
+      z-index: 55;
+      margin: 0;
+      padding: 16px 12px 20px;
+      border: none;
+      border-inline-end: 1px solid var(--border);
+      box-shadow: 8px 0 28px rgba(8, 32, 72, 0.18);
+      overflow: auto;
+    }
+
+    body.is-ctx-open .ctx:not([hidden]) {
+      display: block;
+    }
+
+    .stage { padding: 18px 16px 40px; }
+  }
+
+  @media (min-width: 1024px) {
+    .utility__menu { display: none; }
+    .ctx-backdrop { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="shell" id="shell" data-prototype="merchant-shell-v1">
+  <div class="chrome" role="banner">
+    <!-- ROW 1 — Utility: identity + account only -->
+    <div class="utility" aria-label="أدوات الحساب">
+      <a class="utility__brand" href="#home" data-brand>
+        <span class="utility__mark" aria-hidden="true">CF</span>
+        <span class="utility__word">CartFlow</span>
+      </a>
+      <span class="utility__spacer" aria-hidden="true"></span>
+      <button type="button" class="utility__account" id="account-btn" aria-label="الحساب" title="الحساب">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="8" r="3.25" stroke="currentColor" stroke-width="1.75"/>
+          <path d="M5.5 19.25c1.6-3.1 3.9-4.5 6.5-4.5s4.9 1.4 6.5 4.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button type="button" class="utility__menu" id="util-menu-btn" aria-label="قائمة الحساب" aria-controls="util-drawer" aria-expanded="false">
+        <span class="utility__menu-bars" aria-hidden="true"></span>
+      </button>
+    </div>
+
+    <!-- ROW 2 — Global Upbar: visible platform destinations -->
+    <nav class="global" aria-label="أقسام المنصة">
+      <div class="global__list" id="global-list"></div>
+    </nav>
+  </div>
+
+  <div class="body" id="body" data-ctx="on">
+    <button type="button" class="ctx-handle" id="ctx-handle" aria-label="فتح شريط القسم" aria-controls="ctx" aria-expanded="false">
+      <span class="ctx-handle__glyph" aria-hidden="true"></span>
+    </button>
+
+    <aside class="ctx" id="ctx" aria-label="شريط القسم"></aside>
+
+    <main class="stage" id="stage">
+      <div class="stage__inner">
+        <p class="proto-badge">MERCHANT SHELL PROTOTYPE V1 — PLACEHOLDER ONLY</p>
+        <h1 class="page-title" id="page-title">PAGE TITLE</h1>
+        <section class="block" aria-label="CONTENT BLOCK A">
+          <p class="block__label">CONTENT BLOCK A</p>
+          <p class="block__body" id="block-a">Neutral placeholder content for shell validation. Not Home. Not Workspace.</p>
+        </section>
+        <section class="block" aria-label="CONTENT BLOCK B">
+          <p class="block__label">CONTENT BLOCK B</p>
+          <p class="block__body" id="block-b">Page stage begins below Global navigation. Contextual navigation belongs to this stage edge.</p>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="util-backdrop" id="util-backdrop" hidden></div>
+<aside class="util-drawer" id="util-drawer" hidden aria-label="الحساب">
+  <div class="util-drawer__head">
+    <p class="util-drawer__title">الحساب</p>
+    <button type="button" class="util-drawer__close" id="util-close" aria-label="إغلاق">×</button>
+  </div>
+  <button type="button" class="util-drawer__item">الملف والباقة</button>
+  <a class="util-drawer__item" href="#">تسجيل الخروج</a>
+</aside>
+
+<div class="ctx-backdrop" id="ctx-backdrop" hidden></div>
+
+<script>
+(function () {
+  "use strict";
+
+  /** Single Global registry — one model only */
+  var GLOBAL = [
+    { id: "home", label: "الرئيسية" },
+    { id: "workspace", label: "مساحة القرار" },
+    { id: "products", label: "المنتجات" },
+    { id: "carts", label: "السلال" },
+    { id: "comms", label: "التواصل" },
+    { id: "settings", label: "الإعدادات" }
+  ];
+
+  var CONTEXTUAL = {
+    home: {
+      title: "الرئيسية",
+      items: [
+        { id: "overview", label: "نظرة عامة" },
+        { id: "summary", label: "الملخص" }
+      ]
+    },
+    workspace: {
+      title: "مساحة القرار",
+      items: [{ id: "attention", label: "ما يحتاج قرارك" }]
+    },
+    products: null,
+    carts: null,
+    comms: null,
+    settings: null
+  };
+
+  var PLACEHOLDERS = {
+    home: {
+      title: "PAGE TITLE — Home",
+      a: "Home stage placeholder. Shell validation only.",
+      b: "No real Home composition in this prototype."
+    },
+    workspace: {
+      title: "PAGE TITLE — Workspace",
+      a: "Workspace stage placeholder. Shell validation only.",
+      b: "No real Decision Workspace composition in this prototype."
+    },
+    products: { title: "PAGE TITLE — Products", a: "Stub stage.", b: "Shell only." },
+    carts: { title: "PAGE TITLE — Carts", a: "Stub stage.", b: "Shell only." },
+    comms: { title: "PAGE TITLE — Communication", a: "Stub stage.", b: "Shell only." },
+    settings: { title: "PAGE TITLE — Settings", a: "Stub stage.", b: "Shell only." }
+  };
+
+  var state = { section: "home", ctxItem: null };
+
+  function $(sel, root) { return (root || document).querySelector(sel); }
+
+  function paintGlobal() {
+    var list = $("#global-list");
+    list.innerHTML = GLOBAL.map(function (item) {
+      var on = item.id === state.section;
+      return (
+        '<button type="button" class="global__item' + (on ? " is-active" : "") +
+        '" data-global="' + item.id + '"' +
+        (on ? ' aria-current="page"' : "") + ">" + item.label + "</button>"
+      );
+    }).join("");
+    list.querySelectorAll("[data-global]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        go(btn.getAttribute("data-global"));
+      });
+    });
+  }
+
+  function paintCtx() {
+    var conf = CONTEXTUAL[state.section];
+    var ctx = $("#ctx");
+    var body = $("#body");
+    var handle = $("#ctx-handle");
+    if (!conf) {
+      body.setAttribute("data-ctx", "off");
+      ctx.innerHTML = "";
+      ctx.hidden = true;
+      closeCtx();
+      return;
+    }
+    body.setAttribute("data-ctx", "on");
+    ctx.hidden = false;
+    if (!state.ctxItem) state.ctxItem = conf.items[0].id;
+    ctx.innerHTML =
+      '<p class="ctx__title">' + conf.title + "</p>" +
+      conf.items.map(function (item) {
+        var on = item.id === state.ctxItem;
+        return (
+          '<button type="button" class="ctx__item' + (on ? " is-active" : "") +
+          '" data-ctx-item="' + item.id + '">' + item.label + "</button>"
+        );
+      }).join("");
+    ctx.querySelectorAll("[data-ctx-item]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        state.ctxItem = btn.getAttribute("data-ctx-item");
+        paintCtx();
+        if (window.matchMedia("(max-width: 1023px)").matches) closeCtx();
+      });
+    });
+  }
+
+  function paintStage() {
+    var p = PLACEHOLDERS[state.section] || PLACEHOLDERS.home;
+    $("#page-title").textContent = p.title;
+    $("#block-a").textContent = p.a;
+    $("#block-b").textContent = p.b;
+  }
+
+  function go(section) {
+    state.section = section || "home";
+    state.ctxItem = null;
+    location.hash = "#" + state.section;
+    paintGlobal();
+    paintCtx();
+    paintStage();
+    closeUtil();
+    closeCtx();
+  }
+
+  function openUtil() {
+    closeCtx();
+    $("#util-drawer").hidden = false;
+    $("#util-drawer").classList.add("is-open");
+    $("#util-backdrop").hidden = false;
+    $("#util-backdrop").classList.add("is-open");
+    document.body.classList.add("is-overlay-open");
+    $("#util-menu-btn").setAttribute("aria-expanded", "true");
+  }
+
+  function closeUtil() {
+    $("#util-drawer").classList.remove("is-open");
+    $("#util-drawer").hidden = true;
+    $("#util-backdrop").classList.remove("is-open");
+    $("#util-backdrop").hidden = true;
+    $("#util-menu-btn").setAttribute("aria-expanded", "false");
+    if (!document.body.classList.contains("is-ctx-open")) {
+      document.body.classList.remove("is-overlay-open");
+    }
+  }
+
+  function openCtx() {
+    if ($("#body").getAttribute("data-ctx") === "off") return;
+    closeUtil();
+    document.body.classList.add("is-ctx-open", "is-overlay-open");
+    $("#ctx-backdrop").hidden = false;
+    $("#ctx-backdrop").classList.add("is-open");
+    $("#ctx-handle").setAttribute("aria-expanded", "true");
+  }
+
+  function closeCtx() {
+    document.body.classList.remove("is-ctx-open");
+    $("#ctx-backdrop").classList.remove("is-open");
+    $("#ctx-backdrop").hidden = true;
+    $("#ctx-handle").setAttribute("aria-expanded", "false");
+    if (!$("#util-drawer").classList.contains("is-open")) {
+      document.body.classList.remove("is-overlay-open");
+    }
+  }
+
+  function toggleCtx() {
+    if (document.body.classList.contains("is-ctx-open")) closeCtx();
+    else openCtx();
+  }
+
+  function boot() {
+    var h = (location.hash || "#home").replace(/^#/, "") || "home";
+    state.section = GLOBAL.some(function (g) { return g.id === h; }) ? h : "home";
+    paintGlobal();
+    paintCtx();
+    paintStage();
+
+    $("#account-btn").addEventListener("click", openUtil);
+    $("#util-menu-btn").addEventListener("click", function () {
+      if ($("#util-drawer").classList.contains("is-open")) closeUtil();
+      else openUtil();
+    });
+    $("#util-close").addEventListener("click", closeUtil);
+    $("#util-backdrop").addEventListener("click", closeUtil);
+    $("#ctx-handle").addEventListener("click", toggleCtx);
+    $("#ctx-backdrop").addEventListener("click", closeCtx);
+    $("[data-brand]").addEventListener("click", function (e) {
+      e.preventDefault();
+      go("home");
+    });
+    window.addEventListener("hashchange", function () {
+      var next = (location.hash || "#home").replace(/^#/, "") || "home";
+      if (next !== state.section) go(next);
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", boot);
+  window.MerchantShellPrototypeV1 = { go: go, openCtx: openCtx, closeCtx: closeCtx, GLOBAL: GLOBAL };
+})();
+</script>
+</body>
+</html>

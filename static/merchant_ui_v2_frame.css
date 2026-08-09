@@ -1,15 +1,15 @@
 /**
  * CartFlow Merchant UI V2 — App Frame.
- * Exactly TWO levels from one model:
- *   1) GLOBAL — Upbar (desktop) / Global control+panel (mobile) / utility drawer
- *   2) CONTEXTUAL — Sidebar (desktop column = mobile overlay)
- * Global ownership must remain Global at every breakpoint.
- * No third layer: no page-chrome, context strip, or floating pills.
+ * Approved MerchantShell:
+ *   UtilityRow → GlobalUpbar → ContextualSidebar → PageStage
+ * One Global model + one Contextual model; presentation may adapt.
+ * No third layer: no page-chrome, global panel, grid Global button, or floating pills.
  * Namespace: [data-cf-ui="v2"]
  *
  * Scroll contract: document (html/body) scrolls vertically.
  * Stage height is content-driven — never a fixed viewport trap.
  * Overlay drawers may lock body scroll only while open.
+ * Horizontal overflow is confined to GlobalUpbar (.cf2-nav), not the page.
  */
 
 html:has(body[data-cf-ui="v2"]) {
@@ -27,8 +27,7 @@ body[data-cf-ui="v2"] {
 }
 
 body[data-cf-ui="v2"].is-drawer-open,
-body[data-cf-ui="v2"].is-ctx-open,
-body[data-cf-ui="v2"].is-global-nav-open {
+body[data-cf-ui="v2"].is-ctx-open {
   overflow: hidden;
 }
 
@@ -38,22 +37,33 @@ body[data-cf-ui="v2"] .cf2-root {
   min-height: 100vh;
   min-height: 100dvh;
   height: auto;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
-/* ——— GLOBAL UPBAR ——— */
-body[data-cf-ui="v2"] .cf2-appbar {
+/* ——— CHROME: UtilityRow + GlobalUpbar ——— */
+body[data-cf-ui="v2"] .cf2-chrome {
   flex: 0 0 auto;
   position: sticky;
   top: 0;
-  height: var(--cf2-appbar-h);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0 16px 0 20px;
+  z-index: 40;
   background: linear-gradient(165deg, #0a2d5c 0%, #082048 55%, #001838 100%);
   color: #fff;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+body[data-cf-ui="v2"] .cf2-utility {
+  height: var(--cf2-util-h, 44px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px 0 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  z-index: 40;
+}
+
+body[data-cf-ui="v2"] .cf2-utility__spacer {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 body[data-cf-ui="v2"] .cf2-brand {
@@ -62,8 +72,8 @@ body[data-cf-ui="v2"] .cf2-brand {
   gap: 8px;
   text-decoration: none;
   color: #fff;
-  flex: 0 0 auto;
-  margin-inline-end: 8px;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 body[data-cf-ui="v2"] .cf2-brand__mark {
@@ -79,66 +89,7 @@ body[data-cf-ui="v2"] .cf2-brand__word {
   letter-spacing: 0.01em;
 }
 
-body[data-cf-ui="v2"] .cf2-nav {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-body[data-cf-ui="v2"] .cf2-nav::-webkit-scrollbar {
-  display: none;
-}
-
-body[data-cf-ui="v2"] .cf2-nav__item {
-  appearance: none;
-  border: none;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 13px;
-  font-weight: 700;
-  padding: 8px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background var(--cf2-dur) ease, color var(--cf2-dur) ease;
-}
-
-body[data-cf-ui="v2"] .cf2-nav__item:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-}
-
-body[data-cf-ui="v2"] .cf2-nav__item:focus-visible {
-  outline: 2px solid var(--cf2-teal);
-  outline-offset: 2px;
-}
-
-body[data-cf-ui="v2"] .cf2-nav__item.is-active {
-  background: rgba(24, 176, 168, 0.28);
-  color: #fff;
-}
-
-body[data-cf-ui="v2"] .cf2-nav__item:disabled,
-body[data-cf-ui="v2"] .cf2-nav__item[aria-disabled="true"] {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-body[data-cf-ui="v2"] .cf2-appbar__actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 0 0 auto;
-  margin-inline-start: auto;
-  min-width: 0;
-  max-width: min(240px, 28vw);
-}
-
-body[data-cf-ui="v2"] .cf2-appbar__date {
+body[data-cf-ui="v2"] .cf2-utility__date {
   font-size: 12px;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.65);
@@ -146,7 +97,7 @@ body[data-cf-ui="v2"] .cf2-appbar__date {
   flex: 0 0 auto;
 }
 
-body[data-cf-ui="v2"] .cf2-appbar__identity {
+body[data-cf-ui="v2"] .cf2-utility__identity {
   appearance: none;
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.08);
@@ -154,7 +105,7 @@ body[data-cf-ui="v2"] .cf2-appbar__identity {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  max-width: 100%;
+  max-width: min(240px, 28vw);
   min-width: 0;
   padding: 6px 10px 6px 8px;
   border-radius: 8px;
@@ -162,22 +113,47 @@ body[data-cf-ui="v2"] .cf2-appbar__identity {
   font: inherit;
 }
 
-body[data-cf-ui="v2"] .cf2-appbar__identity:hover {
+body[data-cf-ui="v2"] .cf2-utility__identity:hover {
   background: rgba(255, 255, 255, 0.14);
 }
 
-body[data-cf-ui="v2"] .cf2-appbar__identity:focus-visible {
+body[data-cf-ui="v2"] .cf2-utility__identity:focus-visible,
+body[data-cf-ui="v2"] .cf2-utility__account:focus-visible,
+body[data-cf-ui="v2"] .cf2-menu-btn:focus-visible,
+body[data-cf-ui="v2"] .cf2-nav__item:focus-visible,
+body[data-cf-ui="v2"] .cf2-ctx-handle:focus-visible {
   outline: 2px solid var(--cf2-teal);
   outline-offset: 2px;
 }
 
-body[data-cf-ui="v2"] .cf2-appbar__identity-name {
+body[data-cf-ui="v2"] .cf2-utility__identity-name {
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+}
+
+body[data-cf-ui="v2"] .cf2-utility__account {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  padding: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+body[data-cf-ui="v2"] .cf2-utility__account-icon {
+  display: block;
+  flex: 0 0 auto;
 }
 
 body[data-cf-ui="v2"] .cf2-menu-btn {
@@ -205,46 +181,73 @@ body[data-cf-ui="v2"] .cf2-menu-btn__bars {
   box-shadow: 0 -5px 0 currentColor, 0 5px 0 currentColor;
 }
 
-body[data-cf-ui="v2"] .cf2-menu-btn:focus-visible {
-  outline: 2px solid var(--cf2-teal);
-  outline-offset: 2px;
-}
-
-body[data-cf-ui="v2"] .cf2-appbar__account {
-  appearance: none;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  padding: 0;
-  display: none;
+/* GlobalUpbar row */
+body[data-cf-ui="v2"] .cf2-global {
+  height: var(--cf2-global-h, 48px);
+  display: flex;
   align-items: center;
-  justify-content: center;
+  padding: 0 8px 0 12px;
+  min-width: 0;
+}
+
+body[data-cf-ui="v2"] .cf2-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+body[data-cf-ui="v2"] .cf2-nav::-webkit-scrollbar {
+  height: 3px;
+}
+
+body[data-cf-ui="v2"] .cf2-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.28);
+  border-radius: 99px;
+}
+
+body[data-cf-ui="v2"] .cf2-nav__item {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 12px;
+  border-radius: 8px;
   cursor: pointer;
+  white-space: nowrap;
   flex: 0 0 auto;
+  transition: background var(--cf2-dur) ease, color var(--cf2-dur) ease;
 }
 
-body[data-cf-ui="v2"] .cf2-appbar__account:focus-visible {
-  outline: 2px solid var(--cf2-teal);
-  outline-offset: 2px;
+body[data-cf-ui="v2"] .cf2-nav__item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
 }
 
-body[data-cf-ui="v2"] .cf2-appbar__account-icon {
-  display: block;
-  flex: 0 0 auto;
+body[data-cf-ui="v2"] .cf2-nav__item.is-active {
+  background: rgba(24, 176, 168, 0.28);
+  color: #fff;
 }
 
-/* Mobile-only App Bar controls + overlays (desktop: hidden) */
-body[data-cf-ui="v2"] .cf2-ctx-btn,
-body[data-cf-ui="v2"] .cf2-global-btn {
+body[data-cf-ui="v2"] .cf2-nav__item:disabled,
+body[data-cf-ui="v2"] .cf2-nav__item[aria-disabled="true"] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Contextual handle — PageStage edge only (mobile); hidden on desktop */
+body[data-cf-ui="v2"] .cf2-ctx-handle {
   display: none;
 }
 
-body[data-cf-ui="v2"] .cf2-ctx-backdrop,
-body[data-cf-ui="v2"] .cf2-global-backdrop,
-body[data-cf-ui="v2"] .cf2-global-panel {
+body[data-cf-ui="v2"] .cf2-ctx-backdrop {
   display: none;
 }
 
@@ -252,33 +255,16 @@ body[data-cf-ui="v2"] .cf2-ctx__toolbar {
   display: none;
 }
 
-body[data-cf-ui="v2"] .cf2-global-btn {
-  appearance: none;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  padding: 0;
-  cursor: pointer;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-}
-
-body[data-cf-ui="v2"] .cf2-global-btn:focus-visible {
-  outline: 2px solid var(--cf2-teal);
-  outline-offset: 2px;
-}
-
-/* ——— Shell: CONTEXTUAL SIDEBAR + stage ——— */
+/* ——— Shell: ContextualSidebar + PageStage ——— */
 body[data-cf-ui="v2"] .cf2-shell {
   flex: 1 0 auto;
   min-height: 0;
   display: grid;
   grid-template-columns: var(--cf2-ctx-w) minmax(0, 1fr);
   background: var(--cf2-canvas);
+  position: relative;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body[data-cf-ui="v2"] .cf2-shell[data-cf2-ctx="off"] {
@@ -332,14 +318,16 @@ body[data-cf-ui="v2"] .cf2-ctx__item.is-active {
 
 body[data-cf-ui="v2"] .cf2-stage {
   min-width: 0;
-  overflow: visible;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-y: visible;
   padding: 12px 24px 28px;
 }
 
-/* Preserve Home frozen composition width budget when sidebar is present */
 body[data-cf-ui="v2"] .cf2-stage__inner {
   width: min(1360px, 100%);
   margin: 0;
+  max-width: 100%;
 }
 
 body[data-cf-ui="v2"] .cf2-page {
@@ -367,7 +355,7 @@ body[data-cf-ui="v2"] .cf2-stub {
   line-height: 1.5;
 }
 
-/* ——— GLOBAL drawer (primary destinations + account only) ——— */
+/* ——— Utility drawer (account only) ——— */
 body[data-cf-ui="v2"] .cf2-drawer-backdrop {
   display: none;
   position: fixed;
@@ -393,7 +381,7 @@ body[data-cf-ui="v2"] .cf2-drawer {
   inset-inline-end: 0;
   inset-inline-start: auto;
   width: min(320px, 88vw);
-  max-height: min(78vh, 560px);
+  max-height: min(70vh, 420px);
   background: var(--cf2-surface);
   color: var(--cf2-ink);
   border-radius: 0 0 0 16px;
@@ -467,11 +455,6 @@ body[data-cf-ui="v2"] .cf2-drawer__item:hover {
   background: rgba(8, 32, 72, 0.05);
 }
 
-body[data-cf-ui="v2"] .cf2-drawer__item.is-active {
-  background: rgba(24, 176, 168, 0.12);
-  color: var(--cf2-navy);
-}
-
 body[data-cf-ui="v2"] .cf2-drawer__divider {
   height: 1px;
   margin: 8px 0 14px;
@@ -480,13 +463,11 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
 }
 
 @media (min-width: 1024px) {
-  body[data-cf-ui="v2"] .cf2-appbar__mobile-only,
+  body[data-cf-ui="v2"] .cf2-utility__mobile-only,
   body[data-cf-ui="v2"] .cf2-menu-btn,
-  body[data-cf-ui="v2"] .cf2-ctx-btn,
-  body[data-cf-ui="v2"] .cf2-global-btn,
+  body[data-cf-ui="v2"] .cf2-utility__account,
+  body[data-cf-ui="v2"] .cf2-ctx-handle,
   body[data-cf-ui="v2"] .cf2-ctx-backdrop,
-  body[data-cf-ui="v2"] .cf2-global-backdrop,
-  body[data-cf-ui="v2"] .cf2-global-panel,
   body[data-cf-ui="v2"] .cf2-ctx__toolbar {
     display: none !important;
   }
@@ -494,58 +475,20 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
 
 @media (max-width: 1023px) {
   body[data-cf-ui="v2"] {
-    --cf2-appbar-h: 52px;
+    --cf2-util-h: 48px;
+    --cf2-global-h: 46px;
+    --cf2-ctx-rail: 28px;
   }
 
-  /*
-   * Mobile closed App Bar preserves Global ownership via #cf2-global-btn
-   * (same NAV.global as desktop .cf2-nav). Desktop list presentation is
-   * swapped for the compact Global control — ownership does not move to
-   * the account/utility drawer.
-   *
-   * Closed App Bar: Menu · Contextual · CartFlow · Global · Account
-   */
-  body[data-cf-ui="v2"] .cf2-appbar {
-    display: flex;
-    align-items: center;
-    gap: 4px;
+  body[data-cf-ui="v2"] .cf2-utility {
     padding: 0 10px;
-    overflow: hidden;
+    gap: 6px;
   }
 
-  /* Desktop Global list presentation only — not Global ownership itself */
-  body[data-cf-ui="v2"] .cf2-nav,
-  body[data-cf-ui="v2"] .cf2-appbar__actions,
-  body[data-cf-ui="v2"] .cf2-appbar__date,
-  body[data-cf-ui="v2"] .cf2-appbar__desktop-only {
+  body[data-cf-ui="v2"] .cf2-utility__desktop-only,
+  body[data-cf-ui="v2"] .cf2-utility__date,
+  body[data-cf-ui="v2"] .cf2-utility__identity {
     display: none !important;
-  }
-
-  body[data-cf-ui="v2"] .cf2-menu-btn,
-  body[data-cf-ui="v2"] .cf2-ctx-btn,
-  body[data-cf-ui="v2"] .cf2-global-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border: none;
-    background: transparent;
-    color: rgba(255, 255, 255, 0.9);
-    border-radius: 10px;
-    flex: 0 0 auto;
-    cursor: pointer;
-  }
-
-  body[data-cf-ui="v2"] .cf2-ctx-btn[hidden] {
-    display: none !important;
-  }
-
-  body[data-cf-ui="v2"] .cf2-brand {
-    margin: 0;
-    gap: 7px;
-    flex: 0 1 auto;
-    min-width: 0;
   }
 
   body[data-cf-ui="v2"] .cf2-brand__mark {
@@ -557,48 +500,90 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
     font-size: 14px;
   }
 
-  body[data-cf-ui="v2"] .cf2-appbar__account {
+  body[data-cf-ui="v2"] .cf2-utility__account,
+  body[data-cf-ui="v2"] .cf2-menu-btn {
     display: inline-flex;
     width: 40px;
     height: 40px;
-    margin-inline-start: auto;
     border: none;
     background: transparent;
     color: rgba(255, 255, 255, 0.9);
     border-radius: 10px;
   }
 
-  body[data-cf-ui="v2"] .cf2-appbar__account:hover,
-  body[data-cf-ui="v2"] .cf2-appbar__account:active,
+  body[data-cf-ui="v2"] .cf2-utility__account:hover,
+  body[data-cf-ui="v2"] .cf2-utility__account:active,
   body[data-cf-ui="v2"] .cf2-menu-btn:hover,
-  body[data-cf-ui="v2"] .cf2-menu-btn:active,
-  body[data-cf-ui="v2"] .cf2-ctx-btn:hover,
-  body[data-cf-ui="v2"] .cf2-ctx-btn:active,
-  body[data-cf-ui="v2"] .cf2-ctx-btn[aria-expanded="true"],
-  body[data-cf-ui="v2"] .cf2-global-btn:hover,
-  body[data-cf-ui="v2"] .cf2-global-btn:active,
-  body[data-cf-ui="v2"] .cf2-global-btn[aria-expanded="true"] {
+  body[data-cf-ui="v2"] .cf2-menu-btn:active {
     background: rgba(255, 255, 255, 0.12);
     color: #fff;
   }
 
-  body[data-cf-ui="v2"] .cf2-shell {
-    grid-template-columns: minmax(0, 1fr);
+  body[data-cf-ui="v2"] .cf2-global {
+    padding: 0 6px 0 8px;
   }
 
-  /*
-   * LEVEL 2 mobile — same #cf2-ctx sidebar, rendered as overlay drawer.
-   * Closed: not in content flow. Open: sidebar panel (not a new modal product).
-   */
+  body[data-cf-ui="v2"] .cf2-nav__item {
+    font-size: 12px;
+    padding: 7px 10px;
+  }
+
+  /* GlobalUpbar stays visible — do NOT hide .cf2-nav */
+
+  body[data-cf-ui="v2"] .cf2-shell {
+    grid-template-columns: minmax(0, 1fr);
+    padding-inline-start: var(--cf2-ctx-rail);
+  }
+
+  body[data-cf-ui="v2"] .cf2-shell[data-cf2-ctx="off"] {
+    padding-inline-start: 0;
+  }
+
+  /* PageStage-edge contextual handle */
+  body[data-cf-ui="v2"] .cf2-ctx-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 72px;
+    inset-inline-start: 0;
+    width: var(--cf2-ctx-rail);
+    height: 56px;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-inline-end: 1px solid var(--cf2-border);
+    border-start-end-radius: 10px;
+    border-end-end-radius: 10px;
+    background: #f7f9fc;
+    color: var(--cf2-ink-soft);
+    cursor: pointer;
+    z-index: 20;
+    box-shadow: 2px 0 10px rgba(8, 32, 72, 0.06);
+  }
+
+  body[data-cf-ui="v2"] .cf2-ctx-handle[hidden],
+  body[data-cf-ui="v2"] .cf2-shell[data-cf2-ctx="off"] .cf2-ctx-handle {
+    display: none !important;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ctx-handle__glyph {
+    width: 3px;
+    height: 18px;
+    border-radius: 99px;
+    background: rgba(8, 32, 72, 0.28);
+    box-shadow: 6px 0 0 rgba(8, 32, 72, 0.18);
+  }
+
   body[data-cf-ui="v2"] .cf2-ctx {
     display: none;
     position: fixed;
-    top: 0;
+    top: calc(var(--cf2-util-h) + var(--cf2-global-h));
     bottom: 0;
     inset-inline-start: 0;
     inset-inline-end: auto;
     width: min(280px, 82vw);
-    z-index: 60;
+    z-index: 55;
     margin: 0;
     padding: 14px 12px 20px;
     border: none;
@@ -612,10 +597,7 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
     display: none !important;
   }
 
-  body[data-cf-ui="v2"].is-ctx-open .cf2-ctx:not([hidden]) {
-    display: block;
-  }
-
+  body[data-cf-ui="v2"].is-ctx-open .cf2-ctx:not([hidden]),
   body[data-cf-ui="v2"] .cf2-ctx.is-open {
     display: block;
   }
@@ -650,94 +632,6 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
     display: block;
   }
 
-  /* LEVEL 1 mobile — Global Navigation panel (not account drawer) */
-  body[data-cf-ui="v2"] .cf2-global-backdrop {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(8, 32, 72, 0.42);
-    z-index: 50;
-  }
-
-  body[data-cf-ui="v2"] .cf2-global-backdrop.is-open {
-    display: block;
-  }
-
-  body[data-cf-ui="v2"] .cf2-global-panel {
-    display: none;
-    flex-direction: column;
-    position: fixed;
-    top: 0;
-    inset-inline-start: 0;
-    inset-inline-end: auto;
-    width: min(300px, 86vw);
-    max-height: min(82vh, 560px);
-    z-index: 60;
-    margin: 0;
-    padding: 14px 12px 18px;
-    background: var(--cf2-surface);
-    color: var(--cf2-ink);
-    border-radius: 0 0 16px 16px;
-    box-shadow: 0 18px 40px rgba(8, 32, 72, 0.22);
-    overflow: auto;
-  }
-
-  body[data-cf-ui="v2"] .cf2-global-panel.is-open,
-  body[data-cf-ui="v2"].is-global-nav-open .cf2-global-panel:not([hidden]) {
-    display: flex;
-  }
-
-  body[data-cf-ui="v2"] .cf2-global-panel__head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 10px;
-  }
-
-  body[data-cf-ui="v2"] .cf2-global-panel__title {
-    margin: 0;
-    font-size: 13px;
-    font-weight: 800;
-    color: var(--cf2-navy);
-  }
-
-  body[data-cf-ui="v2"] .cf2-global-panel__close {
-    appearance: none;
-    border: none;
-    background: rgba(8, 32, 72, 0.06);
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 16px;
-    color: var(--cf2-ink-soft);
-  }
-
-  body[data-cf-ui="v2"] .cf2-global-panel__item {
-    display: block;
-    width: 100%;
-    text-align: start;
-    appearance: none;
-    border: none;
-    background: transparent;
-    color: var(--cf2-ink);
-    font-size: 14px;
-    font-weight: 700;
-    padding: 12px 10px;
-    border-radius: 8px;
-    cursor: pointer;
-  }
-
-  body[data-cf-ui="v2"] .cf2-global-panel__item:hover {
-    background: rgba(8, 32, 72, 0.05);
-  }
-
-  body[data-cf-ui="v2"] .cf2-global-panel__item.is-active {
-    background: rgba(24, 176, 168, 0.12);
-    color: var(--cf2-navy);
-  }
-
   body[data-cf-ui="v2"] .cf2-stage {
     padding: 14px 16px 40px;
   }
@@ -745,8 +639,8 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
   body[data-cf-ui="v2"] .cf2-drawer {
     inset-inline-start: 0;
     inset-inline-end: auto;
-    width: min(320px, 88vw);
-    max-height: min(82vh, 600px);
+    width: min(300px, 86vw);
+    max-height: min(70vh, 420px);
     border-radius: 0 0 16px 16px;
   }
 }
