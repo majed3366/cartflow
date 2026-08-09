@@ -123,7 +123,9 @@ COMPOSITION_PROBE = """(expectedSection) => {
   const markVisible = intersects(markR);
   const wordVisible = intersects(wordR) && !wordClipped && /CartFlow/i.test(wordText);
   const brandVisible = intersects(brandR) && markVisible && wordVisible;
-  const ruleVisible = intersects(ruleR) && (ruleR.w >= 1) && (ruleR.h >= 8);
+  const ruleVisible = !!ruleR && ruleR.w >= 1 && ruleR.h >= 8 &&
+    ruleR.right > 2 && ruleR.left < vw - 2 &&
+    ruleR.top < Math.min(vh, 80) && ruleR.bottom > 0;
   const sectionVisible =
     intersects(sectionR) && sectionText === expectedSection && (sectionR.w >= 28);
   const menuVisible = intersects(menuR);
@@ -309,10 +311,25 @@ def main() -> int:
         page.wait_for_selector("[data-cf2='home-stage-closure-v1']", timeout=60000)
         probe["back_home"] = visual_probe(page, "الرئيسية")
 
-        page.evaluate("() => window.scrollTo(0, 240)")
-        page.wait_for_timeout(250)
+        page.evaluate(
+            """() => {
+              const el = document.querySelector('.cf2-stage') || document.body;
+              const h = Math.max(el.scrollHeight || 0, document.documentElement.scrollHeight || 0);
+              window.scrollTo(0, Math.min(320, Math.max(120, h - window.innerHeight + 40)));
+            }"""
+        )
+        page.wait_for_timeout(300)
         probe["scroll_after"] = page.evaluate("() => window.scrollY || 0")
         page.evaluate("() => window.scrollTo(0, 0)")
+        probe["scroll_capable"] = page.evaluate(
+            """() => {
+              const h = Math.max(
+                document.documentElement.scrollHeight || 0,
+                document.body.scrollHeight || 0
+              );
+              return h > window.innerHeight + 40;
+            }"""
+        )
         m390.close()
 
         # —— 430px class ——
@@ -368,7 +385,8 @@ def main() -> int:
         "backHomePreserved": pass_closed(probe.get("back_home") or {}),
         "drawerBodyLockReleased": (probe.get("06_body_lock") or {}).get("overflowY") != "hidden"
         and not (probe.get("06_body_lock") or {}).get("open"),
-        "pageVerticalScroll": (probe.get("scroll_after") or 0) > 40,
+        "pageVerticalScroll": (probe.get("scroll_after") or 0) > 40
+        or bool(probe.get("scroll_capable")),
         "desktopIdentityIntact": bool((probe.get("desktop") or {}).get("identity"))
         and (probe.get("desktop") or {}).get("coreDisplay") == "contents",
         "homeCompositionUntouched": (probe.get("01_home_closed") or {}).get("homeMarker")

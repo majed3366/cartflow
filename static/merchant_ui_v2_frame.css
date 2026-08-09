@@ -541,16 +541,18 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
     color: #fff;
   }
 
-  /* Zone 2 — identity + location core (owns the bar) */
+  /* Zone 2 — identity + location core (owns the bar as one cluster) */
   body[data-cf-ui="v2"] .cf2-appbar__core {
     display: inline-flex;
     align-items: center;
     grid-column: 2;
+    justify-self: center;
+    width: max-content;
     min-width: 0;
     max-width: 100%;
     gap: 0;
     margin: 0;
-    padding-inline: 2px;
+    padding: 4px 2px;
   }
 
   body[data-cf-ui="v2"] .cf2-brand {
@@ -588,9 +590,9 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
     display: block;
     flex: 0 0 auto;
     width: 1px;
-    height: 14px;
-    margin: 0 10px;
-    background: rgba(255, 255, 255, 0.28);
+    height: 13px;
+    margin: 0 9px;
+    background: rgba(24, 176, 168, 0.55);
     border-radius: 1px;
   }
 
@@ -598,7 +600,7 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
     display: block;
     flex: 0 1 auto;
     min-width: 0;
-    max-width: 100%;
+    max-width: min(9.5rem, 42vw);
     margin: 0;
     padding: 0;
     direction: rtl;
@@ -608,7 +610,7 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
     font-weight: 600;
     letter-spacing: 0;
     line-height: 1.2;
-    color: rgba(255, 255, 255, 0.68);
+    color: rgba(255, 255, 255, 0.72);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
