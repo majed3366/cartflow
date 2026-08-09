@@ -1,6 +1,7 @@
 /**
- * CartFlow Merchant UI V2 — Decision Workspace Composition Closure V1
- * Content stage only. Shell contract untouched. Living route + one CO.
+ * CartFlow Merchant UI V2 — Decision Workspace
+ * Composition Closure + Mobile Hierarchy Refinement V1.
+ * Shell contract untouched. Living route + one CO.
  */
 (function (global) {
   "use strict";
@@ -391,7 +392,7 @@
     var zoneB = Array.isArray(projection.zone_b) ? projection.zone_b : [];
     var split = splitPrimary(zoneB);
     var html =
-      '<div class="cf2-ws cf2-ws--lang" data-cf2="workspace-composition-closure-v1">';
+      '<div class="cf2-ws cf2-ws--lang cf2-ws--mobile-hierarchy-v1" data-cf2="workspace-composition-closure-v1" data-cf2-mobile-hierarchy="v1">';
     if (!split.primary) {
       html +=
         '<section class="cf2-ws__primary" aria-label="هدوء القرار">' +

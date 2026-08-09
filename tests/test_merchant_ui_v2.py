@@ -146,6 +146,7 @@ class MerchantUiV2RouteTests(unittest.TestCase):
         self.assertIn("cf2-dobj", ws_js)
         self.assertIn("living-route", ws_js)
         self.assertIn("workspace-composition-closure-v1", ws_js)
+        self.assertIn("mobile-hierarchy-v1", ws_js)
         self.assertIn("unwrapProjection", ws_js)
         self.assertIn("is-ready", ws_js)
         self.assertIn("is-armed", ws_js)
@@ -181,6 +182,12 @@ class MerchantUiV2RouteTests(unittest.TestCase):
         )
         self.assertIn("home-stage-closure-v1", home_js)
         self.assertIn("workspace-composition-closure-v1", ws_js)
+        self.assertIn("cf2-ws--mobile-hierarchy-v1", ws_js)
+        ws_css = (ROOT / "static" / "merchant_ui_v2_workspace.css").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("Mobile Hierarchy Refinement V1", ws_css)
+        self.assertIn("@media (max-width: 1023px)", ws_css)
 
     def test_assets_exist(self) -> None:
         for rel in (

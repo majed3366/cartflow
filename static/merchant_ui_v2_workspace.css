@@ -1,7 +1,7 @@
 /**
- * CartFlow Merchant UI V2 — Decision Workspace Composition Closure V1
- * Content stage only. Shell (UtilityRow / GlobalUpbar / ContextualSidebar /
- * PageStage) is a protected platform contract — do not restyle chrome here.
+ * CartFlow Merchant UI V2 — Decision Workspace
+ * Composition Closure V1 + Mobile Hierarchy Refinement V1
+ * Content stage only. Shell chrome is a protected platform contract.
  */
 
 body[data-cf-ui="v2"] .cf2-ws--lang {
@@ -377,103 +377,291 @@ body[data-cf-ui="v2"]
   }
 }
 
-/* Mobile: first-viewport = decision + evidence strength; mass confirms */
+/* Mobile Hierarchy Refinement V1 — first-viewport breathing; desktop untouched */
 @media (max-width: 1023px) {
   body[data-cf-ui="v2"] .cf2-dobj--primary {
-    padding: 4px 0 10px;
+    padding: 2px 0 8px;
     border: none;
     border-radius: 0;
     background: transparent;
   }
 
-  body[data-cf-ui="v2"] .cf2-ws__head {
-    margin-bottom: 10px;
-    gap: 10px;
-    max-width: none;
-  }
-
-  body[data-cf-ui="v2"] .cf2-ws__mark {
-    padding-inline-end: 6px;
-  }
-
-  body[data-cf-ui="v2"] .cf2-ws__mark .cf2-co,
-  body[data-cf-ui="v2"] .cf2-ws__mark .cf2-co__glyph {
-    --cf2-co-size: 28px;
-    width: 28px !important;
-    height: 28px !important;
-    max-width: 28px;
-    max-height: 28px;
-  }
-
-  body[data-cf-ui="v2"] .cf2-ws__mark .cf2-co__glyph svg {
-    width: 28px;
-    height: 28px;
-  }
-
-  body[data-cf-ui="v2"] .cf2-ws__title {
-    font-size: 1.22rem;
-    font-weight: 800;
-  }
-
-  body[data-cf-ui="v2"] .cf2-dobj--primary .cf2-route {
-    padding-inline-start: 14px;
-  }
-
-  body[data-cf-ui="v2"] .cf2-dobj--primary .cf2-route__node::before {
-    inset-inline-start: -18px;
-    width: 8px;
-    height: 8px;
-  }
-
-  body[data-cf-ui="v2"]
-    .cf2-dobj--primary
-    .cf2-route__node[data-cf2-node="decision"]::before {
-    inset-inline-start: -19px;
-    width: 10px;
-    height: 10px;
-  }
-
-  body[data-cf-ui="v2"] .cf2-route__node {
-    padding-block: 6px 8px;
-  }
-
-  body[data-cf-ui="v2"] .cf2-beat__list li {
-    font-size: 0.9rem;
-  }
-
-  /* Echo confirmation — not a second headline */
-  body[data-cf-ui="v2"] .cf2-dobj--primary .cf2-dmass--echo {
-    padding: 8px 10px 10px 14px;
-  }
-
-  body[data-cf-ui="v2"] .cf2-dobj--primary .cf2-dmass--echo .cf2-dmass__text {
-    font-size: 1.02rem;
-    font-weight: 700;
-    line-height: 1.35;
-  }
-
-  body[data-cf-ui="v2"] .cf2-dobj--primary .cf2-terminus,
-  body[data-cf-ui="v2"] .cf2-dobj--primary .cf2-beat--action .cf2-beat__action {
-    padding: 12px 12px 12px 16px;
-  }
-
-  body[data-cf-ui="v2"] .cf2-ws__primary {
-    margin-bottom: 10px;
-  }
-
+  /* Orientation — keep copy, reduce dominance */
   body[data-cf-ui="v2"] .cf2-page[data-cf2-page="workspace"] .cf2-page__question {
-    margin-bottom: 8px;
-    font-size: 1.02rem;
+    margin: 0 0 6px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--cf2-mute);
+    max-width: none;
   }
 
   body[data-cf-ui="v2"]
     .cf2-shell:has(.cf2-page[data-cf2-page="workspace"].is-active)
     .cf2-stage {
-    padding-top: 8px;
+    padding-top: 6px;
+  }
+
+  /* Decision owns the page — title first, status as metadata */
+  body[data-cf-ui="v2"] .cf2-ws__head {
+    margin: 0 0 14px;
+    gap: 10px;
+    max-width: none;
+    padding-bottom: 10px;
+    border-block-end: 1px solid rgba(8, 32, 72, 0.06);
+  }
+
+  body[data-cf-ui="v2"] .cf2-ws__head-text {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ws__title {
+    order: 1;
+    margin: 0;
+    font-size: 1.28rem;
+    font-weight: 800;
+    line-height: 1.32;
+    letter-spacing: -0.02em;
+    color: var(--cf2-navy);
+  }
+
+  body[data-cf-ui="v2"] .cf2-ws__eyebrow {
+    order: 2;
+    margin: 0;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--cf2-ink-soft);
+    opacity: 0.92;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ws__mark {
+    padding-inline-end: 6px;
+    border-inline-end-width: 1px;
+    border-inline-end-color: rgba(24, 176, 168, 0.28);
+    margin-top: 4px;
+    align-self: flex-start;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ws__mark .cf2-co,
+  body[data-cf-ui="v2"] .cf2-ws__mark .cf2-co__glyph {
+    --cf2-co-size: 22px;
+    width: 22px !important;
+    height: 22px !important;
+    max-width: 22px;
+    max-height: 22px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ws__mark .cf2-co__glyph svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  /* Living Route — quieter spine; support reading, don't compete */
+  body[data-cf-ui="v2"] .cf2-page[data-cf2-page="workspace"] .cf2-dobj--primary .cf2-route {
+    padding-inline-start: 12px;
+    gap: 0;
+  }
+
+  body[data-cf-ui="v2"] .cf2-page[data-cf2-page="workspace"] .cf2-dobj--primary .cf2-route::before {
+    width: 2px;
+    opacity: 0.45;
+    clip-path: none;
+    border-radius: 1px;
+    inset-block: 4px 2px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-page[data-cf2-page="workspace"] .cf2-dobj--primary .cf2-route::after {
+    width: 10px;
+    opacity: 0.22;
+  }
+
+  body[data-cf-ui="v2"] .cf2-page[data-cf2-page="workspace"] .cf2-dobj--primary .cf2-route__node::before {
+    inset-inline-start: -15px;
+    width: 6px;
+    height: 6px;
+    box-shadow: none;
+    top: 6px;
+  }
+
+  body[data-cf-ui="v2"]
+    .cf2-page[data-cf2-page="workspace"]
+    .cf2-dobj--primary
+    .cf2-route__node[data-cf2-node="decision"]::before {
+    inset-inline-start: -16px;
+    width: 8px;
+    height: 8px;
+    box-shadow: none;
+    top: 8px;
+  }
+
+  body[data-cf-ui="v2"]
+    .cf2-page[data-cf2-page="workspace"]
+    .cf2-dobj--primary
+    .cf2-route__node[data-cf2-node="action"]::before {
+    width: 7px;
+    height: 7px;
+    box-shadow: none;
+  }
+
+  body[data-cf-ui="v2"] .cf2-page[data-cf2-page="workspace"] .cf2-route__node {
+    padding-block: 4px 8px;
+    opacity: 0.88;
+  }
+
+  body[data-cf-ui="v2"] .cf2-page[data-cf2-page="workspace"] .cf2-route__node.is-active,
+  body[data-cf-ui="v2"] .cf2-page[data-cf2-page="workspace"] .cf2-route__node.is-complete {
+    opacity: 1;
+  }
+
+  /* Evidence — support, not second focal point */
+  body[data-cf-ui="v2"] .cf2-page[data-cf2-page="workspace"] .cf2-beat__label {
+    margin: 0 0 4px;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--cf2-mute);
+  }
+
+  body[data-cf-ui="v2"] .cf2-page[data-cf2-page="workspace"] .cf2-ws__confidence {
+    margin: 0 0 4px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--cf2-ink-soft);
+  }
+
+  body[data-cf-ui="v2"] .cf2-page[data-cf2-page="workspace"] .cf2-dobj__ev-row {
+    gap: 6px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-page[data-cf2-page="workspace"] .cf2-dobj__ev-row .cf2-evfield {
+    max-width: 7.5rem;
+    opacity: 0.78;
+  }
+
+  body[data-cf-ui="v2"]
+    .cf2-page[data-cf2-page="workspace"]
+    .cf2-dobj__ev-row
+    .cf2-evfield
+    .cf2-evfield__bar {
+    height: 3px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-page[data-cf2-page="workspace"] .cf2-beat__list {
+    gap: 4px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-page[data-cf2-page="workspace"] .cf2-beat__list li {
+    font-size: 0.86rem;
+    line-height: 1.4;
+    color: var(--cf2-ink-soft);
+  }
+
+  /* Meaning — quieter than decision + evidence */
+  body[data-cf-ui="v2"]
+    .cf2-page[data-cf2-page="workspace"]
+    .cf2-route__node[data-cf2-node="understanding"] {
+    padding-block: 2px 6px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-page[data-cf2-page="workspace"] .cf2-beat__body {
+    font-size: 0.86rem;
+    line-height: 1.42;
+    font-weight: 500;
+    color: var(--cf2-mute);
+  }
+
+  /* CartFlow confirmation — not a competing headline */
+  body[data-cf-ui="v2"]
+    .cf2-page[data-cf2-page="workspace"]
+    .cf2-route__node[data-cf2-node="decision"] {
+    padding-block: 2px 2px;
+    margin: 0;
+  }
+
+  body[data-cf-ui="v2"] .cf2-page[data-cf2-page="workspace"] .cf2-dobj--primary .cf2-dmass--echo {
+    padding: 6px 8px 6px 10px;
+    background: rgba(8, 32, 72, 0.03);
+    max-width: 100%;
+  }
+
+  body[data-cf-ui="v2"]
+    .cf2-page[data-cf2-page="workspace"]
+    .cf2-dobj--primary
+    .cf2-dmass--echo::before {
+    width: 2px;
+    background: rgba(8, 32, 72, 0.28);
+  }
+
+  body[data-cf-ui="v2"]
+    .cf2-page[data-cf2-page="workspace"]
+    .cf2-dobj--primary
+    .cf2-dmass--echo
+    .cf2-dmass__text {
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: 0;
+    color: var(--cf2-ink-soft);
+  }
+
+  /* Action terminus — close to confirmation */
+  body[data-cf-ui="v2"]
+    .cf2-page[data-cf2-page="workspace"]
+    .cf2-route__node[data-cf2-node="action"] {
+    padding-block: 2px 0;
+    margin: 0;
+  }
+
+  body[data-cf-ui="v2"] .cf2-page[data-cf2-page="workspace"] .cf2-dobj--primary .cf2-terminus,
+  body[data-cf-ui="v2"]
+    .cf2-page[data-cf2-page="workspace"]
+    .cf2-dobj--primary
+    .cf2-beat--action
+    .cf2-beat__action {
+    padding: 10px 10px 10px 12px;
+    margin-top: 0;
+  }
+
+  body[data-cf-ui="v2"] .cf2-page[data-cf2-page="workspace"] .cf2-ws__wait-lead {
+    font-size: 0.9rem;
+  }
+
+  body[data-cf-ui="v2"] .cf2-page[data-cf2-page="workspace"] .cf2-ws__wait-note {
+    font-size: 0.82rem;
+  }
+
+  /* Future continuation — secondary */
+  body[data-cf-ui="v2"] .cf2-ws__primary {
+    margin-bottom: 6px;
   }
 
   body[data-cf-ui="v2"] .cf2-ws__next {
-    margin-top: 12px;
-    padding-top: 10px;
+    margin-top: 18px;
+    padding-top: 12px;
+    opacity: 0.78;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ws__next-label {
+    margin: 0 0 8px;
+    font-size: 9px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ws__next-list {
+    gap: 10px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ws__next-title {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--cf2-ink-soft);
+  }
+
+  body[data-cf-ui="v2"] .cf2-dobj--next .cf2-btn {
+    font-size: 0.82rem;
   }
 }
