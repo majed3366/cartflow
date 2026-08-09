@@ -17,12 +17,10 @@
 </head>
 <body data-cf-ui="v2" data-cf-merchant-app="1">
 <div class="cf2-root">
-  <header class="cf2-appbar" role="banner" data-cf2-appbar="mobile-visual-final-v1">
-    <button type="button" class="cf2-appbar__account cf2-appbar__mobile-only" id="cf2-mobile-account" aria-label="الحساب" title="الحساب">
-      <svg class="cf2-appbar__account-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <circle cx="12" cy="8" r="3.25" stroke="currentColor" stroke-width="1.75"/>
-        <path d="M5.5 19.25c1.6-3.1 3.9-4.5 6.5-4.5s4.9 1.4 6.5 4.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
-      </svg>
+  {# Mobile geometry V2: RTL product bar — Menu (start) + brand|section cluster, breathing space, Account (end). Desktop unchanged via display:contents on core. #}
+  <header class="cf2-appbar" role="banner" data-cf2-appbar="mobile-geometry-v2">
+    <button type="button" class="cf2-menu-btn" aria-label="فتح القائمة" aria-controls="cf2-drawer" aria-expanded="false">
+      <span class="cf2-menu-btn__bars" aria-hidden="true"></span>
     </button>
     <div class="cf2-appbar__core">
       <a class="cf2-brand" href="#home" data-cf2-nav-brand>
@@ -50,8 +48,11 @@
         <span class="cf2-appbar__identity-name">{{ merchant_store_display_name | default("متجرك") }}</span>
       </button>
     </div>
-    <button type="button" class="cf2-menu-btn" aria-label="فتح القائمة" aria-controls="cf2-drawer">
-      <span class="cf2-menu-btn__bars" aria-hidden="true"></span>
+    <button type="button" class="cf2-appbar__account cf2-appbar__mobile-only" id="cf2-mobile-account" aria-label="الحساب" title="الحساب">
+      <svg class="cf2-appbar__account-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="8" r="3.25" stroke="currentColor" stroke-width="1.75"/>
+        <path d="M5.5 19.25c1.6-3.1 3.9-4.5 6.5-4.5s4.9 1.4 6.5 4.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+      </svg>
     </button>
   </header>
 
@@ -92,8 +93,12 @@
 
 <div class="cf2-drawer-backdrop" aria-hidden="true"></div>
 <aside class="cf2-drawer" id="cf2-drawer" aria-label="قائمة التنقل">
+  <div class="cf2-drawer__chrome" aria-hidden="true">
+    <img class="cf2-drawer__chrome-mark" src="/static/img/brand/cartflow_cf_mark.png" width="22" height="22" alt="" decoding="async" />
+    <span class="cf2-drawer__chrome-word">CartFlow</span>
+  </div>
   <div class="cf2-drawer__head">
-    <p class="cf2-drawer__title">CartFlow</p>
+    <p class="cf2-drawer__title">القائمة</p>
     <button type="button" class="cf2-drawer__close" aria-label="إغلاق">×</button>
   </div>
   <div class="cf2-drawer__section">

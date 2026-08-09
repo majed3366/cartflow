@@ -99,6 +99,13 @@
     });
   }
 
+  function setMenuExpanded(open) {
+    var menu = $(".cf2-menu-btn");
+    if (!menu) return;
+    menu.setAttribute("aria-expanded", open ? "true" : "false");
+    menu.setAttribute("aria-label", open ? "إغلاق القائمة" : "فتح القائمة");
+  }
+
   function closeDrawer() {
     var d = $(".cf2-drawer");
     var b = $(".cf2-drawer-backdrop");
@@ -106,6 +113,7 @@
     if (b) b.classList.remove("is-open");
     document.body.classList.remove("is-drawer-open");
     document.body.style.overflow = "";
+    setMenuExpanded(false);
   }
 
   function openDrawer() {
@@ -115,6 +123,12 @@
     if (b) b.classList.add("is-open");
     document.body.classList.add("is-drawer-open");
     document.body.style.overflow = "hidden";
+    setMenuExpanded(true);
+  }
+
+  function toggleDrawer() {
+    if (document.body.classList.contains("is-drawer-open")) closeDrawer();
+    else openDrawer();
   }
 
   function loadSection(section) {
@@ -154,7 +168,7 @@
       });
     });
     var menu = $(".cf2-menu-btn");
-    if (menu) menu.addEventListener("click", openDrawer);
+    if (menu) menu.addEventListener("click", toggleDrawer);
     var mobileAcc = $("#cf2-mobile-account");
     if (mobileAcc) mobileAcc.addEventListener("click", openDrawer);
     var deskAcc = $("#cf2-account-btn");
