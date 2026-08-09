@@ -56,8 +56,11 @@ class MerchantUiV2TemplateTests(unittest.TestCase):
 
     def test_v2_frame_separates_appbar_and_ctx(self) -> None:
         self.assertIn("cf2-appbar", V2_TEMPLATE)
-        self.assertIn('data-cf2-appbar="mobile-reality-v1"', V2_TEMPLATE)
-        self.assertIn("cf2-appbar__section", V2_TEMPLATE)
+        self.assertIn('data-cf2-appbar="global-ownership-v1"', V2_TEMPLATE)
+        self.assertIn('id="cf2-nav"', V2_TEMPLATE)
+        self.assertIn('id="cf2-global-btn"', V2_TEMPLATE)
+        self.assertIn('id="cf2-global-panel"', V2_TEMPLATE)
+        self.assertIn('id="cf2-drawer-global"', V2_TEMPLATE)
         self.assertIn("cf2-appbar__account", V2_TEMPLATE)
         self.assertIn("cf2-appbar__identity", V2_TEMPLATE)
         self.assertIn("cf2-appbar__identity-name", V2_TEMPLATE)
@@ -66,6 +69,8 @@ class MerchantUiV2TemplateTests(unittest.TestCase):
         self.assertIn("cf2-stage", V2_TEMPLATE)
         self.assertIn("cf2-drawer", V2_TEMPLATE)
         self.assertIn("cf2-nav", V2_TEMPLATE)
+        self.assertNotIn("cf2-appbar__section", V2_TEMPLATE)
+        self.assertNotIn("cf2-page-chrome", V2_TEMPLATE)
         self.assertNotIn("👤", V2_TEMPLATE)
         self.assertNotIn(">الباقة<", V2_TEMPLATE)
         self.assertNotIn('href="/logout">خروج', V2_TEMPLATE)
@@ -144,24 +149,25 @@ class MerchantUiV2RouteTests(unittest.TestCase):
         app_js = (ROOT / "static" / "merchant_ui_v2_app.js").read_text(
             encoding="utf-8"
         )
-        self.assertIn("cf2-appbar-section", app_js)
-        self.assertIn('section === "home" || section === "workspace"', app_js)
+        self.assertIn("paintGlobalNavigation", app_js)
+        self.assertIn("openGlobalNav", app_js)
+        self.assertIn("is-global-nav-open", app_js)
+        self.assertIn("NAV.global", app_js)
         self.assertIn("is-drawer-open", app_js)
         self.assertIn("cf2-account-btn", app_js)
+        self.assertIn("cf2-global-btn", app_js)
         frame_css = (ROOT / "static" / "merchant_ui_v2_frame.css").read_text(
             encoding="utf-8"
         )
         self.assertIn("document (html/body) scrolls vertically", frame_css)
         self.assertIn("cf2-appbar__identity", frame_css)
-        self.assertIn("Mobile App Bar Reality Correction V1", frame_css)
-        self.assertIn("MUST remain visible", frame_css)
-        self.assertIn("position: static", frame_css)
-        self.assertIn("overflow: visible", frame_css)
-        self.assertNotRegex(
-            frame_css,
-            r'body\[data-cf-ui="v2"\]\s*\{[^}]*overflow:\s*hidden',
-        )
+        self.assertIn("Global ownership must remain Global", frame_css)
+        self.assertIn("cf2-global-btn", frame_css)
+        self.assertIn("cf2-global-panel", frame_css)
+        self.assertIn("is-global-nav-open", frame_css)
         self.assertIn("body[data-cf-ui=\"v2\"].is-drawer-open", frame_css)
+        # Desktop list may hide on mobile, but Global control must be present
+        self.assertIn("#cf2-global-btn", frame_css + V2_TEMPLATE)
         self.assertIn("home-stage-closure-v1", home_js)
         self.assertIn("workspace-final-v1", ws_js)
 

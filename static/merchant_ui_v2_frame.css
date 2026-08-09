@@ -1,8 +1,9 @@
 /**
  * CartFlow Merchant UI V2 — App Frame.
  * Exactly TWO levels from one model:
- *   1) GLOBAL — Upbar / App Bar + Global Drawer
- *   2) CONTEXTUAL — Sidebar (desktop column = mobile drawer)
+ *   1) GLOBAL — Upbar (desktop) / Global control+panel (mobile) / utility drawer
+ *   2) CONTEXTUAL — Sidebar (desktop column = mobile overlay)
+ * Global ownership must remain Global at every breakpoint.
  * No third layer: no page-chrome, context strip, or floating pills.
  * Namespace: [data-cf-ui="v2"]
  *
@@ -26,7 +27,8 @@ body[data-cf-ui="v2"] {
 }
 
 body[data-cf-ui="v2"].is-drawer-open,
-body[data-cf-ui="v2"].is-ctx-open {
+body[data-cf-ui="v2"].is-ctx-open,
+body[data-cf-ui="v2"].is-global-nav-open {
   overflow: hidden;
 }
 
@@ -234,17 +236,40 @@ body[data-cf-ui="v2"] .cf2-appbar__account-icon {
   flex: 0 0 auto;
 }
 
-/* Mobile-only App Bar control + ctx backdrop (desktop: hidden) */
-body[data-cf-ui="v2"] .cf2-ctx-btn {
+/* Mobile-only App Bar controls + overlays (desktop: hidden) */
+body[data-cf-ui="v2"] .cf2-ctx-btn,
+body[data-cf-ui="v2"] .cf2-global-btn {
   display: none;
 }
 
-body[data-cf-ui="v2"] .cf2-ctx-backdrop {
+body[data-cf-ui="v2"] .cf2-ctx-backdrop,
+body[data-cf-ui="v2"] .cf2-global-backdrop,
+body[data-cf-ui="v2"] .cf2-global-panel {
   display: none;
 }
 
 body[data-cf-ui="v2"] .cf2-ctx__toolbar {
   display: none;
+}
+
+body[data-cf-ui="v2"] .cf2-global-btn {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  padding: 0;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+body[data-cf-ui="v2"] .cf2-global-btn:focus-visible {
+  outline: 2px solid var(--cf2-teal);
+  outline-offset: 2px;
 }
 
 /* ——— Shell: CONTEXTUAL SIDEBAR + stage ——— */
@@ -458,7 +483,10 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
   body[data-cf-ui="v2"] .cf2-appbar__mobile-only,
   body[data-cf-ui="v2"] .cf2-menu-btn,
   body[data-cf-ui="v2"] .cf2-ctx-btn,
+  body[data-cf-ui="v2"] .cf2-global-btn,
   body[data-cf-ui="v2"] .cf2-ctx-backdrop,
+  body[data-cf-ui="v2"] .cf2-global-backdrop,
+  body[data-cf-ui="v2"] .cf2-global-panel,
   body[data-cf-ui="v2"] .cf2-ctx__toolbar {
     display: none !important;
   }
@@ -470,9 +498,12 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
   }
 
   /*
-   * Mobile closed App Bar = GLOBAL shell only:
-   * Menu · Contextual sidebar control · CartFlow · Account.
-   * No section name pills. No second bar under App Bar.
+   * Mobile closed App Bar preserves Global ownership via #cf2-global-btn
+   * (same NAV.global as desktop .cf2-nav). Desktop list presentation is
+   * swapped for the compact Global control — ownership does not move to
+   * the account/utility drawer.
+   *
+   * Closed App Bar: Menu · Contextual · CartFlow · Global · Account
    */
   body[data-cf-ui="v2"] .cf2-appbar {
     display: flex;
@@ -482,6 +513,7 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
     overflow: hidden;
   }
 
+  /* Desktop Global list presentation only — not Global ownership itself */
   body[data-cf-ui="v2"] .cf2-nav,
   body[data-cf-ui="v2"] .cf2-appbar__actions,
   body[data-cf-ui="v2"] .cf2-appbar__date,
@@ -490,7 +522,8 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
   }
 
   body[data-cf-ui="v2"] .cf2-menu-btn,
-  body[data-cf-ui="v2"] .cf2-ctx-btn {
+  body[data-cf-ui="v2"] .cf2-ctx-btn,
+  body[data-cf-ui="v2"] .cf2-global-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -541,7 +574,10 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
   body[data-cf-ui="v2"] .cf2-menu-btn:active,
   body[data-cf-ui="v2"] .cf2-ctx-btn:hover,
   body[data-cf-ui="v2"] .cf2-ctx-btn:active,
-  body[data-cf-ui="v2"] .cf2-ctx-btn[aria-expanded="true"] {
+  body[data-cf-ui="v2"] .cf2-ctx-btn[aria-expanded="true"],
+  body[data-cf-ui="v2"] .cf2-global-btn:hover,
+  body[data-cf-ui="v2"] .cf2-global-btn:active,
+  body[data-cf-ui="v2"] .cf2-global-btn[aria-expanded="true"] {
     background: rgba(255, 255, 255, 0.12);
     color: #fff;
   }
@@ -612,6 +648,94 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
 
   body[data-cf-ui="v2"] .cf2-ctx-backdrop.is-open {
     display: block;
+  }
+
+  /* LEVEL 1 mobile — Global Navigation panel (not account drawer) */
+  body[data-cf-ui="v2"] .cf2-global-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 32, 72, 0.42);
+    z-index: 50;
+  }
+
+  body[data-cf-ui="v2"] .cf2-global-backdrop.is-open {
+    display: block;
+  }
+
+  body[data-cf-ui="v2"] .cf2-global-panel {
+    display: none;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    inset-inline-start: 0;
+    inset-inline-end: auto;
+    width: min(300px, 86vw);
+    max-height: min(82vh, 560px);
+    z-index: 60;
+    margin: 0;
+    padding: 14px 12px 18px;
+    background: var(--cf2-surface);
+    color: var(--cf2-ink);
+    border-radius: 0 0 16px 16px;
+    box-shadow: 0 18px 40px rgba(8, 32, 72, 0.22);
+    overflow: auto;
+  }
+
+  body[data-cf-ui="v2"] .cf2-global-panel.is-open,
+  body[data-cf-ui="v2"].is-global-nav-open .cf2-global-panel:not([hidden]) {
+    display: flex;
+  }
+
+  body[data-cf-ui="v2"] .cf2-global-panel__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-global-panel__title {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--cf2-navy);
+  }
+
+  body[data-cf-ui="v2"] .cf2-global-panel__close {
+    appearance: none;
+    border: none;
+    background: rgba(8, 32, 72, 0.06);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    color: var(--cf2-ink-soft);
+  }
+
+  body[data-cf-ui="v2"] .cf2-global-panel__item {
+    display: block;
+    width: 100%;
+    text-align: start;
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--cf2-ink);
+    font-size: 14px;
+    font-weight: 700;
+    padding: 12px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  body[data-cf-ui="v2"] .cf2-global-panel__item:hover {
+    background: rgba(8, 32, 72, 0.05);
+  }
+
+  body[data-cf-ui="v2"] .cf2-global-panel__item.is-active {
+    background: rgba(24, 176, 168, 0.12);
+    color: var(--cf2-navy);
   }
 
   body[data-cf-ui="v2"] .cf2-stage {

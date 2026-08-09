@@ -9,16 +9,16 @@
 <script>window.CARTFLOW_STORE_SLUG = "{{ merchant_store_slug | default('demo') }}";</script>
 <script>window.CARTFLOW_UI_V2 = true;</script>
 {# Clean-slate V2 — no legacy merchant CSS cascade #}
-<link rel="stylesheet" href="/static/merchant_ui_v2_ds.css?v={{ merchant_setup_render_build | default('unknown') }}-navrst1">
-<link rel="stylesheet" href="/static/merchant_ui_v2_frame.css?v={{ merchant_setup_render_build | default('unknown') }}-navrst1">
-<link rel="stylesheet" href="/static/merchant_ui_v2_language.css?v={{ merchant_setup_render_build | default('unknown') }}-navrst1">
-<link rel="stylesheet" href="/static/merchant_ui_v2_home.css?v={{ merchant_setup_render_build | default('unknown') }}-navrst1">
-<link rel="stylesheet" href="/static/merchant_ui_v2_workspace.css?v={{ merchant_setup_render_build | default('unknown') }}-navrst1">
+<link rel="stylesheet" href="/static/merchant_ui_v2_ds.css?v={{ merchant_setup_render_build | default('unknown') }}-globown1">
+<link rel="stylesheet" href="/static/merchant_ui_v2_frame.css?v={{ merchant_setup_render_build | default('unknown') }}-globown1">
+<link rel="stylesheet" href="/static/merchant_ui_v2_language.css?v={{ merchant_setup_render_build | default('unknown') }}-globown1">
+<link rel="stylesheet" href="/static/merchant_ui_v2_home.css?v={{ merchant_setup_render_build | default('unknown') }}-globown1">
+<link rel="stylesheet" href="/static/merchant_ui_v2_workspace.css?v={{ merchant_setup_render_build | default('unknown') }}-globown1">
 </head>
 <body data-cf-ui="v2" data-cf-merchant-app="1">
 <div class="cf2-root">
-  {# LEVEL 1 — GLOBAL UPBAR / App Bar. Platform destinations only. #}
-  <header class="cf2-appbar" role="banner" data-cf2-appbar="nav-reset-v1">
+  {# LEVEL 1 — GLOBAL UPBAR / App Bar. Platform destinations owned by GlobalNavigation. #}
+  <header class="cf2-appbar" role="banner" data-cf2-appbar="global-ownership-v1">
     <button type="button" class="cf2-menu-btn" aria-label="فتح القائمة" aria-controls="cf2-drawer" aria-expanded="false">
       <span class="cf2-menu-btn__bars" aria-hidden="true"></span>
     </button>
@@ -40,14 +40,25 @@
       <img class="cf2-brand__mark" src="/static/img/brand/cartflow_cf_mark.png" width="28" height="28" alt="" decoding="async" />
       <span class="cf2-brand__word">CartFlow</span>
     </a>
-    <nav class="cf2-nav" aria-label="أقسام المنتج">
-      <button type="button" class="cf2-nav__item" data-cf2-nav="home">الرئيسية</button>
-      <button type="button" class="cf2-nav__item" data-cf2-nav="workspace">مساحة القرار</button>
-      <button type="button" class="cf2-nav__item" data-cf2-nav="products">المنتجات</button>
-      <button type="button" class="cf2-nav__item" data-cf2-nav="carts">السلال</button>
-      <button type="button" class="cf2-nav__item" data-cf2-nav="comms">التواصل</button>
-      <button type="button" class="cf2-nav__item" data-cf2-nav="settings">الإعدادات</button>
-    </nav>
+    {# Desktop presentation of GlobalNavigation (painted from NAV.global) #}
+    <nav class="cf2-nav" id="cf2-nav" data-cf2-global-mount="upbar" aria-label="أقسام المنصة"></nav>
+    {# Mobile presentation of GlobalNavigation — same model, distinct from account drawer + contextual #}
+    <button
+      type="button"
+      class="cf2-global-btn cf2-appbar__mobile-only"
+      id="cf2-global-btn"
+      aria-label="أقسام المنصة"
+      aria-controls="cf2-global-panel"
+      aria-expanded="false"
+      title="أقسام المنصة"
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.75"/>
+        <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.75"/>
+        <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.75"/>
+        <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.75"/>
+      </svg>
+    </button>
     <div class="cf2-appbar__actions">
       <span class="cf2-appbar__date cf2-appbar__desktop-only">{{ merchant_ar_date_header | default("") }}</span>
       <button type="button" class="cf2-appbar__identity cf2-appbar__desktop-only" id="cf2-account-btn" title="الحساب" aria-label="الحساب — {{ merchant_store_display_name | default('متجرك') }}">
@@ -102,21 +113,25 @@
   </div>
 </div>
 
-{# LEVEL 1 — GLOBAL drawer — platform sections + account only #}
+{# LEVEL 1 — Mobile Global Navigation panel (same NAV.global; not account drawer) #}
+<div class="cf2-global-backdrop" id="cf2-global-backdrop" hidden></div>
+<aside class="cf2-global-panel" id="cf2-global-panel" hidden aria-label="أقسام المنصة">
+  <div class="cf2-global-panel__head">
+    <p class="cf2-global-panel__title">أقسام المنصة</p>
+    <button type="button" class="cf2-global-panel__close" id="cf2-global-panel-close" aria-label="إغلاق">×</button>
+  </div>
+  <div id="cf2-global-panel-list" data-cf2-global-mount="mobile"></div>
+</aside>
+
+{# LEVEL 1 — Utility drawer (account + optional Global shortcuts from same model) #}
 <div class="cf2-drawer-backdrop" aria-hidden="true"></div>
-<aside class="cf2-drawer" id="cf2-drawer" aria-label="التنقل العام">
+<aside class="cf2-drawer" id="cf2-drawer" aria-label="الحساب والأدوات">
   <div class="cf2-drawer__head">
-    <p class="cf2-drawer__title">CartFlow</p>
+    <p class="cf2-drawer__title">الحساب</p>
     <button type="button" class="cf2-drawer__close" aria-label="إغلاق">×</button>
   </div>
-  <div class="cf2-drawer__section">
+  <div class="cf2-drawer__section" id="cf2-drawer-global" data-cf2-global-mount="drawer">
     <p class="cf2-drawer__label">أقسام المنصة</p>
-    <button type="button" class="cf2-drawer__item" data-cf2-nav="home">الرئيسية</button>
-    <button type="button" class="cf2-drawer__item" data-cf2-nav="workspace">مساحة القرار</button>
-    <button type="button" class="cf2-drawer__item" data-cf2-nav="products">المنتجات</button>
-    <button type="button" class="cf2-drawer__item" data-cf2-nav="carts">السلال</button>
-    <button type="button" class="cf2-drawer__item" data-cf2-nav="comms">التواصل</button>
-    <button type="button" class="cf2-drawer__item" data-cf2-nav="settings">الإعدادات</button>
   </div>
   <hr class="cf2-drawer__divider" />
   <div class="cf2-drawer__section">
@@ -129,9 +144,9 @@
 {# LEVEL 2 mobile backdrop — same sidebar (#cf2-ctx), not a separate nav product #}
 <div class="cf2-ctx-backdrop" id="cf2-ctx-backdrop" hidden></div>
 
-<script defer src="/static/merchant_ui_v2_language.js?v={{ merchant_setup_render_build | default('unknown') }}-navrst1"></script>
-<script defer src="/static/merchant_ui_v2_home.js?v={{ merchant_setup_render_build | default('unknown') }}-navrst1"></script>
-<script defer src="/static/merchant_ui_v2_workspace.js?v={{ merchant_setup_render_build | default('unknown') }}-navrst1"></script>
-<script defer src="/static/merchant_ui_v2_app.js?v={{ merchant_setup_render_build | default('unknown') }}-navrst1"></script>
+<script defer src="/static/merchant_ui_v2_language.js?v={{ merchant_setup_render_build | default('unknown') }}-globown1"></script>
+<script defer src="/static/merchant_ui_v2_home.js?v={{ merchant_setup_render_build | default('unknown') }}-globown1"></script>
+<script defer src="/static/merchant_ui_v2_workspace.js?v={{ merchant_setup_render_build | default('unknown') }}-globown1"></script>
+<script defer src="/static/merchant_ui_v2_app.js?v={{ merchant_setup_render_build | default('unknown') }}-globown1"></script>
 </body>
 </html>
