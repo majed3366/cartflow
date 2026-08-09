@@ -2,6 +2,7 @@
 
 **Date (UTC):** 2026-08-09  
 **Status:** Implemented + unit-validated. Deployed for live verification.  
+**Deploy SHA:** `7b624e5` (`main`)  
 **Live retry:** NOT performed by agent — STOP after deploy.  
 **`/register`:** not called  
 
@@ -108,4 +109,4 @@ Inspect response `oauth_exchange.redirect_uri_mode` and `auth_exchange_compare.e
 ## Verification
 
 - Unit: `tests/test_oauth_redirect_uri_v1.py`, extended recovery exchange tests  
-- Deploy: pushed for Living Store; **no agent live attempt**
+- Deploy: `7b624e5` → `main` (Living Store); **no agent live attempt**
