@@ -1,25 +1,29 @@
 # 05 — Acceptance Results
 
-Filled after Living Store deploy + `scripts/_capture_merchant_navigation_global_ownership_correction_v1.py`.
-
-See `production_probe.json` for raw probes.
+**Deploy SHA:** `ea236e5a079196d9a1b59d788dd23f2264c6f91b`  
+**Marker:** `global-ownership-v1`  
+**Capture:** `scripts/_capture_merchant_navigation_global_ownership_correction_v1.py`  
+**Raw:** `production_probe.json`
 
 | Gate | Result |
 |------|--------|
-| globalNavCanonicalModel | pending deploy |
-| desktopGlobalNavConsumesCanonicalModel | pending deploy |
-| mobileGlobalNavConsumesCanonicalModel | pending deploy |
-| drawerIfUsedConsumesCanonicalModel | pending deploy |
-| mobileGlobalNavNotDrawerOnly | pending deploy |
-| globalAndContextualSeparate | pending deploy |
-| globalAndAccountSeparate | pending deploy |
-| desktopUpbarUnchanged | pending deploy |
-| contextualArchitectureUnchanged | pending deploy |
-| homeCompositionUnchanged | pending deploy |
-| workspaceCompositionUnchanged | pending deploy |
-| mobileNoHorizontalOverflow | pending deploy |
-| mobileVerticalScroll | pending deploy |
+| globalNavCanonicalModel | **true** |
+| desktopGlobalNavConsumesCanonicalModel | **true** |
+| mobileGlobalNavConsumesCanonicalModel | **true** |
+| drawerIfUsedConsumesCanonicalModel | **true** |
+| mobileGlobalNavNotDrawerOnly | **true** |
+| globalAndContextualSeparate | **true** |
+| globalAndAccountSeparate | **true** |
+| desktopUpbarUnchanged | **true** |
+| contextualArchitectureUnchanged | **true** |
+| homeCompositionUnchanged | **true** |
+| workspaceCompositionUnchanged | **true** |
+| mobileNoHorizontalOverflow | **true** |
+| mobileVerticalScroll | **true** |
+| rejectedChromeAbsent | **true** |
+| workspaceHashAfterGlobalSwitch | **true** |
+| homeHashRestore | **true** |
 
-**Automated status:** pending deploy capture.
+**Automated status:** all listed gates **true**.
 
-**Visual PASS/FAIL:** NOT DECLARED — await real-device human review.
+**Visual PASS/FAIL:** NOT DECLARED — await real-device human review (`06_VISUAL_REVIEW.md`).

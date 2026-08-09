@@ -248,7 +248,9 @@ def main() -> None:
         )
 
         if page.locator("body.is-ctx-open").count():
-            page.click("#cf2-ctx-backdrop")
+            page.evaluate(
+                "() => window.CartFlowUiV2 && window.CartFlowUiV2.closeCtxDrawer()"
+            )
             page.wait_for_timeout(300)
         page.click("#cf2-mobile-account")
         page.wait_for_timeout(500)
@@ -258,7 +260,9 @@ def main() -> None:
         )
 
         if page.locator("body.is-drawer-open").count():
-            page.click(".cf2-drawer-backdrop")
+            page.evaluate(
+                "() => { const b = document.querySelector('.cf2-drawer-backdrop'); if (b) b.click(); }"
+            )
             page.wait_for_timeout(300)
         page.click("#cf2-global-btn")
         page.wait_for_timeout(400)

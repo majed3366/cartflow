@@ -1,0 +1,548 @@
+{
+  "deploy": {
+    "ok": true,
+    "sha": "ea236e5a079196d9a1b59d788dd23f2264c6f91b",
+    "status": 200
+  },
+  "probes": {
+    "desktop_home": {
+      "marker": "global-ownership-v1",
+      "globalModelIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "globalModelLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "mobileIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "drawerIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "globalBtnVisible": false,
+      "ctxBtnVisible": false,
+      "accountBtnVisible": false,
+      "menuBtnVisible": false,
+      "globalPanelOpen": false,
+      "drawerOpen": false,
+      "ctxOpen": false,
+      "panelDistinctFromDrawer": true,
+      "ctxDistinctFromPanel": true,
+      "ctxDistinctFromDrawer": true,
+      "hash": "#home",
+      "stageLead": "ماذا يجب أن أعرف الآن عن متجري؟",
+      "sidebarArea": "الرئيسية",
+      "sidebarItems": [
+        "نظرة عامة"
+      ],
+      "appbarWidth": 1440,
+      "overflowX": false,
+      "bodyAllowsScroll": true,
+      "hasPageChrome": false,
+      "hasSectionChrome": false,
+      "hasTanqul": false
+    },
+    "desktop_workspace": {
+      "marker": "global-ownership-v1",
+      "globalModelIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "globalModelLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "mobileIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "drawerIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "globalBtnVisible": false,
+      "ctxBtnVisible": false,
+      "accountBtnVisible": false,
+      "menuBtnVisible": false,
+      "globalPanelOpen": false,
+      "drawerOpen": false,
+      "ctxOpen": false,
+      "panelDistinctFromDrawer": true,
+      "ctxDistinctFromPanel": true,
+      "ctxDistinctFromDrawer": true,
+      "hash": "#workspace",
+      "stageLead": "ما القرار الذي يجب أن أتخذه الآن، ولماذا؟",
+      "sidebarArea": "مساحة القرار",
+      "sidebarItems": [
+        "ما يحتاج قرارك"
+      ],
+      "appbarWidth": 1440,
+      "overflowX": false,
+      "bodyAllowsScroll": true,
+      "hasPageChrome": false,
+      "hasSectionChrome": false,
+      "hasTanqul": false
+    },
+    "mobile_home_closed": {
+      "marker": "global-ownership-v1",
+      "globalModelIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "globalModelLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "mobileIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "drawerIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "globalBtnVisible": true,
+      "ctxBtnVisible": true,
+      "accountBtnVisible": true,
+      "menuBtnVisible": true,
+      "globalPanelOpen": false,
+      "drawerOpen": false,
+      "ctxOpen": false,
+      "panelDistinctFromDrawer": true,
+      "ctxDistinctFromPanel": true,
+      "ctxDistinctFromDrawer": true,
+      "hash": "#home",
+      "stageLead": "ماذا يجب أن أعرف الآن عن متجري؟",
+      "sidebarArea": "الرئيسية",
+      "sidebarItems": [
+        "نظرة عامة"
+      ],
+      "appbarWidth": 390,
+      "overflowX": false,
+      "bodyAllowsScroll": true,
+      "hasPageChrome": false,
+      "hasSectionChrome": false,
+      "hasTanqul": false
+    },
+    "mobile_home_global_open": {
+      "marker": "global-ownership-v1",
+      "globalModelIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "globalModelLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "mobileIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "drawerIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "globalBtnVisible": true,
+      "ctxBtnVisible": true,
+      "accountBtnVisible": true,
+      "menuBtnVisible": true,
+      "globalPanelOpen": true,
+      "drawerOpen": false,
+      "ctxOpen": false,
+      "panelDistinctFromDrawer": true,
+      "ctxDistinctFromPanel": true,
+      "ctxDistinctFromDrawer": true,
+      "hash": "#home",
+      "stageLead": "ماذا يجب أن أعرف الآن عن متجري؟",
+      "sidebarArea": "الرئيسية",
+      "sidebarItems": [
+        "نظرة عامة"
+      ],
+      "appbarWidth": 390,
+      "overflowX": false,
+      "bodyAllowsScroll": true,
+      "hasPageChrome": false,
+      "hasSectionChrome": false,
+      "hasTanqul": false
+    },
+    "mobile_workspace_after_switch": {
+      "marker": "global-ownership-v1",
+      "globalModelIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "globalModelLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "mobileIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "drawerIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "globalBtnVisible": true,
+      "ctxBtnVisible": true,
+      "accountBtnVisible": true,
+      "menuBtnVisible": true,
+      "globalPanelOpen": false,
+      "drawerOpen": false,
+      "ctxOpen": false,
+      "panelDistinctFromDrawer": true,
+      "ctxDistinctFromPanel": true,
+      "ctxDistinctFromDrawer": true,
+      "hash": "#workspace",
+      "stageLead": "ما القرار الذي يجب أن أتخذه الآن، ولماذا؟",
+      "sidebarArea": "مساحة القرار",
+      "sidebarItems": [
+        "ما يحتاج قرارك"
+      ],
+      "appbarWidth": 390,
+      "overflowX": false,
+      "bodyAllowsScroll": true,
+      "hasPageChrome": false,
+      "hasSectionChrome": false,
+      "hasTanqul": false
+    },
+    "mobile_workspace_ctx_open": {
+      "marker": "global-ownership-v1",
+      "globalModelIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "globalModelLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "mobileIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "drawerIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "globalBtnVisible": true,
+      "ctxBtnVisible": true,
+      "accountBtnVisible": true,
+      "menuBtnVisible": true,
+      "globalPanelOpen": false,
+      "drawerOpen": false,
+      "ctxOpen": true,
+      "panelDistinctFromDrawer": true,
+      "ctxDistinctFromPanel": true,
+      "ctxDistinctFromDrawer": true,
+      "hash": "#workspace",
+      "stageLead": "ما القرار الذي يجب أن أتخذه الآن، ولماذا؟",
+      "sidebarArea": "مساحة القرار",
+      "sidebarItems": [
+        "ما يحتاج قرارك"
+      ],
+      "appbarWidth": 390,
+      "overflowX": false,
+      "bodyAllowsScroll": true,
+      "hasPageChrome": false,
+      "hasSectionChrome": false,
+      "hasTanqul": false
+    },
+    "mobile_account_drawer": {
+      "marker": "global-ownership-v1",
+      "globalModelIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "globalModelLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "mobileIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "drawerIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "globalBtnVisible": true,
+      "ctxBtnVisible": true,
+      "accountBtnVisible": true,
+      "menuBtnVisible": true,
+      "globalPanelOpen": false,
+      "drawerOpen": true,
+      "ctxOpen": false,
+      "panelDistinctFromDrawer": true,
+      "ctxDistinctFromPanel": true,
+      "ctxDistinctFromDrawer": true,
+      "hash": "#workspace",
+      "stageLead": "ما القرار الذي يجب أن أتخذه الآن، ولماذا؟",
+      "sidebarArea": "مساحة القرار",
+      "sidebarItems": [
+        "ما يحتاج قرارك"
+      ],
+      "appbarWidth": 390,
+      "overflowX": false,
+      "bodyAllowsScroll": true,
+      "hasPageChrome": false,
+      "hasSectionChrome": false,
+      "hasTanqul": false
+    },
+    "mobile_home_restore": {
+      "marker": "global-ownership-v1",
+      "globalModelIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "globalModelLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "mobileIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "drawerIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "globalBtnVisible": true,
+      "ctxBtnVisible": true,
+      "accountBtnVisible": true,
+      "menuBtnVisible": true,
+      "globalPanelOpen": false,
+      "drawerOpen": false,
+      "ctxOpen": false,
+      "panelDistinctFromDrawer": true,
+      "ctxDistinctFromPanel": true,
+      "ctxDistinctFromDrawer": true,
+      "hash": "#home",
+      "stageLead": "ماذا يجب أن أعرف الآن عن متجري؟",
+      "sidebarArea": "الرئيسية",
+      "sidebarItems": [
+        "نظرة عامة"
+      ],
+      "appbarWidth": 390,
+      "overflowX": false,
+      "bodyAllowsScroll": true,
+      "hasPageChrome": false,
+      "hasSectionChrome": false,
+      "hasTanqul": false
+    }
+  },
+  "gates": {
+    "globalNavCanonicalModel": true,
+    "desktopGlobalNavConsumesCanonicalModel": true,
+    "mobileGlobalNavConsumesCanonicalModel": true,
+    "drawerIfUsedConsumesCanonicalModel": true,
+    "mobileGlobalNavNotDrawerOnly": true,
+    "globalAndContextualSeparate": true,
+    "globalAndAccountSeparate": true,
+    "desktopUpbarUnchanged": true,
+    "contextualArchitectureUnchanged": true,
+    "homeCompositionUnchanged": true,
+    "workspaceCompositionUnchanged": true,
+    "mobileNoHorizontalOverflow": true,
+    "mobileVerticalScroll": true,
+    "rejectedChromeAbsent": true,
+    "workspaceHashAfterGlobalSwitch": true,
+    "homeHashRestore": true
+  },
+  "all_gates_pass": true
+}
