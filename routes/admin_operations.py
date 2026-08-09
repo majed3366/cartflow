@@ -1007,6 +1007,90 @@ def api_admin_whatsapp_meta_status(request: Request) -> Any:
     return j({"ok": True, **status})
 
 
+@router.get("/admin/whatsapp/embedded-signup-recovery", response_class=HTMLResponse)
+def admin_whatsapp_es_recovery_page(request: Request) -> Any:
+    """Admin-only Embedded Signup recovery surface (Phase 2B). No /register."""
+    denied = _admin_session_or_redirect(
+        request, next_path="/admin/whatsapp/embedded-signup-recovery"
+    )
+    if denied is not None:
+        return denied
+    from services.admin_whatsapp_embedded_signup_recovery_v1 import (  # noqa: PLC0415
+        RECOVERY_MARKER,
+        TARGET_PHONE_NUMBER_ID,
+        TARGET_WABA_ID,
+    )
+
+    return templates.TemplateResponse(
+        request,
+        "admin_whatsapp_es_recovery.html",
+        {
+            "admin_active_nav": ADMIN_NAV_WHATSAPP,
+            "admin_page_title_ar": "واتساب — استعادة Embedded Signup",
+            "admin_page_subtitle_ar": "إعادة تفويض WABA والرقم الحاليين فقط — بدون /register",
+            "recovery_marker": RECOVERY_MARKER,
+            "target_waba_id": TARGET_WABA_ID,
+            "target_phone_number_id": TARGET_PHONE_NUMBER_ID,
+        },
+    )
+
+
+@router.get("/admin/api/whatsapp/embedded-signup-recovery/config")
+def api_admin_whatsapp_es_recovery_config(request: Request) -> Any:
+    denied = _admin_json_auth(request)
+    if denied is not None:
+        return denied
+    from services.admin_whatsapp_embedded_signup_recovery_v1 import (  # noqa: PLC0415
+        public_recovery_config,
+    )
+
+    cfg = public_recovery_config()
+    # Defense: never leak secret-shaped keys.
+    for banned in ("access_token", "token", "app_secret", "client_secret", "code"):
+        cfg.pop(banned, None)
+    return j(cfg)
+
+
+@router.post("/admin/api/whatsapp/embedded-signup-recovery/complete")
+async def api_admin_whatsapp_es_recovery_complete(request: Request) -> Any:
+    """Exchange ES code + hard-assert existing assets. Never calls /register."""
+    denied = _admin_json_auth(request)
+    if denied is not None:
+        return denied
+    try:
+        body = await request.json()
+    except (TypeError, ValueError):
+        body = {}
+    if not isinstance(body, dict):
+        body = {}
+
+    from services.admin_whatsapp_embedded_signup_recovery_v1 import (  # noqa: PLC0415
+        complete_embedded_signup_recovery,
+    )
+
+    result = complete_embedded_signup_recovery(
+        code=str(body.get("code") or ""),
+        waba_id=str(body.get("waba_id") or ""),
+        phone_number_id=str(body.get("phone_number_id") or ""),
+        business_id=str(body.get("business_id") or ""),
+        session_event=str(body.get("session_event") or ""),
+    )
+    # Absolute redaction of any accidental secret fields.
+    for banned in (
+        "access_token",
+        "token",
+        "app_secret",
+        "client_secret",
+        "code",
+        "authorization_code",
+    ):
+        result.pop(banned, None)
+    status = 200 if result.get("ok") else 400
+    if result.get("aborted") and result.get("error") == "asset_assertion_failed":
+        status = 409
+    return JSONResponse(result, status_code=status)
+
+
 @router.get("/admin/api/whatsapp/meta-phone-numbers")
 def api_admin_whatsapp_meta_phone_numbers(request: Request) -> Any:
     """Read-only WABA phone enumeration (no send / no register)."""

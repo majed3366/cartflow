@@ -1,0 +1,84 @@
+{% extends "layouts/admin_dashboard.html" %}
+{% block admin_title %}CartFlow Admin — ES Recovery{% endblock %}
+{% block admin_main_class %}w-full max-w-[56rem] space-y-6 px-6 py-8 pb-24 lg:px-10{% endblock %}
+
+{% block admin_content %}
+<section class="admin-card px-6 py-6" data-es-recovery="{{ recovery_marker }}">
+  <p class="text-xs font-semibold uppercase tracking-wide text-indigo-600">WhatsApp Phone Recovery V1 — Phase 2B</p>
+  <h2 class="mt-2 text-2xl font-bold text-slate-900">Embedded Signup Recovery</h2>
+  <p class="mt-2 max-w-2xl text-sm text-slate-600">
+    Admin-only path to re-authorize the <strong>existing</strong> CartFlow WABA and phone via Meta Embedded Signup.
+    Does <strong>not</strong> register, delete, or create Meta assets.
+  </p>
+  <dl class="mt-4 grid gap-3 sm:grid-cols-2 text-sm">
+    <div>
+      <dt class="text-slate-500">Target WABA</dt>
+      <dd class="mt-1 font-mono text-slate-900" dir="ltr" id="esr-target-waba">{{ target_waba_id }}</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">Target Phone Number ID</dt>
+      <dd class="mt-1 font-mono text-slate-900" dir="ltr" id="esr-target-phone">{{ target_phone_number_id }}</dd>
+    </div>
+  </dl>
+</section>
+
+<section class="admin-card px-6 py-5">
+  <h3 class="text-lg font-semibold text-slate-900">Configuration</h3>
+  <p id="esr-config-status" class="mt-2 text-xs text-slate-500">Loading…</p>
+  <dl class="mt-4 grid gap-3 sm:grid-cols-2 text-sm">
+    <div>
+      <dt class="text-slate-500">App ID</dt>
+      <dd id="esr-app-id" class="mt-1 font-mono text-slate-900" dir="ltr">—</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">Configuration ID</dt>
+      <dd id="esr-config-id" class="mt-1 font-mono text-slate-900" dir="ltr">—</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">App Secret</dt>
+      <dd id="esr-secret" class="mt-1 font-medium text-slate-900">—</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">Ready</dt>
+      <dd id="esr-ready" class="mt-1 font-medium text-slate-900">—</dd>
+    </div>
+  </dl>
+</section>
+
+<section class="admin-card px-6 py-5">
+  <h3 class="text-lg font-semibold text-slate-900">Launch Embedded Signup</h3>
+  <p class="mt-2 text-sm text-slate-600">
+    Opens Meta’s hosted flow. On success, CartFlow asserts returned IDs match the targets above, exchanges the authorization code server-side, then <strong>stops</strong> (no <code dir="ltr">/register</code>).
+  </p>
+  <div class="mt-4 flex flex-wrap items-center gap-3">
+    <button
+      type="button"
+      id="esr-launch"
+      class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+      disabled
+    >
+      Start Embedded Signup
+    </button>
+    <span id="esr-sdk-status" class="text-xs text-slate-500">Facebook SDK: pending</span>
+  </div>
+  <p id="esr-session-status" class="mt-3 text-xs text-slate-500">Session: waiting</p>
+</section>
+
+<section class="admin-card px-6 py-5">
+  <h3 class="text-lg font-semibold text-slate-900">Result</h3>
+  <p id="esr-result-status" class="mt-2 text-xs text-slate-500">—</p>
+  <pre id="esr-result-json" class="mt-3 overflow-x-auto rounded-lg bg-slate-50 p-3 text-xs text-slate-800" dir="ltr">{}</pre>
+  <p class="mt-3 text-xs text-amber-700">
+    Tokens and App Secret are never shown here. Phase 3 <code dir="ltr">/register</code> is intentionally blocked.
+  </p>
+</section>
+
+<script>
+  window.CARTFLOW_ES_RECOVERY = {
+    marker: {{ recovery_marker | tojson }},
+    targetWabaId: {{ target_waba_id | tojson }},
+    targetPhoneNumberId: {{ target_phone_number_id | tojson }}
+  };
+</script>
+<script defer src="/static/admin_whatsapp_es_recovery.js?v={{ recovery_marker }}"></script>
+{% endblock %}
