@@ -138,17 +138,53 @@ body[data-cf-ui="v2"] .cf2-nav__item[aria-disabled="true"] {
 body[data-cf-ui="v2"] .cf2-appbar__actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex: 0 0 auto;
   margin-inline-start: auto;
+  min-width: 0;
+  max-width: min(240px, 28vw);
 }
 
 body[data-cf-ui="v2"] .cf2-appbar__date {
   font-size: 12px;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.65);
-  margin-inline-end: 6px;
   white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+body[data-cf-ui="v2"] .cf2-appbar__identity {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 6px 10px 6px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+}
+
+body[data-cf-ui="v2"] .cf2-appbar__identity:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+body[data-cf-ui="v2"] .cf2-appbar__identity:focus-visible {
+  outline: 2px solid var(--cf2-teal);
+  outline-offset: 2px;
+}
+
+body[data-cf-ui="v2"] .cf2-appbar__identity-name {
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 body[data-cf-ui="v2"] .cf2-appbar__ghost {
@@ -182,6 +218,7 @@ body[data-cf-ui="v2"] .cf2-menu-btn {
   cursor: pointer;
   align-items: center;
   justify-content: center;
+  flex: 0 0 auto;
 }
 
 body[data-cf-ui="v2"] .cf2-menu-btn__bars {
@@ -211,6 +248,7 @@ body[data-cf-ui="v2"] .cf2-appbar__account {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  flex: 0 0 auto;
 }
 
 body[data-cf-ui="v2"] .cf2-appbar__account:focus-visible {
@@ -220,6 +258,7 @@ body[data-cf-ui="v2"] .cf2-appbar__account:focus-visible {
 
 body[data-cf-ui="v2"] .cf2-appbar__account-icon {
   display: block;
+  flex: 0 0 auto;
 }
 
 /* ——— Shell: contextual sidebar + stage ——— */
@@ -327,17 +366,121 @@ body[data-cf-ui="v2"] .cf2-stub {
   line-height: 1.5;
 }
 
-/* ——— Mobile drawer ——— */
+/* ——— Drawer (shared; locked to open interaction) ——— */
 body[data-cf-ui="v2"] .cf2-drawer-backdrop {
   display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 32, 72, 0.42);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--cf2-dur) ease;
+  z-index: 50;
+}
+
+body[data-cf-ui="v2"] .cf2-drawer-backdrop.is-open {
+  display: block;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 body[data-cf-ui="v2"] .cf2-drawer {
   display: none;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  inset-inline-end: 0;
+  inset-inline-start: auto;
+  width: min(320px, 88vw);
+  max-height: min(78vh, 560px);
+  background: var(--cf2-surface);
+  color: var(--cf2-ink);
+  border-radius: 0 0 0 16px;
+  box-shadow: 0 18px 40px rgba(8, 32, 72, 0.22);
+  transform: translateY(-105%);
+  transition: transform 220ms var(--cf2-ease);
+  z-index: 60;
+  overflow: auto;
+  padding: 16px 14px 18px;
+}
+
+body[data-cf-ui="v2"] .cf2-drawer.is-open {
+  display: flex;
+  transform: translateY(0);
+}
+
+body[data-cf-ui="v2"] .cf2-drawer__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+body[data-cf-ui="v2"] .cf2-drawer__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+body[data-cf-ui="v2"] .cf2-drawer__close {
+  appearance: none;
+  border: none;
+  background: rgba(8, 32, 72, 0.06);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+body[data-cf-ui="v2"] .cf2-drawer__section {
+  margin: 0 0 14px;
+}
+
+body[data-cf-ui="v2"] .cf2-drawer__label {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--cf2-mute);
+}
+
+body[data-cf-ui="v2"] .cf2-drawer__item {
+  display: block;
+  width: 100%;
+  text-align: start;
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--cf2-ink);
+  font-size: 14px;
+  font-weight: 700;
+  padding: 11px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+body[data-cf-ui="v2"] .cf2-drawer__item:hover {
+  background: rgba(8, 32, 72, 0.05);
+}
+
+body[data-cf-ui="v2"] .cf2-drawer__item.is-active {
+  background: rgba(24, 176, 168, 0.12);
+  color: var(--cf2-navy);
+}
+
+body[data-cf-ui="v2"] .cf2-drawer__divider {
+  height: 1px;
+  margin: 8px 0 14px;
+  background: var(--cf2-border);
+  border: none;
 }
 
 @media (min-width: 1024px) {
-  body[data-cf-ui="v2"] .cf2-appbar__mobile-only {
+  body[data-cf-ui="v2"] .cf2-appbar__mobile-only,
+  body[data-cf-ui="v2"] .cf2-menu-btn {
     display: none !important;
   }
 }
@@ -347,32 +490,48 @@ body[data-cf-ui="v2"] .cf2-drawer {
     --cf2-appbar-h: 48px;
   }
 
-  body[data-cf-ui="v2"] .cf2-menu-btn {
-    display: inline-flex;
+  /* Literal mobile anatomy (single row): account | CartFlow | section | menu */
+  body[data-cf-ui="v2"] .cf2-appbar {
+    direction: ltr;
+    padding: 0 10px;
+    gap: 8px;
+    flex-wrap: nowrap;
   }
 
   body[data-cf-ui="v2"] .cf2-appbar__account {
     display: inline-flex;
-  }
-
-  body[data-cf-ui="v2"] .cf2-nav,
-  body[data-cf-ui="v2"] .cf2-appbar__date,
-  body[data-cf-ui="v2"] .cf2-appbar__desktop-only {
-    display: none !important;
-  }
-
-  body[data-cf-ui="v2"] .cf2-appbar__section {
-    display: block;
-    flex: 1 1 auto;
-    text-align: center;
-    font-size: 14px;
-    padding: 0 4px;
+    order: 1;
   }
 
   body[data-cf-ui="v2"] .cf2-brand {
+    order: 2;
     flex: 0 0 auto;
     margin: 0;
     gap: 6px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-appbar__section {
+    order: 3;
+    display: block;
+    flex: 1 1 auto;
+    direction: rtl;
+    text-align: start;
+    font-size: 13px;
+    font-weight: 800;
+    padding: 0 2px;
+    color: #fff;
+  }
+
+  body[data-cf-ui="v2"] .cf2-menu-btn {
+    display: inline-flex;
+    order: 4;
+  }
+
+  body[data-cf-ui="v2"] .cf2-nav,
+  body[data-cf-ui="v2"] .cf2-appbar__actions,
+  body[data-cf-ui="v2"] .cf2-appbar__date,
+  body[data-cf-ui="v2"] .cf2-appbar__desktop-only {
+    display: none !important;
   }
 
   body[data-cf-ui="v2"] .cf2-brand__word {
@@ -388,16 +547,6 @@ body[data-cf-ui="v2"] .cf2-drawer {
     height: 26px;
   }
 
-  body[data-cf-ui="v2"] .cf2-appbar {
-    padding: 0 10px;
-    gap: 6px;
-  }
-
-  body[data-cf-ui="v2"] .cf2-appbar__actions {
-    margin-inline-start: 0;
-    flex: 0 0 auto;
-  }
-
   body[data-cf-ui="v2"] .cf2-shell {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -410,113 +559,9 @@ body[data-cf-ui="v2"] .cf2-drawer {
     padding: 16px 16px 40px;
   }
 
-  body[data-cf-ui="v2"] .cf2-drawer-backdrop {
-    display: block;
-    position: fixed;
-    inset: 0;
-    background: rgba(8, 32, 72, 0.42);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity var(--cf2-dur) ease;
-    z-index: 50;
-  }
-
-  body[data-cf-ui="v2"] .cf2-drawer-backdrop.is-open {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
   body[data-cf-ui="v2"] .cf2-drawer {
-    display: flex;
-    flex-direction: column;
-    position: fixed;
-    top: 0;
-    bottom: auto;
     inset-inline-start: 0;
     inset-inline-end: auto;
-    width: min(320px, 88vw);
-    max-height: min(78vh, 560px);
-    background: var(--cf2-surface);
-    color: var(--cf2-ink);
     border-radius: 0 0 16px 16px;
-    box-shadow: 0 18px 40px rgba(8, 32, 72, 0.22);
-    transform: translateY(-105%);
-    transition: transform 220ms var(--cf2-ease);
-    z-index: 60;
-    overflow: auto;
-    padding: 16px 14px 18px;
-  }
-
-  body[data-cf-ui="v2"] .cf2-drawer.is-open {
-    transform: translateY(0);
-  }
-
-  body[data-cf-ui="v2"] .cf2-drawer__head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 12px;
-  }
-
-  body[data-cf-ui="v2"] .cf2-drawer__title {
-    margin: 0;
-    font-size: 14px;
-    font-weight: 800;
-  }
-
-  body[data-cf-ui="v2"] .cf2-drawer__close {
-    appearance: none;
-    border: none;
-    background: rgba(8, 32, 72, 0.06);
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 16px;
-  }
-
-  body[data-cf-ui="v2"] .cf2-drawer__section {
-    margin: 0 0 14px;
-  }
-
-  body[data-cf-ui="v2"] .cf2-drawer__label {
-    margin: 0 0 6px;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    color: var(--cf2-mute);
-  }
-
-  body[data-cf-ui="v2"] .cf2-drawer__item {
-    display: block;
-    width: 100%;
-    text-align: start;
-    appearance: none;
-    border: none;
-    background: transparent;
-    color: var(--cf2-ink);
-    font-size: 14px;
-    font-weight: 700;
-    padding: 11px 10px;
-    border-radius: 8px;
-    cursor: pointer;
-    text-decoration: none;
-  }
-
-  body[data-cf-ui="v2"] .cf2-drawer__item:hover {
-    background: rgba(8, 32, 72, 0.05);
-  }
-
-  body[data-cf-ui="v2"] .cf2-drawer__item.is-active {
-    background: rgba(24, 176, 168, 0.12);
-    color: var(--cf2-navy);
-  }
-
-  body[data-cf-ui="v2"] .cf2-drawer__divider {
-    height: 1px;
-    margin: 8px 0 14px;
-    background: var(--cf2-border);
-    border: none;
   }
 }

@@ -157,6 +157,8 @@
     if (menu) menu.addEventListener("click", openDrawer);
     var mobileAcc = $("#cf2-mobile-account");
     if (mobileAcc) mobileAcc.addEventListener("click", openDrawer);
+    var deskAcc = $("#cf2-account-btn");
+    if (deskAcc) deskAcc.addEventListener("click", openDrawer);
     var close = $(".cf2-drawer__close");
     if (close) close.addEventListener("click", closeDrawer);
     var backdrop = $(".cf2-drawer-backdrop");

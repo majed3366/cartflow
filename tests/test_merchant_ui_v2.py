@@ -56,14 +56,19 @@ class MerchantUiV2TemplateTests(unittest.TestCase):
 
     def test_v2_frame_separates_appbar_and_ctx(self) -> None:
         self.assertIn("cf2-appbar", V2_TEMPLATE)
+        self.assertIn('data-cf2-appbar="final-closure-v1"', V2_TEMPLATE)
         self.assertIn("cf2-appbar__section", V2_TEMPLATE)
         self.assertIn("cf2-appbar__account", V2_TEMPLATE)
+        self.assertIn("cf2-appbar__identity", V2_TEMPLATE)
+        self.assertIn("cf2-appbar__identity-name", V2_TEMPLATE)
         self.assertIn("cf2-menu-btn__bars", V2_TEMPLATE)
         self.assertIn("cf2-ctx", V2_TEMPLATE)
         self.assertIn("cf2-stage", V2_TEMPLATE)
         self.assertIn("cf2-drawer", V2_TEMPLATE)
         self.assertIn("cf2-nav", V2_TEMPLATE)
         self.assertNotIn("👤", V2_TEMPLATE)
+        self.assertNotIn(">الباقة<", V2_TEMPLATE)
+        self.assertNotIn('href="/logout">خروج', V2_TEMPLATE)
 
     def test_v2_slice_pages_only(self) -> None:
         self.assertIn('data-cf2-page="home"', V2_TEMPLATE)
@@ -142,16 +147,21 @@ class MerchantUiV2RouteTests(unittest.TestCase):
         self.assertIn("cf2-appbar-section", app_js)
         self.assertIn('section === "home" || section === "workspace"', app_js)
         self.assertIn("is-drawer-open", app_js)
+        self.assertIn("cf2-account-btn", app_js)
         frame_css = (ROOT / "static" / "merchant_ui_v2_frame.css").read_text(
             encoding="utf-8"
         )
         self.assertIn("document (html/body) scrolls vertically", frame_css)
+        self.assertIn("cf2-appbar__identity", frame_css)
+        self.assertIn("Literal mobile anatomy", frame_css)
         self.assertIn("overflow: visible", frame_css)
         self.assertNotRegex(
             frame_css,
             r'body\[data-cf-ui="v2"\]\s*\{[^}]*overflow:\s*hidden',
         )
         self.assertIn("body[data-cf-ui=\"v2\"].is-drawer-open", frame_css)
+        self.assertIn("home-stage-closure-v1", home_js)
+        self.assertIn("workspace-final-v1", ws_js)
 
     def test_assets_exist(self) -> None:
         for rel in (
