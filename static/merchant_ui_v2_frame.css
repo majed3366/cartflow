@@ -232,8 +232,13 @@ body[data-cf-ui="v2"] .cf2-appbar__account-icon {
   flex: 0 0 auto;
 }
 
-/* Mobile context strip — hidden on desktop */
-body[data-cf-ui="v2"] .cf2-ctx-mobile {
+/* Contextual trigger + sheet — mobile only (base: hidden) */
+body[data-cf-ui="v2"] .cf2-ctx-trigger {
+  display: none;
+}
+
+body[data-cf-ui="v2"] .cf2-ctx-sheet,
+body[data-cf-ui="v2"] .cf2-ctx-sheet-backdrop {
   display: none;
 }
 
@@ -454,7 +459,9 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
 @media (min-width: 1024px) {
   body[data-cf-ui="v2"] .cf2-appbar__mobile-only,
   body[data-cf-ui="v2"] .cf2-menu-btn,
-  body[data-cf-ui="v2"] .cf2-ctx-mobile {
+  body[data-cf-ui="v2"] .cf2-ctx-trigger,
+  body[data-cf-ui="v2"] .cf2-ctx-sheet,
+  body[data-cf-ui="v2"] .cf2-ctx-sheet-backdrop {
     display: none !important;
   }
 }
@@ -465,13 +472,13 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
   }
 
   /*
-   * Mobile GLOBAL upbar — brand only (no section label merged into identity).
-   * Contextual navigation is .cf2-ctx-mobile, not the drawer.
+   * Mobile closed: GLOBAL App Bar only.
+   * Contextual navigation opens via dedicated sheet — never a horizontal strip.
    */
   body[data-cf-ui="v2"] .cf2-appbar {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     padding: 0 10px;
     overflow: hidden;
   }
@@ -481,6 +488,16 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
   body[data-cf-ui="v2"] .cf2-appbar__date,
   body[data-cf-ui="v2"] .cf2-appbar__desktop-only {
     display: none !important;
+  }
+
+  body[data-cf-ui="v2"] .cf2-menu-btn {
+    display: inline-flex;
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.9);
+    border-radius: 10px;
   }
 
   body[data-cf-ui="v2"] .cf2-brand {
@@ -499,21 +516,38 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
     font-size: 14px;
   }
 
+  /* Quiet contextual control — opens sheet; not a nav row */
+  body[data-cf-ui="v2"] .cf2-ctx-trigger {
+    display: inline-flex;
+    align-items: center;
+    max-width: 7.5rem;
+    margin-inline-start: auto;
+    appearance: none;
+    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 7px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ctx-trigger[hidden] {
+    display: none !important;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ctx-trigger__text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   body[data-cf-ui="v2"] .cf2-appbar__account {
     display: inline-flex;
     width: 40px;
     height: 40px;
-    margin-inline-start: auto;
-    border: none;
-    background: transparent;
-    color: rgba(255, 255, 255, 0.9);
-    border-radius: 10px;
-  }
-
-  body[data-cf-ui="v2"] .cf2-menu-btn {
-    display: inline-flex;
-    width: 40px;
-    height: 40px;
+    margin-inline-start: 0;
     border: none;
     background: transparent;
     color: rgba(255, 255, 255, 0.9);
@@ -523,62 +557,11 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
   body[data-cf-ui="v2"] .cf2-appbar__account:hover,
   body[data-cf-ui="v2"] .cf2-appbar__account:active,
   body[data-cf-ui="v2"] .cf2-menu-btn:hover,
-  body[data-cf-ui="v2"] .cf2-menu-btn:active {
-    background: rgba(255, 255, 255, 0.08);
+  body[data-cf-ui="v2"] .cf2-menu-btn:active,
+  body[data-cf-ui="v2"] .cf2-ctx-trigger:hover,
+  body[data-cf-ui="v2"] .cf2-ctx-trigger:active {
+    background: rgba(255, 255, 255, 0.12);
     color: #fff;
-  }
-
-  /* Contextual strip — distinct from global drawer */
-  body[data-cf-ui="v2"] .cf2-ctx-mobile {
-    display: none;
-    flex: 0 0 auto;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 12px;
-    background: #f0f4f8;
-    border-bottom: 1px solid var(--cf2-border);
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  body[data-cf-ui="v2"] .cf2-ctx-mobile::-webkit-scrollbar {
-    display: none;
-  }
-
-  body[data-cf-ui="v2"] .cf2-ctx-mobile[data-cf2-ctx-mobile="on"] {
-    display: flex;
-  }
-
-  body[data-cf-ui="v2"] .cf2-ctx-mobile__area {
-    margin: 0;
-    flex: 0 0 auto;
-    font-size: 12px;
-    font-weight: 800;
-    color: var(--cf2-navy);
-    white-space: nowrap;
-  }
-
-  body[data-cf-ui="v2"] .cf2-ctx-mobile__items {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    min-width: 0;
-  }
-
-  body[data-cf-ui="v2"] .cf2-ctx-mobile .cf2-ctx__item {
-    display: inline-flex;
-    width: auto;
-    flex: 0 0 auto;
-    padding: 7px 12px;
-    border-radius: 999px;
-    background: rgba(8, 32, 72, 0.04);
-    font-size: 12px;
-    white-space: nowrap;
-  }
-
-  body[data-cf-ui="v2"] .cf2-ctx-mobile .cf2-ctx__item.is-active {
-    background: rgba(24, 176, 168, 0.16);
-    color: var(--cf2-navy);
   }
 
   body[data-cf-ui="v2"] .cf2-shell {
@@ -599,5 +582,78 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
     width: min(320px, 88vw);
     max-height: min(82vh, 600px);
     border-radius: 0 0 16px 16px;
+  }
+
+  /* Dedicated contextual sheet — separate from global drawer */
+  body[data-cf-ui="v2"] .cf2-ctx-sheet-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 32, 72, 0.42);
+    z-index: 50;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ctx-sheet-backdrop.is-open {
+    display: block;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ctx-sheet {
+    display: none;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    inset-inline-start: 0;
+    inset-inline-end: auto;
+    width: min(300px, 86vw);
+    max-height: min(78vh, 520px);
+    background: var(--cf2-surface);
+    color: var(--cf2-ink);
+    border-radius: 0 0 16px 16px;
+    box-shadow: 0 18px 40px rgba(8, 32, 72, 0.22);
+    z-index: 60;
+    overflow: auto;
+    padding: 16px 14px 18px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ctx-sheet.is-open {
+    display: flex;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ctx-sheet__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ctx-sheet__title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--cf2-navy);
+  }
+
+  body[data-cf-ui="v2"] .cf2-ctx-sheet__close {
+    appearance: none;
+    border: none;
+    background: rgba(8, 32, 72, 0.06);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ctx-sheet__label {
+    margin: 0 2px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--cf2-mute);
+  }
+
+  body[data-cf-ui="v2"] .cf2-ctx-sheet__body .cf2-ctx__item {
+    width: 100%;
   }
 }

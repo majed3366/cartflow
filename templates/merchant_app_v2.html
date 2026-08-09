@@ -17,8 +17,8 @@
 </head>
 <body data-cf-ui="v2" data-cf-merchant-app="1">
 <div class="cf2-root">
-  {# GLOBAL UPBAR — primary CartFlow destinations only. Contextual nav lives in sidebar / mobile context strip. #}
-  <header class="cf2-appbar" role="banner" data-cf2-appbar="global-upbar-v1">
+  {# GLOBAL UPBAR — primary destinations only. Contextual nav = desktop sidebar OR mobile ctx sheet. #}
+  <header class="cf2-appbar" role="banner" data-cf2-appbar="nav-final-v1">
     <button type="button" class="cf2-menu-btn" aria-label="فتح القائمة" aria-controls="cf2-drawer" aria-expanded="false">
       <span class="cf2-menu-btn__bars" aria-hidden="true"></span>
     </button>
@@ -44,6 +44,9 @@
         <span class="cf2-appbar__identity-name">{{ merchant_store_display_name | default("متجرك") }}</span>
       </button>
     </div>
+    <button type="button" class="cf2-ctx-trigger cf2-appbar__mobile-only" id="cf2-ctx-trigger" hidden aria-controls="cf2-ctx-sheet" aria-expanded="false" aria-label="التنقل داخل القسم">
+      <span class="cf2-ctx-trigger__text" id="cf2-ctx-trigger-text">في هذا القسم</span>
+    </button>
     <button type="button" class="cf2-appbar__account cf2-appbar__mobile-only" id="cf2-mobile-account" aria-label="الحساب" title="الحساب">
       <svg class="cf2-appbar__account-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <circle cx="12" cy="8" r="3.25" stroke="currentColor" stroke-width="1.75"/>
@@ -51,9 +54,6 @@
       </svg>
     </button>
   </header>
-
-  {# Mobile-only contextual strip — separate from Global drawer #}
-  <nav class="cf2-ctx-mobile" id="cf2-ctx-mobile" aria-label="التنقل داخل القسم" hidden></nav>
 
   <div class="cf2-shell" data-cf2-ctx="off">
     <aside class="cf2-ctx" id="cf2-ctx" aria-label="سياق القسم"></aside>
@@ -90,7 +90,7 @@
   </div>
 </div>
 
-{# GLOBAL drawer only — never mixes contextual area items #}
+{# GLOBAL drawer — platform sections + account only #}
 <div class="cf2-drawer-backdrop" aria-hidden="true"></div>
 <aside class="cf2-drawer" id="cf2-drawer" aria-label="التنقل العام">
   <div class="cf2-drawer__head">
@@ -112,6 +112,17 @@
     <button type="button" class="cf2-drawer__item" data-cf2-nav="settings">الملف والباقة</button>
     <a class="cf2-drawer__item" href="/logout">تسجيل الخروج</a>
   </div>
+</aside>
+
+{# CONTEXTUAL sheet — current-area navigation only (separate system from global drawer) #}
+<div class="cf2-ctx-sheet-backdrop" id="cf2-ctx-sheet-backdrop" hidden></div>
+<aside class="cf2-ctx-sheet" id="cf2-ctx-sheet" aria-label="التنقل داخل القسم" hidden>
+  <div class="cf2-ctx-sheet__head">
+    <p class="cf2-ctx-sheet__title" id="cf2-ctx-sheet-title"></p>
+    <button type="button" class="cf2-ctx-sheet__close" id="cf2-ctx-sheet-close" aria-label="إغلاق">×</button>
+  </div>
+  <p class="cf2-ctx-sheet__label">في هذا القسم</p>
+  <div class="cf2-ctx-sheet__body" id="cf2-ctx-sheet-body"></div>
 </aside>
 
 <script defer src="/static/merchant_ui_v2_language.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2v"></script>
