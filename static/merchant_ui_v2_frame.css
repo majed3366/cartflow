@@ -237,6 +237,10 @@ body[data-cf-ui="v2"] .cf2-ctx-trigger {
   display: none;
 }
 
+body[data-cf-ui="v2"] .cf2-section-chrome {
+  display: none;
+}
+
 body[data-cf-ui="v2"] .cf2-ctx-sheet,
 body[data-cf-ui="v2"] .cf2-ctx-sheet-backdrop {
   display: none;
@@ -459,6 +463,7 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
 @media (min-width: 1024px) {
   body[data-cf-ui="v2"] .cf2-appbar__mobile-only,
   body[data-cf-ui="v2"] .cf2-menu-btn,
+  body[data-cf-ui="v2"] .cf2-section-chrome,
   body[data-cf-ui="v2"] .cf2-ctx-trigger,
   body[data-cf-ui="v2"] .cf2-ctx-sheet,
   body[data-cf-ui="v2"] .cf2-ctx-sheet-backdrop {
@@ -472,8 +477,9 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
   }
 
   /*
-   * Mobile closed: GLOBAL App Bar only.
-   * Contextual navigation opens via dedicated sheet — never a horizontal strip.
+   * Mobile closed App Bar = GLOBAL only:
+   * Account utility · CartFlow identity · Global menu.
+   * Section names must NEVER appear in the App Bar.
    */
   body[data-cf-ui="v2"] .cf2-appbar {
     display: flex;
@@ -516,38 +522,11 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
     font-size: 14px;
   }
 
-  /* Quiet contextual control — opens sheet; not a nav row */
-  body[data-cf-ui="v2"] .cf2-ctx-trigger {
-    display: inline-flex;
-    align-items: center;
-    max-width: 7.5rem;
-    margin-inline-start: auto;
-    appearance: none;
-    border: none;
-    background: rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.88);
-    font-size: 11px;
-    font-weight: 700;
-    padding: 7px 10px;
-    border-radius: 8px;
-    cursor: pointer;
-    white-space: nowrap;
-  }
-
-  body[data-cf-ui="v2"] .cf2-ctx-trigger[hidden] {
-    display: none !important;
-  }
-
-  body[data-cf-ui="v2"] .cf2-ctx-trigger__text {
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
   body[data-cf-ui="v2"] .cf2-appbar__account {
     display: inline-flex;
     width: 40px;
     height: 40px;
-    margin-inline-start: 0;
+    margin-inline-start: auto;
     border: none;
     background: transparent;
     color: rgba(255, 255, 255, 0.9);
@@ -557,9 +536,7 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
   body[data-cf-ui="v2"] .cf2-appbar__account:hover,
   body[data-cf-ui="v2"] .cf2-appbar__account:active,
   body[data-cf-ui="v2"] .cf2-menu-btn:hover,
-  body[data-cf-ui="v2"] .cf2-menu-btn:active,
-  body[data-cf-ui="v2"] .cf2-ctx-trigger:hover,
-  body[data-cf-ui="v2"] .cf2-ctx-trigger:active {
+  body[data-cf-ui="v2"] .cf2-menu-btn:active {
     background: rgba(255, 255, 255, 0.12);
     color: #fff;
   }
@@ -574,6 +551,42 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
 
   body[data-cf-ui="v2"] .cf2-stage {
     padding: 16px 16px 40px;
+  }
+
+  /* Quiet section control under App Bar / near page — not a second bar */
+  body[data-cf-ui="v2"] .cf2-section-chrome {
+    display: flex;
+    justify-content: flex-start;
+    margin: 0 0 10px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-section-chrome[hidden] {
+    display: none !important;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ctx-trigger {
+    display: inline-flex;
+    align-items: center;
+    appearance: none;
+    border: 1px solid rgba(8, 32, 72, 0.12);
+    background: transparent;
+    color: var(--cf2-mute);
+    font-size: 12px;
+    font-weight: 650;
+    padding: 6px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ctx-trigger[hidden] {
+    display: none !important;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ctx-trigger:hover,
+  body[data-cf-ui="v2"] .cf2-ctx-trigger:active {
+    color: var(--cf2-navy);
+    border-color: rgba(8, 32, 72, 0.22);
+    background: rgba(8, 32, 72, 0.04);
   }
 
   body[data-cf-ui="v2"] .cf2-drawer {

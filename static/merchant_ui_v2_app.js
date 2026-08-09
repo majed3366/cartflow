@@ -85,6 +85,7 @@
     var ctx = $("#cf2-ctx");
     var sheetBody = $("#cf2-ctx-sheet-body");
     var sheetTitle = $("#cf2-ctx-sheet-title");
+    var chrome = $("#cf2-section-chrome");
     var trigger = $("#cf2-ctx-trigger");
     var triggerText = $("#cf2-ctx-trigger-text");
     if (!shell || !ctx) return;
@@ -97,6 +98,7 @@
       ctx.innerHTML = "";
       if (sheetBody) sheetBody.innerHTML = "";
       if (sheetTitle) sheetTitle.textContent = "";
+      if (chrome) chrome.hidden = true;
       if (trigger) {
         trigger.hidden = true;
         trigger.setAttribute("aria-expanded", "false");
@@ -118,9 +120,11 @@
 
     if (sheetBody) sheetBody.innerHTML = itemsHtml;
     if (sheetTitle) sheetTitle.textContent = title;
+    // Quiet page-level control — never paint section title into App Bar.
+    if (chrome) chrome.hidden = false;
     if (trigger) {
       trigger.hidden = false;
-      if (triggerText) triggerText.textContent = title;
+      if (triggerText) triggerText.textContent = "في هذا القسم";
     }
   }
 
