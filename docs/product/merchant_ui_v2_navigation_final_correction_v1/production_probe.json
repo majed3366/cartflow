@@ -1,0 +1,427 @@
+{
+  "deploy": {
+    "ok": true,
+    "sha": "cad45183f7cd0bba061ab6759aa5e8098ead4b2a",
+    "status": 200
+  },
+  "probes": {
+    "desktop_home": {
+      "marker": "nav-final-v1",
+      "horizontalCtxStripExists": false,
+      "ctxAttr": "on",
+      "sidebarVisible": true,
+      "triggerVisible": false,
+      "sheetOpen": false,
+      "drawerOpen": false,
+      "drawerItems": [
+        {
+          "nav": "home",
+          "ctx": null,
+          "text": "الرئيسية"
+        },
+        {
+          "nav": "workspace",
+          "ctx": null,
+          "text": "مساحة القرار"
+        },
+        {
+          "nav": "products",
+          "ctx": null,
+          "text": "المنتجات"
+        },
+        {
+          "nav": "carts",
+          "ctx": null,
+          "text": "السلال"
+        },
+        {
+          "nav": "comms",
+          "ctx": null,
+          "text": "التواصل"
+        },
+        {
+          "nav": "settings",
+          "ctx": null,
+          "text": "الإعدادات"
+        },
+        {
+          "nav": "settings",
+          "ctx": null,
+          "text": "الملف والباقة"
+        }
+      ],
+      "sheetItems": [
+        {
+          "id": "overview",
+          "text": "نظرة عامة"
+        }
+      ],
+      "sidebarItems": [
+        {
+          "id": "overview",
+          "text": "نظرة عامة"
+        }
+      ],
+      "drawerHasOverview": false
+    },
+    "desktop_workspace": {
+      "marker": "nav-final-v1",
+      "horizontalCtxStripExists": false,
+      "ctxAttr": "on",
+      "sidebarVisible": true,
+      "triggerVisible": false,
+      "sheetOpen": false,
+      "drawerOpen": false,
+      "drawerItems": [
+        {
+          "nav": "home",
+          "ctx": null,
+          "text": "الرئيسية"
+        },
+        {
+          "nav": "workspace",
+          "ctx": null,
+          "text": "مساحة القرار"
+        },
+        {
+          "nav": "products",
+          "ctx": null,
+          "text": "المنتجات"
+        },
+        {
+          "nav": "carts",
+          "ctx": null,
+          "text": "السلال"
+        },
+        {
+          "nav": "comms",
+          "ctx": null,
+          "text": "التواصل"
+        },
+        {
+          "nav": "settings",
+          "ctx": null,
+          "text": "الإعدادات"
+        },
+        {
+          "nav": "settings",
+          "ctx": null,
+          "text": "الملف والباقة"
+        }
+      ],
+      "sheetItems": [
+        {
+          "id": "attention",
+          "text": "ما يحتاج قرارك"
+        }
+      ],
+      "sidebarItems": [
+        {
+          "id": "attention",
+          "text": "ما يحتاج قرارك"
+        }
+      ],
+      "drawerHasOverview": false
+    },
+    "mobile_home_closed": {
+      "marker": "nav-final-v1",
+      "horizontalCtxStripExists": false,
+      "ctxAttr": "on",
+      "sidebarVisible": false,
+      "triggerVisible": true,
+      "sheetOpen": false,
+      "drawerOpen": false,
+      "drawerItems": [
+        {
+          "nav": "home",
+          "ctx": null,
+          "text": "الرئيسية"
+        },
+        {
+          "nav": "workspace",
+          "ctx": null,
+          "text": "مساحة القرار"
+        },
+        {
+          "nav": "products",
+          "ctx": null,
+          "text": "المنتجات"
+        },
+        {
+          "nav": "carts",
+          "ctx": null,
+          "text": "السلال"
+        },
+        {
+          "nav": "comms",
+          "ctx": null,
+          "text": "التواصل"
+        },
+        {
+          "nav": "settings",
+          "ctx": null,
+          "text": "الإعدادات"
+        },
+        {
+          "nav": "settings",
+          "ctx": null,
+          "text": "الملف والباقة"
+        }
+      ],
+      "sheetItems": [
+        {
+          "id": "overview",
+          "text": "نظرة عامة"
+        }
+      ],
+      "sidebarItems": [
+        {
+          "id": "overview",
+          "text": "نظرة عامة"
+        }
+      ],
+      "drawerHasOverview": false
+    },
+    "mobile_home_context": {
+      "marker": "nav-final-v1",
+      "horizontalCtxStripExists": false,
+      "ctxAttr": "on",
+      "sidebarVisible": false,
+      "triggerVisible": true,
+      "sheetOpen": true,
+      "drawerOpen": false,
+      "drawerItems": [
+        {
+          "nav": "home",
+          "ctx": null,
+          "text": "الرئيسية"
+        },
+        {
+          "nav": "workspace",
+          "ctx": null,
+          "text": "مساحة القرار"
+        },
+        {
+          "nav": "products",
+          "ctx": null,
+          "text": "المنتجات"
+        },
+        {
+          "nav": "carts",
+          "ctx": null,
+          "text": "السلال"
+        },
+        {
+          "nav": "comms",
+          "ctx": null,
+          "text": "التواصل"
+        },
+        {
+          "nav": "settings",
+          "ctx": null,
+          "text": "الإعدادات"
+        },
+        {
+          "nav": "settings",
+          "ctx": null,
+          "text": "الملف والباقة"
+        }
+      ],
+      "sheetItems": [
+        {
+          "id": "overview",
+          "text": "نظرة عامة"
+        }
+      ],
+      "sidebarItems": [
+        {
+          "id": "overview",
+          "text": "نظرة عامة"
+        }
+      ],
+      "drawerHasOverview": false
+    },
+    "mobile_home_global": {
+      "marker": "nav-final-v1",
+      "horizontalCtxStripExists": false,
+      "ctxAttr": "on",
+      "sidebarVisible": false,
+      "triggerVisible": true,
+      "sheetOpen": false,
+      "drawerOpen": true,
+      "drawerItems": [
+        {
+          "nav": "home",
+          "ctx": null,
+          "text": "الرئيسية"
+        },
+        {
+          "nav": "workspace",
+          "ctx": null,
+          "text": "مساحة القرار"
+        },
+        {
+          "nav": "products",
+          "ctx": null,
+          "text": "المنتجات"
+        },
+        {
+          "nav": "carts",
+          "ctx": null,
+          "text": "السلال"
+        },
+        {
+          "nav": "comms",
+          "ctx": null,
+          "text": "التواصل"
+        },
+        {
+          "nav": "settings",
+          "ctx": null,
+          "text": "الإعدادات"
+        },
+        {
+          "nav": "settings",
+          "ctx": null,
+          "text": "الملف والباقة"
+        }
+      ],
+      "sheetItems": [
+        {
+          "id": "overview",
+          "text": "نظرة عامة"
+        }
+      ],
+      "sidebarItems": [
+        {
+          "id": "overview",
+          "text": "نظرة عامة"
+        }
+      ],
+      "drawerHasOverview": false
+    },
+    "mobile_workspace_closed": {
+      "marker": "nav-final-v1",
+      "horizontalCtxStripExists": false,
+      "ctxAttr": "on",
+      "sidebarVisible": false,
+      "triggerVisible": true,
+      "sheetOpen": false,
+      "drawerOpen": false,
+      "drawerItems": [
+        {
+          "nav": "home",
+          "ctx": null,
+          "text": "الرئيسية"
+        },
+        {
+          "nav": "workspace",
+          "ctx": null,
+          "text": "مساحة القرار"
+        },
+        {
+          "nav": "products",
+          "ctx": null,
+          "text": "المنتجات"
+        },
+        {
+          "nav": "carts",
+          "ctx": null,
+          "text": "السلال"
+        },
+        {
+          "nav": "comms",
+          "ctx": null,
+          "text": "التواصل"
+        },
+        {
+          "nav": "settings",
+          "ctx": null,
+          "text": "الإعدادات"
+        },
+        {
+          "nav": "settings",
+          "ctx": null,
+          "text": "الملف والباقة"
+        }
+      ],
+      "sheetItems": [
+        {
+          "id": "attention",
+          "text": "ما يحتاج قرارك"
+        }
+      ],
+      "sidebarItems": [
+        {
+          "id": "attention",
+          "text": "ما يحتاج قرارك"
+        }
+      ],
+      "drawerHasOverview": false
+    },
+    "mobile_workspace_context": {
+      "marker": "nav-final-v1",
+      "horizontalCtxStripExists": false,
+      "ctxAttr": "on",
+      "sidebarVisible": false,
+      "triggerVisible": true,
+      "sheetOpen": true,
+      "drawerOpen": false,
+      "drawerItems": [
+        {
+          "nav": "home",
+          "ctx": null,
+          "text": "الرئيسية"
+        },
+        {
+          "nav": "workspace",
+          "ctx": null,
+          "text": "مساحة القرار"
+        },
+        {
+          "nav": "products",
+          "ctx": null,
+          "text": "المنتجات"
+        },
+        {
+          "nav": "carts",
+          "ctx": null,
+          "text": "السلال"
+        },
+        {
+          "nav": "comms",
+          "ctx": null,
+          "text": "التواصل"
+        },
+        {
+          "nav": "settings",
+          "ctx": null,
+          "text": "الإعدادات"
+        },
+        {
+          "nav": "settings",
+          "ctx": null,
+          "text": "الملف والباقة"
+        }
+      ],
+      "sheetItems": [
+        {
+          "id": "attention",
+          "text": "ما يحتاج قرارك"
+        }
+      ],
+      "sidebarItems": [
+        {
+          "id": "attention",
+          "text": "ما يحتاج قرارك"
+        }
+      ],
+      "drawerHasOverview": false
+    },
+    "mobile_scroll": {
+      "y": 700,
+      "bodyOverflow": "auto"
+    }
+  },
+  "gate_no_horizontal_ctx": true
+}
