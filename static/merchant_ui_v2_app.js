@@ -1,36 +1,40 @@
 /**
  * CartFlow Merchant UI V2 — App shell router.
- * GLOBAL UPBAR / drawer = primary destinations.
- * CONTEXTUAL SIDEBAR (desktop) / CONTEXTUAL SHEET (mobile) = current-area only.
- * These are separate systems — never mixed in one list.
+ * Exactly TWO navigation levels from ONE registry:
+ *   1) GLOBAL — Upbar / App Bar + Global Drawer
+ *   2) CONTEXTUAL — Sidebar (desktop column / mobile drawer)
+ * Never invent a third layer (page-chrome, context strip, floating pills).
  */
 (function () {
   "use strict";
 
-  var SECTIONS = [
-    { id: "home", label: "الرئيسية", slice: true },
-    { id: "workspace", label: "مساحة القرار", slice: true },
-    { id: "products", label: "المنتجات", slice: false },
-    { id: "carts", label: "السلال", slice: false },
-    { id: "comms", label: "التواصل", slice: false },
-    { id: "settings", label: "الإعدادات", slice: false },
-  ];
-
-  /**
-   * Real V2 contextual views only (no invented subroutes).
-   * Home: نظرة عامة. Workspace: ما يحتاج قرارك.
-   * V1 الملخص العام is not a live V2 composition.
-   */
-  var CTX = {
-    home: {
-      title: "الرئيسية",
-      items: [{ id: "overview", label: "نظرة عامة" }],
-    },
-    workspace: {
-      title: "مساحة القرار",
-      items: [{ id: "attention", label: "ما يحتاج قرارك" }],
+  /** Canonical navigation registry — desktop and mobile consume this only. */
+  var NAV = {
+    global: [
+      { id: "home", label: "الرئيسية", slice: true },
+      { id: "workspace", label: "مساحة القرار", slice: true },
+      { id: "products", label: "المنتجات", slice: false },
+      { id: "carts", label: "السلال", slice: false },
+      { id: "comms", label: "التواصل", slice: false },
+      { id: "settings", label: "الإعدادات", slice: false },
+    ],
+    contextual: {
+      home: {
+        title: "الرئيسية",
+        items: [{ id: "overview", label: "نظرة عامة" }],
+      },
+      workspace: {
+        title: "مساحة القرار",
+        items: [{ id: "attention", label: "ما يحتاج قرارك" }],
+      },
+      products: null,
+      carts: null,
+      comms: null,
+      settings: null,
     },
   };
+
+  var SECTIONS = NAV.global;
 
   function $(sel, root) {
     return (root || document).querySelector(sel);
@@ -54,6 +58,12 @@
     return "CartFlow";
   }
 
+  function contextualFor(section) {
+    var conf = NAV.contextual[section];
+    if (!conf || !(conf.items && conf.items.length)) return null;
+    return conf;
+  }
+
   function setActiveNav(section) {
     $all("[data-cf2-nav]").forEach(function (btn) {
       var on = btn.getAttribute("data-cf2-nav") === section;
@@ -62,8 +72,15 @@
     });
   }
 
-  function paintCtxItems(conf, activeId) {
-    var html = "";
+  function paintCtxMarkup(conf, activeId) {
+    var title = conf.title || "";
+    var html =
+      '<div class="cf2-ctx__toolbar">' +
+      '<button type="button" class="cf2-ctx__close" id="cf2-ctx-close" aria-label="إغلاق شريط القسم">×</button>' +
+      "</div>" +
+      '<p class="cf2-ctx__area">' +
+      title +
+      "</p>";
     (conf.items || []).forEach(function (item) {
       var on = item.id === activeId;
       html +=
@@ -83,46 +100,42 @@
   function setContext(section) {
     var shell = $(".cf2-shell");
     var ctx = $("#cf2-ctx");
-    var sheetBody = $("#cf2-ctx-sheet-body");
-    var sheetTitle = $("#cf2-ctx-sheet-title");
-    var pageChrome = $("#cf2-page-chrome");
-    var trigger = $("#cf2-ctx-trigger");
-    var triggerText = $("#cf2-ctx-trigger-text");
+    var ctxBtn = $("#cf2-ctx-btn");
     if (!shell || !ctx) return;
 
-    closeCtxSheet();
+    closeCtxDrawer();
 
-    var conf = CTX[section];
-    if (!conf || !(conf.items && conf.items.length)) {
+    var conf = contextualFor(section);
+    if (!conf) {
       shell.setAttribute("data-cf2-ctx", "off");
       ctx.innerHTML = "";
-      if (sheetBody) sheetBody.innerHTML = "";
-      if (sheetTitle) sheetTitle.textContent = "";
-      if (pageChrome) pageChrome.hidden = true;
-      if (trigger) trigger.setAttribute("aria-expanded", "false");
-      if (triggerText) triggerText.textContent = "";
+      ctx.hidden = true;
+      if (ctxBtn) {
+        ctxBtn.hidden = true;
+        ctxBtn.setAttribute("aria-expanded", "false");
+      }
       return;
     }
 
     shell.setAttribute("data-cf2-ctx", "on");
-    var activeId = conf.items[0].id;
-    var title = conf.title || sectionLabel(section);
-    var activeLabel = conf.items[0].label || "";
-    var itemsHtml = paintCtxItems(conf, activeId);
+    ctx.hidden = false;
+    ctx.innerHTML = paintCtxMarkup(conf, conf.items[0].id);
+    bindCtxClose();
+    if (ctxBtn) {
+      ctxBtn.hidden = false;
+      ctxBtn.setAttribute("aria-expanded", "false");
+      ctxBtn.setAttribute(
+        "aria-label",
+        "فتح شريط " + (conf.title || sectionLabel(section))
+      );
+    }
+  }
 
-    ctx.innerHTML =
-      '<p class="cf2-ctx__area">' +
-      title +
-      "</p>" +
-      '<p class="cf2-ctx__label">في هذا القسم</p>' +
-      itemsHtml;
-
-    if (sheetBody) sheetBody.innerHTML = itemsHtml;
-    if (sheetTitle) sheetTitle.textContent = title;
-    // Frame page-chrome only — never inject into App Bar or page content title row.
-    if (pageChrome) pageChrome.hidden = false;
-    if (triggerText) triggerText.textContent = activeLabel;
-    if (trigger) trigger.setAttribute("aria-expanded", "false");
+  function bindCtxClose() {
+    var close = $("#cf2-ctx-close");
+    if (close) {
+      close.addEventListener("click", closeCtxDrawer);
+    }
   }
 
   function showPage(section) {
@@ -146,14 +159,14 @@
     if (d) d.classList.remove("is-open");
     if (b) b.classList.remove("is-open");
     document.body.classList.remove("is-drawer-open");
-    if (!document.body.classList.contains("is-ctx-sheet-open")) {
+    if (!document.body.classList.contains("is-ctx-open")) {
       document.body.style.overflow = "";
     }
     setMenuExpanded(false);
   }
 
   function openDrawer() {
-    closeCtxSheet();
+    closeCtxDrawer();
     var d = $(".cf2-drawer");
     var b = $(".cf2-drawer-backdrop");
     if (d) d.classList.add("is-open");
@@ -168,45 +181,41 @@
     else openDrawer();
   }
 
-  function closeCtxSheet() {
-    var sheet = $("#cf2-ctx-sheet");
-    var backdrop = $("#cf2-ctx-sheet-backdrop");
-    var trigger = $("#cf2-ctx-trigger");
-    if (sheet) {
-      sheet.classList.remove("is-open");
-      sheet.hidden = true;
-    }
+  function closeCtxDrawer() {
+    var ctx = $("#cf2-ctx");
+    var backdrop = $("#cf2-ctx-backdrop");
+    var ctxBtn = $("#cf2-ctx-btn");
+    document.body.classList.remove("is-ctx-open");
+    if (ctx) ctx.classList.remove("is-open");
     if (backdrop) {
       backdrop.classList.remove("is-open");
       backdrop.hidden = true;
     }
-    document.body.classList.remove("is-ctx-sheet-open");
-    if (trigger) trigger.setAttribute("aria-expanded", "false");
+    if (ctxBtn) ctxBtn.setAttribute("aria-expanded", "false");
     if (!document.body.classList.contains("is-drawer-open")) {
       document.body.style.overflow = "";
     }
   }
 
-  function openCtxSheet() {
+  function openCtxDrawer() {
     closeDrawer();
-    var sheet = $("#cf2-ctx-sheet");
-    var backdrop = $("#cf2-ctx-sheet-backdrop");
-    var trigger = $("#cf2-ctx-trigger");
-    if (!sheet || sheet.querySelectorAll("[data-cf2-ctx-item]").length === 0) return;
-    sheet.hidden = false;
-    sheet.classList.add("is-open");
+    var ctx = $("#cf2-ctx");
+    var backdrop = $("#cf2-ctx-backdrop");
+    var ctxBtn = $("#cf2-ctx-btn");
+    if (!ctx || ctx.hidden || !ctx.querySelector("[data-cf2-ctx-item]")) return;
+    ctx.classList.add("is-open");
     if (backdrop) {
       backdrop.hidden = false;
       backdrop.classList.add("is-open");
     }
-    document.body.classList.add("is-ctx-sheet-open");
+    document.body.classList.add("is-ctx-open");
     document.body.style.overflow = "hidden";
-    if (trigger) trigger.setAttribute("aria-expanded", "true");
+    if (ctxBtn) ctxBtn.setAttribute("aria-expanded", "true");
   }
 
-  function toggleCtxSheet() {
-    if (document.body.classList.contains("is-ctx-sheet-open")) closeCtxSheet();
-    else openCtxSheet();
+  function toggleCtxDrawer() {
+    if (document.body.classList.contains("is-ctx-open")) closeCtxDrawer();
+    else openCtxDrawer();
   }
 
   function loadSection(section) {
@@ -214,7 +223,7 @@
     setContext(section);
     showPage(section);
     closeDrawer();
-    closeCtxSheet();
+    closeCtxDrawer();
 
     if (section === "home") {
       var homeRoot = $("#cf2-home-root");
@@ -257,12 +266,10 @@
     var backdrop = $(".cf2-drawer-backdrop");
     if (backdrop) backdrop.addEventListener("click", closeDrawer);
 
-    var ctxTrigger = $("#cf2-ctx-trigger");
-    if (ctxTrigger) ctxTrigger.addEventListener("click", toggleCtxSheet);
-    var ctxClose = $("#cf2-ctx-sheet-close");
-    if (ctxClose) ctxClose.addEventListener("click", closeCtxSheet);
-    var ctxBackdrop = $("#cf2-ctx-sheet-backdrop");
-    if (ctxBackdrop) ctxBackdrop.addEventListener("click", closeCtxSheet);
+    var ctxBtn = $("#cf2-ctx-btn");
+    if (ctxBtn) ctxBtn.addEventListener("click", toggleCtxDrawer);
+    var ctxBackdrop = $("#cf2-ctx-backdrop");
+    if (ctxBackdrop) ctxBackdrop.addEventListener("click", closeCtxDrawer);
 
     var brand = $(".cf2-brand");
     if (brand) {
@@ -283,9 +290,10 @@
 
   window.CartFlowUiV2 = {
     go: go,
+    nav: NAV,
     sections: SECTIONS,
-    ctx: CTX,
-    openCtxSheet: openCtxSheet,
-    closeCtxSheet: closeCtxSheet,
+    ctx: NAV.contextual,
+    openCtxDrawer: openCtxDrawer,
+    closeCtxDrawer: closeCtxDrawer,
   };
 })();
