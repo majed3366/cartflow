@@ -1,0 +1,108 @@
+{% extends "layouts/admin_dashboard.html" %}
+{% block admin_title %}CartFlow Admin — Control Number ES{% endblock %}
+{% block admin_main_class %}w-full max-w-[56rem] space-y-6 px-6 py-8 pb-24 lg:px-10{% endblock %}
+
+{% block admin_content %}
+<section class="admin-card px-6 py-6" data-control-es="{{ recovery_marker }}">
+  <p class="text-xs font-semibold uppercase tracking-wide text-teal-700">WhatsApp Control Number Test — Phase C2</p>
+  <h2 class="mt-2 text-2xl font-bold text-slate-900">Control Number Embedded Signup</h2>
+  <p class="mt-2 max-w-2xl text-sm text-slate-600">
+    Admin-only diagnostic path to add/authorize the <strong>new clean</strong> control phone on the
+    <strong>existing</strong> CartFlow WABA. Isolated from production recovery.
+    Does <strong>not</strong> call <code dir="ltr">/register</code>, overwrite env IDs, or switch runtime.
+  </p>
+  <dl class="mt-4 grid gap-3 sm:grid-cols-2 text-sm">
+    <div>
+      <dt class="text-slate-500">Required WABA (same as production)</dt>
+      <dd class="mt-1 font-mono text-slate-900" dir="ltr" id="cnes-waba">{{ control_waba_id }}</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">Control phone (E.164)</dt>
+      <dd class="mt-1 font-mono text-slate-900" dir="ltr" id="cnes-control-phone">{{ control_phone_e164 }}</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">Production Phone Number ID (must NOT appear)</dt>
+      <dd class="mt-1 font-mono text-amber-800" dir="ltr" id="cnes-prod-phone">{{ production_phone_number_id }}</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">Marker</dt>
+      <dd class="mt-1 font-mono text-slate-900" dir="ltr">{{ recovery_marker }}</dd>
+    </div>
+  </dl>
+</section>
+
+<section class="admin-card px-6 py-5">
+  <h3 class="text-lg font-semibold text-slate-900">Operator checklist</h3>
+  <ol class="mt-3 list-decimal space-y-1 pl-5 text-sm text-slate-700">
+    <li>Launch Embedded Signup below.</li>
+    <li>Select the <strong>existing</strong> CartFlow business.</li>
+    <li>Select existing WABA <code dir="ltr">{{ control_waba_id }}</code> — do not create a new WABA.</li>
+    <li>Add and verify phone <code dir="ltr">{{ control_phone_display }}</code>.</li>
+    <li>Confirm result shows a <strong>new</strong> Phone Number ID ≠ production.</li>
+    <li><strong>STOP</strong> — do not register.</li>
+  </ol>
+</section>
+
+<section class="admin-card px-6 py-5">
+  <h3 class="text-lg font-semibold text-slate-900">Configuration</h3>
+  <p id="cnes-config-status" class="mt-2 text-xs text-slate-500">Loading…</p>
+  <dl class="mt-4 grid gap-3 sm:grid-cols-2 text-sm">
+    <div>
+      <dt class="text-slate-500">App ID</dt>
+      <dd id="cnes-app-id" class="mt-1 font-mono text-slate-900" dir="ltr">—</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">Configuration ID</dt>
+      <dd id="cnes-config-id" class="mt-1 font-mono text-slate-900" dir="ltr">—</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">App Secret</dt>
+      <dd id="cnes-secret" class="mt-1 font-medium text-slate-900">—</dd>
+    </div>
+    <div>
+      <dt class="text-slate-500">Ready</dt>
+      <dd id="cnes-ready" class="mt-1 font-medium text-slate-900">—</dd>
+    </div>
+  </dl>
+</section>
+
+<section class="admin-card px-6 py-5">
+  <h3 class="text-lg font-semibold text-slate-900">Launch Embedded Signup</h3>
+  <p class="mt-2 text-sm text-slate-600">
+    Opens Meta’s hosted flow. Server asserts WABA + control E.164 + non-production Phone Number ID,
+    exchanges the code ephemerally, then <strong>stops</strong>.
+  </p>
+  <div class="mt-4 flex flex-wrap items-center gap-3">
+    <button
+      type="button"
+      id="cnes-launch"
+      class="rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-50"
+      disabled
+    >
+      Start Control Embedded Signup
+    </button>
+    <span id="cnes-sdk-status" class="text-xs text-slate-500">Facebook SDK: pending</span>
+  </div>
+  <p id="cnes-session-status" class="mt-3 text-xs text-slate-500">Session: waiting</p>
+</section>
+
+<section class="admin-card px-6 py-5">
+  <h3 class="text-lg font-semibold text-slate-900">Result</h3>
+  <p id="cnes-result-status" class="mt-2 text-xs text-slate-500">—</p>
+  <pre id="cnes-result-json" class="mt-3 overflow-x-auto rounded-lg bg-slate-50 p-3 text-xs text-slate-800" dir="ltr">{}</pre>
+  <p class="mt-3 text-xs text-amber-700">
+    Tokens and App Secret are never shown. Production env IDs are never written.
+    <code dir="ltr">/register</code> is blocked on this path.
+  </p>
+</section>
+
+<script>
+  window.CARTFLOW_CONTROL_ES = {
+    marker: {{ recovery_marker | tojson }},
+    controlWabaId: {{ control_waba_id | tojson }},
+    controlPhoneE164: {{ control_phone_e164 | tojson }},
+    productionPhoneNumberId: {{ production_phone_number_id | tojson }}
+  };
+</script>
+<script defer src="/static/admin_whatsapp_control_number_es.js?v={{ recovery_marker }}"></script>
+{% endblock %}

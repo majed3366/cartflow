@@ -1099,6 +1099,105 @@ async def api_admin_whatsapp_es_recovery_complete(request: Request) -> Any:
     return JSONResponse(result, status_code=status)
 
 
+@router.get("/admin/whatsapp/control-number-es", response_class=HTMLResponse)
+def admin_whatsapp_control_number_es_page(request: Request) -> Any:
+    """Admin-only control-number Embedded Signup (Phase C2). No /register."""
+    denied = _admin_session_or_redirect(
+        request, next_path="/admin/whatsapp/control-number-es"
+    )
+    if denied is not None:
+        return denied
+    from services.admin_whatsapp_control_number_es_v1 import (  # noqa: PLC0415
+        CONTROL_PHONE_DISPLAY_HINT,
+        CONTROL_PHONE_E164,
+        CONTROL_WABA_ID,
+        PRODUCTION_PHONE_NUMBER_ID,
+        RECOVERY_MARKER,
+    )
+
+    return templates.TemplateResponse(
+        request,
+        "admin_whatsapp_control_number_es.html",
+        {
+            "admin_active_nav": ADMIN_NAV_WHATSAPP,
+            "admin_page_title_ar": "واتساب — رقم التحكم (C2)",
+            "admin_page_subtitle_ar": "إضافة رقم نظيف على نفس WABA — بدون /register",
+            "recovery_marker": RECOVERY_MARKER,
+            "control_waba_id": CONTROL_WABA_ID,
+            "control_phone_e164": CONTROL_PHONE_E164,
+            "control_phone_display": CONTROL_PHONE_DISPLAY_HINT,
+            "production_phone_number_id": PRODUCTION_PHONE_NUMBER_ID,
+        },
+    )
+
+
+@router.get("/admin/api/whatsapp/control-number-es/config")
+def api_admin_whatsapp_control_number_es_config(request: Request) -> Any:
+    denied = _admin_json_auth(request)
+    if denied is not None:
+        return denied
+    from services.admin_whatsapp_control_number_es_v1 import (  # noqa: PLC0415
+        public_control_config,
+    )
+
+    cfg = public_control_config()
+    for banned in ("access_token", "token", "app_secret", "client_secret", "code"):
+        cfg.pop(banned, None)
+    return j(cfg)
+
+
+@router.post("/admin/api/whatsapp/control-number-es/complete")
+async def api_admin_whatsapp_control_number_es_complete(request: Request) -> Any:
+    """Exchange ES code for control phone on existing WABA. Never calls /register."""
+    denied = _admin_json_auth(request)
+    if denied is not None:
+        return denied
+    try:
+        body = await request.json()
+    except (TypeError, ValueError):
+        body = {}
+    if not isinstance(body, dict):
+        body = {}
+
+    from services.admin_whatsapp_control_number_es_v1 import (  # noqa: PLC0415
+        complete_control_number_es,
+    )
+
+    result = complete_control_number_es(
+        code=str(body.get("code") or ""),
+        waba_id=str(body.get("waba_id") or ""),
+        phone_number_id=str(body.get("phone_number_id") or ""),
+        business_id=str(body.get("business_id") or ""),
+        session_event=str(body.get("session_event") or ""),
+        display_phone_number=str(body.get("display_phone_number") or ""),
+        allow_waba_phone_fallback=bool(
+            body.get("allow_waba_phone_fallback")
+            or body.get("allow_shared_waba_fallback")
+        ),
+        dialog_redirect_uri=str(body.get("dialog_redirect_uri") or ""),
+        spawn_page_uri=str(body.get("spawn_page_uri") or ""),
+    )
+    for banned in (
+        "access_token",
+        "token",
+        "app_secret",
+        "client_secret",
+        "code",
+        "authorization_code",
+    ):
+        result.pop(banned, None)
+    status = 200 if result.get("ok") else 400
+    if result.get("aborted") and result.get("error") in (
+        "asset_assertion_failed",
+        "production_phone_id_appeared",
+        "waba_mismatch_or_new_waba",
+        "phone_e164_mismatch",
+        "control_phone_not_found_on_waba",
+    ):
+        status = 409
+    return JSONResponse(result, status_code=status)
+
+
 @router.get("/admin/api/whatsapp/meta-phone-numbers")
 def api_admin_whatsapp_meta_phone_numbers(request: Request) -> Any:
     """Read-only WABA phone enumeration (no send / no register)."""
