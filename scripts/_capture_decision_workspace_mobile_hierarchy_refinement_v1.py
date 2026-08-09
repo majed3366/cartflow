@@ -15,7 +15,7 @@ SHOTS = OUT / "screenshots"
 BASE = "https://smartreplyai.net"
 MARKER = "v1"
 SHELL_MARKER = "shell-integration-v1"
-EXPECTED_SHA_PREFIX = ""  # set after deploy
+EXPECTED_SHA_PREFIX = "7921135"
 
 
 def wait_for_deploy(sha_prefix: str, timeout_s: int = 720) -> dict:

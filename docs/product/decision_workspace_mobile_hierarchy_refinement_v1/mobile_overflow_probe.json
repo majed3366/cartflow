@@ -1,0 +1,45 @@
+{
+  "deploy": {
+    "ok": true,
+    "sha": "79211357fd5ebe6ff29c64db4192ccdbc7b792f5",
+    "status": 200
+  },
+  "430_top": {
+    "overflowX": false,
+    "scrollWidth": 430,
+    "clientWidth": 430,
+    "offenderCount": 0,
+    "offenders": [],
+    "bodyOverflowX": "hidden"
+  },
+  "430_action": {
+    "overflowX": false,
+    "scrollWidth": 430,
+    "clientWidth": 430,
+    "offenderCount": 0,
+    "offenders": [],
+    "bodyOverflowX": "hidden"
+  },
+  "390_top": {
+    "overflowX": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "offenderCount": 0,
+    "offenders": [],
+    "bodyOverflowX": "hidden"
+  },
+  "390_action": {
+    "overflowX": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "offenderCount": 0,
+    "offenders": [],
+    "bodyOverflowX": "hidden"
+  },
+  "summary": {
+    "noOverflow430": true,
+    "noOverflow390": true,
+    "offenderCount430": 0,
+    "offenderCount390": 0
+  }
+}
