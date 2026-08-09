@@ -676,10 +676,16 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
     opacity: 0;
   }
 
+  /* Account yields to drawer account section — no leftover edge remnant */
   body[data-cf-ui="v2"].is-drawer-open .cf2-appbar__account {
-    background: linear-gradient(165deg, #0a2d5c 0%, #082048 55%, #001838 100%);
-    color: #fff;
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+    visibility: hidden;
+    pointer-events: none;
+    width: 0;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    opacity: 0;
   }
 
   body[data-cf-ui="v2"] .cf2-shell {
