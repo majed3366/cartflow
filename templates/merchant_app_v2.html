@@ -9,15 +9,15 @@
 <script>window.CARTFLOW_STORE_SLUG = "{{ merchant_store_slug | default('demo') }}";</script>
 <script>window.CARTFLOW_UI_V2 = true;</script>
 {# Clean-slate V2 — no legacy merchant CSS cascade #}
-<link rel="stylesheet" href="/static/merchant_ui_v2_ds.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2t">
-<link rel="stylesheet" href="/static/merchant_ui_v2_frame.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2t">
-<link rel="stylesheet" href="/static/merchant_ui_v2_language.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2t">
-<link rel="stylesheet" href="/static/merchant_ui_v2_home.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2t">
-<link rel="stylesheet" href="/static/merchant_ui_v2_workspace.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2t">
+<link rel="stylesheet" href="/static/merchant_ui_v2_ds.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2u">
+<link rel="stylesheet" href="/static/merchant_ui_v2_frame.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2u">
+<link rel="stylesheet" href="/static/merchant_ui_v2_language.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2u">
+<link rel="stylesheet" href="/static/merchant_ui_v2_home.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2u">
+<link rel="stylesheet" href="/static/merchant_ui_v2_workspace.css?v={{ merchant_setup_render_build | default('unknown') }}-uiv2u">
 </head>
 <body data-cf-ui="v2" data-cf-merchant-app="1">
 <div class="cf2-root">
-  <header class="cf2-appbar" role="banner" data-cf2-appbar="final-closure-v1">
+  <header class="cf2-appbar" role="banner" data-cf2-appbar="mobile-reality-v1">
     <button type="button" class="cf2-appbar__account cf2-appbar__mobile-only" id="cf2-mobile-account" aria-label="الحساب" title="الحساب">
       <svg class="cf2-appbar__account-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <circle cx="12" cy="8" r="3.25" stroke="currentColor" stroke-width="1.75"/>
@@ -110,9 +110,9 @@
   </div>
 </aside>
 
-<script defer src="/static/merchant_ui_v2_language.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2t"></script>
-<script defer src="/static/merchant_ui_v2_home.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2t"></script>
-<script defer src="/static/merchant_ui_v2_workspace.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2t"></script>
-<script defer src="/static/merchant_ui_v2_app.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2t"></script>
+<script defer src="/static/merchant_ui_v2_language.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2u"></script>
+<script defer src="/static/merchant_ui_v2_home.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2u"></script>
+<script defer src="/static/merchant_ui_v2_workspace.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2u"></script>
+<script defer src="/static/merchant_ui_v2_app.js?v={{ merchant_setup_render_build | default('unknown') }}-uiv2u"></script>
 </body>
 </html>

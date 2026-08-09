@@ -487,44 +487,95 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
 
 @media (max-width: 1023px) {
   body[data-cf-ui="v2"] {
-    --cf2-appbar-h: 48px;
+    --cf2-appbar-h: 52px;
   }
 
-  /* Literal mobile anatomy (single row): account | CartFlow | section | menu */
+  /*
+   * Mobile App Bar Reality Correction V1
+   * Root cause of FAIL: .cf2-brand__word was clipped (sr-only), so only a
+   * mark fragment remained; section flex:1 created a dead gap that made the
+   * bar read incomplete on real iPhone viewports.
+   * Required closed-state anatomy (LTR chrome row):
+   *   account · CartFlow mark+word · active section · menu
+   */
   body[data-cf-ui="v2"] .cf2-appbar {
     direction: ltr;
     padding: 0 10px;
     gap: 8px;
     flex-wrap: nowrap;
+    align-items: center;
+    overflow: visible;
   }
 
   body[data-cf-ui="v2"] .cf2-appbar__account {
     display: inline-flex;
     order: 1;
+    flex: 0 0 auto;
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
   }
 
   body[data-cf-ui="v2"] .cf2-brand {
     order: 2;
+    display: inline-flex;
+    align-items: center;
     flex: 0 0 auto;
+    flex-shrink: 0;
     margin: 0;
     gap: 6px;
+    max-width: none;
+  }
+
+  /* MUST remain visible — never clip the wordmark on mobile */
+  body[data-cf-ui="v2"] .cf2-brand__word {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    clip-path: none;
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    color: #fff;
+    white-space: nowrap;
+  }
+
+  body[data-cf-ui="v2"] .cf2-brand__mark {
+    width: 24px;
+    height: 24px;
+    flex: 0 0 auto;
   }
 
   body[data-cf-ui="v2"] .cf2-appbar__section {
     order: 3;
     display: block;
     flex: 1 1 auto;
+    flex-shrink: 1;
+    min-width: 4.5rem;
+    max-width: none;
     direction: rtl;
-    text-align: start;
+    unicode-bidi: isolate;
+    text-align: end;
     font-size: 13px;
     font-weight: 800;
-    padding: 0 2px;
+    line-height: 1.2;
+    padding: 0 4px;
     color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   body[data-cf-ui="v2"] .cf2-menu-btn {
     display: inline-flex;
     order: 4;
+    flex: 0 0 auto;
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    margin-inline-start: 0;
   }
 
   body[data-cf-ui="v2"] .cf2-nav,
@@ -532,19 +583,6 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
   body[data-cf-ui="v2"] .cf2-appbar__date,
   body[data-cf-ui="v2"] .cf2-appbar__desktop-only {
     display: none !important;
-  }
-
-  body[data-cf-ui="v2"] .cf2-brand__word {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-  }
-
-  body[data-cf-ui="v2"] .cf2-brand__mark {
-    width: 26px;
-    height: 26px;
   }
 
   body[data-cf-ui="v2"] .cf2-shell {

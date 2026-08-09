@@ -56,7 +56,7 @@ class MerchantUiV2TemplateTests(unittest.TestCase):
 
     def test_v2_frame_separates_appbar_and_ctx(self) -> None:
         self.assertIn("cf2-appbar", V2_TEMPLATE)
-        self.assertIn('data-cf2-appbar="final-closure-v1"', V2_TEMPLATE)
+        self.assertIn('data-cf2-appbar="mobile-reality-v1"', V2_TEMPLATE)
         self.assertIn("cf2-appbar__section", V2_TEMPLATE)
         self.assertIn("cf2-appbar__account", V2_TEMPLATE)
         self.assertIn("cf2-appbar__identity", V2_TEMPLATE)
@@ -153,7 +153,9 @@ class MerchantUiV2RouteTests(unittest.TestCase):
         )
         self.assertIn("document (html/body) scrolls vertically", frame_css)
         self.assertIn("cf2-appbar__identity", frame_css)
-        self.assertIn("Literal mobile anatomy", frame_css)
+        self.assertIn("Mobile App Bar Reality Correction V1", frame_css)
+        self.assertIn("MUST remain visible", frame_css)
+        self.assertIn("position: static", frame_css)
         self.assertIn("overflow: visible", frame_css)
         self.assertNotRegex(
             frame_css,
