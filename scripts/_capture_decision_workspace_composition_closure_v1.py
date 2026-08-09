@@ -15,7 +15,7 @@ SHOTS = OUT / "screenshots"
 BASE = "https://smartreplyai.net"
 MARKER = "workspace-composition-closure-v1"
 SHELL_MARKER = "shell-integration-v1"
-EXPECTED_SHA_PREFIX = ""  # set after deploy tip is known
+EXPECTED_SHA_PREFIX = "52c7981"
 
 
 def wait_for_deploy(sha_prefix: str, timeout_s: int = 720) -> dict:
@@ -54,11 +54,11 @@ def session_cookie(page) -> dict:
 
 
 PROBE = """() => {
-  const ws = document.querySelector('[data-cf2]');
-  const title = document.querySelector('.cf2-ws__title');
-  const mass = document.querySelector('.cf2-dmass__text');
-  const primary = document.querySelector('.cf2-dobj--primary');
-  const route = document.querySelector('.cf2-route');
+  const ws = document.querySelector('#cf2-workspace-root [data-cf2], .cf2-ws[data-cf2]');
+  const title = document.querySelector('#cf2-workspace-root .cf2-ws__title');
+  const mass = document.querySelector('#cf2-workspace-root .cf2-dmass__text');
+  const primary = document.querySelector('#cf2-workspace-root .cf2-dobj--primary');
+  const route = document.querySelector('#cf2-workspace-root .cf2-route');
   const doc = document.documentElement;
   const body = document.body;
   const stage = document.querySelector('.cf2-stage');
@@ -68,7 +68,7 @@ PROBE = """() => {
   const titleFs = title ? parseFloat(getComputedStyle(title).fontSize) : 0;
   const massFs = mass ? parseFloat(getComputedStyle(mass).fontSize) : 0;
   const headDup = !!(title && mass && title.textContent.trim() === mass.textContent.trim());
-  const confDup = [...document.querySelectorAll('.cf2-beat__list li')]
+  const confDup = [...document.querySelectorAll('#cf2-workspace-root .cf2-beat__list li')]
     .some(li => /مستوى\\s*الثقة/i.test(li.textContent || ''));
   const overflowX = doc.scrollWidth > doc.clientWidth + 1;
   const scrollable = Math.max(doc.scrollHeight, body.scrollHeight) > window.innerHeight + 8;
@@ -84,18 +84,18 @@ PROBE = """() => {
     tension: primary?.getAttribute('data-cf2-tension') || '',
     evidence: primary?.getAttribute('data-cf2-evidence') || '',
     progress: route?.getAttribute('data-cf2-progress') || '',
-    hasCO: !!document.querySelector('.cf2-ws__mark .cf2-co'),
-    hasEvField: !!document.querySelector('.cf2-evfield'),
-    hasArriving: !!document.querySelector('.is-arriving'),
+    hasCO: !!document.querySelector('#cf2-workspace-root .cf2-ws__mark .cf2-co'),
+    hasEvField: !!document.querySelector('#cf2-workspace-root .cf2-evfield'),
+    hasArriving: !!document.querySelector('#cf2-workspace-root .is-arriving'),
     hasRoute: !!route,
-    hasTerminus: !!document.querySelector('.cf2-terminus'),
-    nextCount: document.querySelectorAll('.cf2-dobj--next').length,
+    hasTerminus: !!document.querySelector('#cf2-workspace-root .cf2-terminus'),
+    nextCount: document.querySelectorAll('#cf2-workspace-root .cf2-dobj--next').length,
     overflowX,
     scrollable,
     stageOverflowY: stage ? getComputedStyle(stage).overflowY : '',
     bodyOverflowY: getComputedStyle(body).overflowY,
-    ctxOpen: !!(ctx && ctx.classList.contains('is-open')),
-    handleVisible: !!(handle && getComputedStyle(handle).display !== 'none'),
+    ctxOpen: !!(ctx && (ctx.classList.contains('is-open') || body.classList.contains('is-ctx-open'))),
+    handleVisible: !!(handle && getComputedStyle(handle).display !== 'none' && getComputedStyle(handle).visibility !== 'hidden'),
     viewport: { w: window.innerWidth, h: window.innerHeight },
     scrollY: window.scrollY || doc.scrollTop || 0,
   };
@@ -103,11 +103,22 @@ PROBE = """() => {
 
 
 def goto_workspace(page) -> None:
-    page.goto(f"{BASE}/dashboard#workspace", wait_until="domcontentloaded", timeout=90000)
-    page.wait_for_timeout(900)
-    page.evaluate("() => { if (window.CartFlowUiV2 && window.CartFlowUiV2.go) window.CartFlowUiV2.go('workspace'); }")
-    page.wait_for_selector(".cf2-ws, .cf2-error, .cf2-loading", timeout=60000)
-    page.wait_for_timeout(1200)
+    page.goto(f"{BASE}/dashboard#home", wait_until="networkidle", timeout=120000)
+    page.wait_for_timeout(500)
+    page.goto(f"{BASE}/dashboard#workspace", wait_until="networkidle", timeout=120000)
+    page.wait_for_timeout(600)
+    page.evaluate(
+        "() => { if (window.CartFlowUiV2 && window.CartFlowUiV2.go) window.CartFlowUiV2.go('workspace'); }"
+    )
+    page.wait_for_function(
+        """() => {
+          const root = document.querySelector('#cf2-workspace-root');
+          if (!root) return false;
+          return !!(root.querySelector('.cf2-ws') || root.querySelector('.cf2-error'));
+        }""",
+        timeout=90000,
+    )
+    page.wait_for_timeout(800)
 
 
 def main() -> None:
@@ -158,21 +169,27 @@ def main() -> None:
             path=str(SHOTS / "05_mobile_contextual_closed.png"), full_page=False
         )
 
-        # Mid scroll
+        # Mid scroll — decision / meaning band
         mpage.evaluate(
             """() => {
-              const h = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
-              window.scrollTo(0, Math.min(Math.floor(h * 0.38), h - window.innerHeight));
+              const node = document.querySelector('#cf2-workspace-root [data-cf2-node="understanding"]')
+                || document.querySelector('#cf2-workspace-root [data-cf2-node="decision"]');
+              if (node) node.scrollIntoView({ block: 'start' });
+              else {
+                const h = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
+                window.scrollTo(0, Math.min(Math.floor(h * 0.42), h - window.innerHeight));
+              }
             }"""
         )
         mpage.wait_for_timeout(400)
         probe["mobile_mid"] = mpage.evaluate(PROBE)
         mpage.screenshot(path=str(SHOTS / "03_mobile_workspace_mid.png"), full_page=False)
 
-        # Lower section
+        # Lower section — next decisions
         mpage.evaluate(
             """() => {
-              const next = document.querySelector('.cf2-ws__next') || document.querySelector('.cf2-terminus');
+              const next = document.querySelector('#cf2-workspace-root .cf2-ws__next')
+                || document.querySelector('#cf2-workspace-root .cf2-terminus');
               if (next) next.scrollIntoView({ block: 'start' });
               else window.scrollTo(0, document.documentElement.scrollHeight);
             }"""
