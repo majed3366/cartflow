@@ -10,6 +10,17 @@
 
 ---
 
+## Phase 2B session-event diagnosis (2026-08-09)
+
+Live result: OAuth `code` returned; `WA_EMBEDDED_SIGNUP` session IDs missing (`event/waba/phone` all null).
+
+**Verdict: E. UNKNOWN — NEED SAFE EVENT TRACE**  
+Report: [`PHASE_2B_SESSION_EVENT_DIAGNOSIS.md`](PHASE_2B_SESSION_EVENT_DIAGNOSIS.md)
+
+No live retry. No `/register`.
+
+---
+
 ## Phase 2B — Minimal Embedded Signup recovery (2026-08-09)
 
 **Result:** **IMPLEMENTED** (admin recovery surface + hard asserts). Live Meta click-through still required for full success gate.

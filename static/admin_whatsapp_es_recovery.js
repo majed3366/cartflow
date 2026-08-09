@@ -81,6 +81,30 @@
 
   function listenSession() {
     window.addEventListener("message", function (event) {
+      // TEMPORARY SAFE DIAGNOSTICS (Phase 2B session-event audit) — no secrets / no PII values.
+      try {
+        var diag = safeMessageDiag(event);
+        pushDiag(diag);
+        // Surface latest non-secret diag line for operator (not tokens/codes).
+        if (diag && diag.keep) {
+          setText(
+            "esr-session-status",
+            "Diag: origin=" +
+              (diag.origin || "?") +
+              " dataType=" +
+              (diag.dataType || "?") +
+              " type=" +
+              (diag.type || "(none)") +
+              " event=" +
+              (diag.eventName || "(none)") +
+              " keys=" +
+              ((diag.topKeys || []).join(",") || "(none)")
+          );
+        }
+      } catch (eDiag) {
+        /* ignore diag failures */
+      }
+
       if (typeof event.origin !== "string" || event.origin.indexOf("facebook.com") === -1) {
         return;
       }
@@ -139,6 +163,72 @@
         });
       }
     });
+  }
+
+  var messageDiag = [];
+
+  function pushDiag(entry) {
+    if (!entry) return;
+    messageDiag.push(entry);
+    if (messageDiag.length > 40) messageDiag.shift();
+  }
+
+  function safeMessageDiag(event) {
+    var origin = typeof event.origin === "string" ? event.origin : "";
+    var raw = event.data;
+    var dataType = raw === null ? "null" : typeof raw;
+    var parsed = null;
+    var parseOk = false;
+    if (dataType === "string") {
+      try {
+        parsed = JSON.parse(raw);
+        parseOk = true;
+        dataType = "string->object";
+      } catch (e) {
+        parseOk = false;
+      }
+    } else if (dataType === "object" && raw) {
+      parsed = raw;
+      parseOk = true;
+    }
+
+    var topKeys = [];
+    var nestedKeys = [];
+    var type = null;
+    var eventName = null;
+    var keep = false;
+    if (parseOk && parsed && typeof parsed === "object") {
+      topKeys = Object.keys(parsed).slice(0, 20);
+      type = parsed.type != null ? String(parsed.type) : null;
+      eventName = parsed.event != null ? String(parsed.event) : null;
+      if (parsed.data && typeof parsed.data === "object") {
+        nestedKeys = Object.keys(parsed.data).slice(0, 20);
+      }
+      // Keep facebook-ish or WA-ish messages; skip noisy non-FB noise lightly.
+      keep =
+        origin.indexOf("facebook.com") !== -1 ||
+        type === "WA_EMBEDDED_SIGNUP" ||
+        (topKeys && topKeys.length > 0 && origin.indexOf("facebook") !== -1);
+    } else if (origin.indexOf("facebook.com") !== -1) {
+      keep = true;
+    }
+
+    return {
+      at: Date.now(),
+      origin: origin.slice(0, 120),
+      dataType: dataType,
+      parseOk: parseOk,
+      type: type,
+      eventName: eventName,
+      topKeys: topKeys,
+      nestedKeys: nestedKeys,
+      // booleans only — never values of ids/tokens
+      hasWabaKey: nestedKeys.indexOf("waba_id") !== -1,
+      hasPhoneKey: nestedKeys.indexOf("phone_number_id") !== -1,
+      originAllowsFacebookSubstring: origin.indexOf("facebook.com") !== -1,
+      wouldAcceptType: type === "WA_EMBEDDED_SIGNUP",
+      keep: keep,
+    };
   }
 
   var completing = false;
@@ -220,6 +310,17 @@
                   code: "present",
                   session: state.session,
                 }),
+                // Safe diagnostics only — origins/types/keys; never code/token/secret/PII values.
+                message_diagnostics: messageDiag.slice(-20),
+                fb_login_options: {
+                  config_id_present: !!state.configurationId,
+                  response_type: "code",
+                  override_default_response_type: true,
+                  extras: {
+                    setup: {},
+                    sessionInfoVersion: "3",
+                  },
+                },
               });
             }
           }, 500);
