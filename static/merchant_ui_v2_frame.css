@@ -642,10 +642,10 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
 
   /*
    * Open drawer — authored handoff (not orphan strip):
-   * - Core identity continues in drawer chrome band
-   * - Menu morphs to close on the start edge
-   * - Account remains the opposite utility on continuous navy
-   * - Drawer attaches under the bar from the menu edge
+   * - App Bar remnant: Account utility on continuous navy (end edge)
+   * - Menu control yields to drawer (drawer chrome owns close)
+   * - Core identity continues in drawer navy chrome band aligned to App Bar height
+   * - Drawer mounts from top so chrome + bar read as one horizontal navy plane
    */
   body[data-cf-ui="v2"].is-drawer-open .cf2-appbar__core {
     visibility: hidden;
@@ -660,15 +660,15 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
     padding: 0;
   }
 
-  body[data-cf-ui="v2"].is-drawer-open .cf2-menu-btn__bars {
-    width: 14px;
-    height: 14px;
-    background:
-      linear-gradient(currentColor, currentColor) center / 14px 2px no-repeat,
-      linear-gradient(currentColor, currentColor) center / 2px 14px no-repeat;
-    box-shadow: none;
-    border-radius: 0;
-    transform: rotate(45deg);
+  body[data-cf-ui="v2"].is-drawer-open .cf2-menu-btn {
+    visibility: hidden;
+    pointer-events: none;
+    width: 0;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    opacity: 0;
   }
 
   body[data-cf-ui="v2"] .cf2-shell {
@@ -683,25 +683,26 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
     padding: 16px 16px 40px;
   }
 
-  /* Backdrop sits under drawer; keeps navy bar readable as continuous chrome */
+  /* Backdrop under the drawer; App Bar stays above as authored remnant */
   body[data-cf-ui="v2"] .cf2-drawer-backdrop {
-    top: var(--cf2-appbar-h);
+    top: 0;
   }
 
   body[data-cf-ui="v2"] .cf2-drawer {
     display: none;
-    top: var(--cf2-appbar-h);
+    top: 0;
     inset-inline-start: 0;
     inset-inline-end: auto;
     width: min(304px, 86vw);
-    max-height: calc(100dvh - var(--cf2-appbar-h));
-    max-height: calc(100vh - var(--cf2-appbar-h));
+    max-height: 100dvh;
+    max-height: 100vh;
     border-radius: 0 0 16px 16px;
-    transform: translateX(0) translateY(-12px);
+    transform: translateX(8%);
     opacity: 0;
     padding: 0 0 16px;
     overflow: hidden;
     background: var(--cf2-surface);
+    transition: transform 220ms var(--cf2-ease), opacity 180ms ease;
   }
 
   body[data-cf-ui="v2"] .cf2-drawer.is-open {
@@ -710,18 +711,26 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
     transform: none;
   }
 
-  /* Navy chrome band — continues App Bar identity into the drawer */
+  /* Navy chrome band — same height/gradient as App Bar; continues identity */
   body[data-cf-ui="v2"] .cf2-drawer__chrome {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 8px;
     flex: 0 0 auto;
-    height: 44px;
+    height: var(--cf2-appbar-h);
     margin: 0;
-    padding: 0 14px;
+    padding: 0 10px 0 12px;
     background: linear-gradient(165deg, #0a2d5c 0%, #082048 55%, #001838 100%);
     color: #fff;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  body[data-cf-ui="v2"] .cf2-drawer__chrome-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
   }
 
   body[data-cf-ui="v2"] .cf2-drawer__chrome-mark {
@@ -737,12 +746,34 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
     letter-spacing: 0.01em;
   }
 
+  body[data-cf-ui="v2"] .cf2-drawer__chrome-close {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.92);
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 22px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+  }
+
+  body[data-cf-ui="v2"] .cf2-drawer__chrome-close:hover,
+  body[data-cf-ui="v2"] .cf2-drawer__chrome-close:active {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
   body[data-cf-ui="v2"] .cf2-drawer__head {
-    margin: 12px 14px 8px;
+    display: none;
   }
 
   body[data-cf-ui="v2"] .cf2-drawer__section {
-    margin: 0 8px 14px;
+    margin: 14px 8px 14px;
   }
 
   body[data-cf-ui="v2"] .cf2-drawer__divider {

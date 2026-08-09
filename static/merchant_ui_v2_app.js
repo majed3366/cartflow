@@ -175,6 +175,8 @@
     if (deskAcc) deskAcc.addEventListener("click", openDrawer);
     var close = $(".cf2-drawer__close");
     if (close) close.addEventListener("click", closeDrawer);
+    var chromeClose = $(".cf2-drawer__chrome-close");
+    if (chromeClose) chromeClose.addEventListener("click", closeDrawer);
     var backdrop = $(".cf2-drawer-backdrop");
     if (backdrop) backdrop.addEventListener("click", closeDrawer);
     var brand = $(".cf2-brand");
