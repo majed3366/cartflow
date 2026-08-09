@@ -1,6 +1,6 @@
 /**
- * CartFlow Merchant UI V2 — Decision Workspace Final Product Composition V1
- * Merchant meaning first. Living route + one state object. Home frozen.
+ * CartFlow Merchant UI V2 — Decision Workspace Composition Closure V1
+ * Content stage only. Shell contract untouched. Living route + one CO.
  */
 (function (global) {
   "use strict";
@@ -55,6 +55,10 @@
       );
       if (one) lines = [one];
     }
+    /* Confidence strength is owned by .cf2-ws__confidence — drop redundant bullets. */
+    lines = lines.filter(function (l) {
+      return !/مستوى\s*الثقة/i.test(l) && !/^الثقة\s*:/i.test(l);
+    });
     if (!lines.length) lines = ["ظهرت إشارة تشغيلية تحتاج قرارك الآن."];
     return lines;
   }
@@ -268,7 +272,7 @@
     html +=
       '<div class="' +
       massClass +
-      '" data-cf2-tension="' +
+      ' cf2-dmass--echo" data-cf2-tension="' +
       esc(tensionAttr) +
       '"><p class="cf2-dmass__text">' +
       esc(decision) +
@@ -304,9 +308,11 @@
         "</p>";
     } else {
       html +=
-        '<div class="cf2-reason__wait" data-cf2-grammar="recovery-wait"><p>' +
+        '<div class="cf2-reason__wait" data-cf2-grammar="recovery-wait">' +
+        '<p class="cf2-ws__wait-lead">' +
         esc(safeAr(wait[0], "لا يلزم إجراء الآن — واصل المراقبة.")) +
-        "</p><p>" +
+        "</p>" +
+        '<p class="cf2-ws__wait-note">' +
         esc(safeAr(wait[1], "سيخبرك CartFlow عندما يصبح القرار جاهزاً.")) +
         "</p></div>";
     }
@@ -355,12 +361,12 @@
       '<section class="cf2-route__node cf2-beat cf2-beat--decision" data-cf2-node="decision">';
     html += '<p class="cf2-beat__label">ما يقرره CartFlow</p>';
     html +=
-      '<div class="cf2-dmass is-forming" data-cf2-tension="open"><p class="cf2-dmass__text">واصل المراقبة — لا إجراء مطلوب الآن.</p></div></section>';
+      '<div class="cf2-dmass is-forming cf2-dmass--echo" data-cf2-tension="open"><p class="cf2-dmass__text">واصل المراقبة — لا إجراء مطلوب الآن.</p></div></section>';
     html +=
       '<section class="cf2-route__node cf2-beat cf2-beat--action" data-cf2-node="action">';
     html += '<p class="cf2-beat__label">خطوتك الآن</p>';
     html +=
-      '<div class="cf2-beat__action cf2-terminus"><div class="cf2-reason__wait"><p>لا يوجد إجراء حالياً.</p><p>سيظهر القرار هنا عندما تتكثّف الإشارة.</p></div></div></section>';
+      '<div class="cf2-beat__action cf2-terminus"><div class="cf2-reason__wait" data-cf2-grammar="recovery-wait"><p class="cf2-ws__wait-lead">لا يوجد إجراء حالياً.</p><p class="cf2-ws__wait-note">سيظهر القرار هنا عندما تتكثّف الإشارة.</p></div></div></section>';
     html += "</div></article>";
     return html;
   }
@@ -385,7 +391,7 @@
     var zoneB = Array.isArray(projection.zone_b) ? projection.zone_b : [];
     var split = splitPrimary(zoneB);
     var html =
-      '<div class="cf2-ws cf2-ws--lang" data-cf2="workspace-final-v1">';
+      '<div class="cf2-ws cf2-ws--lang" data-cf2="workspace-composition-closure-v1">';
     if (!split.primary) {
       html +=
         '<section class="cf2-ws__primary" aria-label="هدوء القرار">' +

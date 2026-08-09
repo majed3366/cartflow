@@ -1,6 +1,7 @@
 /**
- * CartFlow Merchant UI V2 — Decision Workspace Final Product Composition V1
- * Operational decision surface. Home CSS untouched.
+ * CartFlow Merchant UI V2 — Decision Workspace Composition Closure V1
+ * Content stage only. Shell (UtilityRow / GlobalUpbar / ContextualSidebar /
+ * PageStage) is a protected platform contract — do not restyle chrome here.
  */
 
 body[data-cf-ui="v2"] .cf2-ws--lang {
@@ -17,26 +18,26 @@ body[data-cf-ui="v2"] .cf2-dobj {
 }
 
 body[data-cf-ui="v2"] .cf2-dobj--primary {
-  padding: 18px 22px 20px 18px;
+  padding: 14px 18px 16px 14px;
   background:
     radial-gradient(
-      55% 45% at 100% 0%,
-      rgba(24, 176, 168, 0.1) 0%,
+      50% 40% at 100% 0%,
+      rgba(24, 176, 168, 0.07) 0%,
       transparent 55%
     ),
     linear-gradient(
       168deg,
-      rgba(255, 255, 255, 0.94) 0%,
-      rgba(243, 246, 249, 0.7) 100%
+      rgba(255, 255, 255, 0.92) 0%,
+      rgba(243, 246, 249, 0.55) 100%
     );
-  border: 1px solid rgba(8, 32, 72, 0.1);
-  border-radius: 0 14px 14px 0;
-  border-inline-start: 5px solid rgba(8, 32, 72, 0.24);
+  border: 1px solid rgba(8, 32, 72, 0.08);
+  border-radius: 0 12px 12px 0;
+  border-inline-start: 4px solid rgba(8, 32, 72, 0.2);
   overflow: hidden;
 }
 
 body[data-cf-ui="v2"] .cf2-dobj--primary[data-cf2-tension="open"] {
-  border-inline-start-color: rgba(115, 133, 158, 0.55);
+  border-inline-start-color: rgba(115, 133, 158, 0.5);
 }
 
 body[data-cf-ui="v2"] .cf2-dobj--primary[data-cf2-tension="resolved"],
@@ -44,13 +45,13 @@ body[data-cf-ui="v2"] .cf2-dobj--primary[data-cf2-tension="ready"] {
   border-inline-start-color: var(--cf2-navy);
 }
 
-/* Lead: one mark + merchant title */
+/* Lead: one mark + stance + decision (glance) */
 body[data-cf-ui="v2"] .cf2-ws__head {
   display: flex;
   flex-direction: row;
   align-items: flex-start;
   gap: 12px;
-  margin: 0 0 14px;
+  margin: 0 0 12px;
   max-width: 44rem;
 }
 
@@ -70,8 +71,8 @@ body[data-cf-ui="v2"] .cf2-ws__mark .cf2-co__label {
 }
 
 body[data-cf-ui="v2"] .cf2-ws__mark .cf2-co__glyph {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
 }
 
 body[data-cf-ui="v2"] .cf2-ws__eyebrow {
@@ -84,16 +85,17 @@ body[data-cf-ui="v2"] .cf2-ws__eyebrow {
 
 body[data-cf-ui="v2"] .cf2-ws__title {
   margin: 0;
-  font-size: clamp(1.35rem, 2.2vw, 1.85rem);
+  font-size: clamp(1.2rem, 1.8vw, 1.55rem);
   font-weight: 800;
-  line-height: 1.25;
+  line-height: 1.3;
   letter-spacing: -0.02em;
   color: var(--cf2-navy);
+  overflow-wrap: anywhere;
 }
 
 body[data-cf-ui="v2"] .cf2-ws__confidence {
-  margin: 0 0 8px;
-  font-size: 0.92rem;
+  margin: 0 0 6px;
+  font-size: 0.88rem;
   font-weight: 700;
   color: var(--cf2-ink-soft);
 }
@@ -118,9 +120,10 @@ body[data-cf-ui="v2"] .cf2-beat__list {
 body[data-cf-ui="v2"] .cf2-beat__list li {
   position: relative;
   padding-inline-start: 12px;
-  font-size: 0.95rem;
+  font-size: 0.94rem;
   line-height: 1.45;
   color: var(--cf2-ink);
+  overflow-wrap: anywhere;
 }
 
 body[data-cf-ui="v2"] .cf2-beat__list li::before {
@@ -147,31 +150,46 @@ body[data-cf-ui="v2"] .cf2-dobj__ev-row .cf2-evfield {
 body[data-cf-ui="v2"] .cf2-beat__body {
   margin: 0;
   max-width: 36rem;
-  font-size: 0.98rem;
+  font-size: 0.96rem;
   line-height: 1.5;
   font-weight: 500;
   color: var(--cf2-ink-soft);
   padding: 0;
   border: none;
   background: transparent;
+  overflow-wrap: anywhere;
 }
 
 body[data-cf-ui="v2"] .cf2-beat__action {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
+}
+
+body[data-cf-ui="v2"] .cf2-reason__wait {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+body[data-cf-ui="v2"] .cf2-ws__wait-lead {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--cf2-navy);
 }
 
 body[data-cf-ui="v2"] .cf2-reason__wait p,
 body[data-cf-ui="v2"] .cf2-ws__wait-note {
-  margin: 0 0 4px;
-  font-size: 0.92rem;
+  margin: 0;
+  font-size: 0.88rem;
   line-height: 1.45;
   color: var(--cf2-ink-soft);
 }
 
-/* Living route — backbone, not poster */
+/* Living route — Commerce in Motion backbone */
 body[data-cf-ui="v2"] .cf2-dobj--primary .cf2-route {
   padding-inline-start: 18px;
 }
@@ -194,8 +212,13 @@ body[data-cf-ui="v2"] .cf2-route__node[data-cf2-node="decision"].is-complete .cf
   opacity: 1;
 }
 
+/* Decision mass: CartFlow conclusion (desktop authority; mobile confirmation) */
+body[data-cf-ui="v2"] .cf2-dobj--primary .cf2-dmass--echo {
+  max-width: 100%;
+}
+
 body[data-cf-ui="v2"] .cf2-dobj--quiet .cf2-dmass[data-cf2-tension="open"] .cf2-dmass__text {
-  font-size: clamp(1.2rem, 2vw, 1.55rem);
+  font-size: clamp(1.15rem, 1.8vw, 1.45rem);
   font-weight: 700;
 }
 
@@ -204,9 +227,13 @@ body[data-cf-ui="v2"] .cf2-dobj--quiet .cf2-route::before {
 }
 
 /* Secondary — compressed, no object gallery */
+body[data-cf-ui="v2"] .cf2-ws__primary {
+  margin-bottom: 4px;
+}
+
 body[data-cf-ui="v2"] .cf2-ws__next {
-  margin-top: 18px;
-  padding-top: 14px;
+  margin-top: 16px;
+  padding-top: 12px;
   border-block-start: 1px solid rgba(8, 32, 72, 0.08);
 }
 
@@ -226,59 +253,90 @@ body[data-cf-ui="v2"] .cf2-ws__next-list {
 
 body[data-cf-ui="v2"] .cf2-dobj--next {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 8px 16px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
   padding: 0;
-  opacity: 0.9;
+  opacity: 0.92;
 }
 
 body[data-cf-ui="v2"] .cf2-ws__next-title {
   margin: 0;
-  flex: 1 1 12rem;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 700;
   color: var(--cf2-navy);
-  line-height: 1.35;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 body[data-cf-ui="v2"] .cf2-ws__next-note {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.84rem;
   color: var(--cf2-mute);
 }
 
-/* Desktop: decision column owns the field */
+body[data-cf-ui="v2"] .cf2-dobj--next .cf2-btn {
+  margin-top: 2px;
+}
+
+/* Page question — stage rhythm under shell chrome */
+body[data-cf-ui="v2"] .cf2-page[data-cf2-page="workspace"] .cf2-page__question {
+  margin: 0 0 10px;
+  max-width: 40rem;
+  font-weight: 800;
+  line-height: 1.35;
+  color: var(--cf2-ink);
+}
+
+body[data-cf-ui="v2"]
+  .cf2-shell:has(.cf2-page[data-cf2-page="workspace"].is-active)
+  .cf2-stage {
+  padding-top: 10px;
+}
+
+/* Desktop: decision column owns conclusion; head is stance lead */
 @media (min-width: 1024px) {
   body[data-cf-ui="v2"] .cf2-page[data-cf2-page="workspace"] .cf2-page__question {
     margin: 2px 0 12px;
-    font-size: clamp(1.08rem, 1.45vw, 1.25rem);
-    max-width: 40rem;
-    color: var(--cf2-ink);
-    font-weight: 800;
+    font-size: clamp(1.05rem, 1.35vw, 1.2rem);
   }
 
-  body[data-cf-ui="v2"] .cf2-shell:has(.cf2-page[data-cf2-page="workspace"].is-active) .cf2-stage__inner {
+  body[data-cf-ui="v2"]
+    .cf2-shell:has(.cf2-page[data-cf2-page="workspace"].is-active)
+    .cf2-stage__inner {
     width: min(1240px, 100%);
+  }
+
+  body[data-cf-ui="v2"] .cf2-ws__title {
+    font-size: clamp(1.15rem, 1.5vw, 1.38rem);
+    font-weight: 700;
+  }
+
+  body[data-cf-ui="v2"] .cf2-dobj--primary .cf2-dmass--echo .cf2-dmass__text {
+    font-size: clamp(1.35rem, 2.2vw, 1.85rem);
   }
 
   body[data-cf-ui="v2"] .cf2-dobj--primary .cf2-route {
     display: grid;
-    grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.18fr);
-    column-gap: 28px;
-    row-gap: 4px;
-    padding-inline-start: 22px;
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.15fr);
+    column-gap: 24px;
+    row-gap: 2px;
+    padding-inline-start: 20px;
     align-items: start;
   }
 
   body[data-cf-ui="v2"] .cf2-dobj--primary .cf2-route__node[data-cf2-node="evidence"] {
     grid-column: 1;
     grid-row: 1;
+    padding-bottom: 14px;
   }
 
-  body[data-cf-ui="v2"] .cf2-dobj--primary .cf2-route__node[data-cf2-node="understanding"] {
+  body[data-cf-ui="v2"]
+    .cf2-dobj--primary
+    .cf2-route__node[data-cf2-node="understanding"] {
     grid-column: 1;
     grid-row: 2;
+    padding-bottom: 10px;
   }
 
   body[data-cf-ui="v2"] .cf2-dobj--primary .cf2-route__node[data-cf2-node="decision"] {
@@ -286,15 +344,15 @@ body[data-cf-ui="v2"] .cf2-ws__next-note {
     grid-row: 1 / span 2;
     align-self: stretch;
     margin: 0;
-    padding: 16px 14px 18px;
+    padding: 14px 12px 14px;
     background: linear-gradient(
       155deg,
-      rgba(8, 32, 72, 0.07) 0%,
-      rgba(24, 176, 168, 0.06) 50%,
+      rgba(8, 32, 72, 0.06) 0%,
+      rgba(24, 176, 168, 0.05) 50%,
       transparent 100%
     );
-    border-radius: 0 12px 12px 0;
-    border-inline-start: 3px solid rgba(8, 32, 72, 0.2);
+    border-radius: 0 10px 10px 0;
+    border-inline-start: 3px solid rgba(8, 32, 72, 0.18);
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -305,14 +363,24 @@ body[data-cf-ui="v2"] .cf2-ws__next-note {
     grid-column: 2;
     grid-row: 3;
     margin: 0;
-    padding-top: 4px;
+    padding-top: 2px;
+    padding-bottom: 0;
+  }
+
+  body[data-cf-ui="v2"] .cf2-dobj--primary .cf2-terminus,
+  body[data-cf-ui="v2"] .cf2-dobj--primary .cf2-beat--action .cf2-beat__action {
+    padding: 12px 14px 14px 18px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ws__next {
+    max-width: 52rem;
   }
 }
 
-/* Mobile: first-viewport density — no CO gallery, compact route */
+/* Mobile: first-viewport = decision + evidence strength; mass confirms */
 @media (max-width: 1023px) {
   body[data-cf-ui="v2"] .cf2-dobj--primary {
-    padding: 8px 0 12px;
+    padding: 4px 0 10px;
     border: none;
     border-radius: 0;
     background: transparent;
@@ -343,7 +411,8 @@ body[data-cf-ui="v2"] .cf2-ws__next-note {
   }
 
   body[data-cf-ui="v2"] .cf2-ws__title {
-    font-size: 1.28rem;
+    font-size: 1.22rem;
+    font-weight: 800;
   }
 
   body[data-cf-ui="v2"] .cf2-dobj--primary .cf2-route {
@@ -356,7 +425,9 @@ body[data-cf-ui="v2"] .cf2-ws__next-note {
     height: 8px;
   }
 
-  body[data-cf-ui="v2"] .cf2-dobj--primary .cf2-route__node[data-cf2-node="decision"]::before {
+  body[data-cf-ui="v2"]
+    .cf2-dobj--primary
+    .cf2-route__node[data-cf2-node="decision"]::before {
     inset-inline-start: -19px;
     width: 10px;
     height: 10px;
@@ -370,20 +441,39 @@ body[data-cf-ui="v2"] .cf2-ws__next-note {
     font-size: 0.9rem;
   }
 
-  body[data-cf-ui="v2"] .cf2-dmass__text {
-    font-size: 1.12rem;
+  /* Echo confirmation — not a second headline */
+  body[data-cf-ui="v2"] .cf2-dobj--primary .cf2-dmass--echo {
+    padding: 8px 10px 10px 14px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-dobj--primary .cf2-dmass--echo .cf2-dmass__text {
+    font-size: 1.02rem;
+    font-weight: 700;
+    line-height: 1.35;
+  }
+
+  body[data-cf-ui="v2"] .cf2-dobj--primary .cf2-terminus,
+  body[data-cf-ui="v2"] .cf2-dobj--primary .cf2-beat--action .cf2-beat__action {
+    padding: 12px 12px 12px 16px;
   }
 
   body[data-cf-ui="v2"] .cf2-ws__primary {
-    margin-bottom: 14px;
+    margin-bottom: 10px;
   }
 
   body[data-cf-ui="v2"] .cf2-page[data-cf2-page="workspace"] .cf2-page__question {
     margin-bottom: 8px;
-    font-size: 1.05rem;
+    font-size: 1.02rem;
   }
 
-  body[data-cf-ui="v2"] .cf2-page[data-cf2-page="workspace"] .cf2-stage {
-    padding-top: 12px;
+  body[data-cf-ui="v2"]
+    .cf2-shell:has(.cf2-page[data-cf2-page="workspace"].is-active)
+    .cf2-stage {
+    padding-top: 8px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ws__next {
+    margin-top: 12px;
+    padding-top: 10px;
   }
 }

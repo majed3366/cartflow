@@ -145,7 +145,7 @@ class MerchantUiV2RouteTests(unittest.TestCase):
         self.assertIn("ما يراقبه CartFlow أيضًا", home_js)
         self.assertIn("cf2-dobj", ws_js)
         self.assertIn("living-route", ws_js)
-        self.assertIn("workspace-final-v1", ws_js)
+        self.assertIn("workspace-composition-closure-v1", ws_js)
         self.assertIn("unwrapProjection", ws_js)
         self.assertIn("is-ready", ws_js)
         self.assertIn("is-armed", ws_js)
@@ -180,7 +180,7 @@ class MerchantUiV2RouteTests(unittest.TestCase):
             r"@media\s*\(max-width:\s*1023px\)[\s\S]*?\.cf2-nav\s*\{[^}]*display:\s*none",
         )
         self.assertIn("home-stage-closure-v1", home_js)
-        self.assertIn("workspace-final-v1", ws_js)
+        self.assertIn("workspace-composition-closure-v1", ws_js)
 
     def test_assets_exist(self) -> None:
         for rel in (
