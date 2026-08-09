@@ -311,25 +311,35 @@ def main() -> int:
         page.wait_for_selector("[data-cf2='home-stage-closure-v1']", timeout=60000)
         probe["back_home"] = visual_probe(page, "الرئيسية")
 
-        page.evaluate(
+        probe["scroll_check"] = page.evaluate(
             """() => {
-              const el = document.querySelector('.cf2-stage') || document.body;
-              const h = Math.max(el.scrollHeight || 0, document.documentElement.scrollHeight || 0);
-              window.scrollTo(0, Math.min(320, Math.max(120, h - window.innerHeight + 40)));
+              const bodyOY = getComputedStyle(document.body).overflowY;
+              const htmlOY = getComputedStyle(document.documentElement).overflowY;
+              const stage = document.querySelector('.cf2-stage');
+              const stageOY = stage ? getComputedStyle(stage).overflowY : '';
+              const probeEl = document.createElement('div');
+              probeEl.id = 'cf2-scroll-probe';
+              probeEl.style.height = '2200px';
+              probeEl.setAttribute('aria-hidden', 'true');
+              document.body.appendChild(probeEl);
+              const capable = document.documentElement.scrollHeight > window.innerHeight + 200;
+              window.scrollTo(0, 480);
+              const y = window.scrollY || 0;
+              window.scrollTo(0, 0);
+              probeEl.remove();
+              return {
+                bodyOY,
+                htmlOY,
+                stageOY,
+                capable,
+                y,
+                drawerOpen: document.body.classList.contains('is-drawer-open'),
+                bodyInline: document.body.style.overflow || '',
+              };
             }"""
         )
-        page.wait_for_timeout(300)
-        probe["scroll_after"] = page.evaluate("() => window.scrollY || 0")
-        page.evaluate("() => window.scrollTo(0, 0)")
-        probe["scroll_capable"] = page.evaluate(
-            """() => {
-              const h = Math.max(
-                document.documentElement.scrollHeight || 0,
-                document.body.scrollHeight || 0
-              );
-              return h > window.innerHeight + 40;
-            }"""
-        )
+        probe["scroll_after"] = (probe.get("scroll_check") or {}).get("y") or 0
+        probe["scroll_capable"] = bool((probe.get("scroll_check") or {}).get("capable"))
         m390.close()
 
         # —— 430px class ——
@@ -386,7 +396,9 @@ def main() -> int:
         "drawerBodyLockReleased": (probe.get("06_body_lock") or {}).get("overflowY") != "hidden"
         and not (probe.get("06_body_lock") or {}).get("open"),
         "pageVerticalScroll": (probe.get("scroll_after") or 0) > 40
-        or bool(probe.get("scroll_capable")),
+        and bool(probe.get("scroll_capable"))
+        and (probe.get("scroll_check") or {}).get("bodyOY") != "hidden"
+        and not (probe.get("scroll_check") or {}).get("drawerOpen"),
         "desktopIdentityIntact": bool((probe.get("desktop") or {}).get("identity"))
         and (probe.get("desktop") or {}).get("coreDisplay") == "contents",
         "homeCompositionUntouched": (probe.get("01_home_closed") or {}).get("homeMarker")

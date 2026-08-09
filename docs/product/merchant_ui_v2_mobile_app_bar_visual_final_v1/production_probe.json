@@ -1,0 +1,681 @@
+{
+  "deploy": {
+    "ok": true,
+    "sha": "d825b3617571841c8bbab41dad01207b346c0c10",
+    "status": 200
+  },
+  "01_home_closed": {
+    "viewport": {
+      "w": 390,
+      "h": 844
+    },
+    "appbarMarker": "mobile-visual-final-v1",
+    "expectedSection": "الرئيسية",
+    "sectionText": "الرئيسية",
+    "wordText": "CartFlow",
+    "wordClipped": false,
+    "brandToSectionGap": 19,
+    "coreTight": true,
+    "threeZoneOrder": true,
+    "edgeQuiet": true,
+    "sectionQuieterThanBrand": true,
+    "barDisplay": "grid",
+    "coreDisplay": "flex",
+    "rects": {
+      "bar": {
+        "x": 0,
+        "y": 0,
+        "w": 390,
+        "h": 52,
+        "left": 0,
+        "right": 390,
+        "top": 0,
+        "bottom": 52
+      },
+      "account": {
+        "x": 8,
+        "y": 6,
+        "w": 40,
+        "h": 40,
+        "left": 8,
+        "right": 48,
+        "top": 6,
+        "bottom": 46
+      },
+      "core": {
+        "x": 118,
+        "y": 11,
+        "w": 154,
+        "h": 30,
+        "left": 118,
+        "right": 272,
+        "top": 11,
+        "bottom": 41
+      },
+      "brand": {
+        "x": 120,
+        "y": 15,
+        "w": 85,
+        "h": 22,
+        "left": 120,
+        "right": 205,
+        "top": 15,
+        "bottom": 37
+      },
+      "mark": {
+        "x": 120,
+        "y": 15,
+        "w": 22,
+        "h": 22,
+        "left": 120,
+        "right": 142,
+        "top": 15,
+        "bottom": 37
+      },
+      "word": {
+        "x": 149,
+        "y": 19,
+        "w": 56,
+        "h": 14,
+        "left": 149,
+        "right": 205,
+        "top": 19,
+        "bottom": 33
+      },
+      "rule": {
+        "x": 214,
+        "y": 19,
+        "w": 1,
+        "h": 13,
+        "left": 214,
+        "right": 215,
+        "top": 19,
+        "bottom": 32
+      },
+      "section": {
+        "x": 224,
+        "y": 18,
+        "w": 45,
+        "h": 14,
+        "left": 224,
+        "right": 270,
+        "top": 18,
+        "bottom": 33
+      },
+      "menu": {
+        "x": 342,
+        "y": 6,
+        "w": 40,
+        "h": 40,
+        "left": 342,
+        "right": 382,
+        "top": 6,
+        "bottom": 46
+      }
+    },
+    "visible": {
+      "account": true,
+      "core": true,
+      "brand": true,
+      "mark": true,
+      "word": true,
+      "rule": true,
+      "section": true,
+      "menu": true
+    },
+    "noWrap": true,
+    "noOverflow": true,
+    "homeMarker": "home-stage-closure-v1",
+    "workspaceMarker": "",
+    "allFourVisible": true
+  },
+  "05_drawer_open": {
+    "open": true,
+    "overflow": "hidden"
+  },
+  "06_after_drawer_close": {
+    "viewport": {
+      "w": 390,
+      "h": 844
+    },
+    "appbarMarker": "mobile-visual-final-v1",
+    "expectedSection": "الرئيسية",
+    "sectionText": "الرئيسية",
+    "wordText": "CartFlow",
+    "wordClipped": false,
+    "brandToSectionGap": 19,
+    "coreTight": true,
+    "threeZoneOrder": true,
+    "edgeQuiet": true,
+    "sectionQuieterThanBrand": true,
+    "barDisplay": "grid",
+    "coreDisplay": "flex",
+    "rects": {
+      "bar": {
+        "x": 0,
+        "y": 0,
+        "w": 390,
+        "h": 52,
+        "left": 0,
+        "right": 390,
+        "top": 0,
+        "bottom": 52
+      },
+      "account": {
+        "x": 8,
+        "y": 6,
+        "w": 40,
+        "h": 40,
+        "left": 8,
+        "right": 48,
+        "top": 6,
+        "bottom": 46
+      },
+      "core": {
+        "x": 118,
+        "y": 11,
+        "w": 154,
+        "h": 30,
+        "left": 118,
+        "right": 272,
+        "top": 11,
+        "bottom": 41
+      },
+      "brand": {
+        "x": 120,
+        "y": 15,
+        "w": 85,
+        "h": 22,
+        "left": 120,
+        "right": 205,
+        "top": 15,
+        "bottom": 37
+      },
+      "mark": {
+        "x": 120,
+        "y": 15,
+        "w": 22,
+        "h": 22,
+        "left": 120,
+        "right": 142,
+        "top": 15,
+        "bottom": 37
+      },
+      "word": {
+        "x": 149,
+        "y": 19,
+        "w": 56,
+        "h": 14,
+        "left": 149,
+        "right": 205,
+        "top": 19,
+        "bottom": 33
+      },
+      "rule": {
+        "x": 214,
+        "y": 19,
+        "w": 1,
+        "h": 13,
+        "left": 214,
+        "right": 215,
+        "top": 19,
+        "bottom": 32
+      },
+      "section": {
+        "x": 224,
+        "y": 18,
+        "w": 45,
+        "h": 14,
+        "left": 224,
+        "right": 270,
+        "top": 18,
+        "bottom": 33
+      },
+      "menu": {
+        "x": 342,
+        "y": 6,
+        "w": 40,
+        "h": 40,
+        "left": 342,
+        "right": 382,
+        "top": 6,
+        "bottom": 46
+      }
+    },
+    "visible": {
+      "account": true,
+      "core": true,
+      "brand": true,
+      "mark": true,
+      "word": true,
+      "rule": true,
+      "section": true,
+      "menu": true
+    },
+    "noWrap": true,
+    "noOverflow": true,
+    "homeMarker": "home-stage-closure-v1",
+    "workspaceMarker": "",
+    "allFourVisible": true
+  },
+  "06_body_lock": {
+    "open": false,
+    "overflowY": "auto",
+    "inline": ""
+  },
+  "02_workspace_closed": {
+    "viewport": {
+      "w": 390,
+      "h": 844
+    },
+    "appbarMarker": "mobile-visual-final-v1",
+    "expectedSection": "مساحة القرار",
+    "sectionText": "مساحة القرار",
+    "wordText": "CartFlow",
+    "wordClipped": false,
+    "brandToSectionGap": 19,
+    "coreTight": true,
+    "threeZoneOrder": true,
+    "edgeQuiet": true,
+    "sectionQuieterThanBrand": true,
+    "barDisplay": "grid",
+    "coreDisplay": "flex",
+    "rects": {
+      "bar": {
+        "x": 0,
+        "y": 0,
+        "w": 390,
+        "h": 52,
+        "left": 0,
+        "right": 390,
+        "top": 0,
+        "bottom": 52
+      },
+      "account": {
+        "x": 8,
+        "y": 6,
+        "w": 40,
+        "h": 40,
+        "left": 8,
+        "right": 48,
+        "top": 6,
+        "bottom": 46
+      },
+      "core": {
+        "x": 106,
+        "y": 11,
+        "w": 177,
+        "h": 30,
+        "left": 106,
+        "right": 284,
+        "top": 11,
+        "bottom": 41
+      },
+      "brand": {
+        "x": 108,
+        "y": 15,
+        "w": 85,
+        "h": 22,
+        "left": 108,
+        "right": 194,
+        "top": 15,
+        "bottom": 37
+      },
+      "mark": {
+        "x": 108,
+        "y": 15,
+        "w": 22,
+        "h": 22,
+        "left": 108,
+        "right": 130,
+        "top": 15,
+        "bottom": 37
+      },
+      "word": {
+        "x": 137,
+        "y": 19,
+        "w": 56,
+        "h": 14,
+        "left": 137,
+        "right": 194,
+        "top": 19,
+        "bottom": 33
+      },
+      "rule": {
+        "x": 203,
+        "y": 19,
+        "w": 1,
+        "h": 13,
+        "left": 203,
+        "right": 204,
+        "top": 19,
+        "bottom": 32
+      },
+      "section": {
+        "x": 213,
+        "y": 18,
+        "w": 69,
+        "h": 14,
+        "left": 213,
+        "right": 282,
+        "top": 18,
+        "bottom": 33
+      },
+      "menu": {
+        "x": 342,
+        "y": 6,
+        "w": 40,
+        "h": 40,
+        "left": 342,
+        "right": 382,
+        "top": 6,
+        "bottom": 46
+      }
+    },
+    "visible": {
+      "account": true,
+      "core": true,
+      "brand": true,
+      "mark": true,
+      "word": true,
+      "rule": true,
+      "section": true,
+      "menu": true
+    },
+    "noWrap": true,
+    "noOverflow": true,
+    "homeMarker": "home-stage-closure-v1",
+    "workspaceMarker": "workspace-final-v1",
+    "allFourVisible": true
+  },
+  "back_home": {
+    "viewport": {
+      "w": 390,
+      "h": 844
+    },
+    "appbarMarker": "mobile-visual-final-v1",
+    "expectedSection": "الرئيسية",
+    "sectionText": "الرئيسية",
+    "wordText": "CartFlow",
+    "wordClipped": false,
+    "brandToSectionGap": 19,
+    "coreTight": true,
+    "threeZoneOrder": true,
+    "edgeQuiet": true,
+    "sectionQuieterThanBrand": true,
+    "barDisplay": "grid",
+    "coreDisplay": "flex",
+    "rects": {
+      "bar": {
+        "x": 0,
+        "y": 0,
+        "w": 390,
+        "h": 52,
+        "left": 0,
+        "right": 390,
+        "top": 0,
+        "bottom": 52
+      },
+      "account": {
+        "x": 8,
+        "y": 6,
+        "w": 40,
+        "h": 40,
+        "left": 8,
+        "right": 48,
+        "top": 6,
+        "bottom": 46
+      },
+      "core": {
+        "x": 118,
+        "y": 11,
+        "w": 154,
+        "h": 30,
+        "left": 118,
+        "right": 272,
+        "top": 11,
+        "bottom": 41
+      },
+      "brand": {
+        "x": 120,
+        "y": 15,
+        "w": 85,
+        "h": 22,
+        "left": 120,
+        "right": 205,
+        "top": 15,
+        "bottom": 37
+      },
+      "mark": {
+        "x": 120,
+        "y": 15,
+        "w": 22,
+        "h": 22,
+        "left": 120,
+        "right": 142,
+        "top": 15,
+        "bottom": 37
+      },
+      "word": {
+        "x": 149,
+        "y": 19,
+        "w": 56,
+        "h": 14,
+        "left": 149,
+        "right": 205,
+        "top": 19,
+        "bottom": 33
+      },
+      "rule": {
+        "x": 214,
+        "y": 19,
+        "w": 1,
+        "h": 13,
+        "left": 214,
+        "right": 215,
+        "top": 19,
+        "bottom": 32
+      },
+      "section": {
+        "x": 224,
+        "y": 18,
+        "w": 45,
+        "h": 14,
+        "left": 224,
+        "right": 270,
+        "top": 18,
+        "bottom": 33
+      },
+      "menu": {
+        "x": 342,
+        "y": 6,
+        "w": 40,
+        "h": 40,
+        "left": 342,
+        "right": 382,
+        "top": 6,
+        "bottom": 46
+      }
+    },
+    "visible": {
+      "account": true,
+      "core": true,
+      "brand": true,
+      "mark": true,
+      "word": true,
+      "rule": true,
+      "section": true,
+      "menu": true
+    },
+    "noWrap": true,
+    "noOverflow": true,
+    "homeMarker": "home-stage-closure-v1",
+    "workspaceMarker": "workspace-final-v1",
+    "allFourVisible": true
+  },
+  "scroll_check": {
+    "bodyOY": "auto",
+    "htmlOY": "auto",
+    "stageOY": "visible",
+    "capable": true,
+    "y": 480,
+    "drawerOpen": false,
+    "bodyInline": ""
+  },
+  "scroll_after": 480,
+  "scroll_capable": true,
+  "09_430": {
+    "viewport": {
+      "w": 430,
+      "h": 932
+    },
+    "appbarMarker": "mobile-visual-final-v1",
+    "expectedSection": "الرئيسية",
+    "sectionText": "الرئيسية",
+    "wordText": "CartFlow",
+    "wordClipped": false,
+    "brandToSectionGap": 19,
+    "coreTight": true,
+    "threeZoneOrder": true,
+    "edgeQuiet": true,
+    "sectionQuieterThanBrand": true,
+    "barDisplay": "grid",
+    "coreDisplay": "flex",
+    "rects": {
+      "bar": {
+        "x": 0,
+        "y": 0,
+        "w": 430,
+        "h": 52,
+        "left": 0,
+        "right": 430,
+        "top": 0,
+        "bottom": 52
+      },
+      "account": {
+        "x": 8,
+        "y": 6,
+        "w": 40,
+        "h": 40,
+        "left": 8,
+        "right": 48,
+        "top": 6,
+        "bottom": 46
+      },
+      "core": {
+        "x": 138,
+        "y": 11,
+        "w": 154,
+        "h": 30,
+        "left": 138,
+        "right": 292,
+        "top": 11,
+        "bottom": 41
+      },
+      "brand": {
+        "x": 140,
+        "y": 15,
+        "w": 85,
+        "h": 22,
+        "left": 140,
+        "right": 225,
+        "top": 15,
+        "bottom": 37
+      },
+      "mark": {
+        "x": 140,
+        "y": 15,
+        "w": 22,
+        "h": 22,
+        "left": 140,
+        "right": 162,
+        "top": 15,
+        "bottom": 37
+      },
+      "word": {
+        "x": 169,
+        "y": 19,
+        "w": 56,
+        "h": 14,
+        "left": 169,
+        "right": 225,
+        "top": 19,
+        "bottom": 33
+      },
+      "rule": {
+        "x": 234,
+        "y": 19,
+        "w": 1,
+        "h": 13,
+        "left": 234,
+        "right": 235,
+        "top": 19,
+        "bottom": 32
+      },
+      "section": {
+        "x": 244,
+        "y": 18,
+        "w": 45,
+        "h": 14,
+        "left": 244,
+        "right": 290,
+        "top": 18,
+        "bottom": 33
+      },
+      "menu": {
+        "x": 382,
+        "y": 6,
+        "w": 40,
+        "h": 40,
+        "left": 382,
+        "right": 422,
+        "top": 6,
+        "bottom": 46
+      }
+    },
+    "visible": {
+      "account": true,
+      "core": true,
+      "brand": true,
+      "mark": true,
+      "word": true,
+      "rule": true,
+      "section": true,
+      "menu": true
+    },
+    "noWrap": true,
+    "noOverflow": true,
+    "homeMarker": "home-stage-closure-v1",
+    "workspaceMarker": "",
+    "allFourVisible": true
+  },
+  "desktop": {
+    "identity": true,
+    "identityName": "مساعد المتجر",
+    "coreDisplay": "contents",
+    "sectionHidden": true,
+    "homeFrozen": false,
+    "workspace": "workspace-final-v1",
+    "noOverflow": true
+  },
+  "before_after_written": true,
+  "gates": {
+    "compositionHome": "PASS",
+    "compositionWorkspace": "PASS",
+    "composition390": "PASS",
+    "composition430": "PASS",
+    "wordmarkNotClipped": "PASS",
+    "sectionHome": "PASS",
+    "sectionWorkspace": "PASS",
+    "afterDrawerClose": "PASS",
+    "afterHomeWorkspaceSwitch": "PASS",
+    "backHomePreserved": "PASS",
+    "drawerBodyLockReleased": "PASS",
+    "pageVerticalScroll": "PASS",
+    "desktopIdentityIntact": "PASS",
+    "homeCompositionUntouched": "PASS",
+    "workspaceCompositionUntouched": "PASS",
+    "markerFinal": "PASS"
+  },
+  "all_pass": true
+}
