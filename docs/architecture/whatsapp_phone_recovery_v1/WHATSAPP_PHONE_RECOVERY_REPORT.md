@@ -10,6 +10,16 @@
 
 ---
 
+## Phase 2B shared-WABA fallback (2026-08-09)
+
+Server fallback after OAuth when browser session IDs missing: `debug_token` + exact WABA/phone assert; optional `client_whatsapp_business_accounts`.  
+`business_management` **not** required to change yet for primary path.  
+Report: [`PHASE_2B_SHARED_WABA_FALLBACK_REPORT.md`](PHASE_2B_SHARED_WABA_FALLBACK_REPORT.md)
+
+No `/register`.
+
+---
+
 ## Phase 2B session-event diagnosis (2026-08-09)
 
 Live result: OAuth `code` returned; `WA_EMBEDDED_SIGNUP` session IDs missing (`event/waba/phone` all null).

@@ -1074,6 +1074,10 @@ async def api_admin_whatsapp_es_recovery_complete(request: Request) -> Any:
         phone_number_id=str(body.get("phone_number_id") or ""),
         business_id=str(body.get("business_id") or ""),
         session_event=str(body.get("session_event") or ""),
+        allow_shared_waba_fallback=bool(
+            body.get("allow_shared_waba_fallback")
+            or body.get("use_shared_waba_fallback")
+        ),
     )
     # Absolute redaction of any accidental secret fields.
     for banned in (
@@ -1087,6 +1091,8 @@ async def api_admin_whatsapp_es_recovery_complete(request: Request) -> Any:
         result.pop(banned, None)
     status = 200 if result.get("ok") else 400
     if result.get("aborted") and result.get("error") == "asset_assertion_failed":
+        status = 409
+    if result.get("error") in ("target_waba_not_shared", "target_phone_not_confirmed"):
         status = 409
     return JSONResponse(result, status_code=status)
 

@@ -129,6 +129,7 @@ class CompleteRecoveryTests(unittest.TestCase):
             session_event="FINISH",
         )
         self.assertTrue(r["ok"])
+        self.assertEqual(r.get("resolution_source"), "browser_session")
         self.assertTrue(r["fresh_authorization_obtained"])
         self.assertFalse(r["register_called"])
         self.assertFalse(r["assets_created"])
@@ -136,6 +137,144 @@ class CompleteRecoveryTests(unittest.TestCase):
         self.assertNotIn("access_token", r)
         self.assertNotIn("SECRET_TOKEN_VALUE", str(r))
         self.assertIn("STOP", r.get("next_phase") or "")
+
+    @patch("services.admin_whatsapp_embedded_signup_recovery_v1.requests.get")
+    def test_shared_waba_fallback_success(self, mock_get) -> None:
+        exchange = MagicMock()
+        exchange.status_code = 200
+        exchange.content = b'{"access_token":"SECRET_TOKEN_VALUE"}'
+        exchange.json.return_value = {"access_token": "SECRET_TOKEN_VALUE"}
+
+        debug = MagicMock()
+        debug.status_code = 200
+        debug.content = b"{}"
+        debug.json.return_value = {
+            "data": {
+                "is_valid": True,
+                "type": "USER",
+                "app_id": "1485048632921274",
+                "scopes": [
+                    "whatsapp_business_management",
+                    "whatsapp_business_messaging",
+                ],
+                "granular_scopes": [
+                    {
+                        "scope": "whatsapp_business_management",
+                        "target_ids": [TARGET_WABA_ID, "999"],
+                    }
+                ],
+            }
+        }
+
+        phones = MagicMock()
+        phones.status_code = 200
+        phones.content = b"{}"
+        phones.json.return_value = {
+            "data": [
+                {
+                    "id": TARGET_PHONE_NUMBER_ID,
+                    "display_phone_number": "+966 57 970 6669",
+                    "verified_name": "CartFlow",
+                }
+            ]
+        }
+        mock_get.side_effect = [exchange, debug, phones]
+
+        r = complete_embedded_signup_recovery(
+            code="exchangeable-code",
+            waba_id="",
+            phone_number_id="",
+            allow_shared_waba_fallback=True,
+        )
+        self.assertTrue(r["ok"])
+        self.assertEqual(r.get("resolution_source"), "server_shared_waba_fallback")
+        self.assertEqual(r.get("waba_id"), TARGET_WABA_ID)
+        self.assertEqual(r.get("phone_number_id"), TARGET_PHONE_NUMBER_ID)
+        self.assertFalse(r.get("register_called"))
+        self.assertNotIn("SECRET_TOKEN_VALUE", str(r))
+        self.assertNotIn("access_token", r)
+
+    @patch("services.admin_whatsapp_embedded_signup_recovery_v1.requests.get")
+    def test_shared_waba_fallback_target_waba_not_shared(self, mock_get) -> None:
+        exchange = MagicMock()
+        exchange.status_code = 200
+        exchange.content = b'{"access_token":"SECRET_TOKEN_VALUE"}'
+        exchange.json.return_value = {"access_token": "SECRET_TOKEN_VALUE"}
+
+        debug = MagicMock()
+        debug.status_code = 200
+        debug.content = b"{}"
+        debug.json.return_value = {
+            "data": {
+                "is_valid": True,
+                "scopes": ["whatsapp_business_management"],
+                "granular_scopes": [
+                    {"scope": "whatsapp_business_management", "target_ids": ["111"]}
+                ],
+            }
+        }
+        mock_get.side_effect = [exchange, debug]
+
+        r = complete_embedded_signup_recovery(
+            code="exchangeable-code",
+            allow_shared_waba_fallback=True,
+        )
+        self.assertFalse(r["ok"])
+        self.assertEqual(r.get("error"), "target_waba_not_shared")
+        self.assertFalse(r.get("register_called"))
+
+    @patch("services.admin_whatsapp_embedded_signup_recovery_v1.requests.get")
+    def test_shared_waba_fallback_target_phone_not_confirmed(self, mock_get) -> None:
+        exchange = MagicMock()
+        exchange.status_code = 200
+        exchange.content = b'{"access_token":"SECRET_TOKEN_VALUE"}'
+        exchange.json.return_value = {"access_token": "SECRET_TOKEN_VALUE"}
+
+        debug = MagicMock()
+        debug.status_code = 200
+        debug.content = b"{}"
+        debug.json.return_value = {
+            "data": {
+                "is_valid": True,
+                "scopes": ["whatsapp_business_management"],
+                "granular_scopes": [
+                    {
+                        "scope": "whatsapp_business_management",
+                        "target_ids": [TARGET_WABA_ID],
+                    }
+                ],
+            }
+        }
+        phones = MagicMock()
+        phones.status_code = 200
+        phones.content = b"{}"
+        phones.json.return_value = {
+            "data": [{"id": "000", "display_phone_number": "+10000000000"}]
+        }
+        mock_get.side_effect = [exchange, debug, phones]
+
+        r = complete_embedded_signup_recovery(
+            code="exchangeable-code",
+            allow_shared_waba_fallback=True,
+        )
+        self.assertFalse(r["ok"])
+        self.assertEqual(r.get("error"), "target_phone_not_confirmed")
+        self.assertEqual(r.get("waba_id"), TARGET_WABA_ID)
+        self.assertFalse(r.get("register_called"))
+
+    def test_missing_ids_without_fallback_flag_aborts(self) -> None:
+        with patch(
+            "services.admin_whatsapp_embedded_signup_recovery_v1.requests.get"
+        ) as mock_get:
+            r = complete_embedded_signup_recovery(
+                code="exchangeable-code",
+                waba_id="",
+                phone_number_id="",
+                allow_shared_waba_fallback=False,
+            )
+            mock_get.assert_not_called()
+        self.assertEqual(r.get("error"), "missing_session_asset_ids")
+        self.assertFalse(r.get("ok"))
 
 
 class RouteAuthTests(unittest.TestCase):

@@ -247,19 +247,28 @@
     completeOnServer();
   }
 
-  function completeOnServer() {
-    setText("esr-result-status", "Exchanging authorization code on server…");
+  function completeOnServer(opts) {
+    opts = opts || {};
+    var allowFallback = !!opts.allowSharedWabaFallback;
+    setText(
+      "esr-result-status",
+      allowFallback
+        ? "Exchanging code + resolving shared WABA on server…"
+        : "Exchanging authorization code on server…"
+    );
+    var payload = {
+      code: state.code,
+      waba_id: state.session.waba_id || "",
+      phone_number_id: state.session.phone_number_id || "",
+      business_id: state.session.business_id || "",
+      session_event: state.session.event || "",
+      allow_shared_waba_fallback: allowFallback,
+    };
     fetch("/admin/api/whatsapp/embedded-signup-recovery/complete", {
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        code: state.code,
-        waba_id: state.session.waba_id,
-        phone_number_id: state.session.phone_number_id,
-        business_id: state.session.business_id || "",
-        session_event: state.session.event || "",
-      }),
+      body: JSON.stringify(payload),
     })
       .then(function (r) {
         return r.json().then(function (body) {
@@ -269,7 +278,15 @@
       .then(function (res) {
         // Never keep code in memory after attempt.
         state.code = null;
-        showResult(res.body || { ok: false, http_status: res.status });
+        var body = res.body || { ok: false, http_status: res.status };
+        if (!body.ok && allowFallback) {
+          body.message_diagnostics = messageDiag.slice(-20);
+          body.client = redactClientPayload({
+            code: "present",
+            session: state.session,
+          });
+        }
+        showResult(body);
       })
       .catch(function () {
         state.code = null;
@@ -302,26 +319,13 @@
               maybeComplete();
             } else if (tries >= 20) {
               clearInterval(timer);
-              showResult({
-                ok: false,
-                error: "missing_session_asset_ids",
-                hint: "WA_EMBEDDED_SIGNUP message did not provide waba_id/phone_number_id",
-                client: redactClientPayload({
-                  code: "present",
-                  session: state.session,
-                }),
-                // Safe diagnostics only — origins/types/keys; never code/token/secret/PII values.
-                message_diagnostics: messageDiag.slice(-20),
-                fb_login_options: {
-                  config_id_present: !!state.configurationId,
-                  response_type: "code",
-                  override_default_response_type: true,
-                  extras: {
-                    setup: {},
-                    sessionInfoVersion: "3",
-                  },
-                },
-              });
+              // Session IDs still missing — keep listener, try server shared-WABA fallback.
+              setText(
+                "esr-result-status",
+                "Session IDs missing — attempting server shared-WABA fallback…"
+              );
+              completing = true;
+              completeOnServer({ allowSharedWabaFallback: true });
             }
           }, 500);
           return;
