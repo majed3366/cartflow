@@ -20,6 +20,11 @@ from typing import Any, Optional
 import requests
 
 from services.admin_whatsapp_meta_status_v1 import META_GRAPH_VERSION, read_whatsapp_meta_env
+from services.oauth_redirect_uri_v1 import (
+    build_token_exchange_params,
+    compare_redirect_uris,
+    safe_redirect_uri_diag,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -210,12 +215,18 @@ def _safe_meta_error(body: Any) -> dict[str, Any]:
     }
 
 
-def exchange_authorization_code(code: str) -> dict[str, Any]:
+def exchange_authorization_code(
+    code: str,
+    *,
+    dialog_redirect_uri: str = "",
+) -> dict[str, Any]:
     """
     Server-side code → token exchange.
     Returns metadata only — never the access_token value.
     """
-    token, meta = _exchange_code_internal(code)
+    token, meta = _exchange_code_internal(
+        code, dialog_redirect_uri=dialog_redirect_uri
+    )
     if not token:
         return meta
     return {
@@ -226,10 +237,16 @@ def exchange_authorization_code(code: str) -> dict[str, Any]:
         "http_status": meta.get("http_status"),
         "token_persisted": False,
         "token_logged": False,
+        "oauth_exchange": meta.get("oauth_exchange"),
     }
 
 
-def _exchange_code_internal(code: str) -> tuple[Optional[str], dict[str, Any]]:
+def _exchange_code_internal(
+    code: str,
+    *,
+    dialog_redirect_uri: str = "",
+    spawn_page_uri: str = "",
+) -> tuple[Optional[str], dict[str, Any]]:
     code_s = (code or "").strip()
     if not code_s:
         return None, {"ok": False, "error": "missing_authorization_code", "token_obtained": False}
@@ -244,17 +261,33 @@ def _exchange_code_internal(code: str) -> tuple[Optional[str], dict[str, Any]]:
             "token_obtained": False,
         }
 
+    params, oauth_diag = build_token_exchange_params(
+        client_id=app_id,
+        client_secret=secret,
+        code=code_s,
+        dialog_redirect_uri=dialog_redirect_uri,
+    )
+    # Safe spawn-page diagnostic only — never used as a guessed exchange redirect_uri.
+    oauth_diag["spawn_page"] = safe_redirect_uri_diag(spawn_page_uri)
+    if dialog_redirect_uri and spawn_page_uri:
+        oauth_diag["dialog_vs_spawn"] = compare_redirect_uris(
+            dialog_redirect_uri, spawn_page_uri
+        )
+
+    # Defense: never accidentally include unexpected keys.
+    allowed = {"client_id", "client_secret", "code", "redirect_uri"}
+    unexpected = sorted(set(params.keys()) - allowed)
+    if unexpected:
+        return None, {
+            "ok": False,
+            "error": "oauth_params_unexpected_keys",
+            "token_obtained": False,
+            "oauth_exchange": oauth_diag,
+        }
+
     url = f"https://graph.facebook.com/{META_GRAPH_VERSION}/oauth/access_token"
     try:
-        resp = requests.get(
-            url,
-            params={
-                "client_id": app_id,
-                "client_secret": secret,
-                "code": code_s,
-            },
-            timeout=30,
-        )
+        resp = requests.get(url, params=params, timeout=30)
         status = resp.status_code
         body = resp.json() if resp.content else {}
     except requests.RequestException as exc:
@@ -263,6 +296,7 @@ def _exchange_code_internal(code: str) -> tuple[Optional[str], dict[str, Any]]:
             "ok": False,
             "error": f"http_error: {type(exc).__name__}",
             "token_obtained": False,
+            "oauth_exchange": oauth_diag,
         }
     except ValueError:
         logger.warning("es_recovery_exchange_non_json")
@@ -270,16 +304,24 @@ def _exchange_code_internal(code: str) -> tuple[Optional[str], dict[str, Any]]:
             "ok": False,
             "error": "non_json_response",
             "token_obtained": False,
+            "oauth_exchange": oauth_diag,
         }
 
     if not isinstance(body, dict):
-        return None, {"ok": False, "error": "unexpected_response_shape", "token_obtained": False}
+        return None, {
+            "ok": False,
+            "error": "unexpected_response_shape",
+            "token_obtained": False,
+            "oauth_exchange": oauth_diag,
+        }
 
     if body.get("error"):
         err_meta = _safe_meta_error(body)
         logger.warning(
-            "es_recovery_exchange_meta_error code=%s",
+            "es_recovery_exchange_meta_error code=%s subcode=%s mode=%s",
             err_meta.get("meta_error_code"),
+            err_meta.get("meta_error_subcode"),
+            oauth_diag.get("redirect_uri_mode"),
         )
         return None, {
             "ok": False,
@@ -287,6 +329,8 @@ def _exchange_code_internal(code: str) -> tuple[Optional[str], dict[str, Any]]:
             **err_meta,
             "http_status": status,
             "token_obtained": False,
+            "oauth_exchange": oauth_diag,
+            "graph_endpoint": f"/{META_GRAPH_VERSION}/oauth/access_token",
         }
 
     token = (body.get("access_token") or "").strip()
@@ -296,6 +340,7 @@ def _exchange_code_internal(code: str) -> tuple[Optional[str], dict[str, Any]]:
             "error": "missing_access_token_in_response",
             "http_status": status,
             "token_obtained": False,
+            "oauth_exchange": oauth_diag,
         }
 
     return token, {
@@ -304,6 +349,8 @@ def _exchange_code_internal(code: str) -> tuple[Optional[str], dict[str, Any]]:
         "token_type": body.get("token_type"),
         "expires_in": body.get("expires_in"),
         "http_status": status,
+        "oauth_exchange": oauth_diag,
+        "graph_endpoint": f"/{META_GRAPH_VERSION}/oauth/access_token",
     }
 
 
@@ -634,6 +681,8 @@ def complete_embedded_signup_recovery(
     business_id: str = "",
     session_event: str = "",
     allow_shared_waba_fallback: bool = False,
+    dialog_redirect_uri: str = "",
+    spawn_page_uri: str = "",
 ) -> dict[str, Any]:
     """
     Complete Phase 2B recovery:
@@ -687,15 +736,31 @@ def complete_embedded_signup_recovery(
         base["aborted"] = True
         return base
 
-    token, exchange_meta = _exchange_code_internal(code)
+    token, exchange_meta = _exchange_code_internal(
+        code,
+        dialog_redirect_uri=dialog_redirect_uri,
+        spawn_page_uri=spawn_page_uri,
+    )
+    if exchange_meta.get("oauth_exchange"):
+        base["oauth_exchange"] = exchange_meta["oauth_exchange"]
+    if exchange_meta.get("graph_endpoint"):
+        base["graph_endpoint"] = exchange_meta["graph_endpoint"]
     if not token:
-        base.update({k: v for k, v in exchange_meta.items() if k != "ok"})
+        base.update(
+            {
+                k: v
+                for k, v in exchange_meta.items()
+                if k not in ("ok", "oauth_exchange", "graph_endpoint")
+            }
+        )
         base["ok"] = False
         base["aborted"] = True
         base["error"] = exchange_meta.get("error") or "exchange_failed"
+        base["token_obtained"] = False
         return base
 
     base["authorization_obtained"] = True
+    base["token_obtained"] = True
 
     # Path A — browser session IDs already asserted.
     if session_ids_present:
@@ -721,6 +786,9 @@ def complete_embedded_signup_recovery(
             business_id=base.get("business_id"),
             phone_confirm=base.get("phone_confirm"),
             authorization_obtained=True,
+            token_obtained=True,
+            oauth_exchange=base.get("oauth_exchange"),
+            graph_endpoint=base.get("graph_endpoint"),
         )
         logger.info(
             "es_recovery_phase2b_success source=%s register_called=false",
@@ -755,6 +823,9 @@ def complete_embedded_signup_recovery(
         session_event=base.get("session_event"),
         business_id=base.get("business_id"),
         authorization_obtained=True,
+        token_obtained=True,
+        oauth_exchange=base.get("oauth_exchange"),
+        graph_endpoint=base.get("graph_endpoint"),
         debug_token=fallback.get("debug_token"),
         client_whatsapp_business_accounts=fallback.get(
             "client_whatsapp_business_accounts"

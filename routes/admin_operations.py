@@ -1078,6 +1078,8 @@ async def api_admin_whatsapp_es_recovery_complete(request: Request) -> Any:
             body.get("allow_shared_waba_fallback")
             or body.get("use_shared_waba_fallback")
         ),
+        dialog_redirect_uri=str(body.get("dialog_redirect_uri") or ""),
+        spawn_page_uri=str(body.get("spawn_page_uri") or ""),
     )
     # Absolute redaction of any accidental secret fields.
     for banned in (

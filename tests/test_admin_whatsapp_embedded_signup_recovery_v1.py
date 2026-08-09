@@ -139,6 +139,75 @@ class CompleteRecoveryTests(unittest.TestCase):
         self.assertIn("STOP", r.get("next_phase") or "")
 
     @patch("services.admin_whatsapp_embedded_signup_recovery_v1.requests.get")
+    def test_exchange_uses_exact_dialog_redirect_uri(self, mock_get) -> None:
+        dialog = (
+            "https://staticxx.facebook.com/x/connect/xd_arbiter/"
+            "?version=46#cb=abc&domain=smartreplyai.net"
+        )
+        exchange = MagicMock()
+        exchange.status_code = 200
+        exchange.content = b'{"access_token":"SECRET_TOKEN_VALUE","token_type":"bearer"}'
+        exchange.json.return_value = {
+            "access_token": "SECRET_TOKEN_VALUE",
+            "token_type": "bearer",
+        }
+        confirm = MagicMock()
+        confirm.status_code = 200
+        confirm.content = b'{"id":"1260388737156321"}'
+        confirm.json.return_value = {
+            "id": TARGET_PHONE_NUMBER_ID,
+            "display_phone_number": "+966 57 970 6669",
+        }
+        mock_get.side_effect = [exchange, confirm]
+
+        r = complete_embedded_signup_recovery(
+            code="exchangeable-code",
+            waba_id=TARGET_WABA_ID,
+            phone_number_id=TARGET_PHONE_NUMBER_ID,
+            dialog_redirect_uri=dialog,
+            spawn_page_uri="https://smartreplyai.net/admin/whatsapp/embedded-signup-recovery",
+        )
+        self.assertTrue(r["ok"])
+        exchange_call = mock_get.call_args_list[0]
+        params = exchange_call.kwargs.get("params") or exchange_call[1].get("params")
+        self.assertEqual(params["redirect_uri"], dialog)
+        oauth = r.get("oauth_exchange") or {}
+        self.assertEqual(oauth.get("redirect_uri_mode"), "dialog_exact")
+        self.assertTrue(oauth["auth_exchange_compare"]["exact_match"])
+        self.assertEqual(oauth["dialog_redirect"]["host"], "staticxx.facebook.com")
+        self.assertNotIn("SECRET_TOKEN_VALUE", str(r))
+        self.assertNotIn("exchangeable-code", str(oauth))
+
+    @patch("services.admin_whatsapp_embedded_signup_recovery_v1.requests.get")
+    def test_exchange_omits_redirect_uri_when_dialog_unknown(self, mock_get) -> None:
+        exchange = MagicMock()
+        exchange.status_code = 400
+        exchange.content = b'{"error":{"message":"redirect","code":100,"error_subcode":36008,"type":"OAuthException"}}'
+        exchange.json.return_value = {
+            "error": {
+                "message": "redirect",
+                "code": 100,
+                "error_subcode": 36008,
+                "type": "OAuthException",
+            }
+        }
+        mock_get.return_value = exchange
+        r = complete_embedded_signup_recovery(
+            code="exchangeable-code",
+            waba_id=TARGET_WABA_ID,
+            phone_number_id=TARGET_PHONE_NUMBER_ID,
+            dialog_redirect_uri="",
+        )
+        self.assertFalse(r["ok"])
+        self.assertFalse(r["token_obtained"])
+        params = mock_get.call_args.kwargs.get("params") or mock_get.call_args[1].get(
+            "params"
+        )
+        self.assertNotIn("redirect_uri", params)
+        oauth = r.get("oauth_exchange") or {}
+        self.assertEqual(oauth.get("redirect_uri_mode"), "omit")
+
+    @patch("services.admin_whatsapp_embedded_signup_recovery_v1.requests.get")
     def test_shared_waba_fallback_success(self, mock_get) -> None:
         exchange = MagicMock()
         exchange.status_code = 200

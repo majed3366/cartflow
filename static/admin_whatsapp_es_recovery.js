@@ -19,6 +19,8 @@
       event: null,
     },
     code: null,
+    dialogRedirectUri: null,
+    spawnPageUri: null,
   };
 
   function $(id) {
@@ -263,6 +265,8 @@
       business_id: state.session.business_id || "",
       session_event: state.session.event || "",
       allow_shared_waba_fallback: allowFallback,
+      dialog_redirect_uri: state.dialogRedirectUri || "",
+      spawn_page_uri: state.spawnPageUri || "",
     };
     fetch("/admin/api/whatsapp/embedded-signup-recovery/complete", {
       method: "POST",
@@ -294,55 +298,102 @@
       });
   }
 
+  function captureDialogRedirectUri(url) {
+    if (!url || typeof url !== "string") return;
+    try {
+      var abs = url;
+      if (url.indexOf("http") !== 0) {
+        abs = "https://www.facebook.com" + (url.charAt(0) === "/" ? url : "/" + url);
+      }
+      var u = new URL(abs);
+      var ru = u.searchParams.get("redirect_uri");
+      if (ru) {
+        // Meta may pass redirect_uri URL-encoded once; keep decoded form from URLSearchParams.
+        state.dialogRedirectUri = ru;
+      }
+      var fallback = u.searchParams.get("fallback_redirect_uri");
+      if (fallback && !state.dialogRedirectUri) {
+        state.dialogRedirectUri = fallback;
+      }
+    } catch (e) {
+      /* ignore parse failures */
+    }
+  }
+
+  function withDialogUriCapture(fn) {
+    var prevOpen = window.open;
+    window.open = function (url, name, specs) {
+      try {
+        captureDialogRedirectUri(url);
+      } catch (eCap) {
+        /* ignore */
+      }
+      return prevOpen.call(window, url, name, specs);
+    };
+    try {
+      return fn();
+    } finally {
+      window.open = prevOpen;
+    }
+  }
+
   function launch() {
     if (!state.ready || !state.sdkReady || !window.FB) {
       showResult({ ok: false, error: "sdk_or_config_not_ready" });
       return;
     }
+    state.dialogRedirectUri = null;
+    state.spawnPageUri =
+      window.location.origin + window.location.pathname;
     setText("esr-result-status", "Opening Meta Embedded Signup…");
-    window.FB.login(
-      function (response) {
-        if (response && response.authResponse && response.authResponse.code) {
-          state.code = String(response.authResponse.code);
-          setText("esr-result-status", "Authorization code captured (not logged). Completing…");
-          maybeComplete();
-          // Retry briefly if session message arrives after code.
-          var tries = 0;
-          var timer = setInterval(function () {
-            tries += 1;
-            if (!state.code) {
-              clearInterval(timer);
-              return;
-            }
-            if (state.session.waba_id && state.session.phone_number_id) {
-              clearInterval(timer);
-              maybeComplete();
-            } else if (tries >= 20) {
-              clearInterval(timer);
-              // Session IDs still missing — keep listener, try server shared-WABA fallback.
-              setText(
-                "esr-result-status",
-                "Session IDs missing — attempting server shared-WABA fallback…"
-              );
-              completing = true;
-              completeOnServer({ allowSharedWabaFallback: true });
-            }
-          }, 500);
-          return;
+    withDialogUriCapture(function () {
+      window.FB.login(
+        function (response) {
+          if (response && response.authResponse && response.authResponse.code) {
+            state.code = String(response.authResponse.code);
+            setText(
+              "esr-result-status",
+              "Authorization code captured (not logged). Completing…"
+            );
+            maybeComplete();
+            // Retry briefly if session message arrives after code.
+            var tries = 0;
+            var timer = setInterval(function () {
+              tries += 1;
+              if (!state.code) {
+                clearInterval(timer);
+                return;
+              }
+              if (state.session.waba_id && state.session.phone_number_id) {
+                clearInterval(timer);
+                maybeComplete();
+              } else if (tries >= 20) {
+                clearInterval(timer);
+                // Session IDs still missing — keep listener, try server shared-WABA fallback.
+                setText(
+                  "esr-result-status",
+                  "Session IDs missing — attempting server shared-WABA fallback…"
+                );
+                completing = true;
+                completeOnServer({ allowSharedWabaFallback: true });
+              }
+            }, 500);
+            return;
+          }
+          showResult({
+            ok: false,
+            error: "fb_login_no_code",
+            status: response && response.status ? response.status : null,
+          });
+        },
+        {
+          config_id: state.configurationId,
+          response_type: "code",
+          override_default_response_type: true,
+          extras: { setup: {}, sessionInfoVersion: "3" },
         }
-        showResult({
-          ok: false,
-          error: "fb_login_no_code",
-          status: response && response.status ? response.status : null,
-        });
-      },
-      {
-        config_id: state.configurationId,
-        response_type: "code",
-        override_default_response_type: true,
-        extras: { setup: {}, sessionInfoVersion: "3" },
-      }
-    );
+      );
+    });
   }
 
   function init() {
