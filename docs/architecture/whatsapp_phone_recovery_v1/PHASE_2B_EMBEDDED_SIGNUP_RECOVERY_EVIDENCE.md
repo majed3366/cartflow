@@ -1,7 +1,7 @@
 # Embedded Signup Recovery — Phase 2B Evidence
 
 **Date (UTC):** 2026-08-09  
-**Deploy target:** Living Store `https://smartreplyai.net`  
+**Deploy SHA:** `c71dc0b` (Living Store)  
 **Phase:** 2B — Minimal Embedded Signup Recovery  
 **STOP:** Do **not** call `POST /{phone-number-id}/register`
 
@@ -59,34 +59,56 @@ Covers: assert OK / WABA mismatch abort / phone mismatch abort / public config r
 
 ---
 
-## Runtime evidence checklist
+## Living Store runtime probe (`c71dc0b`)
 
-Fill after Living Store deploy + owner Meta click-through:
+Source: [`phase2b_production_probe.json`](phase2b_production_probe.json)
+
+| Gate | Result |
+|------|--------|
+| Deploy SHA matches | **PASS** |
+| Config API requires admin (401 unauth) | **PASS** |
+| Static recovery JS present (`FB.login`) | **PASS** |
+| Authenticated config ready + hard-assert abort | **Skipped** — `CARTFLOW_ADMIN_PASSWORD` not available in probe env |
+
+Unauthenticated completion of Meta dialog was not attempted (requires owner Facebook session for the existing WABA).
+
+---
+
+## Runtime evidence checklist
 
 | Gate | Evidence | Status |
 |------|----------|--------|
-| Recovery page reachable (admin) | screenshot / HTTP 200 | pending deploy probe |
-| Config API returns App ID + Configuration ID (no secret) | `production_probe.json` | pending |
-| Facebook SDK initializes | UI “Facebook SDK: ready” | pending |
-| Embedded Signup opens | Meta dialog/popup | **requires owner Facebook session** |
-| Meta authorization completes | `WA_EMBEDDED_SIGNUP` FINISH + code | **requires owner** |
-| Existing WABA confirmed | `1520530422625766` | **requires owner** |
-| Existing phone confirmed | `1260388737156321` | **requires owner** |
-| Fresh authorization obtained | `fresh_authorization_obtained: true` | **requires owner** |
-| No duplicate WABA/phone | response flags false | asserted in code |
-| No delete/deregister | response flags false | asserted in code |
-| `/register` not called | `register_called: false` | asserted in code |
+| Recovery route + JS deployed | probe + SHA `c71dc0b` | **PASS** |
+| Config API auth-gated | HTTP 401 without session | **PASS** |
+| Facebook SDK wired in client | static JS contains `FB.login` + `config_id` | **PASS** |
+| Unit hard-assert / no token leak | 9 tests PASS | **PASS** |
+| Embedded Signup opens | Meta dialog/popup | **Owner action** |
+| Meta authorization completes | `WA_EMBEDDED_SIGNUP` FINISH + code | **Owner action** |
+| Existing WABA confirmed | `1520530422625766` | **Owner action** |
+| Existing phone confirmed | `1260388737156321` | **Owner action** |
+| Fresh authorization obtained | `fresh_authorization_obtained: true` | **Owner action** |
+| No duplicate WABA/phone | response flags false | enforced in code |
+| No delete/deregister | response flags false | enforced in code |
+| `/register` not called | `register_called: false` | enforced in code |
 
 ---
 
 ## Owner action to close live success gate
 
 1. Open `https://smartreplyai.net/admin/whatsapp/embedded-signup-recovery` (admin login).  
-2. Confirm Ready = yes.  
+2. Confirm Ready = yes (App ID / Configuration ID / App Secret configured).  
 3. Click **Start Embedded Signup**.  
 4. Complete Meta UI selecting the **existing** CartFlow WABA + phone (do not create new assets).  
 5. Confirm Result JSON shows `ok: true`, matching IDs, `register_called: false`.  
 6. **STOP** — do not proceed to Phase 3 `/register` until separately authorized.
+
+Optional probe with admin password:
+
+```bash
+set CARTFLOW_ADMIN_PASSWORD=***
+set CF_EXPECTED_SHA=c71dc0b
+python scripts/_probe_whatsapp_es_recovery_phase2b.py
+```
 
 ---
 

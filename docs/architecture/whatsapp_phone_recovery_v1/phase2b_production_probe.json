@@ -1,0 +1,46 @@
+{
+  "deploy": {
+    "ok": true,
+    "sha": "c71dc0b32d21349cb9023bbaf20d7a05235c7575",
+    "status": 200
+  },
+  "config_unauth": {
+    "status": 401,
+    "body": {
+      "ok": false,
+      "error": "unauthorized"
+    },
+    "headers": {
+      "content-security-policy": "frame-ancestors https://*.zid.sa https://zid.sa;",
+      "Content-Type": "application/json",
+      "Date": "Sun, 09 Aug 2026 09:52:46 GMT",
+      "Server": "railway-hikari",
+      "x-frame-options": "ALLOWALL",
+      "x-railway-request-id": "rAA2pmHAQS6ZcO_kN8N_Fg",
+      "Content-Length": "35",
+      "x-hikari-trace": "cdg1.8vsn",
+      "x-railway-edge": "cdg1",
+      "Connection": "close"
+    }
+  },
+  "static_js": {
+    "status": 200,
+    "has_fb_login": true,
+    "has_config_id": true,
+    "has_no_register_call": false,
+    "mentions_register_block": true
+  },
+  "admin_login": {
+    "skipped": true,
+    "reason": "CARTFLOW_ADMIN_PASSWORD not set in probe env"
+  },
+  "gates": {
+    "deploy": "PASS",
+    "configRequiresAuth": "PASS",
+    "staticJsPresent": "PASS"
+  },
+  "all_pass": true,
+  "register_called": false,
+  "phase": "2b",
+  "stop": "Do not call /register"
+}
