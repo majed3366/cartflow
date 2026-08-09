@@ -1,0 +1,240 @@
+{
+  "deploy_sha": "d1662e1b6d63da653589771f18118173b9c821ec",
+  "runtime": {
+    "console_total": 1,
+    "errors": [
+      {
+        "type": "error",
+        "text": "Failed to load resource: the server responded with a status of 400 ()",
+        "location": "{'url': 'https://smartreplyai.net/api/landing/event', 'lineNumber': 0, 'columnNumber': 0}"
+      }
+    ],
+    "warnings_count": 0,
+    "pageerrors": []
+  },
+  "request_summary": {
+    "total_tracked": 10,
+    "by_class": {
+      "other": 1,
+      "dev": 1,
+      "dashboard_html": 1,
+      "dashboard_summary": 2,
+      "workspace_projection": 5
+    },
+    "by_phase": {
+      "boot": {
+        "other": 1,
+        "dev": 1
+      },
+      "home_initial": {
+        "dashboard_html": 1,
+        "dashboard_summary": 1
+      },
+      "nav_workspace": {
+        "workspace_projection": 1
+      },
+      "nav_home": {
+        "dashboard_summary": 1
+      },
+      "responsive_1440": {
+        "workspace_projection": 1
+      },
+      "responsive_1024": {
+        "workspace_projection": 1
+      },
+      "responsive_430": {
+        "workspace_projection": 1
+      },
+      "responsive_390": {
+        "workspace_projection": 1
+      }
+    },
+    "api_calls": 7,
+    "api_during_scroll": 0,
+    "dashboard_summary_count": 2,
+    "workspace_projection_count": 5,
+    "api_urls": [
+      "https://smartreplyai.net/api/cart-workspace/v1/projection",
+      "https://smartreplyai.net/api/dashboard/summary"
+    ]
+  },
+  "endpoints": {
+    "dashboard_summary": {
+      "status": 200,
+      "ok": true,
+      "bytes": 63359,
+      "keys": [
+        "_merchant_home_transport",
+        "_snapshot",
+        "business_facts_v1",
+        "commerce_situations_v1",
+        "diagnostic_publication_v1",
+        "diagnostic_publications_v1",
+        "diagnostic_snapshot_read_ms",
+        "home_executive_summary_v1",
+        "home_slim_transport_v1",
+        "home_surface_mode",
+        "home_teaser_inputs_v1",
+        "merchant_activation",
+        "merchant_activation_visibility_debug",
+        "merchant_ar_date_header",
+        "merchant_counter_health",
+        "merchant_dashboard_refresh_archive_rev",
+        "merchant_dashboard_refresh_cart_rev",
+        "merchant_dashboard_refresh_last_log_id",
+        "merchant_dashboard_refresh_last_sent_log_id",
+        "merchant_dashboard_refresh_sent_total",
+        "merchant_dashboard_refresh_token",
+        "merchant_home_experience_v1",
+        "merchant_kpi_abandoned_fmt",
+        "merchant_kpi_recovered_fmt",
+        "merchant_kpi_recovered_pct_vs_abandoned",
+        "merchant_kpi_revenue_fmt",
+        "merchant_kpi_wa_sent_fmt",
+        "merchant_kpi_wa_sub_ar",
+        "merchant_month_abandoned_fmt",
+        "merchant_month_recovered_fmt",
+        "merchant_month_recovery_pct_fmt",
+        "merchant_month_revenue_fmt",
+        "merchant_nav_badge_abandoned",
+        "merchant_nav_badge_followup",
+        "merchant_nav_badge_vip",
+        "merchant_publication_v1",
+        "merchant_reason_insight_ar",
+        "merchant_reason_recommendations_ar",
+        "merchant_reason_rows_month",
+        "merchant_reason_rows_week"
+      ],
+      "has_error_key": false,
+      "projection_zone_b_len": 0,
+      "summary_has_homeish": false,
+      "sample_primary_decision": null
+    },
+    "workspace_projection": {
+      "status": 200,
+      "ok": true,
+      "bytes": 58434,
+      "keys": [
+        "decision_workspace_refinement_v1",
+        "degrade_reason",
+        "degraded",
+        "flag",
+        "gate_2_single_decision_owner",
+        "gate_2a_decision_workspace_completion",
+        "gate_2b_decision_composition_engine",
+        "gate_2c_decision_portfolio",
+        "merchant_surface_active",
+        "ok",
+        "projection",
+        "projection_version",
+        "reality_validation_identity_v1",
+        "silent_success_mode",
+        "store_slug",
+        "workspace_durable_snapshot_hit",
+        "workspace_paint_cache_hit",
+        "workspace_serve_path",
+        "zone_assignment"
+      ],
+      "has_error_key": false,
+      "projection_zone_b_len": 4,
+      "summary_has_homeish": false,
+      "sample_primary_decision": "لا تغيّر سياسة الشحن حتى تتضح الأدلة."
+    }
+  },
+  "responsive_parity": {
+    "same_decision": true,
+    "same_confidence": true,
+    "titles": [
+      "لا تغيّر سياسة الشحن حتى تتضح الأدلة."
+    ],
+    "confidences": [
+      "الأدلة ما زالت محدودة"
+    ]
+  },
+  "nav_probe": {
+    "baseline_dom": 118,
+    "final_dom": 160,
+    "baseline_bound_nav": 6,
+    "final_bound_nav": 6,
+    "active_page_always_one": true,
+    "legacy_any_active": false,
+    "home_title_stable": true,
+    "hash_home_end": true,
+    "shell": "shell-integration-v1"
+  },
+  "legacy": {
+    "runtime_dom": false,
+    "items": [
+      {
+        "id": "cf2-global-btn / global panel",
+        "classification": "REMOVED",
+        "evidence": "absent from merchant_ui_v2_app.js/html; only denial comment in frame.css"
+      },
+      {
+        "id": "is-global-nav-open",
+        "classification": "REMOVED",
+        "evidence": "no body class toggles in V2 app.js; tests assert absence"
+      },
+      {
+        "id": "page-chrome navigation",
+        "classification": "REMOVED",
+        "evidence": "superseded by shell-integration-v1; no page-chrome mount in V2 template"
+      },
+      {
+        "id": "old contextual sheet / section pills",
+        "classification": "REMOVED",
+        "evidence": "runtime probe found none; contextual is #cf2-ctx only"
+      },
+      {
+        "id": "nav-reset-v1 remnants",
+        "classification": "UNREACHABLE",
+        "evidence": "historical commits only; current marker shell-integration-v1"
+      },
+      {
+        "id": "global-ownership-v1 panel",
+        "classification": "REMOVED",
+        "evidence": "superseded by shell integration; no #cf2-global-panel"
+      },
+      {
+        "id": "duplicate shell initializers",
+        "classification": "DEAD",
+        "evidence": "single DOMContentLoaded bind(); nav clicks guarded by data-cf2-nav-bound"
+      }
+    ]
+  },
+  "performance": {
+    "home_initial_ms": 4371,
+    "home_ctx_cycle_ms": 979,
+    "home_to_workspace_ms": 1001,
+    "workspace_ctx_cycle_ms": 894,
+    "workspace_to_home_ms": 1260,
+    "dom_growth": 42,
+    "nav_bound_growth": 0,
+    "thresholds": {
+      "home_initial_ms_lt_20000": true,
+      "switch_ms_lt_15000": true,
+      "dom_growth_lt_5000": true,
+      "nav_bound_stable": true,
+      "no_api_on_scroll": true
+    }
+  },
+  "safety": {
+    "v2_home_fetch": "/api/dashboard/summary",
+    "v2_workspace_fetch": "/api/cart-workspace/v1/projection",
+    "v2_files_mention_purchase_or_scheduler": false,
+    "note": "merchant_ui_v2_{app,home,workspace}.js contain no purchase/scheduler/whatsapp outbound calls"
+  },
+  "ws_truth_sample": {
+    "title": "لا تغيّر سياسة الشحن حتى تتضح الأدلة.",
+    "conf": "الأدلة ما زالت محدودة",
+    "evidence": [
+      "يغادر العملاء بعد خطوة الشحن في مسار Nano 20W."
+    ],
+    "meaning": "هذه الخطوة تمثّل اختناقاً في مسار الشراء.",
+    "mass": "لا تغيّر سياسة الشحن حتى تتضح الأدلة."
+  },
+  "home_truth_sample": {
+    "before": "أهم قرار اليوم",
+    "after": "أهم قرار اليوم"
+  }
+}

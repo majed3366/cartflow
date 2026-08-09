@@ -1,0 +1,393 @@
+{
+  "nav_probe": {
+    "baseline_dom": 118,
+    "final_dom": 160,
+    "baseline_bound_nav": 6,
+    "final_bound_nav": 6,
+    "active_page_always_one": true,
+    "legacy_any_active": false,
+    "home_title_stable": true,
+    "hash_home_end": true,
+    "shell": "shell-integration-v1"
+  },
+  "sequence": [
+    {
+      "step": "1_home_load",
+      "state": {
+        "hash": "#home",
+        "activeNav": "home",
+        "activePageCount": 1,
+        "activePages": [
+          "home"
+        ],
+        "pageCount": 6,
+        "shell": "shell-integration-v1",
+        "wsMarker": "",
+        "mobH": "",
+        "ctxOpen": false,
+        "drawerOpen": false,
+        "legacy": {
+          "globalBtn": false,
+          "globalPanel": false,
+          "globalNavOpen": false,
+          "pageChrome": false,
+          "sectionPills": false
+        },
+        "homeTitle": "أهم قرار اليوم",
+        "wsTitle": "",
+        "wsConf": "",
+        "wsEvidence": [],
+        "wsMeaning": "",
+        "wsMass": "",
+        "wsWait": "",
+        "domNodes": 118,
+        "listenerBoundFlags": 6
+      }
+    },
+    {
+      "step": "2_home_scroll",
+      "state": {
+        "hash": "#home",
+        "activeNav": "home",
+        "activePageCount": 1,
+        "activePages": [
+          "home"
+        ],
+        "pageCount": 6,
+        "shell": "shell-integration-v1",
+        "wsMarker": "",
+        "mobH": "",
+        "ctxOpen": false,
+        "drawerOpen": false,
+        "legacy": {
+          "globalBtn": false,
+          "globalPanel": false,
+          "globalNavOpen": false,
+          "pageChrome": false,
+          "sectionPills": false
+        },
+        "homeTitle": "أهم قرار اليوم",
+        "wsTitle": "",
+        "wsConf": "",
+        "wsEvidence": [],
+        "wsMeaning": "",
+        "wsMass": "",
+        "wsWait": "",
+        "domNodes": 118,
+        "listenerBoundFlags": 6
+      }
+    },
+    {
+      "step": "3_home_ctx_open",
+      "state": {
+        "hash": "#home",
+        "activeNav": "home",
+        "activePageCount": 1,
+        "activePages": [
+          "home"
+        ],
+        "pageCount": 6,
+        "shell": "shell-integration-v1",
+        "wsMarker": "",
+        "mobH": "",
+        "ctxOpen": true,
+        "drawerOpen": false,
+        "legacy": {
+          "globalBtn": false,
+          "globalPanel": false,
+          "globalNavOpen": false,
+          "pageChrome": false,
+          "sectionPills": false
+        },
+        "homeTitle": "أهم قرار اليوم",
+        "wsTitle": "",
+        "wsConf": "",
+        "wsEvidence": [],
+        "wsMeaning": "",
+        "wsMass": "",
+        "wsWait": "",
+        "domNodes": 118,
+        "listenerBoundFlags": 6
+      }
+    },
+    {
+      "step": "4_home_ctx_close",
+      "state": {
+        "hash": "#home",
+        "activeNav": "home",
+        "activePageCount": 1,
+        "activePages": [
+          "home"
+        ],
+        "pageCount": 6,
+        "shell": "shell-integration-v1",
+        "wsMarker": "",
+        "mobH": "",
+        "ctxOpen": false,
+        "drawerOpen": false,
+        "legacy": {
+          "globalBtn": false,
+          "globalPanel": false,
+          "globalNavOpen": false,
+          "pageChrome": false,
+          "sectionPills": false
+        },
+        "homeTitle": "أهم قرار اليوم",
+        "wsTitle": "",
+        "wsConf": "",
+        "wsEvidence": [],
+        "wsMeaning": "",
+        "wsMass": "",
+        "wsWait": "",
+        "domNodes": 118,
+        "listenerBoundFlags": 6
+      }
+    },
+    {
+      "step": "5_workspace",
+      "state": {
+        "hash": "#workspace",
+        "activeNav": "workspace",
+        "activePageCount": 1,
+        "activePages": [
+          "workspace"
+        ],
+        "pageCount": 6,
+        "shell": "shell-integration-v1",
+        "wsMarker": "workspace-composition-closure-v1",
+        "mobH": "v1",
+        "ctxOpen": false,
+        "drawerOpen": false,
+        "legacy": {
+          "globalBtn": false,
+          "globalPanel": false,
+          "globalNavOpen": false,
+          "pageChrome": false,
+          "sectionPills": false
+        },
+        "homeTitle": "أهم قرار اليوم",
+        "wsTitle": "لا تغيّر سياسة الشحن حتى تتضح الأدلة.",
+        "wsConf": "الأدلة ما زالت محدودة",
+        "wsEvidence": [
+          "يغادر العملاء بعد خطوة الشحن في مسار Nano 20W."
+        ],
+        "wsMeaning": "هذه الخطوة تمثّل اختناقاً في مسار الشراء.",
+        "wsMass": "لا تغيّر سياسة الشحن حتى تتضح الأدلة.",
+        "wsWait": "لا يوجد إجراء حالياً.سيخبرك CartFlow عندما يصبح القرار جاهزاً.",
+        "domNodes": 159,
+        "listenerBoundFlags": 6
+      }
+    },
+    {
+      "step": "6_workspace_scroll",
+      "state": {
+        "hash": "#workspace",
+        "activeNav": "workspace",
+        "activePageCount": 1,
+        "activePages": [
+          "workspace"
+        ],
+        "pageCount": 6,
+        "shell": "shell-integration-v1",
+        "wsMarker": "workspace-composition-closure-v1",
+        "mobH": "v1",
+        "ctxOpen": false,
+        "drawerOpen": false,
+        "legacy": {
+          "globalBtn": false,
+          "globalPanel": false,
+          "globalNavOpen": false,
+          "pageChrome": false,
+          "sectionPills": false
+        },
+        "homeTitle": "أهم قرار اليوم",
+        "wsTitle": "لا تغيّر سياسة الشحن حتى تتضح الأدلة.",
+        "wsConf": "الأدلة ما زالت محدودة",
+        "wsEvidence": [
+          "يغادر العملاء بعد خطوة الشحن في مسار Nano 20W."
+        ],
+        "wsMeaning": "هذه الخطوة تمثّل اختناقاً في مسار الشراء.",
+        "wsMass": "لا تغيّر سياسة الشحن حتى تتضح الأدلة.",
+        "wsWait": "لا يوجد إجراء حالياً.سيخبرك CartFlow عندما يصبح القرار جاهزاً.",
+        "domNodes": 159,
+        "listenerBoundFlags": 6
+      },
+      "requests_during_scroll": 0
+    },
+    {
+      "step": "7_ws_ctx_open",
+      "state": {
+        "hash": "#workspace",
+        "activeNav": "workspace",
+        "activePageCount": 1,
+        "activePages": [
+          "workspace"
+        ],
+        "pageCount": 6,
+        "shell": "shell-integration-v1",
+        "wsMarker": "workspace-composition-closure-v1",
+        "mobH": "v1",
+        "ctxOpen": true,
+        "drawerOpen": false,
+        "legacy": {
+          "globalBtn": false,
+          "globalPanel": false,
+          "globalNavOpen": false,
+          "pageChrome": false,
+          "sectionPills": false
+        },
+        "homeTitle": "أهم قرار اليوم",
+        "wsTitle": "لا تغيّر سياسة الشحن حتى تتضح الأدلة.",
+        "wsConf": "الأدلة ما زالت محدودة",
+        "wsEvidence": [
+          "يغادر العملاء بعد خطوة الشحن في مسار Nano 20W."
+        ],
+        "wsMeaning": "هذه الخطوة تمثّل اختناقاً في مسار الشراء.",
+        "wsMass": "لا تغيّر سياسة الشحن حتى تتضح الأدلة.",
+        "wsWait": "لا يوجد إجراء حالياً.سيخبرك CartFlow عندما يصبح القرار جاهزاً.",
+        "domNodes": 159,
+        "listenerBoundFlags": 6
+      }
+    },
+    {
+      "step": "8_ws_ctx_close",
+      "state": {
+        "hash": "#workspace",
+        "activeNav": "workspace",
+        "activePageCount": 1,
+        "activePages": [
+          "workspace"
+        ],
+        "pageCount": 6,
+        "shell": "shell-integration-v1",
+        "wsMarker": "workspace-composition-closure-v1",
+        "mobH": "v1",
+        "ctxOpen": false,
+        "drawerOpen": false,
+        "legacy": {
+          "globalBtn": false,
+          "globalPanel": false,
+          "globalNavOpen": false,
+          "pageChrome": false,
+          "sectionPills": false
+        },
+        "homeTitle": "أهم قرار اليوم",
+        "wsTitle": "لا تغيّر سياسة الشحن حتى تتضح الأدلة.",
+        "wsConf": "الأدلة ما زالت محدودة",
+        "wsEvidence": [
+          "يغادر العملاء بعد خطوة الشحن في مسار Nano 20W."
+        ],
+        "wsMeaning": "هذه الخطوة تمثّل اختناقاً في مسار الشراء.",
+        "wsMass": "لا تغيّر سياسة الشحن حتى تتضح الأدلة.",
+        "wsWait": "لا يوجد إجراء حالياً.سيخبرك CartFlow عندما يصبح القرار جاهزاً.",
+        "domNodes": 159,
+        "listenerBoundFlags": 6
+      }
+    },
+    {
+      "step": "9_home_return",
+      "state": {
+        "hash": "#home",
+        "activeNav": "home",
+        "activePageCount": 1,
+        "activePages": [
+          "home"
+        ],
+        "pageCount": 6,
+        "shell": "shell-integration-v1",
+        "wsMarker": "workspace-composition-closure-v1",
+        "mobH": "v1",
+        "ctxOpen": false,
+        "drawerOpen": false,
+        "legacy": {
+          "globalBtn": false,
+          "globalPanel": false,
+          "globalNavOpen": false,
+          "pageChrome": false,
+          "sectionPills": false
+        },
+        "homeTitle": "أهم قرار اليوم",
+        "wsTitle": "لا تغيّر سياسة الشحن حتى تتضح الأدلة.",
+        "wsConf": "الأدلة ما زالت محدودة",
+        "wsEvidence": [
+          "يغادر العملاء بعد خطوة الشحن في مسار Nano 20W."
+        ],
+        "wsMeaning": "هذه الخطوة تمثّل اختناقاً في مسار الشراء.",
+        "wsMass": "لا تغيّر سياسة الشحن حتى تتضح الأدلة.",
+        "wsWait": "لا يوجد إجراء حالياً.سيخبرك CartFlow عندما يصبح القرار جاهزاً.",
+        "domNodes": 160,
+        "listenerBoundFlags": 6
+      }
+    },
+    {
+      "step": "10_account_open",
+      "state": {
+        "hash": "#home",
+        "activeNav": "home",
+        "activePageCount": 1,
+        "activePages": [
+          "home"
+        ],
+        "pageCount": 6,
+        "shell": "shell-integration-v1",
+        "wsMarker": "workspace-composition-closure-v1",
+        "mobH": "v1",
+        "ctxOpen": false,
+        "drawerOpen": true,
+        "legacy": {
+          "globalBtn": false,
+          "globalPanel": false,
+          "globalNavOpen": false,
+          "pageChrome": false,
+          "sectionPills": false
+        },
+        "homeTitle": "أهم قرار اليوم",
+        "wsTitle": "لا تغيّر سياسة الشحن حتى تتضح الأدلة.",
+        "wsConf": "الأدلة ما زالت محدودة",
+        "wsEvidence": [
+          "يغادر العملاء بعد خطوة الشحن في مسار Nano 20W."
+        ],
+        "wsMeaning": "هذه الخطوة تمثّل اختناقاً في مسار الشراء.",
+        "wsMass": "لا تغيّر سياسة الشحن حتى تتضح الأدلة.",
+        "wsWait": "لا يوجد إجراء حالياً.سيخبرك CartFlow عندما يصبح القرار جاهزاً.",
+        "domNodes": 160,
+        "listenerBoundFlags": 6
+      }
+    },
+    {
+      "step": "11_account_close",
+      "state": {
+        "hash": "#home",
+        "activeNav": "home",
+        "activePageCount": 1,
+        "activePages": [
+          "home"
+        ],
+        "pageCount": 6,
+        "shell": "shell-integration-v1",
+        "wsMarker": "workspace-composition-closure-v1",
+        "mobH": "v1",
+        "ctxOpen": false,
+        "drawerOpen": false,
+        "legacy": {
+          "globalBtn": false,
+          "globalPanel": false,
+          "globalNavOpen": false,
+          "pageChrome": false,
+          "sectionPills": false
+        },
+        "homeTitle": "أهم قرار اليوم",
+        "wsTitle": "لا تغيّر سياسة الشحن حتى تتضح الأدلة.",
+        "wsConf": "الأدلة ما زالت محدودة",
+        "wsEvidence": [
+          "يغادر العملاء بعد خطوة الشحن في مسار Nano 20W."
+        ],
+        "wsMeaning": "هذه الخطوة تمثّل اختناقاً في مسار الشراء.",
+        "wsMass": "لا تغيّر سياسة الشحن حتى تتضح الأدلة.",
+        "wsWait": "لا يوجد إجراء حالياً.سيخبرك CartFlow عندما يصبح القرار جاهزاً.",
+        "domNodes": 160,
+        "listenerBoundFlags": 6
+      }
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "console_total": 1,
+  "errors": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 400 ()",
+      "location": "{'url': 'https://smartreplyai.net/api/landing/event', 'lineNumber': 0, 'columnNumber': 0}"
+    }
+  ],
+  "warnings_count": 0,
+  "pageerrors": []
+}

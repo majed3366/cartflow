@@ -1,0 +1,40 @@
+{
+  "runtime_dom": false,
+  "items": [
+    {
+      "id": "cf2-global-btn / global panel",
+      "classification": "REMOVED",
+      "evidence": "absent from merchant_ui_v2_app.js/html; only denial comment in frame.css"
+    },
+    {
+      "id": "is-global-nav-open",
+      "classification": "REMOVED",
+      "evidence": "no body class toggles in V2 app.js; tests assert absence"
+    },
+    {
+      "id": "page-chrome navigation",
+      "classification": "REMOVED",
+      "evidence": "superseded by shell-integration-v1; no page-chrome mount in V2 template"
+    },
+    {
+      "id": "old contextual sheet / section pills",
+      "classification": "REMOVED",
+      "evidence": "runtime probe found none; contextual is #cf2-ctx only"
+    },
+    {
+      "id": "nav-reset-v1 remnants",
+      "classification": "UNREACHABLE",
+      "evidence": "historical commits only; current marker shell-integration-v1"
+    },
+    {
+      "id": "global-ownership-v1 panel",
+      "classification": "REMOVED",
+      "evidence": "superseded by shell integration; no #cf2-global-panel"
+    },
+    {
+      "id": "duplicate shell initializers",
+      "classification": "DEAD",
+      "evidence": "single DOMContentLoaded bind(); nav clicks guarded by data-cf2-nav-bound"
+    }
+  ]
+}

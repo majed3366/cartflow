@@ -1,0 +1,46 @@
+{
+  "total_tracked": 10,
+  "by_class": {
+    "other": 1,
+    "dev": 1,
+    "dashboard_html": 1,
+    "dashboard_summary": 2,
+    "workspace_projection": 5
+  },
+  "by_phase": {
+    "boot": {
+      "other": 1,
+      "dev": 1
+    },
+    "home_initial": {
+      "dashboard_html": 1,
+      "dashboard_summary": 1
+    },
+    "nav_workspace": {
+      "workspace_projection": 1
+    },
+    "nav_home": {
+      "dashboard_summary": 1
+    },
+    "responsive_1440": {
+      "workspace_projection": 1
+    },
+    "responsive_1024": {
+      "workspace_projection": 1
+    },
+    "responsive_430": {
+      "workspace_projection": 1
+    },
+    "responsive_390": {
+      "workspace_projection": 1
+    }
+  },
+  "api_calls": 7,
+  "api_during_scroll": 0,
+  "dashboard_summary_count": 2,
+  "workspace_projection_count": 5,
+  "api_urls": [
+    "https://smartreplyai.net/api/cart-workspace/v1/projection",
+    "https://smartreplyai.net/api/dashboard/summary"
+  ]
+}

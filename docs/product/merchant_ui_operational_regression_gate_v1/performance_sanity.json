@@ -1,0 +1,16 @@
+{
+  "home_initial_ms": 4371,
+  "home_ctx_cycle_ms": 979,
+  "home_to_workspace_ms": 1001,
+  "workspace_ctx_cycle_ms": 894,
+  "workspace_to_home_ms": 1260,
+  "dom_growth": 42,
+  "nav_bound_growth": 0,
+  "thresholds": {
+    "home_initial_ms_lt_20000": true,
+    "switch_ms_lt_15000": true,
+    "dom_growth_lt_5000": true,
+    "nav_bound_stable": true,
+    "no_api_on_scroll": true
+  }
+}
