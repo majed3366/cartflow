@@ -1,5 +1,7 @@
 /**
- * CartFlow Merchant UI V2 — App shell router (frame only).
+ * CartFlow Merchant UI V2 — App shell router.
+ * GLOBAL UPBAR / drawer = primary destinations.
+ * CONTEXTUAL SIDEBAR / mobile strip = current-area navigation only.
  * Hash routes: #home | #workspace | stubs for other primary sections.
  */
 (function () {
@@ -14,14 +16,20 @@
     { id: "settings", label: "الإعدادات", slice: false },
   ];
 
+  /**
+   * Contextual items — real V2 area views only (no invented subroutes).
+   * Home: frozen executive board = نظرة عامة.
+   * Workspace: decision attention surface = ما يحتاج قرارك.
+   * (V1 "الملخص العام" / #home-month is not a live V2 composition.)
+   */
   var CTX = {
     home: {
+      title: "الرئيسية",
       items: [{ id: "overview", label: "نظرة عامة" }],
-      note: "ماذا يجب أن أعرف الآن عن متجري؟",
     },
     workspace: {
+      title: "مساحة القرار",
       items: [{ id: "attention", label: "ما يحتاج قرارك" }],
-      note: "قرار واحد واضح — ماذا نفعل، ولماذا، ومتى الآن.",
     },
   };
 
@@ -53,42 +61,66 @@
       btn.classList.toggle("is-active", on);
       btn.setAttribute("aria-current", on ? "page" : "false");
     });
-    var title = $("#cf2-appbar-section");
-    if (title) title.textContent = sectionLabel(section);
+  }
+
+  function paintCtxItems(conf, activeId) {
+    var html = "";
+    (conf.items || []).forEach(function (item) {
+      var on = item.id === activeId;
+      html +=
+        '<button type="button" class="cf2-ctx__item' +
+        (on ? " is-active" : "") +
+        '" data-cf2-ctx-item="' +
+        item.id +
+        '"' +
+        (on ? ' aria-current="true"' : "") +
+        ">" +
+        item.label +
+        "</button>";
+    });
+    return html;
   }
 
   function setContext(section) {
     var shell = $(".cf2-shell");
-    var ctx = $(".cf2-ctx");
+    var ctx = $("#cf2-ctx");
+    var mobile = $("#cf2-ctx-mobile");
     if (!shell || !ctx) return;
-    // Home + Workspace: stage owns the field — no legacy ctx rail.
-    if (section === "home" || section === "workspace") {
-      shell.setAttribute("data-cf2-ctx", "off");
-      ctx.innerHTML = "";
-      return;
-    }
+
     var conf = CTX[section];
-    if (!conf) {
+    if (!conf || !(conf.items && conf.items.length)) {
       shell.setAttribute("data-cf2-ctx", "off");
       ctx.innerHTML = "";
+      if (mobile) {
+        mobile.innerHTML = "";
+        mobile.hidden = true;
+        mobile.setAttribute("data-cf2-ctx-mobile", "off");
+      }
       return;
     }
+
     shell.setAttribute("data-cf2-ctx", "on");
-    var html = '<p class="cf2-ctx__label">في هذا القسم</p>';
-    (conf.items || []).forEach(function (item, idx) {
-      html +=
-        '<button type="button" class="cf2-ctx__item' +
-        (idx === 0 ? " is-active" : "") +
-        '" data-cf2-ctx-item="' +
-        item.id +
-        '">' +
-        item.label +
-        "</button>";
-    });
-    if (conf.note) {
-      html += '<p class="cf2-ctx__note">' + conf.note + "</p>";
+    var activeId = conf.items[0].id;
+    var title = conf.title || sectionLabel(section);
+
+    ctx.innerHTML =
+      '<p class="cf2-ctx__area">' +
+      title +
+      "</p>" +
+      '<p class="cf2-ctx__label">في هذا القسم</p>' +
+      paintCtxItems(conf, activeId);
+
+    if (mobile) {
+      mobile.innerHTML =
+        '<p class="cf2-ctx-mobile__area">' +
+        title +
+        "</p>" +
+        '<div class="cf2-ctx-mobile__items">' +
+        paintCtxItems(conf, activeId) +
+        "</div>";
+      mobile.hidden = false;
+      mobile.setAttribute("data-cf2-ctx-mobile", "on");
     }
-    ctx.innerHTML = html;
   }
 
   function showPage(section) {
@@ -175,8 +207,6 @@
     if (deskAcc) deskAcc.addEventListener("click", openDrawer);
     var close = $(".cf2-drawer__close");
     if (close) close.addEventListener("click", closeDrawer);
-    var chromeClose = $(".cf2-drawer__chrome-close");
-    if (chromeClose) chromeClose.addEventListener("click", closeDrawer);
     var backdrop = $(".cf2-drawer-backdrop");
     if (backdrop) backdrop.addEventListener("click", closeDrawer);
     var brand = $(".cf2-brand");
@@ -199,5 +229,6 @@
   window.CartFlowUiV2 = {
     go: go,
     sections: SECTIONS,
+    ctx: CTX,
   };
 })();

@@ -1,7 +1,8 @@
 /**
  * CartFlow Merchant UI V2 — App Frame.
- * Desktop: horizontal App Bar + optional contextual sidebar (SEPARATE).
- * Mobile: compact app bar + content-sized drawer.
+ * Architecture: GLOBAL UPBAR + CONTEXTUAL SIDEBAR (separate responsibilities).
+ * Desktop: Upbar + Sidebar + Stage simultaneously.
+ * Mobile: compact global Upbar + global drawer; contextual strip separate.
  * Namespace: [data-cf-ui="v2"]
  *
  * Scroll contract: document (html/body) scrolls vertically.
@@ -35,7 +36,7 @@ body[data-cf-ui="v2"] .cf2-root {
   height: auto;
 }
 
-/* ——— Desktop App Bar ——— */
+/* ——— GLOBAL UPBAR ——— */
 body[data-cf-ui="v2"] .cf2-appbar {
   flex: 0 0 auto;
   position: sticky;
@@ -49,15 +50,6 @@ body[data-cf-ui="v2"] .cf2-appbar {
   color: #fff;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   z-index: 40;
-}
-
-/* Desktop: core unwraps so brand participates in the App Bar flex row as before */
-body[data-cf-ui="v2"] .cf2-appbar__core {
-  display: contents;
-}
-
-body[data-cf-ui="v2"] .cf2-appbar__core-rule {
-  display: none;
 }
 
 body[data-cf-ui="v2"] .cf2-brand {
@@ -81,18 +73,6 @@ body[data-cf-ui="v2"] .cf2-brand__word {
   font-size: 15px;
   font-weight: 800;
   letter-spacing: 0.01em;
-}
-
-body[data-cf-ui="v2"] .cf2-appbar__section {
-  display: none;
-  margin: 0;
-  font-size: 13px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.92);
-  white-space: nowrap;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 body[data-cf-ui="v2"] .cf2-nav {
@@ -196,24 +176,6 @@ body[data-cf-ui="v2"] .cf2-appbar__identity-name {
   min-width: 0;
 }
 
-body[data-cf-ui="v2"] .cf2-appbar__ghost {
-  appearance: none;
-  border: none;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.88);
-  font-size: 12px;
-  font-weight: 700;
-  padding: 8px 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  text-decoration: none;
-}
-
-body[data-cf-ui="v2"] .cf2-appbar__ghost:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-}
-
 body[data-cf-ui="v2"] .cf2-menu-btn {
   display: none;
   appearance: none;
@@ -270,7 +232,12 @@ body[data-cf-ui="v2"] .cf2-appbar__account-icon {
   flex: 0 0 auto;
 }
 
-/* ——— Shell: contextual sidebar + stage ——— */
+/* Mobile context strip — hidden on desktop */
+body[data-cf-ui="v2"] .cf2-ctx-mobile {
+  display: none;
+}
+
+/* ——— Shell: CONTEXTUAL SIDEBAR + stage ——— */
 body[data-cf-ui="v2"] .cf2-shell {
   flex: 1 0 auto;
   min-height: 0;
@@ -286,8 +253,7 @@ body[data-cf-ui="v2"] .cf2-shell[data-cf2-ctx="off"] {
 body[data-cf-ui="v2"] .cf2-ctx {
   border-inline-end: 1px solid var(--cf2-border);
   background: #f7f9fc;
-  padding: 18px 14px;
-  /* Sidebar may scroll independently only when present; stage uses document scroll. */
+  padding: 18px 12px;
   overflow: visible;
 }
 
@@ -295,8 +261,16 @@ body[data-cf-ui="v2"] .cf2-shell[data-cf2-ctx="off"] .cf2-ctx {
   display: none;
 }
 
+body[data-cf-ui="v2"] .cf2-ctx__area {
+  margin: 0 4px 14px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--cf2-navy);
+  line-height: 1.3;
+}
+
 body[data-cf-ui="v2"] .cf2-ctx__label {
-  margin: 0 0 10px;
+  margin: 0 4px 8px;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -328,26 +302,16 @@ body[data-cf-ui="v2"] .cf2-ctx__item.is-active {
   color: var(--cf2-navy);
 }
 
-body[data-cf-ui="v2"] .cf2-ctx__note {
-  margin: 12px 4px 0;
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--cf2-mute);
-}
-
 body[data-cf-ui="v2"] .cf2-stage {
   min-width: 0;
   overflow: visible;
   padding: 12px 24px 28px;
 }
 
+/* Preserve Home frozen composition width budget when sidebar is present */
 body[data-cf-ui="v2"] .cf2-stage__inner {
-  width: min(var(--cf2-stage-max), 100%);
-  margin: 0;
-}
-
-body[data-cf-ui="v2"] .cf2-shell[data-cf2-ctx="off"] .cf2-stage__inner {
   width: min(1360px, 100%);
+  margin: 0;
 }
 
 body[data-cf-ui="v2"] .cf2-page {
@@ -375,7 +339,7 @@ body[data-cf-ui="v2"] .cf2-stub {
   line-height: 1.5;
 }
 
-/* ——— Drawer (shared; locked to open interaction) ——— */
+/* ——— GLOBAL drawer (primary destinations + account only) ——— */
 body[data-cf-ui="v2"] .cf2-drawer-backdrop {
   display: none;
   position: fixed;
@@ -416,10 +380,6 @@ body[data-cf-ui="v2"] .cf2-drawer {
 body[data-cf-ui="v2"] .cf2-drawer.is-open {
   display: flex;
   transform: translateY(0);
-}
-
-body[data-cf-ui="v2"] .cf2-drawer__chrome {
-  display: none;
 }
 
 body[data-cf-ui="v2"] .cf2-drawer__head {
@@ -493,7 +453,8 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
 
 @media (min-width: 1024px) {
   body[data-cf-ui="v2"] .cf2-appbar__mobile-only,
-  body[data-cf-ui="v2"] .cf2-menu-btn {
+  body[data-cf-ui="v2"] .cf2-menu-btn,
+  body[data-cf-ui="v2"] .cf2-ctx-mobile {
     display: none !important;
   }
 }
@@ -504,17 +465,13 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
   }
 
   /*
-   * Mobile App Bar Geometry Correction V2
-   * RTL product bar — NOT a centered three-zone island:
-   *   [ Menu | CartFlow + section ] ——breathing—— [ Account ]
-   * Identity packs to the menu edge; account is the opposite utility.
+   * Mobile GLOBAL upbar — brand only (no section label merged into identity).
+   * Contextual navigation is .cf2-ctx-mobile, not the drawer.
    */
   body[data-cf-ui="v2"] .cf2-appbar {
     display: flex;
-    flex-direction: row;
     align-items: center;
-    justify-content: flex-start;
-    gap: 4px;
+    gap: 8px;
     padding: 0 10px;
     overflow: hidden;
   }
@@ -526,166 +483,102 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
     display: none !important;
   }
 
-  /* Start edge — Menu (RTL right) */
-  body[data-cf-ui="v2"] .cf2-menu-btn {
+  body[data-cf-ui="v2"] .cf2-brand {
+    margin: 0;
+    gap: 7px;
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  body[data-cf-ui="v2"] .cf2-brand__mark {
+    width: 22px;
+    height: 22px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-brand__word {
+    font-size: 14px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-appbar__account {
     display: inline-flex;
-    order: 1;
     width: 40px;
     height: 40px;
-    margin: 0;
+    margin-inline-start: auto;
     border: none;
     background: transparent;
     color: rgba(255, 255, 255, 0.9);
     border-radius: 10px;
-    flex: 0 0 auto;
   }
 
+  body[data-cf-ui="v2"] .cf2-menu-btn {
+    display: inline-flex;
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.9);
+    border-radius: 10px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-appbar__account:hover,
+  body[data-cf-ui="v2"] .cf2-appbar__account:active,
   body[data-cf-ui="v2"] .cf2-menu-btn:hover,
   body[data-cf-ui="v2"] .cf2-menu-btn:active {
     background: rgba(255, 255, 255, 0.08);
     color: #fff;
   }
 
-  /* Primary identity + location — packs next to menu, never viewport-centered */
-  body[data-cf-ui="v2"] .cf2-appbar__core {
-    display: inline-flex;
+  /* Contextual strip — distinct from global drawer */
+  body[data-cf-ui="v2"] .cf2-ctx-mobile {
+    display: none;
+    flex: 0 0 auto;
     align-items: center;
-    order: 2;
-    flex: 0 1 auto;
-    width: auto;
-    min-width: 0;
-    max-width: calc(100% - 96px);
-    justify-content: flex-start;
-    justify-self: auto;
-    gap: 0;
+    gap: 10px;
+    padding: 8px 12px;
+    background: #f0f4f8;
+    border-bottom: 1px solid var(--cf2-border);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ctx-mobile::-webkit-scrollbar {
+    display: none;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ctx-mobile[data-cf2-ctx-mobile="on"] {
+    display: flex;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ctx-mobile__area {
     margin: 0;
-    padding: 2px 0;
-  }
-
-  body[data-cf-ui="v2"] .cf2-brand {
-    display: inline-flex;
-    align-items: center;
     flex: 0 0 auto;
-    margin: 0;
-    gap: 7px;
-    max-width: none;
-  }
-
-  body[data-cf-ui="v2"] .cf2-brand__mark {
-    width: 22px;
-    height: 22px;
-    flex: 0 0 auto;
-  }
-
-  body[data-cf-ui="v2"] .cf2-brand__word {
-    position: static;
-    width: auto;
-    height: auto;
-    overflow: visible;
-    clip: auto;
-    clip-path: none;
-    font-size: 14px;
-    font-weight: 800;
-    letter-spacing: 0.01em;
-    line-height: 1;
-    color: #fff;
-    white-space: nowrap;
-  }
-
-  body[data-cf-ui="v2"] .cf2-appbar__core-rule {
-    display: block;
-    flex: 0 0 auto;
-    width: 1px;
-    height: 12px;
-    margin: 0 8px;
-    background: rgba(24, 176, 168, 0.5);
-    border-radius: 1px;
-  }
-
-  body[data-cf-ui="v2"] .cf2-appbar__section {
-    display: block;
-    flex: 0 1 auto;
-    min-width: 0;
-    max-width: min(8.75rem, 36vw);
-    margin: 0;
-    padding: 0;
-    text-align: start;
     font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0;
-    line-height: 1.2;
-    color: rgba(255, 255, 255, 0.68);
+    font-weight: 800;
+    color: var(--cf2-navy);
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
-  /* End edge — Account (RTL left); breathing space via auto margin */
-  body[data-cf-ui="v2"] .cf2-appbar__account {
+  body[data-cf-ui="v2"] .cf2-ctx-mobile__items {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ctx-mobile .cf2-ctx__item {
     display: inline-flex;
-    order: 3;
-    margin-inline-start: auto;
-    width: 40px;
-    height: 40px;
-    border: none;
-    background: transparent;
-    color: rgba(255, 255, 255, 0.88);
-    border-radius: 10px;
+    width: auto;
     flex: 0 0 auto;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: rgba(8, 32, 72, 0.04);
+    font-size: 12px;
+    white-space: nowrap;
   }
 
-  body[data-cf-ui="v2"] .cf2-appbar__account:hover,
-  body[data-cf-ui="v2"] .cf2-appbar__account:active {
-    background: rgba(255, 255, 255, 0.08);
-    color: #fff;
-  }
-
-  /*
-   * Open drawer — authored handoff (not orphan strip):
-   * - App Bar surface clears so leftover navy does not read as clipped chrome
-   * - Account remains as a deliberate edge chip above the dimmed stage
-   * - Menu/core yield; drawer navy chrome continues CartFlow + close
-   */
-  body[data-cf-ui="v2"].is-drawer-open .cf2-appbar {
-    z-index: 55;
-    background: transparent;
-    border-bottom-color: transparent;
-  }
-
-  body[data-cf-ui="v2"].is-drawer-open .cf2-appbar__core {
-    visibility: hidden;
-    pointer-events: none;
-    opacity: 0;
-    width: 0;
-    max-width: 0;
-    min-width: 0;
-    flex: 0 0 0;
-    overflow: hidden;
-    margin: 0;
-    padding: 0;
-  }
-
-  body[data-cf-ui="v2"].is-drawer-open .cf2-menu-btn {
-    visibility: hidden;
-    pointer-events: none;
-    width: 0;
-    min-width: 0;
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    opacity: 0;
-  }
-
-  /* Account yields to drawer account section — no leftover edge remnant */
-  body[data-cf-ui="v2"].is-drawer-open .cf2-appbar__account {
-    visibility: hidden;
-    pointer-events: none;
-    width: 0;
-    min-width: 0;
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    opacity: 0;
+  body[data-cf-ui="v2"] .cf2-ctx-mobile .cf2-ctx__item.is-active {
+    background: rgba(24, 176, 168, 0.16);
+    color: var(--cf2-navy);
   }
 
   body[data-cf-ui="v2"] .cf2-shell {
@@ -700,101 +593,11 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
     padding: 16px 16px 40px;
   }
 
-  /* Backdrop under the drawer; App Bar stays above as authored remnant */
-  body[data-cf-ui="v2"] .cf2-drawer-backdrop {
-    top: 0;
-  }
-
   body[data-cf-ui="v2"] .cf2-drawer {
-    display: none;
-    top: 0;
     inset-inline-start: 0;
-    inset-inline-end: 0;
-    width: 100%;
-    max-width: none;
-    max-height: 100dvh;
-    max-height: 100vh;
+    inset-inline-end: auto;
+    width: min(320px, 88vw);
+    max-height: min(82vh, 600px);
     border-radius: 0 0 16px 16px;
-    transform: translateY(-10px);
-    opacity: 0;
-    padding: 0 0 16px;
-    overflow: hidden;
-    background: var(--cf2-surface);
-    transition: transform 220ms var(--cf2-ease), opacity 180ms ease;
-  }
-
-  body[data-cf-ui="v2"] .cf2-drawer.is-open {
-    display: flex;
-    opacity: 1;
-    transform: none;
-  }
-
-  /* Navy chrome band — same height/gradient as App Bar; continues identity */
-  body[data-cf-ui="v2"] .cf2-drawer__chrome {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    flex: 0 0 auto;
-    height: var(--cf2-appbar-h);
-    margin: 0;
-    padding: 0 10px 0 12px;
-    background: linear-gradient(165deg, #0a2d5c 0%, #082048 55%, #001838 100%);
-    color: #fff;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  }
-
-  body[data-cf-ui="v2"] .cf2-drawer__chrome-brand {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-  }
-
-  body[data-cf-ui="v2"] .cf2-drawer__chrome-mark {
-    width: 20px;
-    height: 20px;
-    display: block;
-    filter: brightness(0) invert(1);
-  }
-
-  body[data-cf-ui="v2"] .cf2-drawer__chrome-word {
-    font-size: 13px;
-    font-weight: 800;
-    letter-spacing: 0.01em;
-  }
-
-  body[data-cf-ui="v2"] .cf2-drawer__chrome-close {
-    appearance: none;
-    border: none;
-    background: transparent;
-    color: rgba(255, 255, 255, 0.92);
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    cursor: pointer;
-    font-size: 22px;
-    line-height: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 auto;
-  }
-
-  body[data-cf-ui="v2"] .cf2-drawer__chrome-close:hover,
-  body[data-cf-ui="v2"] .cf2-drawer__chrome-close:active {
-    background: rgba(255, 255, 255, 0.08);
-  }
-
-  body[data-cf-ui="v2"] .cf2-drawer__head {
-    display: none;
-  }
-
-  body[data-cf-ui="v2"] .cf2-drawer__section {
-    margin: 14px 8px 14px;
-  }
-
-  body[data-cf-ui="v2"] .cf2-drawer__divider {
-    margin: 4px 14px 12px;
   }
 }

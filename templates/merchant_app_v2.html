@@ -17,19 +17,15 @@
 </head>
 <body data-cf-ui="v2" data-cf-merchant-app="1">
 <div class="cf2-root">
-  {# Mobile geometry V2: RTL product bar — Menu (start) + brand|section cluster, breathing space, Account (end). Desktop unchanged via display:contents on core. #}
-  <header class="cf2-appbar" role="banner" data-cf2-appbar="mobile-geometry-v2">
+  {# GLOBAL UPBAR — primary CartFlow destinations only. Contextual nav lives in sidebar / mobile context strip. #}
+  <header class="cf2-appbar" role="banner" data-cf2-appbar="global-upbar-v1">
     <button type="button" class="cf2-menu-btn" aria-label="فتح القائمة" aria-controls="cf2-drawer" aria-expanded="false">
       <span class="cf2-menu-btn__bars" aria-hidden="true"></span>
     </button>
-    <div class="cf2-appbar__core">
-      <a class="cf2-brand" href="#home" data-cf2-nav-brand>
-        <img class="cf2-brand__mark" src="/static/img/brand/cartflow_cf_mark.png" width="28" height="28" alt="" decoding="async" />
-        <span class="cf2-brand__word">CartFlow</span>
-      </a>
-      <span class="cf2-appbar__core-rule" aria-hidden="true"></span>
-      <p class="cf2-appbar__section" id="cf2-appbar-section" aria-live="polite">الرئيسية</p>
-    </div>
+    <a class="cf2-brand" href="#home" data-cf2-nav-brand>
+      <img class="cf2-brand__mark" src="/static/img/brand/cartflow_cf_mark.png" width="28" height="28" alt="" decoding="async" />
+      <span class="cf2-brand__word">CartFlow</span>
+    </a>
     <nav class="cf2-nav" aria-label="أقسام المنتج">
       <button type="button" class="cf2-nav__item" data-cf2-nav="home">الرئيسية</button>
       <button type="button" class="cf2-nav__item" data-cf2-nav="workspace">مساحة القرار</button>
@@ -56,8 +52,11 @@
     </button>
   </header>
 
+  {# Mobile-only contextual strip — separate from Global drawer #}
+  <nav class="cf2-ctx-mobile" id="cf2-ctx-mobile" aria-label="التنقل داخل القسم" hidden></nav>
+
   <div class="cf2-shell" data-cf2-ctx="off">
-    <aside class="cf2-ctx" aria-label="سياق القسم"></aside>
+    <aside class="cf2-ctx" id="cf2-ctx" aria-label="سياق القسم"></aside>
     <main class="cf2-stage" id="cf2-stage">
       <div class="cf2-stage__inner">
         <section class="cf2-page is-active" data-cf2-page="home" aria-label="الرئيسية">
@@ -91,21 +90,15 @@
   </div>
 </div>
 
+{# GLOBAL drawer only — never mixes contextual area items #}
 <div class="cf2-drawer-backdrop" aria-hidden="true"></div>
-<aside class="cf2-drawer" id="cf2-drawer" aria-label="قائمة التنقل">
-  <div class="cf2-drawer__chrome">
-    <div class="cf2-drawer__chrome-brand">
-      <img class="cf2-drawer__chrome-mark" src="/static/img/brand/cartflow_cf_mark.png" width="22" height="22" alt="" decoding="async" />
-      <span class="cf2-drawer__chrome-word">CartFlow</span>
-    </div>
-    <button type="button" class="cf2-drawer__chrome-close" aria-label="إغلاق">×</button>
-  </div>
+<aside class="cf2-drawer" id="cf2-drawer" aria-label="التنقل العام">
   <div class="cf2-drawer__head">
-    <p class="cf2-drawer__title">القائمة</p>
+    <p class="cf2-drawer__title">CartFlow</p>
     <button type="button" class="cf2-drawer__close" aria-label="إغلاق">×</button>
   </div>
   <div class="cf2-drawer__section">
-    <p class="cf2-drawer__label">الأقسام</p>
+    <p class="cf2-drawer__label">أقسام المنصة</p>
     <button type="button" class="cf2-drawer__item" data-cf2-nav="home">الرئيسية</button>
     <button type="button" class="cf2-drawer__item" data-cf2-nav="workspace">مساحة القرار</button>
     <button type="button" class="cf2-drawer__item" data-cf2-nav="products">المنتجات</button>
