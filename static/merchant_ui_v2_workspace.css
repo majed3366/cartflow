@@ -535,12 +535,59 @@ body[data-cf-ui="v2"]
   }
 
   body[data-cf-ui="v2"] .cf2-page[data-cf2-page="workspace"] .cf2-dobj__ev-row {
-    gap: 6px;
+    gap: 4px;
   }
 
-  body[data-cf-ui="v2"] .cf2-page[data-cf2-page="workspace"] .cf2-dobj__ev-row .cf2-evfield {
-    max-width: 7.5rem;
+  /*
+   * Mobile CIM Footprint Closure V1 — compress evidence density signal only.
+   * Sparse default min-height:100px + gap:16px created a semi-empty band.
+   * Keep bars recognizable; pull live evidence statement up.
+   */
+  body[data-cf-ui="v2"] .cf2-page[data-cf2-page="workspace"] .cf2-dobj__ev-row .cf2-evfield,
+  body[data-cf-ui="v2"]
+    .cf2-page[data-cf2-page="workspace"]
+    .cf2-dobj__ev-row
+    .cf2-evfield[data-cf2-density] {
+    max-width: 6.75rem;
+    min-width: 0;
+    min-height: 0 !important;
+    gap: 4px;
+    padding: 2px 0 3px;
     opacity: 0.78;
+  }
+
+  body[data-cf-ui="v2"]
+    .cf2-page[data-cf2-page="workspace"]
+    .cf2-dobj__ev-row
+    .cf2-evfield[data-cf2-density="sparse"] {
+    gap: 5px;
+    padding: 2px 0 3px;
+  }
+
+  body[data-cf-ui="v2"]
+    .cf2-page[data-cf2-page="workspace"]
+    .cf2-dobj__ev-row
+    .cf2-evfield[data-cf2-density="mixed"] {
+    gap: 4px;
+  }
+
+  body[data-cf-ui="v2"]
+    .cf2-page[data-cf2-page="workspace"]
+    .cf2-dobj__ev-row
+    .cf2-evfield[data-cf2-density="gathering"],
+  body[data-cf-ui="v2"]
+    .cf2-page[data-cf2-page="workspace"]
+    .cf2-dobj__ev-row
+    .cf2-evfield[data-cf2-density="mid"] {
+    gap: 4px;
+  }
+
+  body[data-cf-ui="v2"]
+    .cf2-page[data-cf2-page="workspace"]
+    .cf2-dobj__ev-row
+    .cf2-evfield::before {
+    inset-block: 1px 1px;
+    opacity: 0.28;
   }
 
   body[data-cf-ui="v2"]
@@ -549,6 +596,46 @@ body[data-cf-ui="v2"]
     .cf2-evfield
     .cf2-evfield__bar {
     height: 3px;
+    margin-inline-start: 6px;
+  }
+
+  body[data-cf-ui="v2"]
+    .cf2-page[data-cf2-page="workspace"]
+    .cf2-dobj__ev-row
+    .cf2-evfield[data-cf2-density="sparse"]
+    .cf2-evfield__bar {
+    height: 3px;
+  }
+
+  body[data-cf-ui="v2"]
+    .cf2-page[data-cf2-page="workspace"]
+    .cf2-dobj__ev-row
+    .cf2-evfield[data-cf2-density="gathering"]
+    .cf2-evfield__bar,
+  body[data-cf-ui="v2"]
+    .cf2-page[data-cf2-page="workspace"]
+    .cf2-dobj__ev-row
+    .cf2-evfield[data-cf2-density="mid"]
+    .cf2-evfield__bar {
+    height: 3px;
+  }
+
+  body[data-cf-ui="v2"]
+    .cf2-page[data-cf2-page="workspace"]
+    .cf2-dobj__ev-row
+    .cf2-evfield[data-cf2-density="aligned"]
+    .cf2-evfield__bar,
+  body[data-cf-ui="v2"]
+    .cf2-page[data-cf2-page="workspace"]
+    .cf2-dobj__ev-row
+    .cf2-evfield[data-cf2-density="converging"]
+    .cf2-evfield__bar,
+  body[data-cf-ui="v2"]
+    .cf2-page[data-cf2-page="workspace"]
+    .cf2-dobj__ev-row
+    .cf2-evfield[data-cf2-density="dense"]
+    .cf2-evfield__bar {
+    height: 4px;
   }
 
   body[data-cf-ui="v2"] .cf2-page[data-cf2-page="workspace"] .cf2-beat__list {

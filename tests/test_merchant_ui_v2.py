@@ -187,7 +187,9 @@ class MerchantUiV2RouteTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("Mobile Hierarchy Refinement V1", ws_css)
+        self.assertIn("Mobile CIM Footprint Closure V1", ws_css)
         self.assertIn("@media (max-width: 1023px)", ws_css)
+        self.assertIn("min-height: 0", ws_css)
 
     def test_assets_exist(self) -> None:
         for rel in (
