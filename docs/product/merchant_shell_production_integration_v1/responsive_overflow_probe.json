@@ -1,0 +1,72 @@
+{
+  "deploy": {
+    "ok": true,
+    "sha": "111456bbcb8f5dd2ab45afc4d5403be71a41f31c",
+    "status": 200
+  },
+  "viewports": {
+    "desktop_1440_home": {
+      "pageOverflow": false,
+      "stageOverflow": false,
+      "rootOverflow": false,
+      "navOnlyScroll": false,
+      "viewportWidth": 1440,
+      "scrollWidth": 1440,
+      "ok": true
+    },
+    "desktop_1440_workspace": {
+      "pageOverflow": false,
+      "stageOverflow": false,
+      "rootOverflow": false,
+      "navOnlyScroll": false,
+      "viewportWidth": 1440,
+      "scrollWidth": 1440,
+      "ok": true
+    },
+    "tablet_1024": {
+      "pageOverflow": false,
+      "stageOverflow": false,
+      "rootOverflow": false,
+      "navOnlyScroll": false,
+      "viewportWidth": 1024,
+      "scrollWidth": 1024,
+      "ok": true
+    },
+    "mobile_430_home": {
+      "pageOverflow": false,
+      "stageOverflow": false,
+      "rootOverflow": false,
+      "navOnlyScroll": true,
+      "viewportWidth": 430,
+      "scrollWidth": 430,
+      "ok": true
+    },
+    "mobile_430_workspace": {
+      "pageOverflow": false,
+      "stageOverflow": false,
+      "rootOverflow": false,
+      "navOnlyScroll": true,
+      "viewportWidth": 430,
+      "scrollWidth": 430,
+      "ok": true
+    },
+    "mobile_390_home": {
+      "pageOverflow": false,
+      "stageOverflow": false,
+      "rootOverflow": false,
+      "navOnlyScroll": true,
+      "viewportWidth": 390,
+      "scrollWidth": 390,
+      "ok": true
+    },
+    "mobile_390_workspace": {
+      "pageOverflow": false,
+      "stageOverflow": false,
+      "rootOverflow": false,
+      "navOnlyScroll": true,
+      "viewportWidth": 390,
+      "scrollWidth": 390,
+      "ok": true
+    }
+  }
+}

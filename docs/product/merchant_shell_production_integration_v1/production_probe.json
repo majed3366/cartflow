@@ -1,0 +1,692 @@
+{
+  "deploy": {
+    "ok": true,
+    "sha": "111456bbcb8f5dd2ab45afc4d5403be71a41f31c",
+    "status": 200
+  },
+  "probes": {
+    "desktop_home": {
+      "marker": "shell-integration-v1",
+      "modelIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "modelLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "upbarLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarVisible": true,
+      "utilityVisible": true,
+      "globalRowVisible": true,
+      "activeLabel": "الرئيسية",
+      "hash": "#home",
+      "stageLead": "ماذا يجب أن أعرف الآن عن متجري؟",
+      "ctxArea": "الرئيسية",
+      "ctxItems": [
+        "نظرة عامة",
+        "الملخص"
+      ],
+      "handleVisible": false,
+      "ctxOpen": false,
+      "drawerOpen": false,
+      "drawerHasPlatformPrimary": false,
+      "drawerHasAccount": true,
+      "hasGlobalBtn": false,
+      "hasGlobalPanel": false,
+      "hasCtxBtnInChrome": false,
+      "hasPageChrome": false,
+      "overflowX": false,
+      "navScrollable": false,
+      "stageWidth": 1272,
+      "viewportWidth": 1440,
+      "stageFitsViewport": true,
+      "bodyOverflowY": "auto"
+    },
+    "desktop_workspace": {
+      "marker": "shell-integration-v1",
+      "modelIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "modelLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "upbarLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarVisible": true,
+      "utilityVisible": true,
+      "globalRowVisible": true,
+      "activeLabel": "مساحة القرار",
+      "hash": "#workspace",
+      "stageLead": "ما القرار الذي يجب أن أتخذه الآن، ولماذا؟",
+      "ctxArea": "مساحة القرار",
+      "ctxItems": [
+        "ما يحتاج قرارك"
+      ],
+      "handleVisible": false,
+      "ctxOpen": false,
+      "drawerOpen": false,
+      "drawerHasPlatformPrimary": false,
+      "drawerHasAccount": true,
+      "hasGlobalBtn": false,
+      "hasGlobalPanel": false,
+      "hasCtxBtnInChrome": false,
+      "hasPageChrome": false,
+      "overflowX": false,
+      "navScrollable": false,
+      "stageWidth": 1272,
+      "viewportWidth": 1440,
+      "stageFitsViewport": true,
+      "bodyOverflowY": "auto"
+    },
+    "mobile_430_home_closed": {
+      "marker": "shell-integration-v1",
+      "modelIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "modelLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "upbarLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarVisible": true,
+      "utilityVisible": true,
+      "globalRowVisible": true,
+      "activeLabel": "الرئيسية",
+      "hash": "#home",
+      "stageLead": "ماذا يجب أن أعرف الآن عن متجري؟",
+      "ctxArea": "الرئيسية",
+      "ctxItems": [
+        "نظرة عامة",
+        "الملخص"
+      ],
+      "handleVisible": true,
+      "ctxOpen": false,
+      "drawerOpen": false,
+      "drawerHasPlatformPrimary": false,
+      "drawerHasAccount": true,
+      "hasGlobalBtn": false,
+      "hasGlobalPanel": false,
+      "hasCtxBtnInChrome": false,
+      "hasPageChrome": false,
+      "overflowX": false,
+      "navScrollable": true,
+      "stageWidth": 402,
+      "viewportWidth": 430,
+      "stageFitsViewport": true,
+      "bodyOverflowY": "auto"
+    },
+    "mobile_430_home_scrolled": {
+      "marker": "shell-integration-v1",
+      "modelIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "modelLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "upbarLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarVisible": true,
+      "utilityVisible": true,
+      "globalRowVisible": true,
+      "activeLabel": "الرئيسية",
+      "hash": "#home",
+      "stageLead": "ماذا يجب أن أعرف الآن عن متجري؟",
+      "ctxArea": "الرئيسية",
+      "ctxItems": [
+        "نظرة عامة",
+        "الملخص"
+      ],
+      "handleVisible": true,
+      "ctxOpen": false,
+      "drawerOpen": false,
+      "drawerHasPlatformPrimary": false,
+      "drawerHasAccount": true,
+      "hasGlobalBtn": false,
+      "hasGlobalPanel": false,
+      "hasCtxBtnInChrome": false,
+      "hasPageChrome": false,
+      "overflowX": false,
+      "navScrollable": true,
+      "stageWidth": 402,
+      "viewportWidth": 430,
+      "stageFitsViewport": true,
+      "bodyOverflowY": "auto"
+    },
+    "mobile_430_home_context_open": {
+      "marker": "shell-integration-v1",
+      "modelIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "modelLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "upbarLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarVisible": true,
+      "utilityVisible": true,
+      "globalRowVisible": true,
+      "activeLabel": "الرئيسية",
+      "hash": "#home",
+      "stageLead": "ماذا يجب أن أعرف الآن عن متجري؟",
+      "ctxArea": "الرئيسية",
+      "ctxItems": [
+        "نظرة عامة",
+        "الملخص"
+      ],
+      "handleVisible": true,
+      "ctxOpen": true,
+      "drawerOpen": false,
+      "drawerHasPlatformPrimary": false,
+      "drawerHasAccount": true,
+      "hasGlobalBtn": false,
+      "hasGlobalPanel": false,
+      "hasCtxBtnInChrome": false,
+      "hasPageChrome": false,
+      "overflowX": false,
+      "navScrollable": true,
+      "stageWidth": 402,
+      "viewportWidth": 430,
+      "stageFitsViewport": true,
+      "bodyOverflowY": "hidden"
+    },
+    "mobile_430_workspace_closed": {
+      "marker": "shell-integration-v1",
+      "modelIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "modelLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "upbarLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarVisible": true,
+      "utilityVisible": true,
+      "globalRowVisible": true,
+      "activeLabel": "مساحة القرار",
+      "hash": "#workspace",
+      "stageLead": "ما القرار الذي يجب أن أتخذه الآن، ولماذا؟",
+      "ctxArea": "مساحة القرار",
+      "ctxItems": [
+        "ما يحتاج قرارك"
+      ],
+      "handleVisible": true,
+      "ctxOpen": false,
+      "drawerOpen": false,
+      "drawerHasPlatformPrimary": false,
+      "drawerHasAccount": true,
+      "hasGlobalBtn": false,
+      "hasGlobalPanel": false,
+      "hasCtxBtnInChrome": false,
+      "hasPageChrome": false,
+      "overflowX": false,
+      "navScrollable": true,
+      "stageWidth": 402,
+      "viewportWidth": 430,
+      "stageFitsViewport": true,
+      "bodyOverflowY": "auto"
+    },
+    "mobile_430_workspace_context_open": {
+      "marker": "shell-integration-v1",
+      "modelIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "modelLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "upbarLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarVisible": true,
+      "utilityVisible": true,
+      "globalRowVisible": true,
+      "activeLabel": "مساحة القرار",
+      "hash": "#workspace",
+      "stageLead": "ما القرار الذي يجب أن أتخذه الآن، ولماذا؟",
+      "ctxArea": "مساحة القرار",
+      "ctxItems": [
+        "ما يحتاج قرارك"
+      ],
+      "handleVisible": true,
+      "ctxOpen": true,
+      "drawerOpen": false,
+      "drawerHasPlatformPrimary": false,
+      "drawerHasAccount": true,
+      "hasGlobalBtn": false,
+      "hasGlobalPanel": false,
+      "hasCtxBtnInChrome": false,
+      "hasPageChrome": false,
+      "overflowX": false,
+      "navScrollable": true,
+      "stageWidth": 402,
+      "viewportWidth": 430,
+      "stageFitsViewport": true,
+      "bodyOverflowY": "hidden"
+    },
+    "mobile_account_utility_open": {
+      "marker": "shell-integration-v1",
+      "modelIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "modelLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "upbarLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarVisible": true,
+      "utilityVisible": true,
+      "globalRowVisible": true,
+      "activeLabel": "مساحة القرار",
+      "hash": "#workspace",
+      "stageLead": "ما القرار الذي يجب أن أتخذه الآن، ولماذا؟",
+      "ctxArea": "مساحة القرار",
+      "ctxItems": [
+        "ما يحتاج قرارك"
+      ],
+      "handleVisible": true,
+      "ctxOpen": false,
+      "drawerOpen": true,
+      "drawerHasPlatformPrimary": false,
+      "drawerHasAccount": true,
+      "hasGlobalBtn": false,
+      "hasGlobalPanel": false,
+      "hasCtxBtnInChrome": false,
+      "hasPageChrome": false,
+      "overflowX": false,
+      "navScrollable": true,
+      "stageWidth": 402,
+      "viewportWidth": 430,
+      "stageFitsViewport": true,
+      "bodyOverflowY": "hidden"
+    },
+    "mobile_home_restore": {
+      "marker": "shell-integration-v1",
+      "modelIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "modelLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "upbarLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarVisible": true,
+      "utilityVisible": true,
+      "globalRowVisible": true,
+      "activeLabel": "الرئيسية",
+      "hash": "#home",
+      "stageLead": "ماذا يجب أن أعرف الآن عن متجري؟",
+      "ctxArea": "الرئيسية",
+      "ctxItems": [
+        "نظرة عامة",
+        "الملخص"
+      ],
+      "handleVisible": true,
+      "ctxOpen": false,
+      "drawerOpen": false,
+      "drawerHasPlatformPrimary": false,
+      "drawerHasAccount": true,
+      "hasGlobalBtn": false,
+      "hasGlobalPanel": false,
+      "hasCtxBtnInChrome": false,
+      "hasPageChrome": false,
+      "overflowX": false,
+      "navScrollable": true,
+      "stageWidth": 402,
+      "viewportWidth": 430,
+      "stageFitsViewport": true,
+      "bodyOverflowY": "auto"
+    },
+    "mobile_390_home_closed": {
+      "marker": "shell-integration-v1",
+      "modelIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "modelLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "upbarLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarVisible": true,
+      "utilityVisible": true,
+      "globalRowVisible": true,
+      "activeLabel": "الرئيسية",
+      "hash": "#home",
+      "stageLead": "ماذا يجب أن أعرف الآن عن متجري؟",
+      "ctxArea": "الرئيسية",
+      "ctxItems": [
+        "نظرة عامة",
+        "الملخص"
+      ],
+      "handleVisible": true,
+      "ctxOpen": false,
+      "drawerOpen": false,
+      "drawerHasPlatformPrimary": false,
+      "drawerHasAccount": true,
+      "hasGlobalBtn": false,
+      "hasGlobalPanel": false,
+      "hasCtxBtnInChrome": false,
+      "hasPageChrome": false,
+      "overflowX": false,
+      "navScrollable": true,
+      "stageWidth": 362,
+      "viewportWidth": 390,
+      "stageFitsViewport": true,
+      "bodyOverflowY": "auto"
+    },
+    "mobile_390_workspace_closed": {
+      "marker": "shell-integration-v1",
+      "modelIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "modelLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "upbarLabels": [
+        "الرئيسية",
+        "مساحة القرار",
+        "المنتجات",
+        "السلال",
+        "التواصل",
+        "الإعدادات"
+      ],
+      "upbarVisible": true,
+      "utilityVisible": true,
+      "globalRowVisible": true,
+      "activeLabel": "مساحة القرار",
+      "hash": "#workspace",
+      "stageLead": "ما القرار الذي يجب أن أتخذه الآن، ولماذا؟",
+      "ctxArea": "مساحة القرار",
+      "ctxItems": [
+        "ما يحتاج قرارك"
+      ],
+      "handleVisible": true,
+      "ctxOpen": false,
+      "drawerOpen": false,
+      "drawerHasPlatformPrimary": false,
+      "drawerHasAccount": true,
+      "hasGlobalBtn": false,
+      "hasGlobalPanel": false,
+      "hasCtxBtnInChrome": false,
+      "hasPageChrome": false,
+      "overflowX": false,
+      "navScrollable": true,
+      "stageWidth": 362,
+      "viewportWidth": 390,
+      "stageFitsViewport": true,
+      "bodyOverflowY": "auto"
+    }
+  },
+  "gates": {
+    "globalVisibleMobileClosed": true,
+    "sameGlobalModelDesktopMobile": true,
+    "contextualSameOwner": true,
+    "accountUtilitySeparate": true,
+    "rejectedExperimentsGone": true,
+    "homeCompositionUnchanged": true,
+    "workspaceCompositionUnchanged": true,
+    "workspaceSwitchWorks": true,
+    "homeRestoreWorks": true,
+    "contextOpenHomeOnly": true,
+    "contextOpenWorkspaceOnly": true,
+    "mobileHandlePresentWhenCtx": true,
+    "noExtraNavLayer": true,
+    "overflowOk": true
+  },
+  "all_gates_pass": true
+}
