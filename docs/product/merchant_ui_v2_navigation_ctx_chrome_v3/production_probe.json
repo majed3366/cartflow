@@ -1,0 +1,485 @@
+{
+  "deploy": {
+    "ok": true,
+    "sha": "aa4c5c0818c4a828a0cde2e7017b879310756d14",
+    "status": 200
+  },
+  "probes": {
+    "desktop_home": {
+      "marker": "nav-ctx-chrome-v3",
+      "appbarText": "CartFlow الرئيسية مساحة القرار المنتجات السلال التواصل الإعدادات الأحد، 9 8 2026 مساعد المتجر",
+      "appbarHasHomePill": true,
+      "appbarHasWorkspacePill": true,
+      "appbarHasOverview": false,
+      "triggerInAppbar": false,
+      "triggerInStageContent": false,
+      "triggerInPageChrome": true,
+      "pageChromeInFrame": true,
+      "sectionChromePresent": false,
+      "pageChromeVisible": false,
+      "pageChromeKicker": "تنقل القسم",
+      "triggerActiveText": "نظرة عامة",
+      "triggerVisible": false,
+      "stageHasFloatingFiHathaButton": false,
+      "sheetOpen": false,
+      "drawerOpen": false,
+      "ctxAttr": "on",
+      "sidebarVisible": true,
+      "drawerItems": [
+        {
+          "nav": "home",
+          "text": "الرئيسية"
+        },
+        {
+          "nav": "workspace",
+          "text": "مساحة القرار"
+        },
+        {
+          "nav": "products",
+          "text": "المنتجات"
+        },
+        {
+          "nav": "carts",
+          "text": "السلال"
+        },
+        {
+          "nav": "comms",
+          "text": "التواصل"
+        },
+        {
+          "nav": "settings",
+          "text": "الإعدادات"
+        },
+        {
+          "nav": "settings",
+          "text": "الملف والباقة"
+        },
+        {
+          "nav": null,
+          "text": "تسجيل الخروج"
+        }
+      ],
+      "sheetItems": [
+        {
+          "id": "overview",
+          "text": "نظرة عامة"
+        }
+      ],
+      "sidebarItems": [
+        {
+          "id": "overview",
+          "text": "نظرة عامة"
+        }
+      ],
+      "drawerHasCtxItems": false
+    },
+    "desktop_workspace": {
+      "marker": "nav-ctx-chrome-v3",
+      "appbarText": "CartFlow الرئيسية مساحة القرار المنتجات السلال التواصل الإعدادات الأحد، 9 8 2026 مساعد المتجر",
+      "appbarHasHomePill": true,
+      "appbarHasWorkspacePill": true,
+      "appbarHasOverview": false,
+      "triggerInAppbar": false,
+      "triggerInStageContent": false,
+      "triggerInPageChrome": true,
+      "pageChromeInFrame": true,
+      "sectionChromePresent": false,
+      "pageChromeVisible": false,
+      "pageChromeKicker": "تنقل القسم",
+      "triggerActiveText": "ما يحتاج قرارك",
+      "triggerVisible": false,
+      "stageHasFloatingFiHathaButton": false,
+      "sheetOpen": false,
+      "drawerOpen": false,
+      "ctxAttr": "on",
+      "sidebarVisible": true,
+      "drawerItems": [
+        {
+          "nav": "home",
+          "text": "الرئيسية"
+        },
+        {
+          "nav": "workspace",
+          "text": "مساحة القرار"
+        },
+        {
+          "nav": "products",
+          "text": "المنتجات"
+        },
+        {
+          "nav": "carts",
+          "text": "السلال"
+        },
+        {
+          "nav": "comms",
+          "text": "التواصل"
+        },
+        {
+          "nav": "settings",
+          "text": "الإعدادات"
+        },
+        {
+          "nav": "settings",
+          "text": "الملف والباقة"
+        },
+        {
+          "nav": null,
+          "text": "تسجيل الخروج"
+        }
+      ],
+      "sheetItems": [
+        {
+          "id": "attention",
+          "text": "ما يحتاج قرارك"
+        }
+      ],
+      "sidebarItems": [
+        {
+          "id": "attention",
+          "text": "ما يحتاج قرارك"
+        }
+      ],
+      "drawerHasCtxItems": false
+    },
+    "mobile_home_closed": {
+      "marker": "nav-ctx-chrome-v3",
+      "appbarText": "CartFlow",
+      "appbarHasHomePill": false,
+      "appbarHasWorkspacePill": false,
+      "appbarHasOverview": false,
+      "triggerInAppbar": false,
+      "triggerInStageContent": false,
+      "triggerInPageChrome": true,
+      "pageChromeInFrame": true,
+      "sectionChromePresent": false,
+      "pageChromeVisible": true,
+      "pageChromeKicker": "تنقل القسم",
+      "triggerActiveText": "نظرة عامة",
+      "triggerVisible": true,
+      "stageHasFloatingFiHathaButton": false,
+      "sheetOpen": false,
+      "drawerOpen": false,
+      "ctxAttr": "on",
+      "sidebarVisible": false,
+      "drawerItems": [
+        {
+          "nav": "home",
+          "text": "الرئيسية"
+        },
+        {
+          "nav": "workspace",
+          "text": "مساحة القرار"
+        },
+        {
+          "nav": "products",
+          "text": "المنتجات"
+        },
+        {
+          "nav": "carts",
+          "text": "السلال"
+        },
+        {
+          "nav": "comms",
+          "text": "التواصل"
+        },
+        {
+          "nav": "settings",
+          "text": "الإعدادات"
+        },
+        {
+          "nav": "settings",
+          "text": "الملف والباقة"
+        },
+        {
+          "nav": null,
+          "text": "تسجيل الخروج"
+        }
+      ],
+      "sheetItems": [
+        {
+          "id": "overview",
+          "text": "نظرة عامة"
+        }
+      ],
+      "sidebarItems": [
+        {
+          "id": "overview",
+          "text": "نظرة عامة"
+        }
+      ],
+      "drawerHasCtxItems": false
+    },
+    "mobile_home_context": {
+      "marker": "nav-ctx-chrome-v3",
+      "appbarText": "CartFlow",
+      "appbarHasHomePill": false,
+      "appbarHasWorkspacePill": false,
+      "appbarHasOverview": false,
+      "triggerInAppbar": false,
+      "triggerInStageContent": false,
+      "triggerInPageChrome": true,
+      "pageChromeInFrame": true,
+      "sectionChromePresent": false,
+      "pageChromeVisible": true,
+      "pageChromeKicker": "تنقل القسم",
+      "triggerActiveText": "نظرة عامة",
+      "triggerVisible": true,
+      "stageHasFloatingFiHathaButton": false,
+      "sheetOpen": true,
+      "drawerOpen": false,
+      "ctxAttr": "on",
+      "sidebarVisible": false,
+      "drawerItems": [
+        {
+          "nav": "home",
+          "text": "الرئيسية"
+        },
+        {
+          "nav": "workspace",
+          "text": "مساحة القرار"
+        },
+        {
+          "nav": "products",
+          "text": "المنتجات"
+        },
+        {
+          "nav": "carts",
+          "text": "السلال"
+        },
+        {
+          "nav": "comms",
+          "text": "التواصل"
+        },
+        {
+          "nav": "settings",
+          "text": "الإعدادات"
+        },
+        {
+          "nav": "settings",
+          "text": "الملف والباقة"
+        },
+        {
+          "nav": null,
+          "text": "تسجيل الخروج"
+        }
+      ],
+      "sheetItems": [
+        {
+          "id": "overview",
+          "text": "نظرة عامة"
+        }
+      ],
+      "sidebarItems": [
+        {
+          "id": "overview",
+          "text": "نظرة عامة"
+        }
+      ],
+      "drawerHasCtxItems": false
+    },
+    "mobile_global_drawer": {
+      "marker": "nav-ctx-chrome-v3",
+      "appbarText": "CartFlow",
+      "appbarHasHomePill": false,
+      "appbarHasWorkspacePill": false,
+      "appbarHasOverview": false,
+      "triggerInAppbar": false,
+      "triggerInStageContent": false,
+      "triggerInPageChrome": true,
+      "pageChromeInFrame": true,
+      "sectionChromePresent": false,
+      "pageChromeVisible": true,
+      "pageChromeKicker": "تنقل القسم",
+      "triggerActiveText": "نظرة عامة",
+      "triggerVisible": true,
+      "stageHasFloatingFiHathaButton": false,
+      "sheetOpen": false,
+      "drawerOpen": true,
+      "ctxAttr": "on",
+      "sidebarVisible": false,
+      "drawerItems": [
+        {
+          "nav": "home",
+          "text": "الرئيسية"
+        },
+        {
+          "nav": "workspace",
+          "text": "مساحة القرار"
+        },
+        {
+          "nav": "products",
+          "text": "المنتجات"
+        },
+        {
+          "nav": "carts",
+          "text": "السلال"
+        },
+        {
+          "nav": "comms",
+          "text": "التواصل"
+        },
+        {
+          "nav": "settings",
+          "text": "الإعدادات"
+        },
+        {
+          "nav": "settings",
+          "text": "الملف والباقة"
+        },
+        {
+          "nav": null,
+          "text": "تسجيل الخروج"
+        }
+      ],
+      "sheetItems": [
+        {
+          "id": "overview",
+          "text": "نظرة عامة"
+        }
+      ],
+      "sidebarItems": [
+        {
+          "id": "overview",
+          "text": "نظرة عامة"
+        }
+      ],
+      "drawerHasCtxItems": false
+    },
+    "mobile_workspace_closed": {
+      "marker": "nav-ctx-chrome-v3",
+      "appbarText": "CartFlow",
+      "appbarHasHomePill": false,
+      "appbarHasWorkspacePill": false,
+      "appbarHasOverview": false,
+      "triggerInAppbar": false,
+      "triggerInStageContent": false,
+      "triggerInPageChrome": true,
+      "pageChromeInFrame": true,
+      "sectionChromePresent": false,
+      "pageChromeVisible": true,
+      "pageChromeKicker": "تنقل القسم",
+      "triggerActiveText": "ما يحتاج قرارك",
+      "triggerVisible": true,
+      "stageHasFloatingFiHathaButton": false,
+      "sheetOpen": false,
+      "drawerOpen": false,
+      "ctxAttr": "on",
+      "sidebarVisible": false,
+      "drawerItems": [
+        {
+          "nav": "home",
+          "text": "الرئيسية"
+        },
+        {
+          "nav": "workspace",
+          "text": "مساحة القرار"
+        },
+        {
+          "nav": "products",
+          "text": "المنتجات"
+        },
+        {
+          "nav": "carts",
+          "text": "السلال"
+        },
+        {
+          "nav": "comms",
+          "text": "التواصل"
+        },
+        {
+          "nav": "settings",
+          "text": "الإعدادات"
+        },
+        {
+          "nav": "settings",
+          "text": "الملف والباقة"
+        },
+        {
+          "nav": null,
+          "text": "تسجيل الخروج"
+        }
+      ],
+      "sheetItems": [
+        {
+          "id": "attention",
+          "text": "ما يحتاج قرارك"
+        }
+      ],
+      "sidebarItems": [
+        {
+          "id": "attention",
+          "text": "ما يحتاج قرارك"
+        }
+      ],
+      "drawerHasCtxItems": false
+    },
+    "mobile_workspace_context": {
+      "marker": "nav-ctx-chrome-v3",
+      "appbarText": "CartFlow",
+      "appbarHasHomePill": false,
+      "appbarHasWorkspacePill": false,
+      "appbarHasOverview": false,
+      "triggerInAppbar": false,
+      "triggerInStageContent": false,
+      "triggerInPageChrome": true,
+      "pageChromeInFrame": true,
+      "sectionChromePresent": false,
+      "pageChromeVisible": true,
+      "pageChromeKicker": "تنقل القسم",
+      "triggerActiveText": "ما يحتاج قرارك",
+      "triggerVisible": true,
+      "stageHasFloatingFiHathaButton": false,
+      "sheetOpen": true,
+      "drawerOpen": false,
+      "ctxAttr": "on",
+      "sidebarVisible": false,
+      "drawerItems": [
+        {
+          "nav": "home",
+          "text": "الرئيسية"
+        },
+        {
+          "nav": "workspace",
+          "text": "مساحة القرار"
+        },
+        {
+          "nav": "products",
+          "text": "المنتجات"
+        },
+        {
+          "nav": "carts",
+          "text": "السلال"
+        },
+        {
+          "nav": "comms",
+          "text": "التواصل"
+        },
+        {
+          "nav": "settings",
+          "text": "الإعدادات"
+        },
+        {
+          "nav": "settings",
+          "text": "الملف والباقة"
+        },
+        {
+          "nav": null,
+          "text": "تسجيل الخروج"
+        }
+      ],
+      "sheetItems": [
+        {
+          "id": "attention",
+          "text": "ما يحتاج قرارك"
+        }
+      ],
+      "sidebarItems": [
+        {
+          "id": "attention",
+          "text": "ما يحتاج قرارك"
+        }
+      ],
+      "drawerHasCtxItems": false
+    }
+  }
+}
