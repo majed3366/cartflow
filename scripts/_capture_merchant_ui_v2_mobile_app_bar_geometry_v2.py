@@ -169,7 +169,7 @@ def main() -> None:
         page.wait_for_timeout(600)
         evidence["probes"]["home_drawer"] = page.evaluate(PROBE)
         shot(page, "05_mobile_home_drawer_open.png")
-        page.click(".cf2-drawer__close")
+        page.click(".cf2-drawer__chrome-close")
         page.wait_for_timeout(400)
 
         # Workspace closed

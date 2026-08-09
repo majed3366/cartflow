@@ -642,11 +642,16 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
 
   /*
    * Open drawer — authored handoff (not orphan strip):
-   * - App Bar remnant: Account utility on continuous navy (end edge)
-   * - Menu control yields to drawer (drawer chrome owns close)
-   * - Core identity continues in drawer navy chrome band aligned to App Bar height
-   * - Drawer mounts from top so chrome + bar read as one horizontal navy plane
+   * - App Bar surface clears so leftover navy does not read as clipped chrome
+   * - Account remains as a deliberate edge chip above the dimmed stage
+   * - Menu/core yield; drawer navy chrome continues CartFlow + close
    */
+  body[data-cf-ui="v2"].is-drawer-open .cf2-appbar {
+    z-index: 55;
+    background: transparent;
+    border-bottom-color: transparent;
+  }
+
   body[data-cf-ui="v2"].is-drawer-open .cf2-appbar__core {
     visibility: hidden;
     pointer-events: none;
@@ -669,6 +674,12 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
     padding: 0;
     overflow: hidden;
     opacity: 0;
+  }
+
+  body[data-cf-ui="v2"].is-drawer-open .cf2-appbar__account {
+    background: linear-gradient(165deg, #0a2d5c 0%, #082048 55%, #001838 100%);
+    color: #fff;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
   }
 
   body[data-cf-ui="v2"] .cf2-shell {
