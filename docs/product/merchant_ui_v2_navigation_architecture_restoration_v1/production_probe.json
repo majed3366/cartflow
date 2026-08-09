@@ -1,0 +1,279 @@
+{
+  "deploy": {
+    "ok": true,
+    "sha": "34d83c37c236f91ba17b157e259126af314379a2",
+    "status": 200
+  },
+  "probes": {
+    "desktop_home": {
+      "marker": "global-upbar-v1",
+      "ctxAttr": "on",
+      "mobileCtxAttr": "on",
+      "mobileCtxHidden": false,
+      "ctxVisible": true,
+      "mobileCtxVisible": false,
+      "globalNavIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "drawerNavIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings",
+        "settings"
+      ],
+      "ctxItems": [
+        {
+          "id": "overview",
+          "label": "نظرة عامة",
+          "active": true
+        }
+      ],
+      "mobileItems": [
+        {
+          "id": "overview",
+          "label": "نظرة عامة",
+          "active": true
+        }
+      ],
+      "sectionMergedIntoUpbar": false,
+      "homeCompositionMarker": true,
+      "workspaceCompositionMarker": false,
+      "bodyOverflow": "auto",
+      "scrollHeight": 900,
+      "clientHeight": 900
+    },
+    "desktop_workspace": {
+      "marker": "global-upbar-v1",
+      "ctxAttr": "on",
+      "mobileCtxAttr": "on",
+      "mobileCtxHidden": false,
+      "ctxVisible": true,
+      "mobileCtxVisible": false,
+      "globalNavIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "drawerNavIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings",
+        "settings"
+      ],
+      "ctxItems": [
+        {
+          "id": "attention",
+          "label": "ما يحتاج قرارك",
+          "active": true
+        }
+      ],
+      "mobileItems": [
+        {
+          "id": "attention",
+          "label": "ما يحتاج قرارك",
+          "active": true
+        }
+      ],
+      "sectionMergedIntoUpbar": false,
+      "homeCompositionMarker": true,
+      "workspaceCompositionMarker": true,
+      "bodyOverflow": "auto",
+      "scrollHeight": 900,
+      "clientHeight": 900
+    },
+    "mobile_home_closed": {
+      "marker": "global-upbar-v1",
+      "ctxAttr": "on",
+      "mobileCtxAttr": "on",
+      "mobileCtxHidden": false,
+      "ctxVisible": false,
+      "mobileCtxVisible": true,
+      "globalNavIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "drawerNavIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings",
+        "settings"
+      ],
+      "ctxItems": [
+        {
+          "id": "overview",
+          "label": "نظرة عامة",
+          "active": true
+        }
+      ],
+      "mobileItems": [
+        {
+          "id": "overview",
+          "label": "نظرة عامة",
+          "active": true
+        }
+      ],
+      "sectionMergedIntoUpbar": false,
+      "homeCompositionMarker": true,
+      "workspaceCompositionMarker": false,
+      "bodyOverflow": "auto",
+      "scrollHeight": 844,
+      "clientHeight": 844
+    },
+    "mobile_home_drawer": {
+      "marker": "global-upbar-v1",
+      "ctxAttr": "on",
+      "mobileCtxAttr": "on",
+      "mobileCtxHidden": false,
+      "ctxVisible": false,
+      "mobileCtxVisible": true,
+      "globalNavIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "drawerNavIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings",
+        "settings"
+      ],
+      "ctxItems": [
+        {
+          "id": "overview",
+          "label": "نظرة عامة",
+          "active": true
+        }
+      ],
+      "mobileItems": [
+        {
+          "id": "overview",
+          "label": "نظرة عامة",
+          "active": true
+        }
+      ],
+      "sectionMergedIntoUpbar": false,
+      "homeCompositionMarker": true,
+      "workspaceCompositionMarker": false,
+      "bodyOverflow": "hidden",
+      "scrollHeight": 844,
+      "clientHeight": 844
+    },
+    "mobile_workspace_closed": {
+      "marker": "global-upbar-v1",
+      "ctxAttr": "on",
+      "mobileCtxAttr": "on",
+      "mobileCtxHidden": false,
+      "ctxVisible": false,
+      "mobileCtxVisible": true,
+      "globalNavIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "drawerNavIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings",
+        "settings"
+      ],
+      "ctxItems": [
+        {
+          "id": "attention",
+          "label": "ما يحتاج قرارك",
+          "active": true
+        }
+      ],
+      "mobileItems": [
+        {
+          "id": "attention",
+          "label": "ما يحتاج قرارك",
+          "active": true
+        }
+      ],
+      "sectionMergedIntoUpbar": false,
+      "homeCompositionMarker": true,
+      "workspaceCompositionMarker": true,
+      "bodyOverflow": "auto",
+      "scrollHeight": 984,
+      "clientHeight": 844
+    },
+    "mobile_workspace_drawer": {
+      "marker": "global-upbar-v1",
+      "ctxAttr": "on",
+      "mobileCtxAttr": "on",
+      "mobileCtxHidden": false,
+      "ctxVisible": false,
+      "mobileCtxVisible": true,
+      "globalNavIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings"
+      ],
+      "drawerNavIds": [
+        "home",
+        "workspace",
+        "products",
+        "carts",
+        "comms",
+        "settings",
+        "settings"
+      ],
+      "ctxItems": [
+        {
+          "id": "attention",
+          "label": "ما يحتاج قرارك",
+          "active": true
+        }
+      ],
+      "mobileItems": [
+        {
+          "id": "attention",
+          "label": "ما يحتاج قرارك",
+          "active": true
+        }
+      ],
+      "sectionMergedIntoUpbar": false,
+      "homeCompositionMarker": true,
+      "workspaceCompositionMarker": true,
+      "bodyOverflow": "hidden",
+      "scrollHeight": 984,
+      "clientHeight": 844
+    }
+  }
+}
