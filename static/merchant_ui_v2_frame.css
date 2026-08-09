@@ -709,12 +709,13 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
     display: none;
     top: 0;
     inset-inline-start: 0;
-    inset-inline-end: auto;
-    width: min(304px, 86vw);
+    inset-inline-end: 0;
+    width: 100%;
+    max-width: none;
     max-height: 100dvh;
     max-height: 100vh;
     border-radius: 0 0 16px 16px;
-    transform: translateX(8%);
+    transform: translateY(-10px);
     opacity: 0;
     padding: 0 0 16px;
     overflow: hidden;
