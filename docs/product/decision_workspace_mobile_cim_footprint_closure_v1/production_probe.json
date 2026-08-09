@@ -1,0 +1,83 @@
+{
+  "deploy": {
+    "ok": true,
+    "sha": "d52da0b0d035c8074d652462cf82951a43f26033",
+    "status": 200
+  },
+  "desktop": {
+    "shellMarker": "shell-integration-v1",
+    "mobileHierarchy": "v1",
+    "density": "sparse",
+    "fieldHeight": 100,
+    "fieldMinHeight": "100px",
+    "fieldGap": "16px",
+    "fieldPadding": "10px 0px 14px",
+    "gapConfidenceToFirstEvidence": 114,
+    "hasEvField": true,
+    "hasRoute": true,
+    "hasCO": true,
+    "decisionOwns": true,
+    "overflowX": false,
+    "viewport": {
+      "w": 1440,
+      "h": 900
+    }
+  },
+  "mobile_430": {
+    "shellMarker": "shell-integration-v1",
+    "mobileHierarchy": "v1",
+    "density": "sparse",
+    "fieldHeight": 16,
+    "fieldMinHeight": "0px",
+    "fieldGap": "5px",
+    "fieldPadding": "2px 0px 3px",
+    "gapConfidenceToFirstEvidence": 24,
+    "hasEvField": true,
+    "hasRoute": true,
+    "hasCO": true,
+    "decisionOwns": true,
+    "overflowX": false,
+    "viewport": {
+      "w": 430,
+      "h": 932
+    }
+  },
+  "mobile_390": {
+    "shellMarker": "shell-integration-v1",
+    "mobileHierarchy": "v1",
+    "density": "sparse",
+    "fieldHeight": 16,
+    "fieldMinHeight": "0px",
+    "fieldGap": "5px",
+    "fieldPadding": "2px 0px 3px",
+    "gapConfidenceToFirstEvidence": 24,
+    "hasEvField": true,
+    "hasRoute": true,
+    "hasCO": true,
+    "decisionOwns": true,
+    "overflowX": false,
+    "viewport": {
+      "w": 390,
+      "h": 844
+    }
+  },
+  "gates": {
+    "deployOk": true,
+    "shellUntouched": true,
+    "hierarchyMarkerPresent": true,
+    "cimPresent430": true,
+    "cimPresent390": true,
+    "fieldCompressed430": true,
+    "fieldCompressed390": true,
+    "gapReduced430": true,
+    "gapReduced390": true,
+    "minHeightCleared430": true,
+    "minHeightCleared390": true,
+    "decisionOwns430": true,
+    "decisionOwns390": true,
+    "noOverflow430": true,
+    "noOverflow390": true,
+    "desktopShellOk": true,
+    "desktopFieldUnchangedContract": true
+  }
+}

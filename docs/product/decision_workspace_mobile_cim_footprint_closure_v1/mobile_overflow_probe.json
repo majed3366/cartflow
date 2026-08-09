@@ -1,0 +1,27 @@
+{
+  "deploy": {
+    "ok": true,
+    "sha": "d52da0b0d035c8074d652462cf82951a43f26033",
+    "status": 200
+  },
+  "mobile_430": {
+    "overflowX": false,
+    "scrollWidth": 430,
+    "clientWidth": 430,
+    "offenderCount": 0,
+    "offenders": []
+  },
+  "mobile_390": {
+    "overflowX": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "offenderCount": 0,
+    "offenders": []
+  },
+  "summary": {
+    "noOverflow430": true,
+    "noOverflow390": true,
+    "offenderCount430": 0,
+    "offenderCount390": 0
+  }
+}

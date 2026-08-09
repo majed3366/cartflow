@@ -14,7 +14,7 @@ OUT = ROOT / "docs" / "product" / "decision_workspace_mobile_cim_footprint_closu
 SHOTS = OUT / "screenshots"
 BASE = "https://smartreplyai.net"
 SHELL_MARKER = "shell-integration-v1"
-EXPECTED_SHA_PREFIX = ""  # set after deploy
+EXPECTED_SHA_PREFIX = "d52da0b"
 
 
 def wait_for_deploy(sha_prefix: str, timeout_s: int = 720) -> dict:
