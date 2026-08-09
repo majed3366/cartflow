@@ -1,0 +1,140 @@
+{
+  "deploy": {
+    "ok": true,
+    "sha": "ed5a902c3abadf77a72187700d3f2c3147950892",
+    "status": 200
+  },
+  "desktop_home": {
+    "sectionExpected": "الرئيسية",
+    "sectionText": "الرئيسية",
+    "appbarMarker": "final-closure-v1",
+    "identityVisible": true,
+    "identityName": "مساعد المتجر",
+    "mobileAccountVisible": false,
+    "menuVisible": false,
+    "brandVisible": true,
+    "sectionVisible": false,
+    "noLegacyPlan": true,
+    "noLegacyLogout": true,
+    "noEmoji": true,
+    "noWrap": true,
+    "noOverflow": true,
+    "cacheBump": true,
+    "homeMarker": "home-stage-closure-v1",
+    "workspaceMarker": "",
+    "bodyOverflowY": "auto",
+    "drawerOpen": false,
+    "stageOverflowY": "visible"
+  },
+  "desktop_workspace": {
+    "sectionExpected": "مساحة القرار",
+    "sectionText": "مساحة القرار",
+    "appbarMarker": "final-closure-v1",
+    "identityVisible": true,
+    "identityName": "مساعد المتجر",
+    "mobileAccountVisible": false,
+    "menuVisible": false,
+    "brandVisible": true,
+    "sectionVisible": false,
+    "noLegacyPlan": true,
+    "noLegacyLogout": true,
+    "noEmoji": true,
+    "noWrap": true,
+    "noOverflow": true,
+    "cacheBump": true,
+    "homeMarker": "home-stage-closure-v1",
+    "workspaceMarker": "workspace-final-v1",
+    "bodyOverflowY": "auto",
+    "drawerOpen": false,
+    "stageOverflowY": "visible"
+  },
+  "desktop_drawer": {
+    "ok": false,
+    "reason": "opener_hidden"
+  },
+  "mobile_home": {
+    "sectionExpected": "الرئيسية",
+    "sectionText": "الرئيسية",
+    "appbarMarker": "final-closure-v1",
+    "identityVisible": false,
+    "identityName": "مساعد المتجر",
+    "mobileAccountVisible": true,
+    "menuVisible": true,
+    "brandVisible": true,
+    "sectionVisible": true,
+    "noLegacyPlan": true,
+    "noLegacyLogout": true,
+    "noEmoji": true,
+    "noWrap": true,
+    "noOverflow": true,
+    "cacheBump": true,
+    "homeMarker": "home-stage-closure-v1",
+    "workspaceMarker": "",
+    "bodyOverflowY": "auto",
+    "drawerOpen": false,
+    "stageOverflowY": "visible"
+  },
+  "mobile_home_scroll": {
+    "before": 0,
+    "mid": 0,
+    "after": 0,
+    "moved": false,
+    "returned": true,
+    "docScrollable": false
+  },
+  "mobile_workspace": {
+    "sectionExpected": "مساحة القرار",
+    "sectionText": "مساحة القرار",
+    "appbarMarker": "final-closure-v1",
+    "identityVisible": false,
+    "identityName": "مساعد المتجر",
+    "mobileAccountVisible": true,
+    "menuVisible": true,
+    "brandVisible": true,
+    "sectionVisible": true,
+    "noLegacyPlan": true,
+    "noLegacyLogout": true,
+    "noEmoji": true,
+    "noWrap": true,
+    "noOverflow": true,
+    "cacheBump": true,
+    "homeMarker": "home-stage-closure-v1",
+    "workspaceMarker": "workspace-final-v1",
+    "bodyOverflowY": "auto",
+    "drawerOpen": false,
+    "stageOverflowY": "visible"
+  },
+  "mobile_workspace_scroll": {
+    "before": 0,
+    "mid": 87,
+    "after": 0,
+    "moved": true,
+    "returned": true,
+    "docScrollable": true
+  },
+  "mobile_drawer": {
+    "while_open": {
+      "open": true,
+      "overflow": "hidden"
+    },
+    "after_close": {
+      "open": false,
+      "overflowY": "auto",
+      "inline": ""
+    },
+    "can_scroll_after": true
+  },
+  "gates": {
+    "desktopAccountIdentity": "PASS",
+    "mobileActiveSectionVisible": "PASS",
+    "sameArchitectureHomeWorkspace": "PASS",
+    "mobileNoWrap": "PASS",
+    "mobileNoOverflow": "PASS",
+    "pageVerticalScroll": "PASS",
+    "drawerOpenClose": "PASS",
+    "drawerBodyLockReleased": "PASS",
+    "frozenHomeUnchanged": "PASS",
+    "workspaceCompositionUnchanged": "PASS"
+  },
+  "all_pass": true
+}

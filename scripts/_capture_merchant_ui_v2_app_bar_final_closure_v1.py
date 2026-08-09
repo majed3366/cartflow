@@ -12,7 +12,7 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs" / "product" / "merchant_ui_v2_app_bar_final_closure_v1"
 BASE = "https://smartreplyai.net"
-EXPECTED_SHA_PREFIX = ""
+EXPECTED_SHA_PREFIX = "ed5a902"
 
 
 def wait_for_deploy(timeout_s: int = 720) -> dict:
