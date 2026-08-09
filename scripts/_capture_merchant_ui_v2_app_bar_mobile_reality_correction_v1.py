@@ -12,7 +12,7 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs" / "product" / "merchant_ui_v2_app_bar_mobile_reality_correction_v1"
 BASE = "https://smartreplyai.net"
-EXPECTED_SHA_PREFIX = ""
+EXPECTED_SHA_PREFIX = "4e03720"
 
 
 def wait_for_deploy(timeout_s: int = 720) -> dict:
@@ -58,8 +58,8 @@ def visual_bar_probe(page, expected_section: str) -> dict:
           const vh = window.innerHeight;
           const intersects = (r) =>
             !!r &&
-            r.width >= 8 &&
-            r.height >= 8 &&
+            r.w >= 8 &&
+            r.h >= 8 &&
             r.right > 2 &&
             r.left < vw - 2 &&
             r.top < Math.min(vh, 80) &&
@@ -161,7 +161,7 @@ def visual_bar_probe(page, expected_section: str) -> dict:
             noWrap: !wrap,
             noOverflow: document.documentElement.scrollWidth <= vw + 1,
             cacheBump: [...document.querySelectorAll('link[rel=stylesheet]')]
-              .some((l) => /uiv2u/.test(l.href || '')),
+              .some((l) => /uiv2v/.test(l.href || '')),
             homeMarker:
               document.querySelector('[data-cf2=\"home-stage-closure-v1\"]')?.getAttribute('data-cf2') || '',
             workspaceMarker:

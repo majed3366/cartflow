@@ -501,7 +501,7 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
   body[data-cf-ui="v2"] .cf2-appbar {
     direction: ltr;
     padding: 0 10px;
-    gap: 8px;
+    gap: 10px;
     flex-wrap: nowrap;
     align-items: center;
     overflow: visible;
@@ -546,6 +546,7 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
     width: 24px;
     height: 24px;
     flex: 0 0 auto;
+    overflow: visible;
   }
 
   body[data-cf-ui="v2"] .cf2-appbar__section {
