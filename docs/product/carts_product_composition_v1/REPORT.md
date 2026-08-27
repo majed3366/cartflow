@@ -30,7 +30,7 @@ Queue loads. Filters change the list (all shows 1; يحتاجني is calm empty)
 
 ## Living Store deploy
 
-Branch `carts-product-composition-v1` from `origin/main` `f91e799` (Living Store still had the V2 Carts stub). Deploy to `main` after these gates. Evidence in this pack is **local demo** (labeled) until production SHA is recaptured. Do not declare PASS.
+Pushed `de87061` to GitHub `main` after local regression. Living Store `smartreplyai.net` remained on `f91e799` during a 4-minute poll — autodeploy stays disabled from the prior Railway cost lockout. Production Carts V2 is therefore still the stub until a Railway deploy of `de87061` is triggered. Pack evidence is **local demo** (labeled). Do not declare PASS.
 
 ---
 
