@@ -40,15 +40,15 @@
   },
   "04_live": {
     "marker": "carts-product-composition-v1",
-    "storeEmpty": null,
-    "isEmptyClass": false,
+    "storeEmpty": "store",
+    "isEmptyClass": true,
     "question": true,
-    "calm": "لا توجد سلال تحتاج تدخلك الآن",
-    "filterCount": 5,
+    "calm": "لا يوجد عمل تشغيلي الآن",
+    "filterCount": 0,
     "emptyPanel": false,
     "selectGhost": false,
-    "rowCount": 1,
-    "repeatLaTujad": 1,
+    "rowCount": 0,
+    "repeatLaTujad": 0,
     "overflowX": false
   }
 }

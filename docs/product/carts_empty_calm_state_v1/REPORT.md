@@ -22,7 +22,7 @@ When carts exist, queue / filters / master-detail / mobile detail / primary acti
 | Desktop zero-cart | `screenshots/03_desktop_zero_cart.png` | No ghost “اختر سلة”. No master-detail shell. |
 | Desktop non-empty | `screenshots/04_desktop_nonempty_regression.png` | Included only when a real cart existed. |
 
-Local demo has one waiting cart, so zero-cart shots used an empty `normal-carts` fulfillment to exercise the store-empty branch. Living Store shots after deploy are live (no fabricated rows).
+Living Store `smartreplyai.net` after one-off deploy `5f1296a` is store-empty. Shots 01–03 are live (no fabricated rows). Shot 04 is local demo only — one real waiting cart; Living Store had no cart to photograph.
 
 ## Regression
 
