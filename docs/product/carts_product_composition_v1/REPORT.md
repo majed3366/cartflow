@@ -26,6 +26,8 @@ Probes: `production_probe.json`, `mobile_overflow_probe.json`.
 
 ## Regression (local)
 
+No operational regression was found. Local gate runs passed; they were not a finding of breakage.
+
 Queue loads. Filters change the list (all shows 1; يحتاجني is calm empty). Select works. Primary key `wait` on the live row. Timeline from proof surface. Archive secondary only. Purchase suppression not exercisable (no purchased row). Attention labels unchanged (`بانتظار الإرسال`). No Workspace narratives. No VIP config. Shell/Home/Workspace intact. One fetch per `loadAndPaint`. No horizontal overflow.
 
 ## Living Store deploy
@@ -62,7 +64,7 @@ MOBILE OPERABILITY:
 QUEUE → DETAIL → BACK; primary reachable; timeline in details; no overflowX
 
 OPERATIONAL REGRESSION:
-YES
+NO
 
 COMPOSITION VERDICT:
 READY_FOR_VISUAL_REVIEW
