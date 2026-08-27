@@ -1,0 +1,17 @@
+{
+  "source": "local_demo_127.0.0.1:8765",
+  "viewport": "390x844",
+  "marker": "carts-product-composition-v1",
+  "shellMarker": "shell-integration-v1",
+  "question": true,
+  "overflowX": false,
+  "bodyOverflowX": "hidden",
+  "detailOpenSupported": true,
+  "backToQueue": true,
+  "primaryActionVisible": true,
+  "timelineAccessible": true,
+  "vipConfig": false,
+  "workspaceOverlap": false,
+  "sequence": "queue → detail → back",
+  "purchasedTerminalAvailable": false
+}

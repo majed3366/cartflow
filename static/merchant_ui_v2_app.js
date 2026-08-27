@@ -14,7 +14,7 @@
       { id: "home", label: "الرئيسية", slice: true },
       { id: "workspace", label: "مساحة القرار", slice: true },
       { id: "products", label: "المنتجات", slice: false },
-      { id: "carts", label: "السلال", slice: false },
+      { id: "carts", label: "السلال", slice: true },
       { id: "comms", label: "التواصل", slice: false },
       { id: "settings", label: "الإعدادات", slice: false },
     ],
@@ -307,6 +307,13 @@
       var wsRoot = $("#cf2-workspace-root");
       if (wsRoot && window.CartFlowUiV2Workspace) {
         window.CartFlowUiV2Workspace.loadAndPaint(wsRoot);
+      }
+      return;
+    }
+    if (section === "carts") {
+      var cartsRoot = $("#cf2-carts-root");
+      if (cartsRoot && window.CartFlowUiV2Carts) {
+        window.CartFlowUiV2Carts.loadAndPaint(cartsRoot);
       }
     }
   }

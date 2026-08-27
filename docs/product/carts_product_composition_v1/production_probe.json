@@ -1,0 +1,27 @@
+{
+  "source": "local_demo_127.0.0.1:8765",
+  "label": "SAFE_LOCAL_RUNTIME — not Living Store until deploy",
+  "marker": "carts-product-composition-v1",
+  "shellMarker": "shell-integration-v1",
+  "question": true,
+  "rowCount": 1,
+  "actionable": 0,
+  "waiting": 1,
+  "terminal": 0,
+  "primaryKey": "wait",
+  "orientation": "لا توجد سلال تحتاج تدخلك الآن",
+  "orientationDetail": "CartFlow يتابع 1 سلة.",
+  "filterDefault": "all",
+  "empty": false,
+  "vipConfig": false,
+  "workspaceOverlap": false,
+  "overflowX": false,
+  "bodyOverflowX": "hidden",
+  "purchasedTerminalAvailable": false,
+  "actionableQueueAvailable": false,
+  "notes": [
+    "Local demo has one waiting cart (بانتظار الإرسال). No invented actionable/purchased rows.",
+    "Screenshot 04 omitted — no purchased/completed truth.",
+    "01 is waiting-dominant queue (needs_you=0), labeled as local truth not fabricated urgency."
+  ]
+}
