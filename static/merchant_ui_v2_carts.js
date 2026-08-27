@@ -389,6 +389,15 @@
     return counts;
   }
 
+  function storeHasNoCarts(counts) {
+    return (
+      !state.loading &&
+      !state.error &&
+      !(counts && counts.total_active) &&
+      !(state.archived || []).length
+    );
+  }
+
   function orientationCopy(counts) {
     if (state.error) {
       return {
@@ -404,11 +413,11 @@
         detail: "",
       };
     }
-    if (!counts.total_active && !(state.archived || []).length) {
+    if (storeHasNoCarts(counts)) {
       return {
         mode: "empty",
-        headline: "لا توجد سلال",
-        detail: "لا توجد سلال في المتجر حالياً.",
+        headline: "لا يوجد عمل تشغيلي الآن",
+        detail: "",
       };
     }
     if (counts.needs_you > 0) {
@@ -455,8 +464,8 @@
     if (state.loading) {
       return { title: "جاري تحميل السلال…", body: "" };
     }
-    if (!counts.total_active && !(state.archived || []).length) {
-      return { title: "لا توجد سلال", body: "لا يوجد عمل تشغيلي الآن." };
+    if (storeHasNoCarts(counts)) {
+      return null;
     }
     if (state.filter === "attention" && counts.needs_you === 0) {
       return {
@@ -772,6 +781,19 @@
         state.selectedKey = selected ? recoveryKey(selected) : "";
       }
     }
+    if (storeHasNoCarts(counts)) {
+      root.setAttribute("data-cf2", MARKER);
+      root.setAttribute("data-carts-empty", "store");
+      root.className = "cf2-carts is-empty";
+      root.innerHTML =
+        '<div class="cf2-carts__orient">' +
+        '<p class="cf2-carts__orient-h">' +
+        esc(orient.headline) +
+        "</p></div>";
+      bind(root);
+      return;
+    }
+
     var empty = emptyCopy(list, counts);
     var queueInner = empty
       ? '<div class="cf2-carts__empty" data-carts-empty="' +
@@ -788,6 +810,7 @@
           .join("");
 
     root.setAttribute("data-cf2", MARKER);
+    root.removeAttribute("data-carts-empty");
     root.className =
       "cf2-carts" +
       (state.detailOpen ? " is-detail-open" : "") +

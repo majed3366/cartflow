@@ -90,6 +90,19 @@ class CartsProductCompositionV1Tests(unittest.TestCase):
         self.assertIn("whyText && whyText !== stateText", CARTS_JS)
         self.assertIn("product && product !== title", CARTS_JS)
 
+    def test_store_empty_is_one_calm_statement(self) -> None:
+        self.assertIn("function storeHasNoCarts", CARTS_JS)
+        self.assertIn('data-carts-empty", "store"', CARTS_JS)
+        self.assertIn("لا يوجد عمل تشغيلي الآن", CARTS_JS)
+        self.assertIn("اختر سلة من الطابور", CARTS_JS)
+        self.assertIn(".cf2-carts.is-empty", CARTS_CSS)
+        paint_empty = CARTS_JS.split("root.className = \"cf2-carts is-empty\"")[1].split(
+            "var empty = emptyCopy"
+        )[0]
+        self.assertNotIn("اختر سلة من الطابور", paint_empty)
+        self.assertNotIn("cf2-carts__filters", paint_empty)
+        self.assertNotIn("cf2-carts__detail", paint_empty)
+
 
 if __name__ == "__main__":
     unittest.main()

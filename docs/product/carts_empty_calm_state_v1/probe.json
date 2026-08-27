@@ -1,0 +1,54 @@
+{
+  "01_mobile_430_zero_cart.png": {
+    "marker": "carts-product-composition-v1",
+    "storeEmpty": "store",
+    "isEmptyClass": true,
+    "question": true,
+    "calm": "لا يوجد عمل تشغيلي الآن",
+    "filterCount": 0,
+    "emptyPanel": false,
+    "selectGhost": false,
+    "rowCount": 0,
+    "repeatLaTujad": 0,
+    "overflowX": false
+  },
+  "02_mobile_390_zero_cart.png": {
+    "marker": "carts-product-composition-v1",
+    "storeEmpty": "store",
+    "isEmptyClass": true,
+    "question": true,
+    "calm": "لا يوجد عمل تشغيلي الآن",
+    "filterCount": 0,
+    "emptyPanel": false,
+    "selectGhost": false,
+    "rowCount": 0,
+    "repeatLaTujad": 0,
+    "overflowX": false
+  },
+  "03_desktop_zero_cart.png": {
+    "marker": "carts-product-composition-v1",
+    "storeEmpty": "store",
+    "isEmptyClass": true,
+    "question": true,
+    "calm": "لا يوجد عمل تشغيلي الآن",
+    "filterCount": 0,
+    "emptyPanel": false,
+    "selectGhost": false,
+    "rowCount": 0,
+    "repeatLaTujad": 0,
+    "overflowX": false
+  },
+  "04_live": {
+    "marker": "carts-product-composition-v1",
+    "storeEmpty": null,
+    "isEmptyClass": false,
+    "question": true,
+    "calm": "لا توجد سلال تحتاج تدخلك الآن",
+    "filterCount": 5,
+    "emptyPanel": false,
+    "selectGhost": false,
+    "rowCount": 1,
+    "repeatLaTujad": 1,
+    "overflowX": false
+  }
+}
