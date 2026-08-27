@@ -81,9 +81,20 @@ def health(
     out: dict[str, Any] = {"ok": True, "service": "cartflow"}
     if int(db_probe) == 1:
         try:
+            from services.database_network_guard_v1 import classify_database_url
+
             db.session.execute(text("SELECT 1"))
+            dialect = getattr(getattr(db.session, "bind", None), "dialect", None)
+            dialect_name = str(getattr(dialect, "name", "") or "")
+            if dialect_name == "postgresql":
+                db_name = db.session.execute(text("SELECT current_database()")).scalar()
+            else:
+                db_name = dialect_name or "local"
             db.session.commit()
+            klass = str((classify_database_url() or {}).get("class") or "unknown")
             out["database"] = "ok"
+            out["database_name"] = str(db_name or "")
+            out["database_host_class"] = klass
         except SQLAlchemyError as e:
             db.session.rollback()
             log.warning("health db probe: %s", e)
@@ -94,13 +105,32 @@ def health(
 @router.get("/health/scheduler")
 def health_scheduler() -> Any:
     """
-    Recovery scheduler ownership + backlog snapshot (read-only).
+    Cached Scheduler liveness. Does not query Postgres.
 
-    Safe for load balancers and ops; does not trigger resume or dispatch.
+    Safe for load balancers. Do not use /health/scheduler/deep as a Railway probe.
     """
     from services.recovery_process_role_v1 import build_scheduler_health_snapshot
 
     snap = build_scheduler_health_snapshot()
+    status = 503 if not snap.get("ok") else 200
+    return j(snap, status)
+
+
+@router.get("/health/scheduler/deep")
+def health_scheduler_deep(key: str = "") -> Any:
+    """Admin-only, rate-limited DB diagnostic. Never a routine healthcheck."""
+    from services.scheduler_deep_health_v1 import (
+        SchedulerDeepHealthDenied,
+        assert_deep_health_allowed,
+        build_scheduler_deep_health_snapshot,
+    )
+
+    try:
+        assert_deep_health_allowed(key)
+    except SchedulerDeepHealthDenied as exc:
+        code = 429 if str(exc) == "rate_limited" else 403
+        return j({"ok": False, "error": str(exc)}, code)
+    snap = build_scheduler_deep_health_snapshot()
     status = 503 if not snap.get("ok") else 200
     return j(snap, status)
 

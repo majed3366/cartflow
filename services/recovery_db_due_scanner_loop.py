@@ -128,14 +128,38 @@ async def run_db_due_scanner_loop_tick() -> Dict[str, Any]:
 
 
 async def _db_due_scanner_loop_forever() -> None:
-    interval = db_due_scanner_loop_interval_seconds()
+    from datetime import datetime, timedelta, timezone
+
+    from services.scheduler_cycle_guard_v1 import (
+        min_sleep_seconds,
+        next_sleep_seconds,
+        record_cycle_error,
+        record_cycle_ok,
+    )
+    from services.scheduler_runtime_state_v1 import (
+        record_cycle_failure,
+        record_cycle_success,
+        record_next_run,
+    )
+
     while True:
+        delay = next_sleep_seconds(db_due_scanner_loop_interval_seconds())
+        delay = max(min_sleep_seconds(), delay)
+        record_next_run(datetime.now(timezone.utc) + timedelta(seconds=delay))
         try:
-            await asyncio.sleep(interval)
-            await run_db_due_scanner_loop_tick()
+            await asyncio.sleep(delay)
+            out = await run_db_due_scanner_loop_tick()
+            if out.get("error"):
+                record_cycle_error()
+                record_cycle_failure(job="scanner", kind="tick_error")
+            else:
+                record_cycle_ok()
+                record_cycle_success(job="scanner")
         except asyncio.CancelledError:
             raise
         except Exception as exc:  # noqa: BLE001
+            record_cycle_error()
+            record_cycle_failure(job="scanner", kind="loop_error")
             _log_loop("ERROR", detail=str(exc)[:200])
             _log.warning("db due scanner loop tick failed: %s", exc)
             try:

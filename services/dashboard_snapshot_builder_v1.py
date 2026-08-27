@@ -43,16 +43,10 @@ def _env_truthy(name: str, *, default: bool = False) -> bool:
 
 
 def dashboard_snapshot_builder_enabled() -> bool:
+    """Both snapshot mode and an explicit builder flag must be on."""
     if not _env_truthy("CARTFLOW_DASHBOARD_SNAPSHOT_MODE"):
         return False
-    if _env_truthy("CARTFLOW_DASHBOARD_SNAPSHOT_BUILDER_ENABLED"):
-        return True
-    try:
-        from services.recovery_process_role_v1 import resolve_process_role
-
-        return resolve_process_role() == "scheduler"
-    except Exception:  # noqa: BLE001
-        return False
+    return _env_truthy("CARTFLOW_DASHBOARD_SNAPSHOT_BUILDER_ENABLED", default=False)
 
 
 def _builder_skip_util_pct_threshold() -> float:
@@ -444,25 +438,38 @@ def run_dashboard_snapshot_builder_tick() -> dict[str, Any]:
 
     scoped_db_session_begin()
     try:
+        from services.snapshot_cycle_budget_v1 import (
+            SnapshotCycleBudget,
+            SnapshotCycleBudgetExceeded,
+            using_cycle_budget,
+        )
+
         stores = list_store_slugs_for_snapshot_build(limit=snapshot_build_store_limit())
+        budget = SnapshotCycleBudget()
         built = 0
         errors = 0
         rows_written = 0
         rows_touched = 0
         rows_skipped = 0
-        for store_id, store_slug in stores:
-            out = build_store_dashboard_snapshots(
-                store_id=store_id,
-                store_slug=store_slug,
-            )
-            if out.get("ok"):
-                built += 1
-            else:
-                errors += 1
-            gen = out.get("generation") or {}
-            rows_written += int(gen.get("write") or 0)
-            rows_touched += int(gen.get("touch") or 0)
-            rows_skipped += int(gen.get("skip") or 0)
+        with using_cycle_budget(budget):
+            for store_id, store_slug in stores:
+                if budget.aborted:
+                    break
+                try:
+                    out = build_store_dashboard_snapshots(
+                        store_id=store_id,
+                        store_slug=store_slug,
+                    )
+                except SnapshotCycleBudgetExceeded:
+                    break
+                if out.get("ok"):
+                    built += 1
+                else:
+                    errors += 1
+                gen = out.get("generation") or {}
+                rows_written += int(gen.get("write") or 0)
+                rows_touched += int(gen.get("touch") or 0)
+                rows_skipped += int(gen.get("skip") or 0)
         rows_avoided = rows_touched + rows_skipped
         decisions = rows_written + rows_avoided
         reduction_pct = round(100.0 * rows_avoided / decisions, 1) if decisions else 0.0
@@ -470,7 +477,8 @@ def run_dashboard_snapshot_builder_tick() -> dict[str, Any]:
             f"[DASHBOARD SNAPSHOT BUILDER TICK] stores={len(stores)} "
             f"built={built} errors={errors} rows_written={rows_written} "
             f"rows_avoided={rows_avoided} touched={rows_touched} skipped={rows_skipped} "
-            f"write_reduction_pct={reduction_pct}",
+            f"write_reduction_pct={reduction_pct} "
+            f"cycle_bytes={budget.used_bytes} cycle_aborted={str(budget.aborted).lower()}",
             flush=True,
         )
         return {
@@ -483,6 +491,7 @@ def run_dashboard_snapshot_builder_tick() -> dict[str, Any]:
             "rows_skipped": rows_skipped,
             "rows_avoided": rows_avoided,
             "write_reduction_pct": reduction_pct,
+            **budget.metrics(),
         }
     finally:
         release_scoped_db_session()

@@ -59,7 +59,7 @@ def test_scanner_releases_session_after_success() -> None:
 def test_scanner_releases_session_after_exception() -> None:
     db.create_all()
     with patch(
-        "services.recovery_db_due_scanner.db.create_all",
+        "services.recovery_db_due_scanner.db.session.query",
         side_effect=__import__("sqlalchemy.exc", fromlist=["SQLAlchemyError"]).SQLAlchemyError(
             "pool timeout"
         ),

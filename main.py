@@ -913,8 +913,10 @@ def api_recover_redirect(t: str = Query(..., min_length=6, max_length=2048)):
 
 @app.on_event("startup")
 async def _startup_whatsapp_queue() -> None:
+    from services.process_entry_v1 import reject_scheduler_via_web_entry
     from services.runtime_role_verification_v1 import verify_runtime_role_at_startup
 
+    reject_scheduler_via_web_entry()
     verify_runtime_role_at_startup()
     try:
         from services.runtime_startup_v1 import log_runtime_startup_banner  # noqa: PLC0415
@@ -922,12 +924,6 @@ async def _startup_whatsapp_queue() -> None:
         log_runtime_startup_banner()
     except Exception as exc:  # noqa: BLE001
         log.warning("startup runtime banner skipped: %s", exc)
-    try:
-        from services.dashboard_snapshot_loop_v1 import start_dashboard_snapshot_builder_loop
-
-        start_dashboard_snapshot_builder_loop()
-    except Exception as exc:  # noqa: BLE001
-        log.warning("early dashboard snapshot builder loop skipped: %s", exc)
     try:
         from services.db_ready_restart_survival_v1 import record_restart_cycle_begin
 
@@ -963,27 +959,11 @@ async def _startup_whatsapp_queue() -> None:
         from services.recovery_scheduler_guardrails import (
             log_recovery_scheduler_ownership_at_startup,
         )
-        from services.recovery_restart_survival import run_recovery_resume_scan_async
 
         log_scheduler_owner_at_startup()
         log_recovery_scheduler_ownership_at_startup()
-        resume_out = await run_recovery_resume_scan_async(max_dispatch=25)
-        if resume_out.get("dispatched"):
-            log.info(
-                "[RECOVERY RESUME SCAN] startup dispatched=%s",
-                resume_out.get("dispatched"),
-            )
     except Exception as exc:  # noqa: BLE001
-        log.warning("startup recovery resume scan skipped: %s", exc)
-    try:
-        from services.recovery_db_due_scanner_loop import start_db_due_recovery_scanner_loop
-
-        start_db_due_recovery_scanner_loop()
-        from services.db_due_scanner_health import refresh_db_due_scanner_health_observability
-
-        refresh_db_due_scanner_health_observability()
-    except Exception as exc:  # noqa: BLE001
-        log.warning("startup db due scanner loop skipped: %s", exc)
+        log.warning("startup scheduler ownership log skipped: %s", exc)
     try:
         from services.merchant_password_reset_email import (
             log_resend_password_reset_startup,

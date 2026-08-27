@@ -12,7 +12,7 @@ def main() -> None:
             sys.executable,
             "-m",
             "uvicorn",
-            "main:app",
+            "cartflow_api:app",
             "--host",
             "0.0.0.0",
             "--port",

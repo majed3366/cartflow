@@ -351,45 +351,15 @@ def _running_stale_threshold_seconds() -> int:
 
 
 def build_scheduler_health_snapshot() -> dict[str, Any]:
-    """Read-only fields for ``GET /health/scheduler``."""
+    """Cached in-process Scheduler liveness. Does not query Postgres."""
+    from services.scheduler_ownership_diagnosis_v1 import build_ownership_diagnosis
+    from services.scheduler_runtime_state_v1 import snapshot_scheduler_runtime_state
+
     policy = evaluate_scheduler_ownership_policy(force=False)
+    cached = snapshot_scheduler_runtime_state()
     role_label = str(policy.get("role") or "unset")
     resume_on = bool(policy.get("may_resume"))
     scanner_on = bool(policy.get("may_due_scan"))
-    limit = due_scanner_limit_for_health()
-
-    overdue_scheduled_count = 0
-    running_stale_count = 0
-    db_error: Optional[str] = None
-
-    try:
-        db.create_all()
-        now_naive = _utc_now().replace(tzinfo=None)
-        cutoff_naive = (_utc_now() - timedelta(seconds=_running_stale_threshold_seconds())).replace(
-            tzinfo=None
-        )
-        overdue_scheduled_count = int(
-            db.session.query(func.count(RecoverySchedule.id))
-            .filter(
-                RecoverySchedule.status == "scheduled",
-                RecoverySchedule.due_at <= now_naive,
-            )
-            .scalar()
-            or 0
-        )
-        running_stale_count = int(
-            db.session.query(func.count(RecoverySchedule.id))
-            .filter(
-                RecoverySchedule.status == "running",
-                RecoverySchedule.updated_at < cutoff_naive,
-            )
-            .scalar()
-            or 0
-        )
-    except SQLAlchemyError as exc:
-        db.session.rollback()
-        db_error = str(exc)[:200]
-
     scheduler_ownership = {
         "role": role_label,
         "compliance": policy.get("compliance"),
@@ -401,43 +371,36 @@ def build_scheduler_health_snapshot() -> dict[str, Any]:
         "fail_closed": bool(policy.get("fail_closed")),
         "policy_error": policy.get("policy_error"),
     }
-
-    from services.scheduler_ownership_diagnosis_v1 import build_ownership_diagnosis
-
     ownership_diagnosis = build_ownership_diagnosis(
         scheduler_ownership=scheduler_ownership,
-        overdue_scheduled_count=overdue_scheduled_count,
-        running_stale_count=running_stale_count,
+        overdue_scheduled_count=0,
+        running_stale_count=0,
         resume_enabled=resume_on,
         due_scanner_enabled=scanner_on,
         delay_dispatch_enabled=bool(policy.get("may_delay_dispatch")),
     )
-
-    ok = db_error is None and policy.get("compliance") != COMPLIANCE_MISCONFIGURED
+    ok = policy.get("compliance") != COMPLIANCE_MISCONFIGURED
     if policy.get("policy_error"):
         ok = False
-
-    out: dict[str, Any] = {
+    return {
         "ok": ok,
         "role": role_label,
+        "last_successful_cycle": cached.get("last_successful_cycle"),
+        "last_failure": cached.get("last_failure"),
+        "next_scheduled_cycle": cached.get("next_scheduled_cycle"),
+        "enabled_jobs": list(cached.get("enabled_jobs") or []),
+        "ready": bool(cached.get("ready")),
+        "live": bool(cached.get("live")),
+        "source": "in_process_cache",
         "resume_enabled": resume_on,
         "due_scanner_enabled": scanner_on,
-        "due_scanner_limit": limit,
         "delay_dispatch_enabled": bool(policy.get("may_delay_dispatch")),
-        "overdue_scheduled_count": overdue_scheduled_count,
-        "running_stale_count": running_stale_count,
+        "due_scanner_limit": due_scanner_limit_for_health(),
+        "overdue_scheduled_count": 0,
+        "running_stale_count": 0,
         "scheduler_ownership": scheduler_ownership,
         "ownership_diagnosis": ownership_diagnosis,
     }
-    if db_error:
-        out["database_error"] = db_error
-    try:
-        from services.db_pool_diagnostics import build_db_pool_health_snapshot  # noqa: PLC0415
-
-        out["db_pool"] = build_db_pool_health_snapshot()
-    except Exception as exc:  # noqa: BLE001
-        out["db_pool"] = {"available": False, "error": str(exc)[:200], "exhausted": False}
-    return out
 
 
 __all__ = [

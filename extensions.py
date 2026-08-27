@@ -54,8 +54,9 @@ __all__ = [
     "text",
 ]
 
-POSTGRES_POOL_SIZE = 30
-POSTGRES_POOL_MAX_OVERFLOW = 30
+# Legacy names kept for imports. Live Postgres bounds come from db_pool_bounds_v1.
+POSTGRES_POOL_SIZE = 5
+POSTGRES_POOL_MAX_OVERFLOW = 5
 POSTGRES_POOL_TIMEOUT = 5
 POSTGRES_POOL_RECYCLE = 300
 
@@ -91,7 +92,17 @@ _Scoped: Any = None
 def init_database(url: Optional[str] = None) -> None:
     """إنشاء ‎Engine‎ + ‎scoped_session‎ (استدعِ بعد استيراد النماذج)."""
     global _engine, _Scoped
+    from services.database_network_guard_v1 import assert_database_url_allowed
+    from services.db_pool_bounds_v1 import resolve_pool_bounds
+
+    raw_env = (os.getenv("DATABASE_URL") or "").strip()
+    env_name = (os.getenv("ENV") or "").strip().lower()
+    production_like = env_name in ("production", "prod", "staging", "preview")
+    if url is None and production_like and not raw_env:
+        assert_database_url_allowed("")
+
     u = (url or "").strip() or get_database_url()
+    assert_database_url_allowed(u)
     connect: dict = {}
     engine_kw: dict[str, Any] = {}
     if u.startswith("sqlite:"):
@@ -101,11 +112,11 @@ def init_database(url: Optional[str] = None) -> None:
         # ‎QueuePool‎ الافتراضي يُنفّد الاتصالات في ‎pytest‎ الطويل على ‎SQLite‎؛ ‎NullPool‎ يغلق الاتصال عند الإرجاع.
         engine_kw["poolclass"] = NullPool
     else:
-        # Postgres/MySQL — Reliability Foundation V1 Phase 0: fail fast (5s max wait)
-        engine_kw["pool_size"] = POSTGRES_POOL_SIZE
-        engine_kw["max_overflow"] = POSTGRES_POOL_MAX_OVERFLOW
-        engine_kw["pool_timeout"] = POSTGRES_POOL_TIMEOUT
-        engine_kw["pool_recycle"] = POSTGRES_POOL_RECYCLE
+        bounds = resolve_pool_bounds()
+        engine_kw["pool_size"] = bounds["pool_size"]
+        engine_kw["max_overflow"] = bounds["max_overflow"]
+        engine_kw["pool_timeout"] = bounds["pool_timeout"]
+        engine_kw["pool_recycle"] = bounds["pool_recycle"]
         engine_kw["pool_reset_on_return"] = "rollback"
     _engine = create_engine(
         u,

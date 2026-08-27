@@ -46,7 +46,7 @@ class RecoveryProcessRoleTests(unittest.TestCase):
     def test_development_unset_role_legacy_resume_default(self) -> None:
         os.environ["ENV"] = "development"
         self.assertEqual(resolve_process_role(), "unset")
-        self.assertTrue(process_role_effective_resume_enabled())
+        self.assertFalse(process_role_effective_resume_enabled())
         self.assertTrue(process_role_may_spawn_delay_dispatch())
         self.assertFalse(process_role_effective_due_scanner_enabled())
 
@@ -199,8 +199,13 @@ class RecoveryProcessRoleTests(unittest.TestCase):
             schedule_timing={"effective_delay_seconds": 0.0, "source": "test"},
             recovery_context={"recovery_key": "demo:s-health"},
         )
-        snap = build_scheduler_health_snapshot()
+        from services.scheduler_deep_health_v1 import build_scheduler_deep_health_snapshot
+
+        snap = build_scheduler_deep_health_snapshot()
         self.assertGreaterEqual(int(snap.get("overdue_scheduled_count") or 0), 1)
+        cached = build_scheduler_health_snapshot()
+        self.assertEqual(cached.get("source"), "in_process_cache")
+        self.assertEqual(int(cached.get("overdue_scheduled_count") or 0), 0)
 
     def test_log_scheduler_owner_startup_shape(self) -> None:
         os.environ["ENV"] = "production"

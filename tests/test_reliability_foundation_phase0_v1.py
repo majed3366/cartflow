@@ -111,15 +111,28 @@ class PoolConfigTests(unittest.TestCase):
     def test_postgres_pool_timeout_is_5s(self) -> None:
         from extensions import POSTGRES_POOL_MAX_OVERFLOW, POSTGRES_POOL_SIZE, POSTGRES_POOL_TIMEOUT
 
-        self.assertEqual(POSTGRES_POOL_SIZE, 30)
-        self.assertEqual(POSTGRES_POOL_MAX_OVERFLOW, 30)
+        self.assertEqual(POSTGRES_POOL_SIZE, 5)
+        self.assertEqual(POSTGRES_POOL_MAX_OVERFLOW, 5)
         self.assertEqual(POSTGRES_POOL_TIMEOUT, 5)
 
     def test_postgres_engine_uses_pool_settings(self) -> None:
-        init_database("postgresql://user:pass@localhost:5432/testdb")
-        pool = db.engine.pool
-        self.assertEqual(getattr(pool, "_pool", pool).maxsize, 30)  # type: ignore[attr-defined]
-        self.assertEqual(pool.timeout(), 5)
+        import extensions as ext
+
+        os.environ["CARTFLOW_PROCESS_ROLE"] = "api"
+        os.environ.pop("CARTFLOW_DB_POOL_SIZE", None)
+        os.environ.pop("CARTFLOW_DB_POOL_MAX_OVERFLOW", None)
+        os.environ.pop("ENV", None)
+        prev_engine = ext._engine
+        prev_scoped = ext._Scoped
+        try:
+            init_database("postgresql://user:pass@localhost:5432/testdb")
+            pool = db.engine.pool
+            self.assertEqual(getattr(pool, "_pool", pool).maxsize, 5)  # type: ignore[attr-defined]
+            self.assertEqual(pool.timeout(), 5)
+        finally:
+            os.environ.pop("CARTFLOW_PROCESS_ROLE", None)
+            ext._engine = prev_engine
+            ext._Scoped = prev_scoped
 
 
 class PingNoDbTests(unittest.TestCase):
@@ -146,8 +159,12 @@ class PingNoDbTests(unittest.TestCase):
 
         event.listen(db.engine, "before_cursor_execute", _before_cursor)
         try:
-            with TestClient(main.app) as client:
-                resp = client.get("/ping")
+            with patch(
+                "services.db_ready_startup_warm_v1.start_db_ready_startup_warm_async"
+            ):
+                with TestClient(main.app) as client:
+                    queries.clear()
+                    resp = client.get("/ping")
             self.assertEqual(resp.status_code, 200)
             self.assertEqual(resp.json(), {"ok": True})
             self.assertEqual(queries, [])

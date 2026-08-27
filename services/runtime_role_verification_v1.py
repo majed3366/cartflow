@@ -102,14 +102,11 @@ def verify_runtime_role_at_startup() -> dict[str, Any]:
             errors.append("policy may_resume must be false for API role")
 
     elif role == "scheduler":
-        if not _scanner_env_enabled():
-            errors.append(
-                "CARTFLOW_DB_DUE_SCANNER_ENABLED must be true on scheduler service"
-            )
-        if not _resume_env_enabled():
-            errors.append(
-                "CARTFLOW_RECOVERY_RESUME_ON_STARTUP must be enabled on scheduler service"
-            )
+        from services.process_entry_v1 import resolve_process_entry  # noqa: PLC0415
+
+        if resolve_process_entry() == "api":
+            errors.append("scheduler role cannot use the API process entry")
+        # Jobs default OFF — do not require scanner/resume to be enabled.
 
     elif role in ("unset", "unknown"):
         errors.append(

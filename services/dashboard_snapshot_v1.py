@@ -381,6 +381,11 @@ def upsert_dashboard_snapshot(
         pj = payload_json[: snapshot_payload_json_cap(stype)]
     else:
         pj = encode_snapshot_payload_json(payload, snapshot_type=stype)
+    from services.snapshot_cycle_budget_v1 import current_cycle_budget
+
+    budget = current_cycle_budget()
+    if budget is not None:
+        budget.add(len(pj.encode("utf-8")))
 
     row = DashboardSnapshot(
         store_id=store_id,

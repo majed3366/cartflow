@@ -23,6 +23,8 @@ class OpsHealthProbeTests(unittest.TestCase):
         body = r.json() or {}
         self.assertTrue(body.get("ok"))
         self.assertEqual(body.get("database"), "ok")
+        self.assertTrue(body.get("database_name"))
+        self.assertTrue(body.get("database_host_class"))
 
 
 if __name__ == "__main__":

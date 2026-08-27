@@ -34,10 +34,10 @@ def test_default_unset_enables_resume_scan_in_development() -> None:
     os.environ.pop(ENV_RECOVERY_RESUME_ON_STARTUP, None)
     os.environ["ENV"] = "development"
     cfg = resolve_recovery_resume_on_startup_config()
-    assert cfg["enabled"] is True
+    assert cfg["enabled"] is False
     assert cfg["reason"] == "default"
     assert cfg["env_set"] is False
-    assert is_recovery_resume_on_startup_enabled() is True
+    assert is_recovery_resume_on_startup_enabled() is False
 
 
 def test_env_false_disables_resume_scan() -> None:
@@ -94,12 +94,11 @@ def test_startup_log_owner_enabled_default(_clear_env: None) -> None:
         log_recovery_scheduler_ownership_at_startup()
     out = buf.getvalue()
     assert "[RECOVERY SCHEDULER OWNER]" in out
-    assert "enabled=true" in out
+    assert "enabled=false" in out
     assert "reason=default" in out
     assert "process_id=" in out
     assert "instance=" in out
-    assert "[RECOVERY WORKER MODE]" in out
-    assert "single_scheduler_expected=true" in out
+    assert "[RECOVERY WORKER MODE]" not in out
 
 
 def test_startup_log_owner_disabled_no_worker_warning(_clear_env: None) -> None:
@@ -115,7 +114,7 @@ def test_startup_log_owner_disabled_no_worker_warning(_clear_env: None) -> None:
 
 
 def test_startup_risk_when_multi_worker_env(_clear_env: None) -> None:
-    os.environ.pop(ENV_RECOVERY_RESUME_ON_STARTUP, None)
+    os.environ[ENV_RECOVERY_RESUME_ON_STARTUP] = "1"
     os.environ["WEB_CONCURRENCY"] = "4"
     try:
         buf = io.StringIO()
@@ -139,8 +138,8 @@ def test_health_fields_reflect_env_disabled(_clear_env: None) -> None:
 def test_health_fields_reflect_owner_mode(_clear_env: None) -> None:
     os.environ.pop(ENV_RECOVERY_RESUME_ON_STARTUP, None)
     fields = build_scheduler_owner_health_fields()
-    assert fields["scheduler_owner_mode"] == "owner"
-    assert fields["resume_on_startup_enabled"] is True
+    assert fields["scheduler_owner_mode"] == "api_replica"
+    assert fields["resume_on_startup_enabled"] is False
 
 
 def test_recovery_health_snapshot_includes_scheduler_owner_fields() -> None:

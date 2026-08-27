@@ -36,6 +36,7 @@ def _enable_scheduler_snapshot_env() -> None:
     os.environ["SECRET_KEY"] = "unit-test-snapshot-loop-continuous-v1"
     os.environ["CARTFLOW_PROCESS_ROLE"] = "scheduler"
     os.environ[ENV_SNAPSHOT_MODE] = "1"
+    os.environ["CARTFLOW_DASHBOARD_SNAPSHOT_BUILDER_ENABLED"] = "1"
     os.environ["CARTFLOW_DB_DUE_SCANNER_ENABLED"] = "true"
     os.environ["CARTFLOW_RECOVERY_RESUME_ON_STARTUP"] = "1"
 
@@ -93,6 +94,12 @@ class DashboardSnapshotLoopContinuousTests(unittest.IsolatedAsyncioTestCase):
             "services.dashboard_snapshot_loop_v1.dashboard_snapshot_loop_interval_seconds",
             return_value=0.05,
         ), patch(
+            "services.scheduler_cycle_guard_v1.next_sleep_seconds",
+            return_value=0.05,
+        ), patch(
+            "services.scheduler_cycle_guard_v1.min_sleep_seconds",
+            return_value=0.05,
+        ), patch(
             "services.dashboard_snapshot_builder_v1.run_dashboard_snapshot_builder_tick",
             side_effect=_tick,
         ), patch(
@@ -118,6 +125,12 @@ class DashboardSnapshotLoopContinuousTests(unittest.IsolatedAsyncioTestCase):
 
         with patch(
             "services.dashboard_snapshot_loop_v1.dashboard_snapshot_loop_interval_seconds",
+            return_value=0.05,
+        ), patch(
+            "services.scheduler_cycle_guard_v1.next_sleep_seconds",
+            return_value=0.05,
+        ), patch(
+            "services.scheduler_cycle_guard_v1.min_sleep_seconds",
             return_value=0.05,
         ), patch(
             "services.dashboard_snapshot_builder_v1.run_dashboard_snapshot_builder_tick",

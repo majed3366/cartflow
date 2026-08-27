@@ -113,11 +113,23 @@ class SchedulerOwnershipDiagnosisTests(unittest.TestCase):
             )
         )
         db.session.commit()
-        snap = build_scheduler_health_snapshot()
-        diag = snap["ownership_diagnosis"]
-        self.assertGreater(snap["running_stale_count"], 0)
+        from services.scheduler_deep_health_v1 import build_scheduler_deep_health_snapshot
+        from services.scheduler_ownership_diagnosis_v1 import build_ownership_diagnosis
+
+        deep = build_scheduler_deep_health_snapshot()
+        policy = evaluate_scheduler_ownership_policy()
+        diag = build_ownership_diagnosis(
+            scheduler_ownership=policy,
+            overdue_scheduled_count=int(deep.get("overdue_scheduled_count") or 0),
+            running_stale_count=int(deep.get("running_stale_count") or 0),
+            resume_enabled=bool(policy.get("may_resume")),
+            due_scanner_enabled=bool(policy.get("may_due_scan")),
+            delay_dispatch_enabled=bool(policy.get("may_delay_dispatch")),
+        )
+        self.assertGreater(int(deep.get("running_stale_count") or 0), 0)
         self.assertIn(DIAG_ZOMBIE_RUNNING_ROWS, diag["codes"])
         self.assertIn(DIAG_STALE_RUNNING_ROWS, diag["codes"])
+        self.assertEqual(build_scheduler_health_snapshot().get("source"), "in_process_cache")
 
     def test_overdue_api_produces_ownership_absent(self) -> None:
         os.environ["ENV"] = "production"
@@ -139,8 +151,19 @@ class SchedulerOwnershipDiagnosisTests(unittest.TestCase):
             )
         )
         db.session.commit()
-        snap = build_scheduler_health_snapshot()
-        diag = snap["ownership_diagnosis"]
+        from services.scheduler_deep_health_v1 import build_scheduler_deep_health_snapshot
+        from services.scheduler_ownership_diagnosis_v1 import build_ownership_diagnosis
+
+        deep = build_scheduler_deep_health_snapshot()
+        policy = evaluate_scheduler_ownership_policy()
+        diag = build_ownership_diagnosis(
+            scheduler_ownership=policy,
+            overdue_scheduled_count=int(deep.get("overdue_scheduled_count") or 0),
+            running_stale_count=int(deep.get("running_stale_count") or 0),
+            resume_enabled=bool(policy.get("may_resume")),
+            due_scanner_enabled=bool(policy.get("may_due_scan")),
+            delay_dispatch_enabled=bool(policy.get("may_delay_dispatch")),
+        )
         self.assertIn(DIAG_SCHEDULER_OWNERSHIP_ABSENT, diag["codes"])
 
     def test_overdue_scheduler_produces_backlog(self) -> None:
@@ -164,8 +187,19 @@ class SchedulerOwnershipDiagnosisTests(unittest.TestCase):
             )
         )
         db.session.commit()
-        snap = build_scheduler_health_snapshot()
-        diag = snap["ownership_diagnosis"]
+        from services.scheduler_deep_health_v1 import build_scheduler_deep_health_snapshot
+        from services.scheduler_ownership_diagnosis_v1 import build_ownership_diagnosis
+
+        deep = build_scheduler_deep_health_snapshot()
+        policy = evaluate_scheduler_ownership_policy()
+        diag = build_ownership_diagnosis(
+            scheduler_ownership=policy,
+            overdue_scheduled_count=int(deep.get("overdue_scheduled_count") or 0),
+            running_stale_count=int(deep.get("running_stale_count") or 0),
+            resume_enabled=bool(policy.get("may_resume")),
+            due_scanner_enabled=bool(policy.get("may_due_scan")),
+            delay_dispatch_enabled=bool(policy.get("may_delay_dispatch")),
+        )
         self.assertIn(DIAG_EXECUTION_BACKLOG, diag["codes"])
 
     def test_recovery_health_includes_ownership_diagnosis(self) -> None:

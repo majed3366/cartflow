@@ -59,7 +59,7 @@ def test_healthy_snapshot_empty_db() -> None:
     assert snap["stuck_running"]["stuck_running_detected"] is False
     assert snap["pending_due"] == 0
     assert "protections" in snap
-    assert snap["protections"]["scheduler_owner"]["resume_on_startup"] is True
+    assert snap["protections"]["scheduler_owner"]["resume_on_startup"] is False
 
 
 def test_stuck_running_detected() -> None:
@@ -104,17 +104,21 @@ def test_scheduler_owner_visible_from_env() -> None:
 
 
 def test_last_resume_heartbeat_recorded() -> None:
-    record_resume_scan_completed(
-        {
-            "enabled": True,
-            "dispatched": 2,
-            "due_processed": 3,
-            "future_rearmed": 1,
-        }
-    )
-    snap = build_recovery_health_snapshot(emit_warn_log=False)
-    assert snap["last_resume"]["dispatched"] == 2
-    assert snap["scheduler_detail"]["resume_heartbeat"] == "healthy"
+    os.environ[ENV_RECOVERY_RESUME_ON_STARTUP] = "1"
+    try:
+        record_resume_scan_completed(
+            {
+                "enabled": True,
+                "dispatched": 2,
+                "due_processed": 3,
+                "future_rearmed": 1,
+            }
+        )
+        snap = build_recovery_health_snapshot(emit_warn_log=False)
+        assert snap["last_resume"]["dispatched"] == 2
+        assert snap["scheduler_detail"]["resume_heartbeat"] == "healthy"
+    finally:
+        os.environ.pop(ENV_RECOVERY_RESUME_ON_STARTUP, None)
 
 
 def test_whatsapp_failed_explained_in_health() -> None:

@@ -66,7 +66,6 @@ async def scan_due_recovery_schedules(
 
     try:
         try:
-            db.create_all()
             stale_repair = repair_stale_running_recovery_schedules()
             out["stale_running_repair"] = stale_repair
 

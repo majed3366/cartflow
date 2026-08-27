@@ -16,8 +16,8 @@ log = logging.getLogger("cartflow")
 
 ENV_RECOVERY_RESUME_ON_STARTUP = "CARTFLOW_RECOVERY_RESUME_ON_STARTUP"
 
-# Current production default: single process / one owner runs resume on boot.
-_DEFAULT_RESUME_ON_STARTUP_ENABLED = True
+# Fail-safe: resume is OFF unless CARTFLOW_RECOVERY_RESUME_ON_STARTUP is set.
+_DEFAULT_RESUME_ON_STARTUP_ENABLED = False
 
 _DISABLED_VALUES = frozenset({"0", "false", "no", "off"})
 

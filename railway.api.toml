@@ -1,0 +1,24 @@
+# Assign this file to Railway service `smart-reply-ai` (API) later.
+# Do not apply in Railway during Cost Recurrence Prevention V1.
+# Autodeploy must stay disabled until production validation.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "python -m uvicorn cartflow_api:app --host 0.0.0.0 --port ${PORT:-8000}"
+
+[env]
+ENV = "production"
+CARTFLOW_PROCESS_ROLE = "api"
+CARTFLOW_PROCESS_ENTRY = "api"
+CARTFLOW_RECOVERY_RESUME_ON_STARTUP = "0"
+CARTFLOW_DB_DUE_SCANNER_ENABLED = "false"
+CARTFLOW_DASHBOARD_SNAPSHOT_MODE = "0"
+CARTFLOW_DASHBOARD_SNAPSHOT_BUILDER_ENABLED = "false"
+CARTFLOW_DASHBOARD_SNAPSHOT_ARCHIVE_ENABLED = "false"
+CARTFLOW_ENFORCE_API_ONLY = "1"
+CARTFLOW_ALLOW_PUBLIC_DATABASE = "0"
+CARTFLOW_DISABLE_STARTUP_DB_WARM = "1"
+CARTFLOW_CART_WORKSPACE_V1 = "true"

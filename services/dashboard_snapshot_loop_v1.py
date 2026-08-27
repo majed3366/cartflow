@@ -158,12 +158,31 @@ async def _dashboard_snapshot_loop_main() -> None:
     if health is not None:
         health.record_loop_started(interval_seconds=interval)
     _emit_loop("STARTED", interval_s=interval)
+    from services.scheduler_cycle_guard_v1 import (
+        min_sleep_seconds,
+        next_sleep_seconds,
+        record_cycle_error,
+        record_cycle_ok,
+    )
+    from services.scheduler_runtime_state_v1 import (
+        record_cycle_failure,
+        record_cycle_success,
+    )
+
     while True:
         try:
-            await run_dashboard_snapshot_loop_tick()
+            result = await run_dashboard_snapshot_loop_tick()
+            if result.get("error"):
+                record_cycle_error()
+                record_cycle_failure(job="snapshot", kind="tick_error")
+            else:
+                record_cycle_ok()
+                record_cycle_success(job="snapshot")
         except asyncio.CancelledError:
             raise
         except Exception as exc:  # noqa: BLE001
+            record_cycle_error()
+            record_cycle_failure(job="snapshot", kind="loop_error")
             _emit_loop("TICK ERROR", detail=str(exc)[:200])
             _log.warning("dashboard snapshot loop tick error: %s", exc, exc_info=True)
             health = _loop_health_module()
@@ -172,7 +191,8 @@ async def _dashboard_snapshot_loop_main() -> None:
                     health.record_loop_tick_failure(error=str(exc)[:500])
                 except Exception:  # noqa: BLE001
                     pass
-        await asyncio.sleep(interval)
+        delay = max(min_sleep_seconds(), next_sleep_seconds(interval))
+        await asyncio.sleep(delay)
 
 
 async def _snapshot_loop_watchdog_forever() -> None:

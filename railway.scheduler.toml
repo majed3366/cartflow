@@ -1,0 +1,21 @@
+# Assign this file to Railway service `cartflow` (Scheduler) later.
+# Do not apply in Railway during Cost Recurrence Prevention V1.
+# Autodeploy must stay disabled until production validation.
+# Expensive jobs stay OFF until explicitly enabled in the dashboard.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "python -m cartflow_scheduler"
+
+[env]
+CARTFLOW_PROCESS_ROLE = "scheduler"
+CARTFLOW_PROCESS_ENTRY = "scheduler"
+CARTFLOW_RECOVERY_RESUME_ON_STARTUP = "0"
+CARTFLOW_DB_DUE_SCANNER_ENABLED = "false"
+CARTFLOW_DASHBOARD_SNAPSHOT_MODE = "0"
+CARTFLOW_DASHBOARD_SNAPSHOT_BUILDER_ENABLED = "false"
+CARTFLOW_DASHBOARD_SNAPSHOT_ARCHIVE_ENABLED = "false"
+CARTFLOW_ALLOW_PUBLIC_DATABASE = "0"
