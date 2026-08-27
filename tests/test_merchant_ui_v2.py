@@ -48,7 +48,9 @@ class MerchantUiV2TemplateTests(unittest.TestCase):
         self.assertIn("merchant_ui_v2_language.css", V2_TEMPLATE)
         self.assertIn("merchant_ui_v2_home.css", V2_TEMPLATE)
         self.assertIn("merchant_ui_v2_workspace.css", V2_TEMPLATE)
+        self.assertIn("merchant_ui_v2_carts.css", V2_TEMPLATE)
         self.assertIn("merchant_ui_v2_language.js", V2_TEMPLATE)
+        self.assertIn("merchant_ui_v2_carts.js", V2_TEMPLATE)
         self.assertNotIn("merchant_frame_v1.css", V2_TEMPLATE)
         self.assertNotIn("merchant_pe_v2.css", V2_TEMPLATE)
         self.assertNotIn("decision_workspace_visual_assimilation", V2_TEMPLATE)
@@ -198,10 +200,12 @@ class MerchantUiV2RouteTests(unittest.TestCase):
             "static/merchant_ui_v2_language.css",
             "static/merchant_ui_v2_home.css",
             "static/merchant_ui_v2_workspace.css",
+            "static/merchant_ui_v2_carts.css",
             "static/merchant_ui_v2_app.js",
             "static/merchant_ui_v2_language.js",
             "static/merchant_ui_v2_home.js",
             "static/merchant_ui_v2_workspace.js",
+            "static/merchant_ui_v2_carts.js",
             "templates/merchant_app_v2.html",
             "services/merchant_ui_v2/flag_v1.py",
         ):

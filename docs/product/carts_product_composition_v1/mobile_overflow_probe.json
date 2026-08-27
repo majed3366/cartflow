@@ -1,0 +1,18 @@
+{
+  "source": "local_demo_127.0.0.1:8766",
+  "label": "SAFE_LOCAL_RUNTIME — 390x844",
+  "marker": "carts-product-composition-v1",
+  "shellMarker": "shell-integration-v1",
+  "question": true,
+  "sequence": "queue → detail → back → attention calm",
+  "detailOpenOnSelect": true,
+  "primaryVisibleOnDetail": true,
+  "primaryKey": "wait",
+  "timelineAccessible": true,
+  "returnToQueuePreservesFilter": true,
+  "emptyModeOnAttention": "waiting",
+  "vipConfig": false,
+  "workspaceOverlap": false,
+  "overflowX": false,
+  "bodyOverflowX": "hidden"
+}
