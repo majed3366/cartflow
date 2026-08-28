@@ -141,7 +141,8 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
         present = payload.get("presentation_v11") or {}
         self.assertEqual(
             present.get("intervention_count"),
-            len(present.get("intervention_stores") or []),
+            len(present.get("intervention_stores") or [])
+            + len(present.get("actionable_platform_alerts") or []),
         )
         for lazy_key in (
             "operational_trends",
@@ -231,7 +232,12 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
         self.assertIn('id="admin-sidebar-panel"', body)
         self.assertIn("admin_operations_center_v11.css", body)
         self.assertIn("UNKNOWN", body)
+        self.assertIn("وقت إنشاء العرض", body)
+        self.assertNotIn("family=Tajawal", body)
+        self.assertNotIn("fonts.googleapis.com/css2?family=Tajawal", body)
         self.assertNotIn("سيناريو", body)
+        needs = body.split('id="needs"', 1)[-1].split('id="platform"', 1)[0]
+        self.assertNotIn("No immediate action required", needs)
         # Technical lazy panels are NOT on the executive overview.
         self.assertNotIn("ops-investigation-panel", body)
         self.assertNotIn("ops-analytics-panel", body)

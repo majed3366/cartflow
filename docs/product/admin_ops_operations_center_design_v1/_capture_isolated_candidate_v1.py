@@ -7,7 +7,7 @@ from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
-BASE = "http://127.0.0.1:8788"
+BASE = "http://127.0.0.1:8789"
 PASSWORD = "ops-v11-verify-local"
 OUT = Path(__file__).resolve().parent / "screenshots"
 REPORT = Path(__file__).resolve().parent / "ISOLATED_VERIFY.json"
@@ -33,6 +33,11 @@ def main() -> None:
         result["checks"]["has_ops_v11"] = 'id="ops-v11"' in body
         result["checks"]["no_scenario_label"] = "سيناريو" not in body
         result["checks"]["unknown_present"] = "UNKNOWN" in body
+        result["checks"]["presentation_time_label"] = "وقت إنشاء العرض" in body
+        result["checks"]["no_new_tajawal_font"] = "family=Tajawal" not in body
+        result["checks"]["no_action_in_needs"] = "No immediate action required" not in (
+            body.split('id="needs"', 1)[-1].split('id="platform"', 1)[0] if 'id="needs"' in body else body
+        )
         result["checks"]["logout_only_post"] = 'action="/admin/operations/logout"' in body
 
         page.screenshot(path=str(OUT / "candidate_desktop_1440.png"), full_page=True)

@@ -16,7 +16,8 @@
   --st-retry-ink: #1a4a5c;
   --st-failed-ink: #7a1420;
   --st-unknown-ink: #3d4a63;
-  font-family: "Tajawal", "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+  /* Tajawal is not locally bundled. Reuse the admin layout stack (IBM Plex Sans Arabic). */
+  font-family: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
   color: var(--cf-ink);
   font-size: 14px;
   line-height: 1.5;

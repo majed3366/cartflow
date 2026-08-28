@@ -11,14 +11,17 @@ Security findings remain **OPEN**. Railway SNAPSHOT_CODE remains **separate**. B
 
 | V1.1 element | Existing producer | Notes |
 |---|---|---|
-| يحتاجني list + count | `store_action_center.production_action_queue` filtered by existing `priority != LOW` | Same list for both. LOW = Monitoring (`operational_priority_v1`) |
-| مراقبة | Same queue, `priority == LOW` | Excluded from intervention |
+| يحتاجني list + count | Stores: `priority != LOW`. Platform: existing `action_en` is an operator action | Same lists for count. `_PLATFORM_ONLY_KINDS` / severity are **not** actionability. Empty / “No immediate action required” / “No action required” → مراقبة المنصة |
+| مراقبة | Same store queue, `priority == LOW`; platform alerts whose `action_en` is not an operator action | Excluded from يحتاجني |
 | الرصد غير مكتمل لمتجر واحد | Count of action-queue rows with Widget Runtime group / beacon kinds | Store-scoped; not platform DEGRADED |
 | Shared API / Scheduler | No live snapshot on this payload | Shown **UNKNOWN** — not HEALTHY |
 | إعادة المحاولة | `provider_retry_ledger_v1.retry_active()` | Default off → غير مفعّلة |
-| الاسترجاع التلقائي | `recovery_resume_health.running` if present | Else غير متوفر — not inventing 0 |
-| حداثة | `generated_at_utc` | Arabic on mobile; ISO in case details |
-| Platform cases | `critical_alerts.alerts` kinds in `_PLATFORM_ONLY_KINDS` | Widget critical alert not duplicated (lives on store row) |
+| الاسترجاع التلقائي | `recovery_resume_health.running` only if the key is explicitly numeric (including 0) | Missing key / null → UNKNOWN — not inventing 0 |
+| وقت إنشاء العرض | `generated_at_utc` | Presentation-generation time only |
+| حداثة الدليل | No producer freshness field on SAC / critical_alerts / recovery_resume_health | UNKNOWN + missing sources named |
+| أثر التجار counts | `summary.production_store_count` / `production_affected_count` | 0 only when explicitly supplied |
+| Platform placement | `critical_alerts.alerts` kinds in `_PLATFORM_ONLY_KINDS` | Placement only; widget critical alert not duplicated |
+| Typography | Admin layout IBM Plex Sans Arabic + system stack | **No new Tajawal / Google Fonts request.** Tajawal is not locally bundled. |
 | Lazy DB Ready / Widget Health | Existing section GETs | Unchanged; read-only fetch |
 
 No new eligibility rule. No new operational actions.

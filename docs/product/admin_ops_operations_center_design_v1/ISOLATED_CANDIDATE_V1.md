@@ -1,6 +1,6 @@
 # Admin Operations UI — Isolated Deployment Candidate V1
 
-**Status:** READY_FOR_CANDIDATE_REVIEW  
+**Status:** TRUTH_CORRECTIONS_V1 — local candidate only  
 **Date (UTC):** 2026-08-29  
 **Worktree:** `C:/Users/Toshiba/Desktop/cartflow-admin-ops-ui-candidate`  
 **Branch:** `candidate/admin-ops-ui-integration-v1`  

@@ -1,9 +1,6 @@
 {% extends "layouts/admin_dashboard.html" %}
 {% block admin_title %}CartFlow Admin — مركز العمليات{% endblock %}
 {% block admin_extra_head %}
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/admin_operations_center_v11.css" />
 {% endblock %}
 {% block admin_main_class %}w-full max-w-none px-0 py-0{% endblock %}
@@ -17,12 +14,14 @@
   {% set v11 = ops.presentation_v11 or {} %}
   {% set intervene = v11.intervention_stores or [] %}
   {% set monitor = v11.monitoring_stores or [] %}
-  {% set platform_alerts = v11.platform_alerts or [] %}
+  {% set actionable_platform = v11.actionable_platform_alerts or [] %}
+  {% set monitoring_platform = v11.monitoring_platform_alerts or [] %}
   {% set headline = v11.scoped_observation_headline_ar or '' %}
-  {% set prod_n = v11.production_store_count or 0 %}
-  {% set affected_n = v11.production_affected_count or 0 %}
-  {% set need_n = v11.intervention_count or 0 %}
+  {% set prod_n = v11.production_store_count %}
+  {% set affected_n = v11.production_affected_count %}
+  {% set need_n = v11.intervention_count %}
   {% set running = v11.schedule_running %}
+  {% set missing_freshness = v11.evidence_freshness_missing_sources or [] %}
 
   <div id="ops-v11">
     <section class="answer" id="ops-executive-summary">
@@ -37,15 +36,32 @@
         {% endif %}
       </div>
       <div class="cell">
-        <p class="kicker">حداثة الدليل</p>
+        <p class="kicker">وقت إنشاء العرض</p>
+        {% if v11.presentation_generated_at_ar or v11.presentation_generated_at_utc or ops.generated_at_utc %}
+        <div class="val desk-when"><span class="id">{{ v11.presentation_generated_at_utc or ops.generated_at_utc }}</span></div>
+        <div class="val mob-when">{{ v11.presentation_generated_at_ar or 'الوقت غير متوفر' }}</div>
+        <p>وقت توليد هذا العرض فقط — ليس حداثة الدليل.</p>
+        {% else %}
         <div class="val"><span class="st st-unknown">UNKNOWN</span></div>
-        <p class="desk-when">آخر تركيب {{ ops.generated_at_utc or '—' }}. لا يُستنتج Scheduler من <span class="id">/health</span>.</p>
-        <p class="mob-when">{% if v11.generated_at_ar %}{{ v11.generated_at_ar }}{% else %}الوقت غير متوفر{% endif %}</p>
+        <p>وقت إنشاء العرض غير متوفر.</p>
+        {% endif %}
+        <p class="kicker" style="margin-top:8px">حداثة الدليل</p>
+        <div class="val"><span class="st st-unknown">UNKNOWN</span></div>
+        <p>لا حقل حداثة من {% for src in missing_freshness %}<span class="id">{{ src }}</span>{% if not loop.last %} · {% endif %}{% endfor %}.</p>
       </div>
       <div class="cell">
         <p class="kicker">أثر التجار</p>
+        {% if affected_n is none or prod_n is none %}
+        <div class="val"><span class="st st-unknown">UNKNOWN</span></div>
+        <p>
+          {% if prod_n is none %}store_action_center.summary.production_store_count{% endif %}
+          {% if affected_n is none %}{% if prod_n is none %} · {% endif %}store_action_center.summary.production_affected_count{% endif %}
+          غير متوفر.
+        </p>
+        {% else %}
         <div class="val">{{ affected_n }} من {{ prod_n }} متجراً إنتاجياً</div>
-        <p>{{ need_n }} يحتاج تدخلاً · {{ v11.monitoring_count or 0 }} مراقبة</p>
+        <p>{{ need_n if need_n is not none else 'UNKNOWN' }} يحتاج تدخلاً · {{ v11.monitoring_count if v11.monitoring_count is not none else 'UNKNOWN' }} مراقبة</p>
+        {% endif %}
       </div>
     </section>
 
@@ -67,8 +83,8 @@
       </div>
       <div class="cell need">
         <p class="kicker">يحتاج تدخلي</p>
-        <div class="n">{{ need_n }}</div>
-        <p class="sub">نفس قائمة يحتاجني — أولوية ليست LOW</p>
+        <div class="n">{% if need_n is none %}<span class="st st-unknown">UNKNOWN</span>{% else %}{{ need_n }}{% endif %}</div>
+        <p class="sub">نفس قائمة يحتاجني — إجراء تشغيلي في action_en أو أولوية ليست LOW</p>
       </div>
     </section>
 
@@ -90,7 +106,7 @@
         </div>
         <p class="empty-filter" id="empty-platform" hidden>لا تدخل مطلوب على مستوى المنصة في القائمة الحالية.</p>
 
-        {% for alert in platform_alerts %}
+        {% for alert in actionable_platform %}
         <details class="case need" id="case-plat-{{ loop.index }}" data-scope="platform">
           <summary>
             <div>
@@ -151,10 +167,10 @@
                 <dt>التحقق</dt>
                 <dd>{{ rc.verification_en or '—' }}</dd>
               </div>
-              {% if ops.generated_at_utc %}
+              {% if v11.presentation_generated_at_utc or ops.generated_at_utc %}
               <div style="grid-column:1/-1">
-                <dt>وقت التركيب</dt>
-                <dd><span class="id">{{ ops.generated_at_utc }}</span></dd>
+                <dt>وقت إنشاء العرض</dt>
+                <dd><span class="id">{{ v11.presentation_generated_at_utc or ops.generated_at_utc }}</span></dd>
               </div>
               {% endif %}
             </dl>
@@ -163,8 +179,8 @@
         </details>
         {% endfor %}
 
-        {% if not intervene and not platform_alerts %}
-        <p class="empty-filter">لا متجر إنتاجي في أولوية التدخل الحالية.</p>
+        {% if not intervene and not actionable_platform %}
+        <p class="empty-filter">لا سجل يحتاج تدخلاً تشغيلياً في القائمة الحالية.</p>
         {% endif %}
       </section>
 
@@ -187,6 +203,20 @@
             <span class="st st-unknown">لا إشارة مكتملة</span>
             {% endif %}
           </div>
+          {% for alert in monitoring_platform %}
+          <details class="case watch" id="monitor-plat-{{ loop.index }}" style="margin-top:8px">
+            <summary>
+              <div>
+                <p class="title">{{ alert.problem_en or alert.kind }}</p>
+                <p class="impact">{{ alert.action_en or 'مراقبة المنصة — لا تدخل فوري' }}</p>
+              </div>
+              <div class="chips"><span class="st st-blocked">مراقبة</span></div>
+            </summary>
+            <div class="detail">
+              <p style="margin:8px 0 0;font-size:13px">ليست في يحتاجني. action_en لا يطلب تدخلاً تشغيلياً.</p>
+            </div>
+          </details>
+          {% endfor %}
           <p style="margin:8px 0 0;font-size:12px;color:var(--cf-ink-soft)">
             إسقاط المنتِج الحالي: {{ ex.platform_status_ar or '—' }}.
             لا يُستنتج Scheduler من <span class="id">/health</span>. الغياب ليس HEALTHY.

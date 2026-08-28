@@ -1,13 +1,16 @@
 {
   "ok": true,
   "source": "isolated-candidate",
-  "base": "http://127.0.0.1:8788",
+  "base": "http://127.0.0.1:8789",
   "checks": {
     "unauth_redirect": true,
     "auth_page": true,
     "has_ops_v11": true,
     "no_scenario_label": true,
     "unknown_present": true,
+    "presentation_time_label": true,
+    "no_new_tajawal_font": true,
+    "no_action_in_needs": true,
     "logout_only_post": true,
     "desktop_overflow": {
       "ok": true,
@@ -15,11 +18,11 @@
       "sample": []
     },
     "filter_platform": {
-      "platform_cases": 1,
+      "platform_cases": 0,
       "empty_hidden_when_cases": true
     },
-    "keyboard_focus_summary": true,
-    "details_toggle": true,
+    "keyboard_focus_summary": "no_cases",
+    "details_toggle": "no_cases",
     "mobile_segments_visible": true,
     "mobile_platform_pane": true,
     "mobile_merchants_pane": true

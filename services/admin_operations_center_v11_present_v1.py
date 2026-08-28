@@ -6,6 +6,7 @@ Read-only mapping of existing command-center payloads onto the approved
 layout. Does not classify new issues or invent eligibility.
 Intervention vs monitoring uses existing operational priority labels:
 LOW = Monitoring; CRITICAL / HIGH / MEDIUM = action or review.
+Platform يحتاجني uses the existing action-engine ``action_en`` field.
 """
 from __future__ import annotations
 
@@ -41,6 +42,18 @@ _MONTHS_AR = (
     "ديسمبر",
 )
 
+# Existing action-engine copy (admin_operations_action_engine_v1). Not a new classifier.
+_NO_OPERATOR_ACTION_PREFIXES = (
+    "no immediate action required",
+    "no action required",
+)
+
+_EVIDENCE_FRESHNESS_PRODUCERS = (
+    "store_action_center",
+    "critical_alerts",
+    "recovery_resume_health",
+)
+
 
 def _parse_iso(value: Any) -> datetime | None:
     raw = str(value or "").strip()
@@ -60,6 +73,33 @@ def format_generated_at_ar(iso_value: Any) -> str:
         dt = dt.replace(tzinfo=timezone.utc)
     dt = dt.astimezone(timezone.utc)
     return f"{dt.day} {_MONTHS_AR[dt.month - 1]} {dt.year}، الساعة {dt.hour:02d}:{dt.minute:02d} UTC"
+
+
+def explicit_int(container: Any, key: str) -> int | None:
+    """Return an int only when the producer supplied the key with a numeric value (including 0)."""
+    if not isinstance(container, dict) or key not in container:
+        return None
+    raw = container.get(key)
+    if raw is None or isinstance(raw, bool):
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def operator_action_required(action_en: Any) -> bool:
+    """Existing action-engine ``action_en`` is the operator-action rule.
+
+    Empty / missing rule → not يحتاجني. ``No immediate action required`` /
+    ``No action required`` (authoritative copy) → not يحتاجني.
+    Does not read kind or severity.
+    """
+    text = " ".join(str(action_en or "").split())
+    if not text:
+        return False
+    head = text.lower()
+    return not any(head.startswith(prefix) for prefix in _NO_OPERATOR_ACTION_PREFIXES)
 
 
 def split_intervention_queues(
@@ -98,7 +138,8 @@ def scoped_observation_headline_ar(widget_store_count: int) -> str:
     return f"الرصد غير مكتمل لـ {widget_store_count} متاجر"
 
 
-def _platform_alerts(critical_alerts: dict[str, Any] | None) -> list[dict[str, Any]]:
+def _platform_scoped_alerts(critical_alerts: dict[str, Any] | None) -> list[dict[str, Any]]:
+    """Placement only (shared-platform vs store). Not an actionability rule."""
     out: list[dict[str, Any]] = []
     payload = critical_alerts if isinstance(critical_alerts, dict) else {}
     for alert in payload.get("alerts") or []:
@@ -108,6 +149,19 @@ def _platform_alerts(critical_alerts: dict[str, Any] | None) -> list[dict[str, A
         if kind in _PLATFORM_ONLY_KINDS:
             out.append(alert)
     return out
+
+
+def split_platform_alerts_by_action(
+    critical_alerts: dict[str, Any] | None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    actionable: list[dict[str, Any]] = []
+    monitor: list[dict[str, Any]] = []
+    for alert in _platform_scoped_alerts(critical_alerts):
+        if operator_action_required(alert.get("action_en")):
+            actionable.append(alert)
+        else:
+            monitor.append(alert)
+    return actionable, monitor
 
 
 def build_operations_center_v11_presentation(
@@ -121,36 +175,43 @@ def build_operations_center_v11_presentation(
     summary = sac.get("summary") if isinstance(sac.get("summary"), dict) else {}
     queue = list(sac.get("production_action_queue") or [])
     intervene, monitor = split_intervention_queues(queue)
+    actionable_platform, monitoring_platform = split_platform_alerts_by_action(
+        critical_alerts
+    )
     widget_n = sum(1 for row in queue if _store_has_widget_observation(row))
-    running = None
     resume = recovery_resume_health if isinstance(recovery_resume_health, dict) else {}
-    if "running" in resume:
-        try:
-            running = int(resume.get("running") or 0)
-        except (TypeError, ValueError):
-            running = None
     retry_on = bool(retry_active())
+    missing_freshness = list(_EVIDENCE_FRESHNESS_PRODUCERS)
     return {
         "intervention_stores": intervene,
         "monitoring_stores": monitor,
-        "intervention_count": len(intervene),
+        "actionable_platform_alerts": actionable_platform,
+        "monitoring_platform_alerts": monitoring_platform,
+        "intervention_count": len(intervene) + len(actionable_platform),
         "monitoring_count": len(monitor),
         "widget_observation_store_count": widget_n,
         "scoped_observation_headline_ar": scoped_observation_headline_ar(widget_n),
-        "platform_alerts": _platform_alerts(critical_alerts),
         "retry_active": retry_on,
         "retry_label_ar": "مفعّلة" if retry_on else "غير مفعّلة",
-        "schedule_running": running,
+        "schedule_running": explicit_int(resume, "running"),
+        "presentation_generated_at_utc": generated_at_utc,
+        "presentation_generated_at_ar": format_generated_at_ar(generated_at_utc),
         "generated_at_utc": generated_at_utc,
         "generated_at_ar": format_generated_at_ar(generated_at_utc),
-        "production_store_count": int(summary.get("production_store_count") or 0),
-        "production_affected_count": int(summary.get("production_affected_count") or 0),
+        "evidence_freshness_utc": None,
+        "evidence_freshness_source": None,
+        "evidence_freshness_missing_sources": missing_freshness,
+        "production_store_count": explicit_int(summary, "production_store_count"),
+        "production_affected_count": explicit_int(summary, "production_affected_count"),
     }
 
 
 __all__ = [
     "build_operations_center_v11_presentation",
+    "explicit_int",
     "format_generated_at_ar",
+    "operator_action_required",
     "scoped_observation_headline_ar",
     "split_intervention_queues",
+    "split_platform_alerts_by_action",
 ]
