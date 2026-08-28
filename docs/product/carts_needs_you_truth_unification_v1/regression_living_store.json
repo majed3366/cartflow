@@ -1,0 +1,32 @@
+{
+  "row_count": 25,
+  "data_freshness": "hot_merged",
+  "snapshot_reason": "route_budget_exceeded",
+  "legacy_attention_tab": 15,
+  "canonical_needs_you": 0,
+  "primary_keys": {
+    "wait": 21,
+    "no_action_required": 4
+  },
+  "responsibility": {
+    "WAITING_ON_CARTFLOW": 21,
+    "COMPLETED_OR_TERMINAL": 4
+  },
+  "orientation_if_unified": "لا توجد سلال تحتاج تدخلك الآن + CartFlow يتابع 21",
+  "filter_needs_you": 0,
+  "filter_all": 25,
+  "consistent": true,
+  "raven": {
+    "title": "Raven — حزام جلد للساعة Raven — حزام جلد للساعة",
+    "primary": "wait",
+    "label": "انتظر — CartFlow يتابع",
+    "lifecycle": "needs_intervention",
+    "attention_label": "بانتظار الجاهزية",
+    "tabs": [
+      "all",
+      "attention"
+    ],
+    "responsibility": "WAITING_ON_CARTFLOW",
+    "in_needs_you_filter": false
+  }
+}

@@ -1,12 +1,15 @@
 /**
  * CartFlow Merchant UI V2 — Carts Product Composition V1.
  * Operations workspace inside PageStage. Consumes V1 cart truth contracts.
+ * Needs-You Truth Unification V1: orientation, يحتاجني, and queue membership
+ * share one action-based classifier (primary-action), not attention tabs.
  * Does not own Decision Workspace reasoning, VIP policy, or analytics.
  */
 (function (global) {
   "use strict";
 
   var MARKER = "carts-product-composition-v1";
+  var NEEDS_YOU_UNIFICATION = "needs-you-unification-v1";
 
   var FILTERS = [
     { key: "all", label: "الكل", intent: "كل السلال" },
@@ -118,9 +121,36 @@
     return b ? [b] : [];
   }
 
+  function needsMerchantActionNow(mc) {
+    if (!mc || isArchivedVisual(mc) || isPurchased(mc) || isCompleted(mc)) {
+      return false;
+    }
+    return !!ACTIONABLE[resolvePrimary(mc).key];
+  }
+
+  function merchantResponsibility(mc) {
+    if (!mc || isArchivedVisual(mc) || isPurchased(mc) || isCompleted(mc)) {
+      return "COMPLETED_OR_TERMINAL";
+    }
+    var key = resolvePrimary(mc).key;
+    if (key === "no_action_required" || key === "reopen") {
+      return "COMPLETED_OR_TERMINAL";
+    }
+    if (ACTIONABLE[key]) return "NEEDS_MERCHANT_ACTION_NOW";
+    if (key === "wait") {
+      var tabs = visibleTabs(mc);
+      if (tabs.indexOf("nophone") >= 0 || tabs.indexOf("sent") >= 0) {
+        return "WAITING_ON_CUSTOMER_OR_DATA";
+      }
+      return "WAITING_ON_CARTFLOW";
+    }
+    return "WAITING_ON_CARTFLOW";
+  }
+
   function rowMatchesFilter(mc, filter) {
     if (!mc) return false;
     if (filter === "all") return !isArchivedVisual(mc);
+    if (filter === "attention") return needsMerchantActionNow(mc);
     if (filter === "recovered") {
       return isCompleted(mc) || isArchivedVisual(mc);
     }
@@ -364,14 +394,16 @@
   }
 
   function filterCounts() {
-    var counts = { all: 0, attention: 0, nophone: 0, sent: 0, recovered: 0 };
-    var rows = state.rows || [];
-    counts.all = rows.filter(function (mc) {
-      return !isArchivedVisual(mc);
-    }).length;
-    rows.forEach(function (mc) {
+    var prim = countPrimary(state.rows);
+    var counts = {
+      all: prim.total_active,
+      attention: prim.needs_you,
+      nophone: 0,
+      sent: 0,
+      recovered: 0,
+    };
+    (state.rows || []).forEach(function (mc) {
       var tabs = visibleTabs(mc);
-      if (tabs.indexOf("attention") >= 0) counts.attention += 1;
       if (tabs.indexOf("nophone") >= 0) counts.nophone += 1;
       if (tabs.indexOf("sent") >= 0) counts.sent += 1;
       if (tabs.indexOf("recovered") >= 0 || isCompleted(mc)) counts.recovered += 1;
@@ -379,17 +411,26 @@
     (state.archived || []).forEach(function () {
       counts.recovered += 1;
     });
-    var payloadFc =
-      (state.payload && state.payload.merchant_cart_filter_counts) || {};
-    ["all", "attention", "nophone", "sent", "recovered"].forEach(function (k) {
-      if (payloadFc[k] != null && isFinite(Number(payloadFc[k]))) {
-        counts[k] = Number(payloadFc[k]);
-      }
-    });
     return counts;
   }
 
+  function snapshotTruthPending() {
+    if (state.loading && !(state.rows || []).length && !(state.archived || []).length) {
+      return true;
+    }
+    var p = state.payload;
+    if (!p || typeof p !== "object") return false;
+    if ((state.rows || []).length || (state.archived || []).length) return false;
+    var snap = p._snapshot || {};
+    var reason = String(p.snapshot_reason || snap.reason || "");
+    var freshness = String(p.data_freshness || "");
+    if (freshness === "hot_merged") return false;
+    var miss = reason === "no_snapshot" || String(snap.status || "") === "miss";
+    return !!(miss || p.snapshot_degraded || p.dashboard_timeout);
+  }
+
   function storeHasNoCarts(counts) {
+    if (snapshotTruthPending()) return false;
     return (
       !state.loading &&
       !state.error &&
@@ -406,11 +447,13 @@
         detail: "أعد المحاولة. لم نُنشئ سلالاً بديلة.",
       };
     }
-    if (state.loading && !counts.total_active) {
+    if (snapshotTruthPending() || (state.loading && !counts.total_active)) {
       return {
-        mode: "loading",
-        headline: "جاري تحميل السلال…",
-        detail: "",
+        mode: state.loading ? "loading" : "degraded",
+        headline: state.loading ? "جاري تحميل السلال…" : "تعذّر تأكيد حالة السلال",
+        detail: state.loading
+          ? ""
+          : "الحقيقة غير مكتملة حالياً. لا نعرض هدوءاً افتراضياً.",
       };
     }
     if (storeHasNoCarts(counts)) {
@@ -461,8 +504,11 @@
         body: "فشل جزئي — أعد المحاولة. لا بيانات مخترعة.",
       };
     }
-    if (state.loading) {
-      return { title: "جاري تحميل السلال…", body: "" };
+    if (state.loading || snapshotTruthPending()) {
+      return {
+        title: state.loading ? "جاري تحميل السلال…" : "تعذّر تأكيد الطابور",
+        body: state.loading ? "" : "الحقيقة غير مكتملة — لا سلال مخترعة ولا هدوء افتراضي.",
+      };
     }
     if (storeHasNoCarts(counts)) {
       return null;
@@ -783,6 +829,7 @@
     }
     if (storeHasNoCarts(counts)) {
       root.setAttribute("data-cf2", MARKER);
+      root.setAttribute("data-cf2-needs-you", NEEDS_YOU_UNIFICATION);
       root.setAttribute("data-carts-empty", "store");
       root.className = "cf2-carts is-empty";
       root.innerHTML =
@@ -810,6 +857,7 @@
           .join("");
 
     root.setAttribute("data-cf2", MARKER);
+    root.setAttribute("data-cf2-needs-you", NEEDS_YOU_UNIFICATION);
     root.removeAttribute("data-carts-empty");
     root.className =
       "cf2-carts" +
@@ -985,10 +1033,25 @@
       });
   }
 
+  function applyPayloadAndPaint(root, payload) {
+    if (!root) return;
+    state.root = root;
+    state.loading = false;
+    state.error = "";
+    ingest(payload);
+    paint();
+  }
+
   global.CartFlowUiV2Carts = {
     loadAndPaint: loadAndPaint,
+    applyPayloadAndPaint: applyPayloadAndPaint,
     marker: MARKER,
+    needsYouUnification: NEEDS_YOU_UNIFICATION,
     resolvePrimary: resolvePrimary,
+    needsMerchantActionNow: needsMerchantActionNow,
+    merchantResponsibility: merchantResponsibility,
+    countPrimary: countPrimary,
+    rowMatchesFilter: rowMatchesFilter,
     filters: FILTERS,
   };
 })(window);
