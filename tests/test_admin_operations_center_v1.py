@@ -128,15 +128,21 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
 
     def test_command_center_payload_excludes_lazy_sections(self) -> None:
         payload = build_admin_operations_command_center_readonly()
-        self.assertEqual(payload.get("version"), "admin_operations_center_v2_4")
+        self.assertEqual(payload.get("version"), "admin_operations_center_v2_5")
         for key in (
             "system_health_summary",
             "top_risks",
             "store_health_snapshot",
             "health_scheduler_path",
             "generated_at_utc",
+            "presentation_v11",
         ):
             self.assertIn(key, payload)
+        present = payload.get("presentation_v11") or {}
+        self.assertEqual(
+            present.get("intervention_count"),
+            len(present.get("intervention_stores") or []),
+        )
         for lazy_key in (
             "operational_trends",
             "operational_timeline",
@@ -214,16 +220,18 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
         self.assertEqual(r.status_code, 200, r.text[:500])
         body = r.text
         self.assertIn("حالة المنصة", body)
-        self.assertIn("المتاجر النشطة", body)
-        self.assertIn("المتاجر المتأثرة", body)
-        self.assertIn("المشاكل المفتوحة", body)
-        self.assertIn("الاسترجاعات اليوم", body)
-        self.assertIn("المشاكل الحالية", body)
+        self.assertIn("أثر التجار", body)
+        self.assertIn("يحتاج تدخلي", body)
+        self.assertIn("إعادة المحاولة", body)
+        self.assertIn("الاسترجاع التلقائي", body)
         self.assertIn("ops-current-issues-core", body)
-        self.assertIn("ماذا نفعل الآن", body)
-        self.assertIn("المتاجر التي تحتاج انتباهًا", body)
+        self.assertIn("يحتاج تدخلي الآن", body)
         self.assertIn("ops-executive-summary", body)
+        self.assertIn("id=\"ops-v11\"", body)
         self.assertIn('id="admin-sidebar-panel"', body)
+        self.assertIn("admin_operations_center_v11.css", body)
+        self.assertIn("UNKNOWN", body)
+        self.assertNotIn("سيناريو", body)
         # Technical lazy panels are NOT on the executive overview.
         self.assertNotIn("ops-investigation-panel", body)
         self.assertNotIn("ops-analytics-panel", body)
@@ -1140,7 +1148,7 @@ class AdminOperationsCenterV1Tests(unittest.TestCase):
         self._login()
         r = self.client.get("/admin/operations")
         self.assertEqual(r.status_code, 200)
-        self.assertIn("المتاجر التي تحتاج انتباهًا", r.text)
+        self.assertIn("المتاجر المتأثرة", r.text)
 
     def test_system_health_stable_when_no_alerts(self) -> None:
         health = _build_system_health_summary([])

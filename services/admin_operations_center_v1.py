@@ -2352,9 +2352,15 @@ def build_admin_operations_command_center_readonly() -> dict[str, Any]:
         sac_summary.get("production_healthy_count")
     )
     store_health_snapshot = _filter_production_store_snapshot(store_health_snapshot)
+    generated_at_utc = _utc_now().isoformat()
+    recovery_resume_health = build_recovery_resume_health_summary_readonly()
+    from services.admin_operations_center_v11_present_v1 import (  # noqa: PLC0415
+        build_operations_center_v11_presentation,
+    )
+
     return {
         "version": "admin_operations_center_v2_5",
-        "generated_at_utc": _utc_now().isoformat(),
+        "generated_at_utc": generated_at_utc,
         "critical_alerts": critical_alerts,
         "store_action_center": store_action_center,
         "executive_summary": executive_summary,
@@ -2362,8 +2368,14 @@ def build_admin_operations_command_center_readonly() -> dict[str, Any]:
         "system_health_summary": system_health,
         "top_risks": _build_top_risks(alerts),
         "store_health_snapshot": store_health_snapshot,
-        "recovery_resume_health": build_recovery_resume_health_summary_readonly(),
+        "recovery_resume_health": recovery_resume_health,
         "health_scheduler_path": "/health/scheduler",
+        "presentation_v11": build_operations_center_v11_presentation(
+            store_action_center=store_action_center,
+            critical_alerts=critical_alerts,
+            recovery_resume_health=recovery_resume_health,
+            generated_at_utc=generated_at_utc,
+        ),
     }
 
 

@@ -455,6 +455,22 @@ def admin_operations_dashboard(request: Request) -> Any:
                 "available": True,
             },
             "health_scheduler_path": "/health/scheduler",
+            "presentation_v11": {
+                "intervention_stores": [],
+                "monitoring_stores": [],
+                "intervention_count": 0,
+                "monitoring_count": 0,
+                "widget_observation_store_count": 0,
+                "scoped_observation_headline_ar": "",
+                "platform_alerts": [],
+                "retry_active": False,
+                "retry_label_ar": "غير مفعّلة",
+                "schedule_running": None,
+                "generated_at_utc": None,
+                "generated_at_ar": "",
+                "production_store_count": 0,
+                "production_affected_count": 0,
+            },
         }
     return templates.TemplateResponse(
         request,

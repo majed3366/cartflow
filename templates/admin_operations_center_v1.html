@@ -1,206 +1,260 @@
 {% extends "layouts/admin_dashboard.html" %}
-{% block admin_title %}CartFlow Admin — نظرة عامة تنفيذية{% endblock %}
-{% block admin_main_class %}w-full max-w-[88rem] space-y-8 px-6 py-8 lg:px-10 lg:py-10{% endblock %}
+{% block admin_title %}CartFlow Admin — مركز العمليات{% endblock %}
+{% block admin_extra_head %}
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/admin_operations_center_v11.css" />
+{% endblock %}
+{% block admin_main_class %}w-full max-w-none px-0 py-0{% endblock %}
+{% block admin_page_header %}
+  <h1 class="truncate text-xl font-semibold tracking-tight text-slate-900">مركز العمليات</h1>
+  <p class="mt-1 text-sm font-semibold text-slate-800">هل المنصة تعمل كما ينبغي، وما الذي يحتاج تدخلي الآن؟</p>
+{% endblock %}
 
 {% block admin_content %}
   {% set ex = ops.executive_summary or {} %}
-  {% set critical_alerts = ops.critical_alerts or {} %}
-  {% set store_action_center = ops.store_action_center or {} %}
-  {% set tone = ex.platform_status_tone or 'ok' %}
-  {% set ci = ops.current_issues or {} %}
-  {% set issues = ci.issues or [] %}
-  {% set open_issues = ex.open_issues if ex.open_issues is not none else (ci.total | default(ex.open_alerts | default(0))) %}
-  {% set snap = ops.store_health_snapshot or {} %}
-  {% set snap_stores = snap.stores or [] %}
-  {% set overview_issue_limit = 5 %}
+  {% set v11 = ops.presentation_v11 or {} %}
+  {% set intervene = v11.intervention_stores or [] %}
+  {% set monitor = v11.monitoring_stores or [] %}
+  {% set platform_alerts = v11.platform_alerts or [] %}
+  {% set headline = v11.scoped_observation_headline_ar or '' %}
+  {% set prod_n = v11.production_store_count or 0 %}
+  {% set affected_n = v11.production_affected_count or 0 %}
+  {% set need_n = v11.intervention_count or 0 %}
+  {% set running = v11.schedule_running %}
 
-  <!-- CRITICAL ALERTS — top-level operational hook (V2) -->
-  {% include "partials/admin_operations_critical_alerts_section.html" %}
-
-  <!-- STORE ACTION CENTER — store-level operational hook (V3) -->
-  {% include "partials/admin_operations_store_action_center_section.html" %}
-
-  <!-- EXECUTIVE SUMMARY — first thing seen -->
-  <section id="ops-executive-summary" class="space-y-4">
-    <div class="flex flex-wrap items-end justify-between gap-2">
-      <div>
-        <p class="text-xs font-medium text-slate-500">مراقبة تنفيذية — قراءة فقط</p>
-        <h2 class="mt-0.5 text-lg font-semibold text-slate-900">هل المنصة بصحة جيدة؟</h2>
+  <div id="ops-v11">
+    <section class="answer" id="ops-executive-summary">
+      <div class="cell lead">
+        <p class="kicker">حالة المنصة</p>
+        {% if headline %}
+        <div class="val">{{ headline }}</div>
+        <p>ليس فشلاً على مستوى المنصة. الخدمات المشتركة منفصلة. غياب الإشارة لا يُثبت HEALTHY.</p>
+        {% else %}
+        <div class="val"><span class="st st-unknown">UNKNOWN</span> لا إشارة منصة مؤكدة من رصد المتاجر</div>
+        <p>النسخة المنتِجة: {{ ex.platform_status_ar or '—' }}. الفراغ لا يعني HEALTHY.</p>
+        {% endif %}
       </div>
-      <p class="text-xs text-slate-400">آخر تحديث: {{ ops.generated_at_utc or "—" }}</p>
+      <div class="cell">
+        <p class="kicker">حداثة الدليل</p>
+        <div class="val"><span class="st st-unknown">UNKNOWN</span></div>
+        <p class="desk-when">آخر تركيب {{ ops.generated_at_utc or '—' }}. لا يُستنتج Scheduler من <span class="id">/health</span>.</p>
+        <p class="mob-when">{% if v11.generated_at_ar %}{{ v11.generated_at_ar }}{% else %}الوقت غير متوفر{% endif %}</p>
+      </div>
+      <div class="cell">
+        <p class="kicker">أثر التجار</p>
+        <div class="val">{{ affected_n }} من {{ prod_n }} متجراً إنتاجياً</div>
+        <p>{{ need_n }} يحتاج تدخلاً · {{ v11.monitoring_count or 0 }} مراقبة</p>
+      </div>
+    </section>
+
+    <section class="recovery" aria-label="طبقات الاسترجاع">
+      <div class="cell">
+        <p class="kicker">الاسترجاع التلقائي</p>
+        {% if running is none %}
+        <div class="n">غير متوفر</div>
+        <p class="sub">لا مقياس مستقل في هذا التركيب</p>
+        {% else %}
+        <div class="n">{{ running }}</div>
+        <p class="sub">جداول <span class="id">running</span> من فحص الاسترجاع — قراءة فقط</p>
+        {% endif %}
+      </div>
+      <div class="cell off">
+        <p class="kicker">إعادة المحاولة</p>
+        <div class="n" style="font-size:15px">{{ v11.retry_label_ar or 'غير مفعّلة' }}</div>
+        <p class="sub">{% if v11.retry_active %}RETRYING ممكن إذا كان العلم حيّاً{% else %}سجل فقط · ليست RETRYING{% endif %}</p>
+      </div>
+      <div class="cell need">
+        <p class="kicker">يحتاج تدخلي</p>
+        <div class="n">{{ need_n }}</div>
+        <p class="sub">نفس قائمة يحتاجني — أولوية ليست LOW</p>
+      </div>
+    </section>
+
+    <div class="segs mobile-only" role="tablist" aria-label="مسح الجوال">
+      <button type="button" data-pane="needs" aria-pressed="true">يحتاجني</button>
+      <button type="button" data-pane="platform">المنصة</button>
+      <button type="button" data-pane="merchants">المتاجر</button>
     </div>
 
-    <div class="rounded-2xl border p-4 shadow-sm
-      {% if tone == 'action' %}border-rose-200 bg-rose-50/50
-      {% elif tone == 'watch' %}border-amber-200 bg-amber-50/40
-      {% else %}border-emerald-200 bg-emerald-50/40{% endif %}">
-      <p class="text-xs font-medium
-        {% if tone == 'action' %}text-rose-800{% elif tone == 'watch' %}text-amber-900{% else %}text-emerald-800{% endif %}">
-        حالة المنصة
-      </p>
-      <p class="mt-1 flex items-center gap-2 text-2xl font-semibold
-        {% if tone == 'action' %}text-rose-900{% elif tone == 'watch' %}text-amber-950{% else %}text-emerald-900{% endif %}">
-        <span class="inline-block h-3 w-3 rounded-full
-          {% if tone == 'action' %}bg-rose-500{% elif tone == 'watch' %}bg-amber-500{% else %}bg-emerald-500{% endif %}"></span>
-        {{ ex.platform_status_ar or 'مستقرة' }}
-      </p>
-      {% if ex.platform_description_ar %}
-      <p class="mt-2 text-sm text-slate-600">{{ ex.platform_description_ar }}</p>
-      {% endif %}
+    <div class="desk">
+      <section class="pane m-pane" id="needs" data-pane="needs">
+        <div class="pane-h" id="ops-current-issues-core">
+          <h2>يحتاج تدخلي الآن</h2>
+          <div class="filters desk-only" role="group" aria-label="تصفية">
+            <button type="button" data-filter="all" aria-pressed="true">الكل</button>
+            <button type="button" data-filter="platform">منصة</button>
+            <button type="button" data-filter="merchant">تاجر</button>
+          </div>
+        </div>
+        <p class="empty-filter" id="empty-platform" hidden>لا تدخل مطلوب على مستوى المنصة في القائمة الحالية.</p>
+
+        {% for alert in platform_alerts %}
+        <details class="case need" id="case-plat-{{ loop.index }}" data-scope="platform">
+          <summary>
+            <div>
+              <p class="title">{{ alert.problem_en or alert.kind }}</p>
+              <p class="impact">{{ alert.impact_en or '' }}</p>
+            </div>
+            <div class="chips">
+              <span class="st st-failed">{{ alert.severity_label or alert.severity }}</span>
+            </div>
+          </summary>
+          <div class="detail">
+            <dl class="dl">
+              <div><dt>أين</dt><dd>{{ alert.where_en or '—' }}</dd></div>
+              <div><dt>التحقق</dt><dd>{{ alert.verification_en or '—' }}</dd></div>
+            </dl>
+            {% if alert.action_en %}<span class="act">{{ alert.action_en }}</span>{% endif %}
+          </div>
+        </details>
+        {% endfor %}
+
+        {% for store in intervene %}
+        {% set rc = store.primary_root_cause or {} %}
+        {% set kinds = rc.symptom_kinds or [] %}
+        {% set widget_obs = (rc.root_cause_id == 'ROOT_CAUSE_WIDGET_RUNTIME') %}
+        <details class="case need" id="case-store-{{ store.store_slug }}" data-scope="merchant"{% if loop.first %} open{% endif %}>
+          <summary>
+            <div>
+              <p class="title">{{ store.store_name or store.store_slug }}</p>
+              <p class="impact">{{ rc.display_name_en or rc.problem_en or store.primary_root_cause_name_en or 'إشارة تشغيل' }}</p>
+            </div>
+            <div class="chips">
+              <span class="st st-unknown">{{ store.priority or '—' }}</span>
+              <span class="st st-unknown">{{ store.priority_label_en or '' }}</span>
+            </div>
+          </summary>
+          <div class="detail">
+            <dl class="dl">
+              <div>
+                <dt>الأثر</dt>
+                <dd>{{ rc.impact_en or '—' }}</dd>
+              </div>
+              <div>
+                <dt>النطاق</dt>
+                <dd>متجر واحد · <span class="id">{{ store.store_slug }}</span></dd>
+              </div>
+              <div>
+                <dt>{% if widget_obs %}الإشارة المرصودة{% else %}التشخيص المعروض{% endif %}</dt>
+                <dd>
+                  {% if kinds %}
+                    {% for k in kinds %}<span class="id">{{ k }}</span>{% if not loop.last %} · {% endif %}{% endfor %}
+                  {% else %}
+                    <span class="id">{{ rc.root_cause_id or '—' }}</span>
+                  {% endif %}
+                  {% if widget_obs %} · ليست سبباً جذرياً مؤكداً{% endif %}
+                </dd>
+              </div>
+              <div>
+                <dt>التحقق</dt>
+                <dd>{{ rc.verification_en or '—' }}</dd>
+              </div>
+              {% if ops.generated_at_utc %}
+              <div style="grid-column:1/-1">
+                <dt>وقت التركيب</dt>
+                <dd><span class="id">{{ ops.generated_at_utc }}</span></dd>
+              </div>
+              {% endif %}
+            </dl>
+            {% if rc.action_en %}<span class="act">{{ rc.action_en }} · ليس إرسالاً من هذه الصفحة</span>{% endif %}
+          </div>
+        </details>
+        {% endfor %}
+
+        {% if not intervene and not platform_alerts %}
+        <p class="empty-filter">لا متجر إنتاجي في أولوية التدخل الحالية.</p>
+        {% endif %}
+      </section>
+
+      <aside class="pane">
+        <div class="side-block m-pane" data-pane="platform" id="platform">
+          <h3>المنصة المشتركة</h3>
+          <div class="row">
+            <span>واجهة API العامة</span>
+            <span class="st st-unknown">UNKNOWN</span>
+          </div>
+          <div class="row">
+            <span>Scheduler</span>
+            <span class="st st-unknown">UNKNOWN</span>
+          </div>
+          <div class="row">
+            <span>رصد الودجِت</span>
+            {% if v11.widget_observation_store_count %}
+            <span class="st st-unknown">{{ v11.widget_observation_store_count }} متجر</span>
+            {% else %}
+            <span class="st st-unknown">لا إشارة مكتملة</span>
+            {% endif %}
+          </div>
+          <p style="margin:8px 0 0;font-size:12px;color:var(--cf-ink-soft)">
+            إسقاط المنتِج الحالي: {{ ex.platform_status_ar or '—' }}.
+            لا يُستنتج Scheduler من <span class="id">/health</span>. الغياب ليس HEALTHY.
+            المسار: <span class="id">{{ ops.health_scheduler_path or '/health/scheduler' }}</span>
+          </p>
+        </div>
+
+        <div class="side-block m-pane" data-pane="merchants" id="merchants">
+          <h3>المتاجر المتأثرة</h3>
+          {% for store in intervene %}
+          <div class="row">
+            <div>
+              <a href="#case-store-{{ store.store_slug }}">{{ store.store_name or store.store_slug }}</a>
+              <div class="id">{{ store.store_slug }}</div>
+            </div>
+            <span class="st st-unknown">يحتاجك</span>
+          </div>
+          {% endfor %}
+          {% for store in monitor %}
+          <details class="case watch" id="monitor-{{ store.store_slug }}" style="margin-top:8px">
+            <summary>
+              <div>
+                <p class="title">{{ store.store_name or store.store_slug }}</p>
+                <p class="impact">{{ store.primary_root_cause_name_en or 'مراقبة' }}</p>
+                <div class="id">{{ store.store_slug }}</div>
+              </div>
+              <div class="chips"><span class="st st-blocked">مراقبة</span></div>
+            </summary>
+            <div class="detail">
+              <p style="margin:8px 0 0;font-size:13px">ليست في يحتاجني. الأولوية LOW في قاعدة الأولوية الحالية.</p>
+            </div>
+          </details>
+          {% endfor %}
+          {% if not intervene and not monitor %}
+          <p style="margin:0;font-size:13px;color:var(--cf-ink-soft)">لا متاجر إنتاجية متأثرة في هذا التركيب.</p>
+          {% endif %}
+        </div>
+      </aside>
     </div>
 
-    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <p class="text-xs font-medium text-slate-500">المشاكل المفتوحة</p>
-        <p class="mt-2 text-2xl font-semibold tabular-nums {% if (open_issues or 0) > 0 %}text-rose-700{% else %}text-slate-900{% endif %}">{{ open_issues | default(0) }}</p>
-      </div>
-      <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <p class="text-xs font-medium text-slate-500">المتاجر المتأثرة</p>
-        <p class="mt-2 text-2xl font-semibold tabular-nums {% if (ex.affected_stores or 0) > 0 %}text-amber-800{% else %}text-slate-900{% endif %}">{{ ex.affected_stores | default(0) }}</p>
-      </div>
-      <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <p class="text-xs font-medium text-slate-500">الاسترجاعات اليوم</p>
-        <p class="mt-2 text-2xl font-semibold tabular-nums text-emerald-700">{{ ex.recoveries_today | default(0) }}</p>
-      </div>
-      <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <p class="text-xs font-medium text-slate-500">المتاجر النشطة</p>
-        <p class="mt-2 text-2xl font-semibold tabular-nums text-slate-900">{{ ex.active_stores | default(0) }}</p>
-      </div>
-    </div>
-  </section>
+    <details class="lazy" id="ops-db-ready-panel">
+      <summary>تهيئة لوحة المتجر (Request Health) — قراءة فقط</summary>
+      <div id="ops-db-ready-content" data-lazy-state="idle" hidden></div>
+    </details>
+    <details class="lazy" id="ops-widget-health-panel">
+      <summary>صحة الودجِت (Widget Health) — قراءة فقط</summary>
+      <div id="ops-widget-health-content" data-lazy-state="idle" hidden></div>
+    </details>
 
-  <!-- SUGGESTED ACTIONS — quick scan -->
-  <section id="ops-suggested-actions" class="rounded-2xl border border-indigo-100 bg-indigo-50/40 px-5 py-4">
-    <h2 class="text-sm font-semibold text-indigo-950">ماذا نفعل الآن؟</h2>
-    {% if issues %}
-    <ol class="mt-3 list-inside list-decimal space-y-2 text-sm text-indigo-950/90">
-      {% for it in issues[:3] %}
-      <li><span class="font-medium">{{ it.title_ar }}:</span> {{ it.action_ar }}</li>
-      {% endfor %}
-    </ol>
-    {% else %}
-    <p class="mt-2 text-sm text-indigo-950/80">لا إجراء مطلوب الآن — راقب مؤشرات المنصة أعلاه.</p>
-    {% endif %}
-  </section>
-
-  {% if issues %}
-
-  <!-- CURRENT ISSUES — core section -->
-  <section id="ops-current-issues-core" class="space-y-4">
-    <div class="flex flex-wrap items-end justify-between gap-2">
-      <div>
-        <h2 class="text-lg font-semibold text-slate-900">المشاكل الحالية</h2>
-        <p class="mt-0.5 text-sm text-slate-600">مشكلة → أثر → أين → مسؤول → إجراء → تحقق</p>
-      </div>
-      {% if (ci.total or 0) > overview_issue_limit %}
-      <a href="/admin/operations/issues" class="text-sm font-medium text-indigo-700 underline decoration-indigo-200 underline-offset-2">
-        عرض الكل ({{ ci.total }})
-      </a>
-      {% endif %}
-    </div>
-    <div class="space-y-4">
-      {% for issue in issues[:overview_issue_limit] %}
-      {% include "partials/admin_executive_issue_card.html" %}
-      {% endfor %}
-    </div>
-    {% if (ci.total or 0) > overview_issue_limit %}
-    <p class="text-center text-sm">
-      <a href="/admin/operations/issues" class="font-medium text-indigo-700 underline decoration-indigo-200 underline-offset-2">
-        عرض {{ ci.total - overview_issue_limit }} مشكلة إضافية
-      </a>
+    <p class="ref">
+      للأدوات التقنية:
+      <a href="/admin/diagnostics">تشخيص الدعم (للدعم فقط)</a>
+      · <a href="/admin/operations/issues">المشاكل الحالية</a>
     </p>
-    {% endif %}
-  </section>
-  {% else %}
-  <section id="ops-current-issues-core" class="space-y-3">
-    <h2 class="text-lg font-semibold text-slate-900">المشاكل الحالية</h2>
-    <div class="rounded-2xl border border-emerald-200 bg-emerald-50/40 px-6 py-10 text-center">
-      <p class="text-base font-semibold text-emerald-900">لا توجد مشاكل تشغيلية بارزة حاليًا.</p>
-      <p class="mt-1 text-sm text-emerald-700">المنصة تعمل ضمن الوضع الطبيعي — لا حاجة لإجراء الآن.</p>
-    </div>
-  </section>
-  {% endif %}
-
-  <!-- DASHBOARD DB READY — Request / initialization health (lazy) -->
-  <details id="ops-db-ready-panel" class="group rounded-2xl border border-slate-200 bg-white shadow-sm">
-    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 marker:content-none [&::-webkit-details-marker]:hidden">
-      <div>
-        <span class="text-base font-semibold text-slate-900">Dashboard Initialization (Request Health)</span>
-        <span class="mt-0.5 block text-sm text-slate-500">DB Ready stage timing — root-cause isolation (read-only)</span>
+    <footer class="ref">
+      <p>خارج مسار المشغّل — التيل للتنقّل فقط ولا يعني HEALTHY. إعادة المحاولة غير المفعّلة ليست RETRYING.</p>
+      <div class="legend">
+        <span class="st st-healthy">HEALTHY</span>
+        <span class="st st-unknown">UNKNOWN</span>
+        <span class="st st-blocked">BLOCKED</span>
+        <span class="st st-retry">إعادة المحاولة غير مفعّلة</span>
+        <span class="st st-failed">FAILED</span>
       </div>
-      <span class="shrink-0 text-xs font-medium text-slate-500 group-open:hidden">عرض</span>
-      <span class="hidden shrink-0 text-xs font-medium text-slate-500 group-open:inline">إخفاء</span>
-    </summary>
-    <div id="ops-db-ready-content" class="border-t border-slate-100 px-5 py-4" data-lazy-state="idle" hidden></div>
-  </details>
+    </footer>
+  </div>
 
-  <!-- WIDGET HEALTH — Operations & Observability (lazy) -->
-  <details id="ops-widget-health-panel" class="group rounded-2xl border border-slate-200 bg-white shadow-sm">
-    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 marker:content-none [&::-webkit-details-marker]:hidden">
-      <div>
-        <span class="text-base font-semibold text-slate-900">صحة الودجِت (Widget Health)</span>
-        <span class="mt-0.5 block text-sm text-slate-500">رصد استباقي لمشاكل تشغيل/تكامل الودجِت لكل متجر — للقراءة فقط</span>
-      </div>
-      <span class="shrink-0 text-xs font-medium text-slate-500 group-open:hidden">عرض</span>
-      <span class="hidden shrink-0 text-xs font-medium text-slate-500 group-open:inline">إخفاء</span>
-    </summary>
-    <div id="ops-widget-health-content" class="border-t border-slate-100 px-5 py-4" data-lazy-state="idle" hidden></div>
-  </details>
-
-  <!-- AFFECTED STORES — secondary, collapsed -->
-  <details class="rounded-2xl border border-slate-200 bg-white shadow-sm">
-    <summary class="cursor-pointer list-none px-5 py-4 marker:content-none [&::-webkit-details-marker]:hidden">
-      <span class="text-base font-semibold text-slate-900">المتاجر التي تحتاج انتباهًا</span>
-      <span class="mt-0.5 block text-sm text-slate-500">ملخص سريع — بدون تفاصيل تقنية</span>
-    </summary>
-    <div class="border-t border-slate-100 px-5 py-4">
-      {% if snap_stores %}
-      <div class="overflow-x-auto rounded-xl border border-slate-200">
-        <table class="min-w-full divide-y divide-slate-200 text-sm">
-          <thead class="bg-slate-50 text-right text-xs font-medium text-slate-500">
-            <tr>
-              <th class="px-4 py-2.5">المتجر</th>
-              <th class="px-4 py-2.5">الحالة</th>
-              <th class="px-4 py-2.5">الأولوية</th>
-              <th class="px-4 py-2.5">المشاكل</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100 bg-white">
-            {% for row in snap_stores %}
-            <tr class="align-top hover:bg-slate-50/80">
-              <td class="px-4 py-2.5 font-medium text-slate-900">{{ row.display_name or 'متجر' }}</td>
-              <td class="px-4 py-2.5 text-slate-700">{{ row.readiness_status_ar or 'غير متوفر' }}</td>
-              <td class="px-4 py-2.5 whitespace-nowrap">
-                {% set sev = row.highest_severity or 'low' %}
-                {% if sev == 'critical' %}
-                <span class="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-800">{{ row.highest_severity_ar or 'حرج' }}</span>
-                {% elif sev == 'high' %}
-                <span class="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900">{{ row.highest_severity_ar or 'عالي' }}</span>
-                {% elif sev == 'medium' %}
-                <span class="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{{ row.highest_severity_ar or 'متوسط' }}</span>
-                {% else %}
-                <span class="inline-flex rounded-full border border-slate-100 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-500">{{ row.highest_severity_ar or 'منخفض' }}</span>
-                {% endif %}
-              </td>
-              <td class="px-4 py-2.5 tabular-nums text-slate-800">{{ row.alerts_count | default(0) }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      {% else %}
-      <p class="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center text-sm text-slate-600">لا متاجر بارزة في التنبيهات الحالية.</p>
-      {% endif %}
-    </div>
-  </details>
-
-  <p class="pb-8 text-xs text-slate-400">
-    للأدوات التقنية (JSON، مفاتيح، عدّادات داخلية):
-    <a href="/admin/diagnostics" class="text-indigo-700 underline decoration-indigo-200 underline-offset-2">تشخيص الدعم (للدعم فقط)</a>
-  </p>
-
+  <script src="/static/admin_operations_center_v11.js"></script>
   <script>
-  // Dashboard DB Ready health — lazy section (read-only observability).
   (function () {
     var LOAD_ERROR = '<p class="text-sm text-rose-700 py-6 text-center">Failed to load this section.</p>';
     var LOADING = '<p class="text-sm text-slate-500 py-6 text-center">Loading...</p>';
@@ -231,10 +285,7 @@
     });
   })();
   </script>
-
   <script>
-  // Widget Health UX V2/V3 — UI-only, additive filters + grouped-issue counts
-  // (no record/service/detection changes).
   (function () {
     var ROOT_ID = 'ops-widget-health-content';
     var DEFAULT_TYPE = 'real';
@@ -247,7 +298,6 @@
     function apply() {
       var r = root();
       if (!r) return;
-      // Section 1 manager-first summary: filter affected rows by store type.
       var visAttn = 0;
       forEach(r.querySelectorAll('[data-wh-attn]'), function (el) {
         var show = typeMatch(el.getAttribute('data-store-type'));
@@ -256,8 +306,6 @@
       });
       var ae = r.querySelector('[data-wh-attn-empty]');
       if (ae) { if (visAttn === 0 && r.querySelector('[data-wh-attn]')) { ae.classList.remove('hidden'); } else { ae.classList.add('hidden'); } }
-      // Grouped issues: recompute affected-store count per active filter; hide
-      // a group when no affected store matches the current store-type filter.
       var visGroups = 0;
       forEach(r.querySelectorAll('[data-wh-group]'), function (grp) {
         var n = 0;
