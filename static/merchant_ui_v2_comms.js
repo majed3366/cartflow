@@ -419,15 +419,16 @@
       "</span>" +
       (it.whenAr ? '<span class="cf2-comms__time">' + esc(it.whenAr) + "</span>" : "") +
       (it.automated
-        ? '<span class="cf2-comms__chip">CartFlow يتابع</span>'
+        ? '<span class="cf2-comms__chip cf2-comms__chip--own">CartFlow يتابع</span>'
         : "") +
       (it.needsMerchant
         ? '<span class="cf2-comms__chip cf2-comms__chip--needs">يحتاج متابعتي</span>'
         : "") +
+      "</span>" +
       (it.cartRef
-        ? '<span class="cf2-comms__ctx">' + esc(it.cartRef) + "</span>"
+        ? '<span class="cf2-comms__ctx cf2-comms__ctx--ref">' + esc(it.cartRef) + "</span>"
         : "") +
-      "</span></button>"
+      "</button>"
     );
   }
 

@@ -99,6 +99,17 @@ class CommunicationProductCompositionV1Tests(unittest.TestCase):
         self.assertIn("لا إجراء استرداد بعد تأكيد الشراء", COMMS_JS)
         self.assertIn("isPurchasedMessage", COMMS_JS)
 
+    def test_visual_hierarchy_does_not_change_semantics(self) -> None:
+        self.assertIn("cf2-comms__chip--own", COMMS_JS)
+        self.assertIn("cf2-comms__ctx--ref", COMMS_JS)
+        self.assertIn("التواصل غير جاهز", COMMS_JS)
+        self.assertIn("لا يوجد ما يحتاج متابعتك", COMMS_JS)
+        self.assertIn("CartFlow يتابع الحالات الآلية. السجل يبقى متاحاً.", COMMS_JS)
+        self.assertIn(".cf2-comms.is-blocked .cf2-comms__orient-h", COMMS_CSS)
+        self.assertIn(".cf2-comms__ctx--ref", COMMS_CSS)
+        self.assertNotIn("warning", COMMS_CSS.lower())
+        self.assertNotIn("banner", COMMS_CSS.lower())
+
 
 if __name__ == "__main__":
     unittest.main()

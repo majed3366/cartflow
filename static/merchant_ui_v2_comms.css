@@ -2,11 +2,20 @@
  * CartFlow Merchant UI V2 — Communication Product Composition V1.
  * Orientation → status list → history. Desktop master-detail.
  * Mobile list → detail → back. Not a chat UI.
+ * Visual hierarchy refinement: compress orientation, demote readiness
+ * and technical IDs, raise event density. No semantic change.
  */
+body[data-cf-ui="v2"] .cf2-page[data-cf2-page="comms"] .cf2-page__question {
+  margin: 0 0 4px;
+  font-size: clamp(1.02rem, 1.35vw, 1.18rem);
+  line-height: 1.3;
+  max-width: 36rem;
+}
+
 body[data-cf-ui="v2"] .cf2-comms {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
   max-width: 100%;
   min-width: 0;
 }
@@ -14,31 +23,52 @@ body[data-cf-ui="v2"] .cf2-comms {
 body[data-cf-ui="v2"] .cf2-comms__orient {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
   min-width: 0;
 }
 
 body[data-cf-ui="v2"] .cf2-comms__orient-h {
   margin: 0;
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--cf2-navy);
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--cf2-ink-soft);
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
 
+body[data-cf-ui="v2"] .cf2-comms.is-needs .cf2-comms__orient-h {
+  font-weight: 700;
+  color: var(--cf2-navy);
+}
+
+body[data-cf-ui="v2"] .cf2-comms.is-blocked .cf2-comms__orient-h {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cf2-ink-soft);
+  letter-spacing: 0;
+}
+
 body[data-cf-ui="v2"] .cf2-comms__orient-d {
   margin: 0;
-  font-size: 13px;
-  color: var(--cf2-ink-soft);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--cf2-mute);
   overflow-wrap: anywhere;
+}
+
+body[data-cf-ui="v2"] .cf2-comms.is-blocked .cf2-comms__orient-d {
+  font-size: 12px;
+  color: var(--cf2-mute);
 }
 
 body[data-cf-ui="v2"] .cf2-comms__setup {
   align-self: flex-start;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--cf2-teal-dark);
+  margin-top: 1px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cf2-ink-soft);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 body[data-cf-ui="v2"] .cf2-comms__filters {
@@ -46,14 +76,15 @@ body[data-cf-ui="v2"] .cf2-comms__filters {
   flex-wrap: wrap;
   gap: 6px;
   min-width: 0;
+  margin-top: 4px;
 }
 
 body[data-cf-ui="v2"] .cf2-comms__filter {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 34px;
-  padding: 0 12px;
+  min-height: 32px;
+  padding: 0 11px;
   border: 1px solid var(--cf2-border);
   border-radius: 999px;
   background: var(--cf2-surface);
@@ -76,8 +107,8 @@ body[data-cf-ui="v2"] .cf2-comms__fc {
 
 body[data-cf-ui="v2"] .cf2-comms__workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: 12px;
   align-items: start;
   min-width: 0;
 }
@@ -91,17 +122,19 @@ body[data-cf-ui="v2"] .cf2-comms__detail {
 body[data-cf-ui="v2"] .cf2-comms__list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 body[data-cf-ui="v2"] .cf2-comms__row {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 6px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: flex-start;
+  column-gap: 12px;
+  row-gap: 2px;
   width: 100%;
   text-align: right;
-  padding: 12px 14px;
+  padding: 9px 12px;
   border: 1px solid var(--cf2-border);
   border-radius: var(--cf2-r-md);
   background: var(--cf2-surface);
@@ -115,43 +148,68 @@ body[data-cf-ui="v2"] .cf2-comms__row.is-needs {
 
 body[data-cf-ui="v2"] .cf2-comms__row.is-quiet,
 body[data-cf-ui="v2"] .cf2-comms__row.is-terminal {
-  opacity: 0.78;
+  opacity: 0.86;
 }
 
 body[data-cf-ui="v2"] .cf2-comms__row.is-failed {
-  opacity: 0.88;
+  opacity: 0.9;
 }
 
 body[data-cf-ui="v2"] .cf2-comms__row.is-selected {
   border-color: var(--cf2-navy);
   box-shadow: inset 3px 0 0 var(--cf2-teal);
+  background: #fff;
 }
 
-body[data-cf-ui="v2"] .cf2-comms__row-main,
+body[data-cf-ui="v2"] .cf2-comms__row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1 1 11rem;
+}
+
 body[data-cf-ui="v2"] .cf2-comms__row-meta {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  align-items: flex-start;
+  gap: 1px;
   min-width: 0;
+  flex: 0 1 auto;
 }
 
 body[data-cf-ui="v2"] .cf2-comms__who {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 800;
   color: var(--cf2-navy);
   overflow-wrap: anywhere;
 }
 
-body[data-cf-ui="v2"] .cf2-comms__what,
-body[data-cf-ui="v2"] .cf2-comms__time,
-body[data-cf-ui="v2"] .cf2-comms__ctx {
+body[data-cf-ui="v2"] .cf2-comms__what {
   font-size: 12px;
+  color: var(--cf2-ink-soft);
+  overflow-wrap: anywhere;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__time {
+  font-size: 11px;
   color: var(--cf2-mute);
   overflow-wrap: anywhere;
 }
 
+body[data-cf-ui="v2"] .cf2-comms__ctx,
+body[data-cf-ui="v2"] .cf2-comms__ctx--ref {
+  flex: 1 1 100%;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--cf2-mute);
+  opacity: 0.55;
+  overflow-wrap: anywhere;
+}
+
 body[data-cf-ui="v2"] .cf2-comms__state {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--cf2-ink);
   overflow-wrap: anywhere;
@@ -159,32 +217,39 @@ body[data-cf-ui="v2"] .cf2-comms__state {
 
 body[data-cf-ui="v2"] .cf2-comms__chip {
   display: inline-flex;
-  align-self: flex-start;
-  margin-top: 4px;
-  padding: 1px 8px;
-  border-radius: 999px;
+  align-self: flex-end;
+  margin-top: 1px;
+  padding: 0;
+  border-radius: 0;
   font-size: 11px;
-  font-weight: 700;
-  background: rgba(8, 32, 72, 0.06);
-  color: var(--cf2-ink-soft);
+  font-weight: 600;
+  background: transparent;
+  color: var(--cf2-mute);
+}
+
+body[data-cf-ui="v2"] .cf2-comms__chip--own {
+  background: transparent;
+  color: var(--cf2-mute);
+  font-weight: 600;
 }
 
 body[data-cf-ui="v2"] .cf2-comms__chip--needs {
-  background: rgba(24, 176, 168, 0.14);
+  background: transparent;
   color: var(--cf2-teal-dark);
+  font-weight: 700;
 }
 
 body[data-cf-ui="v2"] .cf2-comms__detail {
   background: var(--cf2-surface);
   border: 1px solid var(--cf2-border);
   border-radius: var(--cf2-r-md);
-  padding: 16px;
+  padding: 12px 14px;
 }
 
 body[data-cf-ui="v2"] .cf2-comms__detail-inner {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -195,8 +260,8 @@ body[data-cf-ui="v2"] .cf2-comms__back {
 
 body[data-cf-ui="v2"] .cf2-comms__detail-state {
   margin: 0;
-  font-size: 20px;
-  font-weight: 800;
+  font-size: 16px;
+  font-weight: 750;
   color: var(--cf2-navy);
   line-height: 1.3;
   overflow-wrap: anywhere;
@@ -210,19 +275,26 @@ body[data-cf-ui="v2"] .cf2-comms__detail-state.is-terminal {
   color: var(--cf2-success);
 }
 
-body[data-cf-ui="v2"] .cf2-comms__detail-who,
+body[data-cf-ui="v2"] .cf2-comms__detail-who {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--cf2-navy);
+  overflow-wrap: anywhere;
+}
+
 body[data-cf-ui="v2"] .cf2-comms__ctx-line,
 body[data-cf-ui="v2"] .cf2-comms__muted,
 body[data-cf-ui="v2"] .cf2-comms__terminal {
   margin: 0;
-  font-size: 13px;
-  color: var(--cf2-ink-soft);
+  font-size: 12px;
+  color: var(--cf2-mute);
   overflow-wrap: anywhere;
 }
 
 body[data-cf-ui="v2"] .cf2-comms__handoff {
-  margin: 0 0 8px;
-  font-size: 14px;
+  margin: 0 0 4px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--cf2-navy);
   overflow-wrap: anywhere;
@@ -230,8 +302,8 @@ body[data-cf-ui="v2"] .cf2-comms__handoff {
 
 body[data-cf-ui="v2"] .cf2-comms__fact h3,
 body[data-cf-ui="v2"] .cf2-comms__history h3 {
-  margin: 0 0 6px;
-  font-size: 13px;
+  margin: 0 0 4px;
+  font-size: 12px;
   font-weight: 800;
   color: var(--cf2-navy);
 }
@@ -239,7 +311,7 @@ body[data-cf-ui="v2"] .cf2-comms__history h3 {
 body[data-cf-ui="v2"] .cf2-comms__fact p {
   margin: 0;
   font-size: 13px;
-  line-height: 1.55;
+  line-height: 1.5;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
@@ -250,14 +322,14 @@ body[data-cf-ui="v2"] .cf2-comms__tl {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 7px;
 }
 
 body[data-cf-ui="v2"] .cf2-comms__tl-item {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding-right: 10px;
+  gap: 1px;
+  padding-right: 8px;
   border-right: 2px solid var(--cf2-border-strong);
 }
 
@@ -268,12 +340,12 @@ body[data-cf-ui="v2"] .cf2-comms__tl-label {
 }
 
 body[data-cf-ui="v2"] .cf2-comms__tl-at {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--cf2-mute);
 }
 
 body[data-cf-ui="v2"] .cf2-comms__empty {
-  padding: 28px 16px;
+  padding: 16px 12px;
   text-align: center;
   background: var(--cf2-surface);
   border: 1px dashed var(--cf2-border-strong);
@@ -281,13 +353,16 @@ body[data-cf-ui="v2"] .cf2-comms__empty {
 }
 
 body[data-cf-ui="v2"] .cf2-comms__empty-title {
-  margin: 0 0 6px;
-  font-weight: 800;
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 700;
   color: var(--cf2-navy);
 }
 
 body[data-cf-ui="v2"] .cf2-comms__empty-body {
   margin: 0;
+  font-size: 13px;
+  color: var(--cf2-ink-soft);
   overflow-wrap: anywhere;
 }
 
@@ -297,6 +372,16 @@ body[data-cf-ui="v2"] .cf2-comms__detail-empty {
 }
 
 @media (max-width: 1023px) {
+  body[data-cf-ui="v2"] .cf2-page[data-cf2-page="comms"] .cf2-page__question {
+    margin: 0 0 2px;
+    font-size: 1.02rem;
+    line-height: 1.28;
+  }
+
+  body[data-cf-ui="v2"] .cf2-comms {
+    gap: 8px;
+  }
+
   body[data-cf-ui="v2"] .cf2-comms__workspace {
     display: block;
   }
@@ -322,5 +407,41 @@ body[data-cf-ui="v2"] .cf2-comms__detail-empty {
     border: 0;
     padding: 0;
     background: transparent;
+  }
+
+  body[data-cf-ui="v2"] .cf2-comms__row {
+    padding: 8px 10px;
+    column-gap: 8px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-comms__row-main {
+    flex: 1 1 calc(48% - 6px);
+  }
+
+  body[data-cf-ui="v2"] .cf2-comms__row-meta {
+    flex: 1 1 calc(44% - 6px);
+  }
+
+  body[data-cf-ui="v2"] .cf2-comms__who {
+    font-size: 13px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-comms__state {
+    font-size: 12px;
+    line-height: 1.3;
+  }
+
+  body[data-cf-ui="v2"] .cf2-comms__row-meta {
+    display: block;
+  }
+
+  body[data-cf-ui="v2"] .cf2-comms__time,
+  body[data-cf-ui="v2"] .cf2-comms__chip {
+    display: inline;
+    margin-inline-start: 6px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-comms__filter {
+    min-height: 30px;
   }
 }
