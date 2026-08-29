@@ -1,0 +1,18 @@
+{
+  "source": "local_verify_paint_127.0.0.1:8767",
+  "label": "SAFE_LOCAL_RUNTIME — empty demo; no fabricated rows",
+  "marker": "communication-product-composition-v1",
+  "question": true,
+  "rowCount": 0,
+  "needsMerchantResponse": "0",
+  "orientation": "لا توجد أحداث تواصل بعد",
+  "waCta": false,
+  "overflowX": false,
+  "merchantResponseAvailable": false,
+  "automatedWaitingAvailable": false,
+  "notes": [
+    "Local TestClient / demo store has 0 message rows and 0 follow-up rows.",
+    "Screenshots 03/07/08/09/10 omitted — those states were not present.",
+    "Do not declare PASS."
+  ]
+}

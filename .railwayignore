@@ -1,0 +1,45 @@
+# CartFlow Railway CLI snapshot — API/Merchant UI only.
+# Does not delete git history. Does not change product code or start command.
+# Keep docs/investigations/ — admin registry reads it at runtime.
+
+# Visual-review and composition evidence (PNG-heavy)
+docs/product/
+
+# Architecture studies / Meta evidence (not served by API)
+docs/architecture/
+
+# Ops / implementation packs (not served by API)
+docs/operations/
+docs/ops/
+docs/operational/
+docs/implementation/
+docs/institutional_memory/
+docs/business_findings/
+docs/investigation/
+
+# Root-of-docs audit markdown and verification binaries (not investigations/)
+docs/*.md
+docs/*.png
+docs/*.html
+
+# Generated capture / visual-gate outputs
+*_out/
+
+# Test and local QA trees (not imported by cartflow_api)
+tests/
+e2e/
+playwright.config.ts
+playwright-report/
+test-results/
+promptfoo/
+synthetic/
+
+# Editor and design-exploration trees (runtime brand is static/img/)
+.cursor/
+branding/
+
+# Operator/dev tools (API does not import these)
+tools/
+
+# Root review documents (not imported)
+/*.md

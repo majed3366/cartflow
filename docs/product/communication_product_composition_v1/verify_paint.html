@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Communication composition paint check</title>
+  <link rel="stylesheet" href="../../../static/merchant_ui_v2_ds.css" />
+  <link rel="stylesheet" href="../../../static/merchant_ui_v2_comms.css" />
+</head>
+<body data-cf-ui="v2">
+  <p class="cf2-page__question">ماذا حدث في التواصل مع العملاء، وما الذي يحتاج متابعتي الآن؟</p>
+  <div id="cf2-comms-root"></div>
+  <script src="../../../static/merchant_ui_v2_comms.js"></script>
+  <script>
+    var params = new URLSearchParams(location.search);
+    var mode = params.get("mode") || "calm";
+    var root = document.getElementById("cf2-comms-root");
+    var empty = {
+      messages: { merchant_message_history_rows: [] },
+      followups: { merchant_followup_rows: [], merchant_nav_badge_followup: 0 },
+      summary: { ok: true, merchant_publication_v1: { ok: true, communication_condition: {} } }
+    };
+    if (mode === "calm") {
+      window.CartFlowUiV2Comms.applyPayloadAndPaint(root, empty);
+    } else if (window.__CF_COMMS_BUNDLE) {
+      window.CartFlowUiV2Comms.applyPayloadAndPaint(root, window.__CF_COMMS_BUNDLE);
+    } else {
+      window.CartFlowUiV2Comms.applyPayloadAndPaint(root, empty);
+    }
+  </script>
+</body>
+</html>

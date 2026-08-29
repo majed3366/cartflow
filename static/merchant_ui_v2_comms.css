@@ -1,0 +1,326 @@
+/**
+ * CartFlow Merchant UI V2 — Communication Product Composition V1.
+ * Orientation → status list → history. Desktop master-detail.
+ * Mobile list → detail → back. Not a chat UI.
+ */
+body[data-cf-ui="v2"] .cf2-comms {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__orient {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__orient-h {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--cf2-navy);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__orient-d {
+  margin: 0;
+  font-size: 13px;
+  color: var(--cf2-ink-soft);
+  overflow-wrap: anywhere;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__setup {
+  align-self: flex-start;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cf2-teal-dark);
+}
+
+body[data-cf-ui="v2"] .cf2-comms__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--cf2-border);
+  border-radius: 999px;
+  background: var(--cf2-surface);
+  color: var(--cf2-ink-soft);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__filter.is-active {
+  background: var(--cf2-navy);
+  color: #fff;
+  border-color: var(--cf2-navy);
+}
+
+body[data-cf-ui="v2"] .cf2-comms__fc {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  min-width: 0;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__list,
+body[data-cf-ui="v2"] .cf2-comms__detail {
+  min-width: 0;
+  max-width: 100%;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  width: 100%;
+  text-align: right;
+  padding: 12px 14px;
+  border: 1px solid var(--cf2-border);
+  border-radius: var(--cf2-r-md);
+  background: var(--cf2-surface);
+  cursor: pointer;
+  min-width: 0;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__row.is-needs {
+  border-color: rgba(24, 176, 168, 0.45);
+}
+
+body[data-cf-ui="v2"] .cf2-comms__row.is-quiet,
+body[data-cf-ui="v2"] .cf2-comms__row.is-terminal {
+  opacity: 0.78;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__row.is-failed {
+  opacity: 0.88;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__row.is-selected {
+  border-color: var(--cf2-navy);
+  box-shadow: inset 3px 0 0 var(--cf2-teal);
+}
+
+body[data-cf-ui="v2"] .cf2-comms__row-main,
+body[data-cf-ui="v2"] .cf2-comms__row-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__who {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--cf2-navy);
+  overflow-wrap: anywhere;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__what,
+body[data-cf-ui="v2"] .cf2-comms__time,
+body[data-cf-ui="v2"] .cf2-comms__ctx {
+  font-size: 12px;
+  color: var(--cf2-mute);
+  overflow-wrap: anywhere;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__state {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cf2-ink);
+  overflow-wrap: anywhere;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__chip {
+  display: inline-flex;
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(8, 32, 72, 0.06);
+  color: var(--cf2-ink-soft);
+}
+
+body[data-cf-ui="v2"] .cf2-comms__chip--needs {
+  background: rgba(24, 176, 168, 0.14);
+  color: var(--cf2-teal-dark);
+}
+
+body[data-cf-ui="v2"] .cf2-comms__detail {
+  background: var(--cf2-surface);
+  border: 1px solid var(--cf2-border);
+  border-radius: var(--cf2-r-md);
+  padding: 16px;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__detail-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__back {
+  align-self: flex-start;
+  display: none;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__detail-state {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--cf2-navy);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__detail-state.is-needs {
+  color: var(--cf2-teal-dark);
+}
+
+body[data-cf-ui="v2"] .cf2-comms__detail-state.is-terminal {
+  color: var(--cf2-success);
+}
+
+body[data-cf-ui="v2"] .cf2-comms__detail-who,
+body[data-cf-ui="v2"] .cf2-comms__ctx-line,
+body[data-cf-ui="v2"] .cf2-comms__muted,
+body[data-cf-ui="v2"] .cf2-comms__terminal {
+  margin: 0;
+  font-size: 13px;
+  color: var(--cf2-ink-soft);
+  overflow-wrap: anywhere;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__handoff {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--cf2-navy);
+  overflow-wrap: anywhere;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__fact h3,
+body[data-cf-ui="v2"] .cf2-comms__history h3 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--cf2-navy);
+}
+
+body[data-cf-ui="v2"] .cf2-comms__fact p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__tl {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__tl-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-right: 10px;
+  border-right: 2px solid var(--cf2-border-strong);
+}
+
+body[data-cf-ui="v2"] .cf2-comms__tl-label {
+  font-size: 13px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__tl-at {
+  font-size: 12px;
+  color: var(--cf2-mute);
+}
+
+body[data-cf-ui="v2"] .cf2-comms__empty {
+  padding: 28px 16px;
+  text-align: center;
+  background: var(--cf2-surface);
+  border: 1px dashed var(--cf2-border-strong);
+  border-radius: var(--cf2-r-md);
+}
+
+body[data-cf-ui="v2"] .cf2-comms__empty-title {
+  margin: 0 0 6px;
+  font-weight: 800;
+  color: var(--cf2-navy);
+}
+
+body[data-cf-ui="v2"] .cf2-comms__empty-body {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__detail-empty {
+  color: var(--cf2-ink-soft);
+  font-size: 13px;
+}
+
+@media (max-width: 1023px) {
+  body[data-cf-ui="v2"] .cf2-comms__workspace {
+    display: block;
+  }
+
+  body[data-cf-ui="v2"] .cf2-comms:not(.is-detail-open) .cf2-comms__detail {
+    display: none;
+  }
+
+  body[data-cf-ui="v2"] .cf2-comms.is-detail-open .cf2-comms__list,
+  body[data-cf-ui="v2"] .cf2-comms.is-detail-open .cf2-comms__filters {
+    display: none;
+  }
+
+  body[data-cf-ui="v2"] .cf2-comms.is-detail-open .cf2-comms__orient-d {
+    display: none;
+  }
+
+  body[data-cf-ui="v2"] .cf2-comms__back {
+    display: inline-flex;
+  }
+
+  body[data-cf-ui="v2"] .cf2-comms__detail {
+    border: 0;
+    padding: 0;
+    background: transparent;
+  }
+}

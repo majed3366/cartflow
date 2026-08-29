@@ -15,7 +15,7 @@
       { id: "workspace", label: "مساحة القرار", slice: true },
       { id: "products", label: "المنتجات", slice: false },
       { id: "carts", label: "السلال", slice: true },
-      { id: "comms", label: "التواصل", slice: false },
+      { id: "comms", label: "التواصل", slice: true },
       { id: "settings", label: "الإعدادات", slice: false },
     ],
     contextual: {
@@ -51,7 +51,7 @@
   function currentHash() {
     var h = (location.hash || "#home").replace(/^#/, "").split("?")[0];
     if (!h) return "home";
-    if (h === "communication") return "comms";
+    if (h === "communication" || h === "messages") return "comms";
     return h;
   }
 
@@ -315,13 +315,21 @@
       if (cartsRoot && window.CartFlowUiV2Carts) {
         window.CartFlowUiV2Carts.loadAndPaint(cartsRoot);
       }
+      return;
+    }
+    if (section === "comms") {
+      var commsRoot = $("#cf2-comms-root");
+      if (commsRoot && window.CartFlowUiV2Comms) {
+        window.CartFlowUiV2Comms.loadAndPaint(commsRoot);
+      }
     }
   }
 
   function go(section) {
     var id = section || "home";
-    if (location.hash !== "#" + id) {
-      location.hash = "#" + id;
+    var hashId = id === "comms" ? "communication" : id;
+    if (location.hash !== "#" + hashId) {
+      location.hash = "#" + hashId;
     } else {
       loadSection(id);
     }

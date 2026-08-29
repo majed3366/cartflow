@@ -49,6 +49,7 @@ class MerchantUiV2TemplateTests(unittest.TestCase):
         self.assertIn("merchant_ui_v2_home.css", V2_TEMPLATE)
         self.assertIn("merchant_ui_v2_workspace.css", V2_TEMPLATE)
         self.assertIn("merchant_ui_v2_carts.css", V2_TEMPLATE)
+        self.assertIn("merchant_ui_v2_comms.css", V2_TEMPLATE)
         self.assertIn("merchant_ui_v2_language.js", V2_TEMPLATE)
         self.assertIn("merchant_ui_v2_carts.js", V2_TEMPLATE)
         self.assertNotIn("merchant_frame_v1.css", V2_TEMPLATE)
@@ -86,6 +87,9 @@ class MerchantUiV2TemplateTests(unittest.TestCase):
         self.assertIn('data-cf2-page="workspace"', V2_TEMPLATE)
         self.assertIn("ماذا يجب أن أعرف الآن عن متجري؟", V2_TEMPLATE)
         self.assertIn("ما القرار الذي يجب أن أتخذه الآن، ولماذا؟", V2_TEMPLATE)
+        self.assertIn("ماذا حدث في التواصل مع العملاء، وما الذي يحتاج متابعتي الآن؟", V2_TEMPLATE)
+        self.assertIn('id="cf2-comms-root"', V2_TEMPLATE)
+        self.assertNotIn("قسم التواصل خارج شريحة V2", V2_TEMPLATE)
 
     def test_v1_unchanged_default_template(self) -> None:
         self.assertIn("merchant_frame_v1.css", V1_TEMPLATE)
@@ -201,11 +205,13 @@ class MerchantUiV2RouteTests(unittest.TestCase):
             "static/merchant_ui_v2_home.css",
             "static/merchant_ui_v2_workspace.css",
             "static/merchant_ui_v2_carts.css",
+            "static/merchant_ui_v2_comms.css",
             "static/merchant_ui_v2_app.js",
             "static/merchant_ui_v2_language.js",
             "static/merchant_ui_v2_home.js",
             "static/merchant_ui_v2_workspace.js",
             "static/merchant_ui_v2_carts.js",
+            "static/merchant_ui_v2_comms.js",
             "templates/merchant_app_v2.html",
             "services/merchant_ui_v2/flag_v1.py",
         ):
