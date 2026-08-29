@@ -166,7 +166,8 @@ git worktree add -b candidate/canonical-source-restoration-v1
 
 Primary worktree was not checked out, reset, or cleaned. After the documentation commit on this branch, **HEAD of `candidate/canonical-source-restoration-v1` is the integration candidate SHA** (recorded in the footer after commit).
 
-Parent of that commit remains `ed0c5cf663e8ba3cc8be7fd17b0a9ef7a49be11f`.
+Parent of that commit remains `ed0c5cf663e8ba3cc8be7fd17b0a9ef7a49be11f`.  
+Documentation commit on this branch: `a2851c11ccbcd0b3ece468995dca0206b5067e4a`. Review/push tip is `git rev-parse` of `candidate/canonical-source-restoration-v1`.
 
 ---
 
@@ -339,10 +340,10 @@ ADMIN_CANDIDATE_SHA:
 ed0c5cf663e8ba3cc8be7fd17b0a9ef7a49be11f
 
 INTEGRATION_CANDIDATE_SHA:
-PENDING_LOCAL_DOCS_COMMIT
+a2851c11ccbcd0b3ece468995dca0206b5067e4a
 
 INTEGRATION_WORKTREE_CLEAN:
-PENDING_LOCAL_DOCS_COMMIT
+YES
 
 API_START_CONTRACT_VERIFIED:
 YES
