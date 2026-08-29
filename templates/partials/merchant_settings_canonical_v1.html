@@ -1,0 +1,233 @@
+{# Settings Product Composition V1 — existing merchant configuration only. #}
+<div
+  class="cf-settings-canonical"
+  data-cf-settings-owner="merchant-settings-v1"
+  data-cf-settings-composition="v1"
+  dir="rtl"
+>
+  <p class="cf-settings-canonical__q">ما الذي أحتاج ضبطه لكي يعمل CartFlow بشكل صحيح وآمن؟</p>
+  <p class="cf-settings-canonical__hint">اضبط الربط والتواصل والسياسات المطلوبة للتشغيل. لا يظهر هنا سجل السلال أو التنفيذ.</p>
+
+  <div class="cf2-settings__workspace" id="cf2-settings-workspace">
+    <div class="cf2-settings__overview" id="cf2-settings-overview" aria-label="مناطق الإعداد">
+      <p class="cf2-settings__needs" id="cf2-settings-needs" hidden></p>
+      <div class="cf2-settings__list" id="cf2-settings-list"></div>
+    </div>
+
+    <div class="cf2-settings__detail" id="cf2-settings-detail">
+      <button type="button" class="cf2-settings__back" id="cf2-settings-back" hidden>رجوع</button>
+      <p class="cf2-settings__detail-empty" id="cf2-settings-detail-empty">اختر منطقة لعرض حالتها وضبطها.</p>
+
+      <div class="cf2-settings__panel" data-cf2-settings-panel="store" hidden>
+        <div id="ma-store-connection-err" class="ma-settings-banner" style="display:none;"></div>
+        <div id="ma-store-connection-ok" class="ma-settings-banner" style="display:none;"></div>
+        <div class="setting-card ma-fw-card ma-store-connection-card" id="ma-store-connection-root">
+          <div class="ma-store-connection-head">
+            <div>
+              <div class="setting-title">ربط المتجر</div>
+              <div class="setting-desc">زد فقط — الربط الحالي لقراءة الطلبات والسلال.</div>
+            </div>
+            <span class="ma-sc-status-pill" id="ma-sc-status-pill">—</span>
+          </div>
+          <p class="ma-sc-status-desc" id="ma-sc-status-desc">جاري التحميل…</p>
+          <div class="ma-sc-connected-meta" id="ma-sc-connected-meta" hidden>
+            <div class="setting-row"><span class="setting-label">اسم المتجر</span><span class="setting-value" id="ma-sc-store-name">—</span></div>
+            <div class="setting-row"><span class="setting-label">المنصة</span><span class="setting-value" id="ma-sc-platform">—</span></div>
+            <div class="setting-row"><span class="setting-label">تاريخ الربط</span><span class="setting-value" id="ma-sc-connected-at">—</span></div>
+            <div class="setting-row ma-sc-widget-row">
+              <span class="setting-label">المتجر مربوط</span>
+              <span class="setting-value ma-sc-check" id="ma-sc-store-connected-check">—</span>
+            </div>
+            <div class="setting-row ma-sc-widget-row">
+              <span class="setting-label">الودجت</span>
+              <span class="ma-sc-widget-pill" id="ma-sc-widget-pill">—</span>
+            </div>
+            <p class="ma-sc-widget-desc" id="ma-sc-widget-desc" hidden></p>
+          </div>
+          <div class="ma-sc-actions" id="ma-sc-actions-not-connected">
+            <button type="button" class="ma-fw-save ma-sc-btn" id="ma-sc-connect-zid">ربط زد</button>
+          </div>
+          <div class="ma-sc-actions" id="ma-sc-actions-connected" hidden>
+            <button type="button" class="ma-fw-save ma-sc-btn ma-sc-btn-secondary" id="ma-sc-reconnect-zid">إعادة الربط</button>
+            <button type="button" class="ma-fw-save ma-sc-btn ma-sc-btn-danger" id="ma-sc-disconnect">فصل الربط</button>
+          </div>
+          <p class="cf2-settings__unavail">سلة: غير متاحة حالياً. Shopify غير مُتاح في إعدادات التاجر.</p>
+        </div>
+
+        <div class="setting-card ma-fw-card ma-subscription-card ma-subscription-v2" id="ma-subscription-root">
+          <div class="ma-subscription-head">
+            <div>
+              <div class="setting-title">الباقة الحالية</div>
+              <div class="setting-desc">قراءة فقط — لا ترقية ولا دفع من هنا</div>
+            </div>
+            <div class="ma-subscription-v2-badges">
+              <span class="ma-sub-plan-pill" id="ma-sub-plan-pill">—</span>
+              <span class="ma-sub-status-pill" id="ma-sub-status-pill" hidden>—</span>
+              <span class="ma-sub-source-pill" id="ma-sub-source-pill" hidden>—</span>
+            </div>
+          </div>
+          <p class="ma-sub-health" id="ma-sub-health" hidden></p>
+          <div class="setting-row"><span class="setting-label">الخطة</span><span class="setting-value" id="ma-sub-plan-display">—</span></div>
+          <div class="setting-row"><span class="setting-label">الحالة</span><span class="setting-value" id="ma-sub-status-display">—</span></div>
+        </div>
+      </div>
+
+      <div class="cf2-settings__panel" data-cf2-settings-panel="communication" hidden>
+        <div id="ma-wa-settings-err" class="ma-settings-banner" style="display:none;"></div>
+        <div id="ma-wa-settings-ok" class="ma-settings-banner" style="display:none;">تم حفظ إعدادات الواتساب.</div>
+        <div class="setting-card ma-fw-card" id="page-whatsapp-host">
+          <div class="setting-title">واتساب والتواصل</div>
+          <div class="setting-desc">ربط الرقم وجاهزية الإرسال — إعداد وليس سجل الرسائل.</div>
+          <div class="ma-wa-mode-selection-wrap" id="ma-wa-mode-selection-root" aria-live="polite">
+            <p class="ma-wa-v2-loading">جاري تحميل إعدادات واتساب…</p>
+          </div>
+          <div class="ma-wa-current-path-wrap" id="ma-wa-current-path-root" aria-live="polite" hidden></div>
+          <form id="ma-wa-settings-form" class="ma-fw-form" autocomplete="off">
+            <input type="hidden" name="whatsapp_mode" id="ma-wa-mode-hidden" value="cartflow_managed" />
+            <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+              <label class="ma-fw-label" for="ma-wa-store-number">رقم واتساب المتجر</label>
+              <input class="ma-fw-input" id="ma-wa-store-number" name="store_whatsapp_number" type="text" inputmode="tel" dir="ltr" value="">
+            </div>
+            <div class="setting-row" style="align-items:center;justify-content:space-between;margin-top:8px;">
+              <label class="ma-fw-label" for="ma-wa-recovery-enabled" style="margin:0;">تفعيل رسائل الاسترجاع</label>
+              <label class="ma-fw-check"><input type="checkbox" id="ma-wa-recovery-enabled" name="whatsapp_recovery_enabled" value="1"></label>
+            </div>
+            <div class="ma-fw-actions">
+              <button type="submit" class="ma-fw-save" id="ma-wa-settings-save">حفظ إعدادات واتساب</button>
+            </div>
+          </form>
+          <div id="ma-wa-readiness-root" class="ma-wa-readiness-root" hidden aria-live="polite"></div>
+          <div id="ma-wa-connect-root" class="ma-wa-connect-root" aria-live="polite"></div>
+          <button type="button" class="ma-fw-save ma-wa-primary-cta" id="ma-wa-enable-recovery-btn" hidden>تفعيل استرجاع واتساب</button>
+        </div>
+
+        <div class="setting-card ma-fw-card" id="cf2-settings-templates">
+          <div class="setting-title">قوالب المتابعة</div>
+          <div class="setting-desc">قوالب موجودة في CartFlow — لا تُعاد كتابتها هنا.</div>
+          <p class="cf2-settings__handoff-note">فتح صفحة القوالب الحالية للضبط.</p>
+          <a class="cf2-settings__handoff" href="/dashboard?cf_ui=v1#trigger-templates">فتح القوالب</a>
+        </div>
+
+        <div id="ma-general-settings-err" class="ma-settings-banner" style="display:none;"></div>
+        <div id="ma-general-settings-ok" class="ma-settings-banner" style="display:none;">تم حفظ الإعدادات</div>
+        <form id="ma-general-settings-form" class="ma-fw-form" autocomplete="off">
+          <div class="setting-card ma-fw-card">
+            <div class="setting-title">الإشعارات</div>
+            <div class="setting-desc">ما يظهر لك داخل اللوحة</div>
+            <div class="setting-row" style="align-items:flex-start;justify-content:space-between;gap:12px;">
+              <label class="ma-fw-label" for="ma-general-notify-vip" style="margin:0;">تنبيه سلة VIP</label>
+              <label class="ma-fw-check"><input type="checkbox" id="ma-general-notify-vip" name="settings_notify_vip" value="1"></label>
+            </div>
+            <div class="setting-row" style="align-items:flex-start;justify-content:space-between;gap:12px;">
+              <label class="ma-fw-label" for="ma-general-notify-recovery" style="margin:0;">تنبيه إيراد مسترجع</label>
+              <label class="ma-fw-check"><input type="checkbox" id="ma-general-notify-recovery" name="settings_notify_recovery_success" value="1"></label>
+            </div>
+            <div class="setting-row" style="align-items:flex-start;justify-content:space-between;gap:12px;">
+              <label class="ma-fw-label" for="ma-general-notify-wa-fail" style="margin:0;">تنبيه انقطاع واتساب</label>
+              <label class="ma-fw-check"><input type="checkbox" id="ma-general-notify-wa-fail" name="settings_notify_whatsapp_failure" value="1"></label>
+            </div>
+            <div class="setting-row" hidden>
+              <span id="ma-general-mode-display">—</span>
+              <span id="ma-general-notify-display">—</span>
+              <span id="ma-general-widget-name-display">—</span>
+              <span id="ma-general-updated-display">—</span>
+            </div>
+            <div class="ma-fw-actions">
+              <button type="submit" class="ma-fw-save" id="ma-general-settings-save">حفظ الإشعارات</button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="cf2-settings__panel" data-cf2-settings-panel="recovery" hidden>
+        <div id="ma-recovery-policy-err" class="ma-settings-banner" style="display:none;"></div>
+        <div id="ma-recovery-policy-ok" class="ma-settings-banner" style="display:none;">تم حفظ سياسة الاسترجاع</div>
+        <div class="setting-card ma-fw-card">
+          <div class="setting-title">سياسة الاسترجاع</div>
+          <div class="setting-desc">متى تُرسل أول رسالة، وكم محاولة — لا يغيّر جدولة التنفيذ من هنا.</div>
+          <form id="ma-recovery-policy-form" class="ma-fw-form" autocomplete="off">
+            <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+              <label class="ma-fw-label" for="ma-recovery-delay">مدة الانتظار قبل أول رسالة</label>
+              <input class="ma-fw-input" id="ma-recovery-delay" name="recovery_delay" type="number" min="1" step="1" dir="ltr">
+            </div>
+            <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+              <label class="ma-fw-label" for="ma-recovery-delay-unit">وحدة الوقت</label>
+              <select class="ma-fw-input" id="ma-recovery-delay-unit" name="recovery_delay_unit">
+                <option value="minutes">دقائق</option>
+                <option value="hours">ساعة</option>
+                <option value="days">يوم</option>
+              </select>
+            </div>
+            <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+              <span class="ma-fw-label">عدد محاولات الاسترجاع</span>
+              <div class="ma-recovery-attempts" role="group" aria-label="عدد المحاولات">
+                <label class="ma-fw-check"><input type="radio" name="ma_recovery_attempts_pick" value="1"> 1</label>
+                <label class="ma-fw-check"><input type="radio" name="ma_recovery_attempts_pick" value="2"> 2</label>
+                <label class="ma-fw-check"><input type="radio" name="ma_recovery_attempts_pick" value="3"> 3</label>
+              </div>
+              <input type="hidden" id="ma-recovery-attempts" name="recovery_attempts" value="1">
+            </div>
+            <div class="ma-fw-actions">
+              <button type="submit" class="ma-fw-save" id="ma-recovery-policy-save">حفظ سياسة الاسترجاع</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="cf2-settings__panel" data-cf2-settings-panel="policy" hidden>
+        <div id="ma-vip-settings-err" class="ma-settings-banner" style="display:none;"></div>
+        <div id="ma-vip-settings-ok" class="ma-settings-banner" style="display:none;">تم حفظ إعدادات السلال المهمة</div>
+        <div class="setting-card ma-fw-card ma-vip-simple-card">
+          <div class="setting-title">VIP — سياسة السلال المهمة</div>
+          <div class="setting-desc">العتبة والتفعيل هنا. قائمة السلال المهمة تبقى في السلال.</div>
+          <form id="ma-vip-settings-form" class="ma-fw-form" autocomplete="off">
+            <div class="setting-row" style="align-items:flex-start;justify-content:space-between;gap:12px;">
+              <label class="ma-fw-label" for="ma-vip-enabled" style="margin:0;">تفعيل متابعة السلال المهمة</label>
+              <label class="ma-fw-check"><input type="checkbox" id="ma-vip-enabled" name="vip_enabled" value="1"></label>
+            </div>
+            <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+              <label class="ma-fw-label" for="ma-vip-threshold">الحد الأدنى (SR)</label>
+              <input class="ma-fw-input" id="ma-vip-threshold" name="vip_cart_threshold" type="number" min="1" step="1" dir="ltr" placeholder="500">
+            </div>
+            <details class="ma-advanced-block">
+              <summary>إعدادات متقدمة</summary>
+              <div class="ma-advanced-inner">
+                <div class="setting-row" style="align-items:flex-start;justify-content:space-between;gap:12px;">
+                  <label class="ma-fw-label" for="ma-vip-notify-enabled" style="margin:0;">تنبيه عند ظهور سلة مهمة</label>
+                  <label class="ma-fw-check"><input type="checkbox" id="ma-vip-notify-enabled" name="vip_notify_enabled" value="1"></label>
+                </div>
+                <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+                  <label class="ma-fw-label" for="ma-vip-note">ملاحظة للمتابعة اليدوية</label>
+                  <textarea class="ma-fw-input" id="ma-vip-note" name="vip_note" rows="2" maxlength="2000" dir="rtl"></textarea>
+                </div>
+                <div class="setting-row"><span class="setting-label">حالة VIP</span><span class="setting-value" id="ma-vip-status-display">—</span></div>
+                <div class="setting-row"><span class="setting-label">العتبة الحالية</span><span class="setting-value" id="ma-vip-threshold-display">—</span></div>
+              </div>
+            </details>
+            <div class="ma-fw-actions">
+              <button type="submit" class="ma-fw-save" id="ma-vip-settings-save">حفظ</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="cf2-settings__panel" data-cf2-settings-panel="experience" hidden>
+        <div class="setting-card ma-fw-card">
+          <div class="setting-title">الودجيت</div>
+          <div class="setting-desc">تفضيلات العرض الحالية فقط — ليست منشئ مظهر.</div>
+          <div class="setting-row" style="align-items:center;justify-content:space-between;">
+            <label class="ma-fw-label" for="ma-general-widget-enabled" style="margin:0;">الودجيت مفعل</label>
+            <label class="ma-fw-check"><input type="checkbox" id="ma-general-widget-enabled" name="cartflow_widget_enabled" value="1" form="ma-general-settings-form" checked></label>
+          </div>
+          <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+            <label class="ma-fw-label" for="ma-general-widget-name">اسم الودجيت</label>
+            <input class="ma-fw-input" id="ma-general-widget-name" name="widget_name" type="text" maxlength="120" dir="rtl" form="ma-general-settings-form">
+          </div>
+          <div class="ma-fw-actions">
+            <button type="submit" class="ma-fw-save" form="ma-general-settings-form">حفظ تفضيلات العرض</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

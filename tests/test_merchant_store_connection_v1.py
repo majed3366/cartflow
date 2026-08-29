@@ -78,8 +78,9 @@ class MerchantStoreConnectionV1Tests(unittest.TestCase):
         self.assertEqual(r.status_code, 200)
         html = r.text or ""
         self.assertIn("ربط المتجر", html)
-        self.assertIn("اربط متجرك لقراءة الطلبات والسلال", html)
         self.assertIn("ma-store-connection-root", html)
+        self.assertIn("ma-sc-connect-zid", html)
+        self.assertIn("سلة: غير متاحة حالياً", html)
         self.assertIn("merchant_store_connection.js", html)
 
     def test_zid_connect_without_oauth_config_shows_pending_redirect(self) -> None:

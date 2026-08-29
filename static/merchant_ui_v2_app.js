@@ -48,10 +48,21 @@
     return Array.prototype.slice.call((root || document).querySelectorAll(sel));
   }
 
+  var SETTINGS_HASH_ALIASES = {
+    settings: "settings",
+    whatsapp: "settings",
+    "whatsapp-connect": "settings",
+    widget: "settings",
+    "trigger-templates": "settings",
+    templates: "settings",
+    plans: "settings",
+  };
+
   function currentHash() {
     var h = (location.hash || "#home").replace(/^#/, "").split("?")[0];
     if (!h) return "home";
     if (h === "communication" || h === "messages") return "comms";
+    if (SETTINGS_HASH_ALIASES[h]) return "settings";
     return h;
   }
 
@@ -321,6 +332,13 @@
       var commsRoot = $("#cf2-comms-root");
       if (commsRoot && window.CartFlowUiV2Comms) {
         window.CartFlowUiV2Comms.loadAndPaint(commsRoot);
+      }
+      return;
+    }
+    if (section === "settings") {
+      var settingsRoot = $("#cf2-settings-root");
+      if (settingsRoot && window.CartFlowUiV2Settings) {
+        window.CartFlowUiV2Settings.loadAndPaint(settingsRoot);
       }
     }
   }
