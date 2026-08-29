@@ -119,12 +119,10 @@ def ensure_merchant_auth_schema(db: Any) -> bool:
     from services.db_ready_diag_v1 import db_ready_substage  # noqa: PLC0415
 
     if _merchant_auth_schema_once:
-        with db_ready_substage("merchant_auth_verify_cached"):
-            return bool(verify_merchant_auth_schema(db).get("ok"))
+        return True
     with _merchant_auth_schema_once_lock:
         if _merchant_auth_schema_once:
-            with db_ready_substage("merchant_auth_verify_cached"):
-                return bool(verify_merchant_auth_schema(db).get("ok"))
+            return True
         try:
             with db_ready_substage("merchant_auth_create_all"):
                 db.create_all()
@@ -197,5 +195,4 @@ def ensure_merchant_auth_schema(db: Any) -> bool:
             db.session.rollback()
             log.warning("merchant auth schema ensure skipped: %s", exc)
             return False
-    with db_ready_substage("merchant_auth_verify_cached"):
-        return bool(verify_merchant_auth_schema(db).get("ok"))
+    return True

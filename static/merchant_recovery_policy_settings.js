@@ -79,6 +79,12 @@
 
   function loadSettings(force) {
     if (!force && loadedOnce) return Promise.resolve();
+    var cached = window.__cfSettingsReadCache && window.__cfSettingsReadCache.recovery;
+    if (!force && cached && cached.ok !== false) {
+      fillForm(cached);
+      loadedOnce = true;
+      return Promise.resolve();
+    }
     hideMsgs();
     return fetch("/api/recovery-settings", { credentials: "same-origin" })
       .then(function (r) {
@@ -162,6 +168,6 @@
 
   window.maInitRecoveryPolicySettingsPage = function () {
     bindOnce();
-    loadSettings(true);
+    loadSettings(false);
   };
 })();

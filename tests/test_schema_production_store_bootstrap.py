@@ -54,6 +54,16 @@ class SchemaProductionStoreBootstrapTests(unittest.TestCase):
         ident = log_production_database_identity(context="test")
         self.assertIn("scheme", ident)
 
+    def test_verified_bootstrap_does_not_reinspect(self) -> None:
+        from unittest.mock import patch
+
+        self.assertTrue(ensure_production_store_schema(db, context="test"))
+        with patch(
+            "schema_production_store_bootstrap.verify_production_store_schema"
+        ) as mock_verify:
+            self.assertTrue(ensure_production_store_schema(db, context="again"))
+            mock_verify.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

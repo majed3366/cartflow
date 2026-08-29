@@ -2318,6 +2318,7 @@ def api_recovery_settings_get(request: Request):
     """
     واجهة ‎API‎ — قراءة أحدث ‎Store.recovery_*‎.
     ‎?scope=general‎ أو ‎?scope=vip‎ — استجابة خفيفة للوحة التاجر فقط.
+    Settings V2 overview uses this default GET once and derives Recovery/VIP/Experience locally.
     """
     wall0 = time.perf_counter()
     _merchant_dashboard_db_ready()

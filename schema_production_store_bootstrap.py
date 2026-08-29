@@ -127,16 +127,12 @@ def ensure_production_store_schema(db: Any, *, context: str = "startup") -> bool
     )
 
     if _bootstrap_verified_ok:
-        with db_ready_stage("schema_verify_cached"):
-            status = verify_production_store_schema(db)
-        return bool(status.get("ok"))
+        return True
 
     def _bootstrap_body() -> bool:
         global _bootstrap_verified_ok
         if _bootstrap_verified_ok:
-            with db_ready_stage("schema_verify_cached"):
-                status = verify_production_store_schema(db)
-            return bool(status.get("ok"))
+            return True
 
         log_production_database_identity(context=context)
 

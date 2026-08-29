@@ -91,6 +91,11 @@
   function loadConnectState() {
     var root = byId("ma-wa-connect-root");
     if (!root) return;
+    var cached = window.__cfSettingsReadCache && window.__cfSettingsReadCache.recovery;
+    if (cached && cached.whatsapp_connect_page) {
+      renderConnectPage(cached.whatsapp_connect_page);
+      return;
+    }
     root.setAttribute("aria-busy", "true");
     fetch("/api/recovery-settings?_=" + Date.now(), { credentials: "same-origin" })
       .then(function (r) {

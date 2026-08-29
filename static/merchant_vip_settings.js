@@ -120,6 +120,12 @@
 
   function loadSettings(force) {
     if (!force && loadedOnce) return Promise.resolve();
+    var cached = window.__cfSettingsReadCache && window.__cfSettingsReadCache.recovery;
+    if (!force && cached && cached.ok !== false) {
+      fillForm(cached);
+      loadedOnce = true;
+      return Promise.resolve();
+    }
     hideMsgs();
     return fetch("/api/recovery-settings?scope=vip", { credentials: "same-origin" })
       .then(function (r) {

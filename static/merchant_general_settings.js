@@ -122,6 +122,12 @@
 
   function loadSettings(force) {
     if (!force && loadedOnce) return Promise.resolve();
+    var cached = window.__cfSettingsReadCache && window.__cfSettingsReadCache.recovery;
+    if (!force && cached && cached.ok !== false) {
+      fillForm(cached);
+      loadedOnce = true;
+      return Promise.resolve();
+    }
     hideMsgs();
     return fetch("/api/recovery-settings?scope=general", { credentials: "same-origin" })
       .then(function (r) {
@@ -200,6 +206,6 @@
 
   window.maInitGeneralSettingsPage = function () {
     bindOnce();
-    loadSettings(true);
+    loadSettings(false);
   };
 })();

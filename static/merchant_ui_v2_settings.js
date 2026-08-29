@@ -2,11 +2,16 @@
  * CartFlow Merchant UI V2 — Settings Product Composition V1.
  * Answers: ما الذي أحتاج ضبطه لكي يعمل CartFlow بشكل صحيح وآمن؟
  * Existing configuration truth only. Overview → detail. No new writers.
+ *
+ * QueuePool Pressure Remediation V1: first paint is overview-only.
+ * Sequential reads (store-connection, then one recovery-settings).
+ * Detail maInit* runs only when that area is opened. Same-page cache shared.
  */
 (function (global) {
   "use strict";
 
   var MARKER = "settings-product-composition-v1";
+  var LOAD_MODE = "settings-queuepool-pressure-remediation-v1";
 
   var STATE_AR = {
     READY: "جاهز",
@@ -59,6 +64,7 @@
     status: {},
     lines: {},
     loaded: false,
+    detailInited: {},
   };
 
   function $(sel, root) {
@@ -75,6 +81,13 @@
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
+  }
+
+  function readCache() {
+    if (!global.__cfSettingsReadCache) {
+      global.__cfSettingsReadCache = {};
+    }
+    return global.__cfSettingsReadCache;
   }
 
   function jsonGet(url) {
@@ -185,7 +198,44 @@
     }
   }
 
-  function showPanel(id) {
+  function initDetail(id) {
+    if (!id || state.detailInited[id]) return;
+    state.detailInited[id] = true;
+    if (id === "store") {
+      if (typeof window.maInitStoreConnectionPage === "function") {
+        window.maInitStoreConnectionPage();
+      }
+      if (typeof window.maInitSubscriptionPage === "function") {
+        window.maInitSubscriptionPage();
+      }
+      return;
+    }
+    if (id === "communication") {
+      if (typeof window.maInitWhatsappSettingsPage === "function") {
+        window.maInitWhatsappSettingsPage();
+      }
+      return;
+    }
+    if (id === "recovery") {
+      if (typeof window.maInitRecoveryPolicySettingsPage === "function") {
+        window.maInitRecoveryPolicySettingsPage();
+      }
+      return;
+    }
+    if (id === "policy") {
+      if (typeof window.maInitVipSettingsPage === "function") {
+        window.maInitVipSettingsPage();
+      }
+      return;
+    }
+    if (id === "experience") {
+      if (typeof window.maInitGeneralSettingsPage === "function") {
+        window.maInitGeneralSettingsPage();
+      }
+    }
+  }
+
+  function showPanel(id, opts) {
     state.selected = id || "";
     var root = state.root;
     if (!root) return;
@@ -198,6 +248,7 @@
     if (empty) empty.hidden = !!id;
     if (back) back.hidden = !id;
     paintOverview();
+    if (id && (!opts || opts.init !== false)) initDetail(id);
   }
 
   function bindOnce(root) {
@@ -241,52 +292,38 @@
     };
   }
 
-  function loadTruth() {
-    return Promise.all([
-      jsonGet("/api/merchant/store-connection").catch(function () {
-        return { ok: false, data: {} };
-      }),
-      jsonGet("/api/recovery-settings").catch(function () {
-        return { ok: false, data: {} };
-      }),
-      jsonGet("/api/recovery-settings?scope=vip").catch(function () {
-        return { ok: false, data: {} };
-      }),
-      jsonGet("/api/recovery-settings?scope=general").catch(function () {
-        return { ok: false, data: {} };
-      }),
-    ]).then(function (rows) {
-      applyTruth({
-        store: (rows[0].data && rows[0].data.store_connection) || rows[0].data || null,
-        wa: rows[1].data || null,
-        vip: rows[2].data || null,
-        general: rows[3].data || null,
-      });
+  function paintFirstOverview() {
+    AREAS.forEach(function (area) {
+      if (!state.status[area.id]) state.status[area.id] = "PARTIAL";
+      if (!state.lines[area.id]) state.lines[area.id] = "جاري التحميل…";
     });
+    paintOverview();
   }
 
-  function initExisting() {
-    if (typeof window.maInitStoreConnectionPage === "function") {
-      window.maInitStoreConnectionPage();
-    }
-    if (typeof window.maInitSubscriptionPage === "function") {
-      window.maInitSubscriptionPage();
-    }
-    if (typeof window.maInitWhatsappSettingsPage === "function") {
-      window.maInitWhatsappSettingsPage();
-    }
-    if (typeof window.maInitWhatsappConnectPage === "function") {
-      window.maInitWhatsappConnectPage();
-    }
-    if (typeof window.maInitVipSettingsPage === "function") {
-      window.maInitVipSettingsPage();
-    }
-    if (typeof window.maInitGeneralSettingsPage === "function") {
-      window.maInitGeneralSettingsPage();
-    }
-    if (typeof window.maInitRecoveryPolicySettingsPage === "function") {
-      window.maInitRecoveryPolicySettingsPage();
-    }
+  function loadOverviewTruth() {
+    var cache = readCache();
+    return jsonGet("/api/merchant/store-connection")
+      .catch(function () {
+        return { ok: false, data: {} };
+      })
+      .then(function (storeRow) {
+        var store =
+          (storeRow.data && storeRow.data.store_connection) || storeRow.data || null;
+        cache.store = store;
+        return jsonGet("/api/recovery-settings").catch(function () {
+          return { ok: false, data: {} };
+        });
+      })
+      .then(function (rsRow) {
+        var wa = rsRow.data || null;
+        cache.recovery = wa;
+        applyTruth({
+          store: cache.store,
+          wa: wa,
+          vip: wa,
+          general: wa,
+        });
+      });
   }
 
   function loadAndPaint(rootEl) {
@@ -294,19 +331,22 @@
     if (!root) return;
     state.root = root;
     root.setAttribute("data-cf-settings-marker", MARKER);
+    root.setAttribute("data-cf-settings-load", LOAD_MODE);
     bindOnce(root);
-    initExisting();
     var initial = areaFromHash();
-    showPanel(initial);
-    loadTruth().then(function () {
+    paintFirstOverview();
+    showPanel(initial, { init: false });
+    loadOverviewTruth().then(function () {
       state.loaded = true;
       paintOverview();
+      if (state.selected) initDetail(state.selected);
     });
   }
 
   window.CartFlowUiV2Settings = {
     loadAndPaint: loadAndPaint,
     marker: MARKER,
+    loadMode: LOAD_MODE,
     showPanel: showPanel,
   };
 })(window);

@@ -1046,6 +1046,11 @@
 
   function loadSettings() {
     if (loading) return Promise.resolve();
+    var cached = window.__cfSettingsReadCache && window.__cfSettingsReadCache.recovery;
+    if (cached && cached.ok !== false) {
+      fillForm(cached);
+      return Promise.resolve();
+    }
     loading = true;
     showPageLoading();
     hideMsgs();

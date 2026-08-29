@@ -156,7 +156,15 @@
       });
   }
 
+  function applyCachedStoreIfAny() {
+    var cache = window.__cfSettingsReadCache && window.__cfSettingsReadCache.store;
+    if (!cache) return false;
+    applyStatus(cache);
+    return true;
+  }
+
   function loadStatus(force) {
+    if (!force && applyCachedStoreIfAny()) return Promise.resolve();
     if (loading && !force) return Promise.resolve();
     loading = true;
     hideMsgs();
@@ -225,6 +233,7 @@
   window.maInitStoreConnectionPage = function () {
     bindOnce();
     checkHashFlash();
-    loadStatus(true);
+    if (applyCachedStoreIfAny()) return;
+    loadStatus(false);
   };
 })();
