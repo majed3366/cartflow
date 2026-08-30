@@ -148,6 +148,11 @@ def verify_zid_storefront_permalink_reachable(permalink: str) -> bool:
     try:
         import requests
 
+        from services.db_resource_safety_v1.release_before_wait_v1 import (
+            release_before_external_wait,
+        )
+
+        release_before_external_wait(reason="zid_permalink_http")
         r = requests.get(
             url,
             timeout=12,

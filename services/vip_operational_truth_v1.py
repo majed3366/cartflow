@@ -149,6 +149,14 @@ def poll_twilio_vip_alert_delivery_truth(
     deadline = time.monotonic() + max(1.0, float(max_wait_seconds))
     best: Optional[Any] = get_delivery_truth(sid)
     last_status = ""
+    try:
+        from services.db_resource_safety_v1.release_before_wait_v1 import (
+            release_before_external_wait,
+        )
+
+        release_before_external_wait(reason="vip_alert_poll")
+    except Exception:  # noqa: BLE001
+        pass
 
     while time.monotonic() < deadline:
         try:

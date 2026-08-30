@@ -79,6 +79,12 @@ def health(
     خفيف لـ‎ LB‎؛ ‎?db=1‎ يُنفّذ ‎SELECT 1‎ (استخدمه باعتدال تحت الضغط العالي).
     """
     out: dict[str, Any] = {"ok": True, "service": "cartflow"}
+    try:
+        from services.db_lifecycle_v1.pool_truth import pool_truth_snapshot
+
+        out["pool"] = pool_truth_snapshot()
+    except Exception:  # noqa: BLE001
+        pass
     if int(db_probe) == 1:
         try:
             from services.db_resource_safety_v1.health_survivability_v1 import (

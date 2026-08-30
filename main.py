@@ -1090,6 +1090,15 @@ async def production_store_schema_middleware(request: Request, call_next: Any) -
     """Legacy dev-only schema bootstrap — disabled on production-like / API paths (Phase 0)."""
     from services.schema_runtime_guard_v1 import request_schema_middleware_enabled
 
+    if request.url.path in ("/ping", "/health"):
+        try:
+            from services.request_timing_audit_v1 import request_timing_route_start
+
+            request_timing_route_start()
+        except Exception:  # noqa: BLE001
+            pass
+        return await call_next(request)
+
     if request_schema_middleware_enabled():
         try:
             from schema_production_store_bootstrap import (
@@ -1121,7 +1130,18 @@ async def merchant_auth_gate_middleware(request: Request, call_next: Any) -> Any
     )
 
     path = request.url.path
+    if path in ("/ping", "/health"):
+        return await call_next(request)
     slug = resolve_authenticated_store_slug(dict(request.cookies))
+    try:
+        from services.db_lifecycle_v1.request_owner import bind_merchant_safe
+        from services.db_lifecycle_v1.unit_of_work import close_request_uow_if_clean
+
+        if slug:
+            bind_merchant_safe(slug)
+        close_request_uow_if_clean(reason="auth_resolve_complete")
+    except Exception:  # noqa: BLE001
+        pass
     token = set_merchant_auth_store_slug(slug)
     try:
         if path_requires_merchant_auth(path):
@@ -1179,6 +1199,31 @@ async def db_scoped_session_cleanup(request: Request, call_next: Any) -> Any:
     )
 
     maybe_install_engine_listener()
+    if request.url.path == "/ping" or (
+        request.url.path == "/health" and "db=1" not in (request.url.query or "")
+    ):
+        return await call_next(request)
+    try:
+        from services.db_lifecycle_v1.http_bind import (
+            bind_request,
+            maybe_reject_heavy_before_db,
+        )
+
+        bind_request(request)
+        early = maybe_reject_heavy_before_db(request)
+        if early is not None:
+            try:
+                early.headers["X-CartFlow-Request-Id"] = (
+                    getattr(request.state, "db_lifecycle_request_id", "") or ""
+                )
+            except Exception:  # noqa: BLE001
+                pass
+            from services.db_lifecycle_v1.http_bind import finish_request
+
+            finish_request(request, status_code=getattr(early, "status_code", 0))
+            return early
+    except Exception:  # noqa: BLE001
+        pass
     audit_request_begin(request)
     _request_timing_route_end = None
     try:
@@ -1207,20 +1252,40 @@ async def db_scoped_session_cleanup(request: Request, call_next: Any) -> Any:
     except Exception:  # noqa: BLE001
         pass
     stall_trace_checkpoint("request_received_mw")
+    _owner_outcome = "unknown"
     try:
         response = await call_next(request)
+        _owner_outcome = str(getattr(response, "status_code", "") or "ok")
         stall_trace_checkpoint("response_ready_mw")
         if _request_timing_route_end is not None:
             try:
                 _request_timing_route_end()
             except Exception:  # noqa: BLE001
                 pass
+        try:
+            rid = getattr(request.state, "db_lifecycle_request_id", "") or ""
+            if rid:
+                response.headers["X-CartFlow-Request-Id"] = str(rid)
+        except Exception:  # noqa: BLE001
+            pass
         return response
+    except Exception:
+        _owner_outcome = "exception"
+        raise
     finally:
         audit_leak_suspected_check(request)
-        from services.db_session_lifecycle import release_scoped_db_session
+        try:
+            from services.db_lifecycle_v1.http_bind import finish_request
 
-        release_scoped_db_session()
+            finish_request(
+                request,
+                status_code=int(_owner_outcome) if str(_owner_outcome).isdigit() else None,
+                exception="exception" if _owner_outcome == "exception" else "",
+            )
+        except Exception:  # noqa: BLE001
+            from services.db_session_lifecycle import release_scoped_db_session
+
+            release_scoped_db_session()
         audit_request_end()
         try:
             from services.recovery_truth_timeline_v1 import (  # noqa: PLC0415
@@ -13530,6 +13595,11 @@ def _fetch_zid_store_id_from_profile(access_token: str) -> Optional[str]:
     if auth_bearer:
         h["Authorization"] = f"Bearer {auth_bearer}"
     try:
+        from services.db_resource_safety_v1.release_before_wait_v1 import (
+            release_before_external_wait,
+        )
+
+        release_before_external_wait(reason="zid_profile_http")
         r = requests.get(ZID_PROFILE_API, headers=h, timeout=20)
     except requests.RequestException:
         return None
@@ -13819,6 +13889,11 @@ def send_whatsapp_message(
             path_file=__file__,
             delay_passed=WA_TRACE_DELAY_UNSPECIFIED,
         )
+        from services.db_resource_safety_v1.release_before_wait_v1 import (
+            release_before_external_wait,
+        )
+
+        release_before_external_wait(reason="whatsapp_interactive_http")
         resp = requests.post(
             url,
             json=payload,

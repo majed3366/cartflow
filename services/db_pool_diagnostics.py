@@ -12,24 +12,19 @@ _top_store_id_cached: bool = False
 
 
 def pool_status_snapshot() -> Dict[str, Any]:
-    """أرقام المسبح الحالية (غير متاحة على ‎NullPool‎ / SQLite اختبارات)."""
+    """Real QueuePool counters — never status-string-only (INV-DB-12)."""
     try:
-        from extensions import db
+        from services.db_lifecycle_v1.pool_truth import pool_truth_snapshot
 
-        pool = db.engine.pool
-        status_fn = getattr(pool, "status", None)
-        if callable(status_fn):
-            st = status_fn()
-            return {
-                "pool_impl": type(pool).__name__,
-                "status": str(st),
-            }
+        snap = pool_truth_snapshot()
         return {
-            "pool_impl": type(pool).__name__,
-            "size": getattr(pool, "size", lambda: None)(),
-            "checkedin": getattr(pool, "checkedin", lambda: None)(),
-            "checkedout": getattr(pool, "checkedout", lambda: None)(),
-            "overflow": getattr(pool, "overflow", lambda: None)(),
+            "pool_impl": snap.get("pool_impl"),
+            "size": snap.get("size"),
+            "checkedin": snap.get("checked_in"),
+            "checkedout": snap.get("checked_out"),
+            "checked_out": snap.get("checked_out"),
+            "overflow": snap.get("overflow"),
+            "available": snap.get("available"),
         }
     except Exception as exc:  # noqa: BLE001
         return {"pool_impl": "unknown", "error": str(exc)[:200]}
@@ -43,12 +38,10 @@ def build_db_pool_health_snapshot() -> Dict[str, Any]:
     timeout_count, exhausted, pool_class.
     """
     try:
-        from services.admin_operational_health import (
-            get_db_pool_snapshot_readonly,
-            get_operational_counter_snapshots,
-        )
+        from services.admin_operational_health import get_operational_counter_snapshots
+        from services.db_lifecycle_v1.pool_truth import pool_truth_snapshot
 
-        snap = get_db_pool_snapshot_readonly()
+        truth = pool_truth_snapshot()
         counters = get_operational_counter_snapshots()
     except Exception as exc:  # noqa: BLE001
         return {
@@ -58,26 +51,17 @@ def build_db_pool_health_snapshot() -> Dict[str, Any]:
             "exhausted": False,
         }
 
-    metrics = dict(snap.get("metrics") or {})
-    size = metrics.get("size")
-    checked_out = metrics.get("checked_out")
-    overflow = metrics.get("overflow")
-    pool_class = metrics.get("pool_class") or snap.get("pool_class")
+    size = truth.get("size")
+    checked_out = truth.get("checked_out")
+    overflow = truth.get("overflow")
+    pool_class = truth.get("pool_impl")
+    max_connections = truth.get("max_connections")
+    available_slots = truth.get("available_slots")
 
-    max_connections: Optional[int] = None
-    available_slots: Optional[int] = None
-    if size is not None:
-        try:
-            max_connections = int(size) + int(overflow or 0)
-        except (TypeError, ValueError):
-            max_connections = int(size)
-    if max_connections is not None and checked_out is not None:
-        try:
-            available_slots = max(0, int(max_connections) - int(checked_out))
-        except (TypeError, ValueError):
-            available_slots = None
-
-    timeout_count = int(counters.get("pool_timeout_count") or 0)
+    timeout_count = max(
+        int(counters.get("pool_timeout_count") or 0),
+        int(truth.get("timeout_count") or 0),
+    )
     exhausted = False
     if timeout_count > 0:
         exhausted = True
@@ -89,7 +73,7 @@ def build_db_pool_health_snapshot() -> Dict[str, Any]:
         exhausted = True
 
     return {
-        "available": bool(snap.get("available")),
+        "available": bool(truth.get("available")),
         "pool_class": pool_class,
         "size": size,
         "checked_out": checked_out,
@@ -98,7 +82,7 @@ def build_db_pool_health_snapshot() -> Dict[str, Any]:
         "available_slots": available_slots,
         "timeout_count": timeout_count,
         "exhausted": exhausted,
-        "summary_ar": snap.get("summary_ar"),
+        "summary_ar": f"{pool_class} checked_out={checked_out} size={size}",
     }
 
 

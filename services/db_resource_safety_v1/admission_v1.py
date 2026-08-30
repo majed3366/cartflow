@@ -73,9 +73,24 @@ def release(route: str) -> None:
 @contextmanager
 def admit_heavy_route(route: str) -> Iterator[bool]:
     """Yields True if admitted. Caller must degrade itself when False."""
+    try:
+        from services.db_lifecycle_v1.request_owner import current_owner
+
+        owner = current_owner() or {}
+        if owner.get("admission") == "admitted":
+            yield True
+            return
+    except Exception:  # noqa: BLE001
+        pass
     ok = try_acquire(route)
     if not ok:
         log.warning("[DB RESOURCE SAFETY] heavy route rejected route=%s", route)
+    try:
+        from services.db_lifecycle_v1.request_owner import bind_admission
+
+        bind_admission("admit" if ok else "reject")
+    except Exception:  # noqa: BLE001
+        pass
     try:
         yield ok
     finally:
