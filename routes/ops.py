@@ -81,6 +81,17 @@ def health(
     out: dict[str, Any] = {"ok": True, "service": "cartflow"}
     if int(db_probe) == 1:
         try:
+            from services.db_resource_safety_v1.health_survivability_v1 import (
+                health_db_probe_denied_payload,
+                pool_pressure_blocks_db_probe,
+            )
+
+            blocked, pressure = pool_pressure_blocks_db_probe()
+            if blocked:
+                return j(health_db_probe_denied_payload(pressure), 503)
+        except Exception:  # noqa: BLE001
+            pass
+        try:
             from services.database_network_guard_v1 import classify_database_url
 
             db.session.execute(text("SELECT 1"))

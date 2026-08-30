@@ -1,0 +1,86 @@
+{
+  "A_1": {
+    "n": 3,
+    "elapsed_s": 0.069,
+    "ok": 3,
+    "fail": 0,
+    "max_ms": 65.4,
+    "admission_after": {
+      "global_in_use": 0,
+      "peak_global": 0,
+      "rejected": 0,
+      "route_in_use": {}
+    },
+    "pass": true
+  },
+  "B_4_tabs": {
+    "n": 4,
+    "elapsed_s": 0.038,
+    "ok": 4,
+    "fail": 0,
+    "max_ms": 36.2,
+    "admission_after": {
+      "global_in_use": 0,
+      "peak_global": 0,
+      "rejected": 0,
+      "route_in_use": {}
+    },
+    "pass": true
+  },
+  "C_10": {
+    "n": 10,
+    "elapsed_s": 0.139,
+    "ok": 10,
+    "fail": 0,
+    "max_ms": 105.4,
+    "admission_after": {
+      "global_in_use": 0,
+      "peak_global": 0,
+      "rejected": 0,
+      "route_in_use": {}
+    },
+    "pass": true
+  },
+  "D_25": {
+    "n": 25,
+    "elapsed_s": 0.235,
+    "ok": 25,
+    "fail": 0,
+    "max_ms": 227.5,
+    "admission_after": {
+      "global_in_use": 0,
+      "peak_global": 0,
+      "rejected": 0,
+      "route_in_use": {}
+    },
+    "pass": true
+  },
+  "E_50": {
+    "n": 50,
+    "elapsed_s": 0.473,
+    "ok": 50,
+    "fail": 0,
+    "max_ms": 373.6,
+    "admission_after": {
+      "global_in_use": 0,
+      "peak_global": 0,
+      "rejected": 0,
+      "route_in_use": {}
+    },
+    "pass": true
+  },
+  "F_100": {
+    "n": 100,
+    "elapsed_s": 0.955,
+    "ok": 100,
+    "fail": 0,
+    "max_ms": 528.3,
+    "admission_after": {
+      "global_in_use": 0,
+      "peak_global": 0,
+      "rejected": 0,
+      "route_in_use": {}
+    },
+    "pass": true
+  }
+}

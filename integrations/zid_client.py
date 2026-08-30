@@ -22,6 +22,27 @@ else:
 
 log = logging.getLogger("cartflow")
 
+
+def _release_before_zid_http() -> None:
+    try:
+        from services.db_resource_safety_v1.release_before_wait_v1 import (
+            release_before_external_wait,
+        )
+
+        release_before_external_wait(reason="zid_http")
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _zid_get(*args: Any, **kwargs: Any) -> Any:
+    _release_before_zid_http()
+    return requests.get(*args, **kwargs)
+
+
+def _zid_post(*args: Any, **kwargs: Any) -> Any:
+    _release_before_zid_http()
+    return requests.post(*args, **kwargs)
+
 ZID_OAUTH_BASE = (os.getenv("ZID_OAUTH_BASE") or "https://oauth.zid.sa").rstrip("/")
 _DEFAULT_OAUTH_CALLBACK = "https://smartreplyai.net/auth/callback"
 ZID_API_BASE = (os.getenv("ZID_API_BASE") or "https://api.zid.sa/v1").rstrip("/")
@@ -226,7 +247,7 @@ def fetch_zid_manager_profile(access_token: str) -> Optional[dict[str, Any]]:
     if auth_bearer:
         h["Authorization"] = f"Bearer {auth_bearer}"
     try:
-        r = requests.get(ZID_PROFILE_API, headers=h, timeout=20)
+        r = _zid_get(ZID_PROFILE_API, headers=h, timeout=20)
     except requests.RequestException:
         return None
     if r.status_code // 100 != 2:
@@ -244,7 +265,7 @@ def fetch_zid_manager_store_payload(access_token: str) -> Optional[dict[str, Any
     if not token:
         return None
     try:
-        r = requests.get(
+        r = _zid_get(
             ZID_MANAGER_STORE_URL,
             headers=_manager_headers(token),
             timeout=20,
@@ -390,7 +411,7 @@ def exchange_code_for_token(code: str) -> Tuple[dict, int]:
         "code": code,
     }
     try:
-        tr = requests.post(
+        tr = _zid_post(
             ZID_OAUTH_TOKEN_URL,
             data=payload,
             timeout=30,
@@ -456,7 +477,7 @@ def fetch_abandoned_carts(store: Any) -> Tuple[dict, int]:
         return ({"error": "store has no access token"}, 400)
     url = f"{ZID_API_BASE}/managers/store/abandoned-carts"
     try:
-        r = requests.get(
+        r = _zid_get(
             url,
             params={"page": 1, "page_size": 20},
             headers=_manager_headers(token),
@@ -479,7 +500,7 @@ def fetch_orders(store: Any) -> Tuple[dict, int]:
         return ({"error": "store has no access token"}, 400)
     url = f"{ZID_API_BASE}/managers/store/orders"
     try:
-        r = requests.get(
+        r = _zid_get(
             url,
             params={"page": 1, "page_size": 20},
             headers=_manager_headers(token),
@@ -518,7 +539,7 @@ def fetch_zid_app_scripts_manifest() -> Tuple[dict, int]:
         "Accept-Language": "en",
     }
     try:
-        r = requests.get(ZID_APP_SCRIPTS_URL, headers=h, timeout=20)
+        r = _zid_get(ZID_APP_SCRIPTS_URL, headers=h, timeout=20)
     except requests.RequestException:
         return ({}, 0)
     try:
@@ -536,7 +557,7 @@ def fetch_zid_manager_store_url(access_token: str) -> Optional[str]:
     if not token:
         return None
     try:
-        r = requests.get(
+        r = _zid_get(
             ZID_MANAGER_STORE_URL,
             headers=_manager_headers(token),
             timeout=20,
@@ -582,7 +603,7 @@ def probe_storefront_for_widget_loader(
     scripts_url = f"{base}/api/v1/scripts"
     detail = "scripts_probe_skipped"
     try:
-        r = requests.get(
+        r = _zid_get(
             scripts_url,
             headers={"Accept": "application/json"},
             timeout=15,
@@ -595,7 +616,7 @@ def probe_storefront_for_widget_loader(
     except requests.RequestException as exc:
         detail = type(exc).__name__
     try:
-        hp = requests.get(
+        hp = _zid_get(
             base,
             headers={"Accept": "text/html"},
             timeout=15,

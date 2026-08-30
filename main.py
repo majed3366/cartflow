@@ -15309,16 +15309,21 @@ def _merchant_customer_reply_map(phone_keys: list[str]) -> dict[str, Any]:
     try:
         from models import MerchantFollowupAction  # noqa: PLC0415
 
+        from services.db_resource_safety_v1.query_bounds_v1 import (
+            CUSTOMER_REPLY_MAP_LIMIT,
+        )
+
         rows = (
             db.session.query(MerchantFollowupAction)
             .filter(MerchantFollowupAction.customer_phone.in_(clean))
-            .order_by(MerchantFollowupAction.updated_at.asc())
+            .order_by(MerchantFollowupAction.updated_at.desc())
+            .limit(CUSTOMER_REPLY_MAP_LIMIT)
             .all()
         )
         for r in rows:
             key = (getattr(r, "customer_phone", None) or "").strip()
-            if key:
-                out[key] = r  # asc order → keep latest
+            if key and key not in out:
+                out[key] = r  # desc + first-write → latest
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         db.session.rollback()
     return out
@@ -15429,9 +15434,11 @@ def _merchant_recovery_message_history_rows(
     lim = max(1, min(int(limit), 80))
     now_utc = datetime.now(timezone.utc)
     try:
+        from services.db_resource_safety_v1.query_bounds_v1 import MESSAGES_FETCH_CAP
+
         rows = sent_logs_for_store(
             slug,
-            limit=max(lim, 200),
+            limit=min(max(lim, 40), MESSAGES_FETCH_CAP),
             ensure_recovery_keys=ensure_recovery_keys,
             ensure_log_ids=ensure_log_ids,
         )
@@ -16663,10 +16670,16 @@ def _merchant_normal_dashboard_batch_reads(
             or_sched.append(RecoverySchedule.cart_id.in_(list(cid_pool)))
         if or_sched:
             with normal_carts_profile_span("sql:batch_recovery_schedules_bulk"):
+                from services.db_resource_safety_v1.query_bounds_v1 import (
+                    RECOVERY_SCHEDULE_BULK_LIMIT,
+                )
+
                 schedule_rows = (
                     db.session.query(RecoverySchedule)
                     .filter(RecoverySchedule.store_slug == slug)
                     .filter(or_(*or_sched))
+                    .order_by(RecoverySchedule.id.desc())
+                    .limit(RECOVERY_SCHEDULE_BULK_LIMIT)
                     .all()
                 )
     except (SQLAlchemyError, OSError, TypeError, ValueError):
@@ -16865,6 +16878,10 @@ def _merchant_normal_dashboard_batch_reads(
             _mbr_seg_t = time.perf_counter()
             _mbr_seg_q = merchant_dashboard_batch_reads_trace_peek_for_seg(_mbr_tr)
             with normal_carts_profile_span("sql:batch_message_logs_whatsapp_by_abandoned"):
+                from services.db_resource_safety_v1.query_bounds_v1 import (
+                    MESSAGE_LOG_PHONE_BULK_LIMIT,
+                )
+
                 ml_rows_list = (
                     db.session.query(MessageLog)
                     .filter(
@@ -16874,6 +16891,7 @@ def _merchant_normal_dashboard_batch_reads(
                         MessageLog.phone != "",
                     )
                     .order_by(MessageLog.created_at.desc())
+                    .limit(MESSAGE_LOG_PHONE_BULK_LIMIT)
                     .all()
                 )
             merchant_dashboard_batch_reads_trace_seg_end(
@@ -19788,12 +19806,17 @@ def api_debug_recovery_trace(
 
 @app.get("/api/dashboard/messages")
 def api_dashboard_messages():
+    from services.db_resource_safety_v1.admission_v1 import admit_heavy_route
+
     wall0 = time.perf_counter()
     try:
-        _merchant_dashboard_db_ready()
-        dash_store = _dashboard_recovery_store_row()
-        body = _api_json_dashboard_messages(dash_store)
-        return j({"ok": True, **body})
+        with admit_heavy_route("/api/dashboard/messages") as admitted:
+            if not admitted:
+                return j({"ok": False, "error": "db_pressure"}, 503)
+            _merchant_dashboard_db_ready()
+            dash_store = _dashboard_recovery_store_row()
+            body = _api_json_dashboard_messages(dash_store)
+            return j({"ok": True, **body})
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
         log.warning("api_dashboard_messages: %s", e)

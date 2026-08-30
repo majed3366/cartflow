@@ -195,6 +195,22 @@ def maybe_install_pool_checkout_timing_listener() -> None:
                 t_chk = getattr(connection_record, "_cartflow_checkout_t0", None)
                 hold_ms = _elapsed_ms(float(t_chk)) if t_chk is not None else 0.0
                 request_timing_db_wait_end(hold_ms=hold_ms)
+                try:
+                    from services.db_resource_safety_v1.observability_v1 import (
+                        record_hold,
+                    )
+
+                    wait_t0 = getattr(connection_record, "_cartflow_checkout_wait_t0", None)
+                    wait_ms = (
+                        _elapsed_ms(float(wait_t0)) if wait_t0 is not None else 0.0
+                    )
+                    record_hold(
+                        path=_request_path.get() or "-",
+                        hold_ms=hold_ms,
+                        checkout_wait_ms=wait_ms,
+                    )
+                except Exception:  # noqa: BLE001
+                    pass
 
             _pool_listener_installed = True
         except Exception as exc:  # noqa: BLE001

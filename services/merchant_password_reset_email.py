@@ -86,6 +86,14 @@ def _send_via_resend(*, to_email: str, reset_link: str) -> bool:
         "text": _password_reset_email_text(reset_link),
     }
     try:
+        try:
+            from services.db_resource_safety_v1.release_before_wait_v1 import (
+                release_before_external_wait,
+            )
+
+            release_before_external_wait(reason="password_reset_email")
+        except Exception:  # noqa: BLE001
+            pass
         resp = requests.post(
             _RESEND_API_URL,
             headers={

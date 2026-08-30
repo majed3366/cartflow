@@ -167,68 +167,82 @@ def api_cart_workspace_projection(request: Request):
                     pass
             else:
                 workspace_perf_meta(durable_snapshot="miss")
-                serve_path = "enrich_fallback"
-                with workspace_perf_stage("shadow_projection"):
-                    if cart_workspace_silent_success_enabled() and not SHADOW_STORE.open_decisions(
-                        auth
-                    ):
-                        seed_merchant_comprehension_set(auth, SHADOW_STORE)
+                from services.db_resource_safety_v1.admission_v1 import admit_heavy_route
 
-                    snap = shadow_snapshot(auth, store=SHADOW_STORE)
-                    if not snap.get("projection"):
-                        proj = build_workspace_projection(auth, SHADOW_STORE)
-                        snap["projection"] = proj.to_dict()
-                    projection = dict(snap.get("projection") or {})
-                    zone_assignment = snap.get("zone_assignment")
+                with admit_heavy_route("/api/cart-workspace/v1/projection") as admitted:
+                    if not admitted:
+                        degraded = True
+                        degrade_reason = "db_pressure"
+                        projection = _empty_quiet_projection(auth)
+                        serve_path = "degraded_empty"
+                        workspace_perf_note("enrich_fallback_rejected_db_pressure")
+                    else:
+                        serve_path = "enrich_fallback"
+                        with workspace_perf_stage("shadow_projection"):
+                            if (
+                                cart_workspace_silent_success_enabled()
+                                and not SHADOW_STORE.open_decisions(auth)
+                            ):
+                                seed_merchant_comprehension_set(auth, SHADOW_STORE)
 
-                try:
-                    from services.cart_workspace.business_findings_enrichment_v1 import (  # noqa: PLC0415
-                        enrich_projection_with_fde_v1,
-                    )
+                            snap = shadow_snapshot(auth, store=SHADOW_STORE)
+                            if not snap.get("projection"):
+                                proj = build_workspace_projection(auth, SHADOW_STORE)
+                                snap["projection"] = proj.to_dict()
+                            projection = dict(snap.get("projection") or {})
+                            zone_assignment = snap.get("zone_assignment")
 
-                    with workspace_perf_stage("enrich_compose_budget"):
-                        projection = enrich_projection_with_fde_v1(projection, auth)
-                    snap["projection"] = projection
-                    workspace_paint_cache_set(auth, projection)
-                    # Persist so the next request is Home-parity snapshot-read.
-                    try:
-                        from models import Store  # noqa: PLC0415
-                        from extensions import db  # noqa: PLC0415
+                        try:
+                            from services.cart_workspace.business_findings_enrichment_v1 import (  # noqa: PLC0415
+                                enrich_projection_with_fde_v1,
+                            )
 
-                        row = (
-                            db.session.query(Store.id)
-                            .filter(Store.zid_store_id == auth)
-                            .first()
-                        )
-                        if row is not None:
-                            sid = int(row[0] if isinstance(row, tuple) else row.id)
-                            with workspace_perf_stage("durable_snapshot_write"):
-                                from services.dashboard_snapshot_change_v1 import (  # noqa: PLC0415
-                                    write_dashboard_snapshot_guarded,
+                            with workspace_perf_stage("enrich_compose_budget"):
+                                projection = enrich_projection_with_fde_v1(
+                                    projection, auth
                                 )
-                                from services.decision_workspace_v2.snapshot_serve_v1 import (  # noqa: PLC0415
-                                    SNAPSHOT_TYPE_DECISION_WORKSPACE,
-                                )
+                            snap["projection"] = projection
+                            workspace_paint_cache_set(auth, projection)
+                            try:
+                                from models import Store  # noqa: PLC0415
+                                from extensions import db  # noqa: PLC0415
 
-                                write_dashboard_snapshot_guarded(
-                                    store_id=sid,
-                                    store_slug=auth,
-                                    snapshot_type=SNAPSHOT_TYPE_DECISION_WORKSPACE,
-                                    payload={
-                                        "ok": True,
-                                        "store_slug": auth,
-                                        "invalidated": False,
-                                        "projection": projection,
-                                        "zone_assignment": zone_assignment,
-                                        "gate_workspace_snapshot_v1": True,
-                                        "source": "request_fallback",
-                                    },
+                                row = (
+                                    db.session.query(Store.id)
+                                    .filter(Store.zid_store_id == auth)
+                                    .first()
                                 )
-                    except Exception:  # noqa: BLE001
-                        workspace_perf_note("durable_snapshot_write_skipped")
-                except Exception as enrich_exc:  # noqa: BLE001
-                    degraded = True
-                    degrade_reason = f"enrich:{type(enrich_exc).__name__}"
+                                if row is not None:
+                                    sid = int(
+                                        row[0] if isinstance(row, tuple) else row.id
+                                    )
+                                    with workspace_perf_stage("durable_snapshot_write"):
+                                        from services.dashboard_snapshot_change_v1 import (  # noqa: PLC0415
+                                            write_dashboard_snapshot_guarded,
+                                        )
+                                        from services.decision_workspace_v2.snapshot_serve_v1 import (  # noqa: PLC0415
+                                            SNAPSHOT_TYPE_DECISION_WORKSPACE,
+                                        )
+
+                                        write_dashboard_snapshot_guarded(
+                                            store_id=sid,
+                                            store_slug=auth,
+                                            snapshot_type=SNAPSHOT_TYPE_DECISION_WORKSPACE,
+                                            payload={
+                                                "ok": True,
+                                                "store_slug": auth,
+                                                "invalidated": False,
+                                                "projection": projection,
+                                                "zone_assignment": zone_assignment,
+                                                "gate_workspace_snapshot_v1": True,
+                                                "source": "request_fallback",
+                                            },
+                                        )
+                            except Exception:  # noqa: BLE001
+                                workspace_perf_note("durable_snapshot_write_skipped")
+                        except Exception as enrich_exc:  # noqa: BLE001
+                            degraded = True
+                            degrade_reason = f"enrich:{type(enrich_exc).__name__}"
     except Exception as exc:  # noqa: BLE001
         degraded = True
         degrade_reason = f"projection:{type(exc).__name__}:{exc}"[:240]

@@ -513,6 +513,14 @@ def send_whatsapp_message(
     No automatic fallback between providers.
     """
     ctx: Mapping[str, Any] = context or {}
+    try:
+        from services.db_resource_safety_v1.release_before_wait_v1 import (
+            release_before_external_wait,
+        )
+
+        release_before_external_wait(reason="whatsapp_send")
+    except Exception:  # noqa: BLE001
+        pass
     explicit = ctx.get("provider")
     provider = resolve_whatsapp_provider(
         str(explicit) if explicit is not None else None

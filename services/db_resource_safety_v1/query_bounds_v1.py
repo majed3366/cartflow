@@ -1,0 +1,19 @@
+# -*- coding: utf-8 -*-
+"""Explicit bounds for high-frequency merchant reads. Does not change truth semantics."""
+from __future__ import annotations
+
+MESSAGES_VISIBLE_LIMIT = 40
+MESSAGES_FETCH_CAP = 80
+CUSTOMER_REPLY_MAP_LIMIT = 200
+RECOVERY_SCHEDULE_BULK_LIMIT = 2000
+MESSAGE_LOG_PHONE_BULK_LIMIT = 1000
+VIP_CANDIDATE_SCAN_LIMIT = 200
+
+__all__ = [
+    "CUSTOMER_REPLY_MAP_LIMIT",
+    "MESSAGES_FETCH_CAP",
+    "MESSAGES_VISIBLE_LIMIT",
+    "MESSAGE_LOG_PHONE_BULK_LIMIT",
+    "RECOVERY_SCHEDULE_BULK_LIMIT",
+    "VIP_CANDIDATE_SCAN_LIMIT",
+]
