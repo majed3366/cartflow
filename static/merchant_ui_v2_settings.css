@@ -62,12 +62,19 @@
   font: inherit;
   cursor: pointer;
 }
+[data-cf-ui="v2"] .cf2-settings__row.is-needs {
+  border-color: var(--cf2-border);
+}
 [data-cf-ui="v2"] .cf2-settings__row.is-selected {
   border-color: var(--cf2-navy);
   box-shadow: inset 3px 0 0 var(--cf2-teal);
 }
-[data-cf-ui="v2"] .cf2-settings__row.is-needs {
-  border-color: rgba(24, 176, 168, 0.45);
+[data-cf-ui="v2"] .cf2-settings__row:focus {
+  outline: none;
+}
+[data-cf-ui="v2"] .cf2-settings__row:focus-visible {
+  outline: 2px solid var(--cf2-navy);
+  outline-offset: 2px;
 }
 [data-cf-ui="v2"] .cf2-settings__row-title {
   font-size: 15px;
@@ -79,10 +86,15 @@
   color: var(--cf2-mute);
   line-height: 1.4;
 }
+[data-cf-ui="v2"] .cf2-settings__states {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
 [data-cf-ui="v2"] .cf2-settings__state {
   display: inline-flex;
   align-self: flex-start;
-  margin-top: 2px;
   font-size: 11px;
   font-weight: 700;
   padding: 0.12rem 0.45rem;
@@ -124,13 +136,12 @@
 }
 [data-cf-ui="v2"] .cf2-settings__detail-empty {
   margin: 0;
-  padding: 28px 16px;
-  font-size: 14px;
-  color: var(--cf2-ink-soft);
-  background: var(--cf2-surface);
-  border: 1px dashed var(--cf2-border-strong);
-  border-radius: var(--cf2-r-md);
-  text-align: center;
+  padding: 0;
+  font-size: 13px;
+  color: var(--cf2-mute);
+  background: none;
+  border: 0;
+  text-align: inherit;
 }
 [data-cf-ui="v2"] .cf2-settings__unavail,
 [data-cf-ui="v2"] .cf2-settings__handoff-note {
@@ -229,6 +240,23 @@
   gap: 0.45rem;
   margin-top: 0.75rem;
 }
+[data-cf-ui="v2"] .cf2-settings .ma-sc-actions[hidden],
+[data-cf-ui="v2"] .cf2-settings .ma-fw-actions[hidden],
+[data-cf-ui="v2"] .cf2-settings [hidden] {
+  display: none !important;
+}
+[data-cf-ui="v2"] .cf2-settings .ma-wa-mode-select-btn.is-secondary {
+  appearance: none;
+  background: transparent;
+  color: var(--cf2-navy);
+  border: 1px solid var(--cf2-border-strong);
+  border-radius: var(--cf2-r-sm);
+  font: inherit;
+  font-weight: 650;
+  font-size: 0.85rem;
+  padding: 0.45rem 0.8rem;
+  cursor: pointer;
+}
 [data-cf-ui="v2"] .cf2-settings .ma-settings-banner {
   margin-bottom: 0.65rem;
   padding: 0.55rem 0.7rem;
@@ -282,6 +310,11 @@
     display: none;
   }
   [data-cf-ui="v2"] .cf2-settings.is-detail-open .cf2-settings__overview {
+    display: none;
+  }
+  [data-cf-ui="v2"] .cf2-settings.is-detail-open .cf-settings-canonical__q,
+  [data-cf-ui="v2"] .cf2-settings.is-detail-open .cf-settings-canonical__hint,
+  [data-cf-ui="v2"] .cf2-settings.is-detail-open .cf2-settings__needs {
     display: none;
   }
   [data-cf-ui="v2"] .cf2-settings.is-detail-open .cf2-settings__back {

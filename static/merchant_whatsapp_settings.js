@@ -112,8 +112,10 @@
           (bulletsHtml
             ? '<ul class="ma-wa-mode-card-bullets">' + bulletsHtml + "</ul>"
             : "") +
-          '<button type="button" class="ma-fw-save ma-wa-mode-select-btn' +
-          (isSelected ? " is-current" : "") +
+          '<button type="button" class="' +
+          (isSelected
+            ? "ma-fw-save ma-wa-mode-select-btn is-current"
+            : "ma-wa-mode-select-btn is-secondary") +
           '" data-ma-wa-mode="' +
           escHtml(key) +
           '"' +

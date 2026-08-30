@@ -63,6 +63,7 @@
     selected: "",
     status: {},
     lines: {},
+    notes: {},
     loaded: false,
     detailInited: {},
   };
@@ -159,6 +160,28 @@
       var st = state.status[area.id] || "PARTIAL";
       var line = state.lines[area.id] || area.line;
       var on = state.selected === area.id;
+      var notes = state.notes[area.id] || [];
+      var chips =
+        '<span class="cf2-settings__states">' +
+        '<span class="cf2-settings__state" data-state="' +
+        esc(st) +
+        '">' +
+        esc(STATE_AR[st] || st) +
+        "</span>" +
+        notes
+          .map(function (note) {
+            var label = STATE_AR[note.state] || note.state;
+            if (note.label) label = label + " · " + note.label;
+            return (
+              '<span class="cf2-settings__state" data-state="' +
+              esc(note.state) +
+              '">' +
+              esc(label) +
+              "</span>"
+            );
+          })
+          .join("") +
+        "</span>";
       return (
         '<button type="button" class="cf2-settings__row' +
         (on ? " is-selected" : "") +
@@ -172,11 +195,7 @@
         '<span class="cf2-settings__row-line">' +
         esc(line) +
         "</span>" +
-        '<span class="cf2-settings__state" data-state="' +
-        esc(st) +
-        '">' +
-        esc(STATE_AR[st] || st) +
-        "</span>" +
+        chips +
         "</button>"
       );
     }).join("");
@@ -246,7 +265,16 @@
       panel.hidden = panel.getAttribute("data-cf2-settings-panel") !== id;
     });
     if (empty) empty.hidden = !!id;
-    if (back) back.hidden = !id;
+    if (back) {
+      back.hidden = !id;
+      var area = AREAS.filter(function (a) {
+        return a.id === id;
+      })[0];
+      back.textContent = id && area ? "رجوع · " + area.title : "رجوع";
+    }
+    if (!id && state.root && document.activeElement && state.root.contains(document.activeElement)) {
+      document.activeElement.blur();
+    }
     paintOverview();
     if (id && (!opts || opts.init !== false)) initDetail(id);
   }
@@ -289,6 +317,12 @@
       recovery: recovery.line,
       policy: vip.line,
       experience: exp.line,
+    };
+    state.notes = {
+      store: [
+        { state: "READ_ONLY", label: "الباقة" },
+        { state: "UNAVAILABLE", label: "سلة" },
+      ],
     };
   }
 

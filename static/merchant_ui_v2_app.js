@@ -90,12 +90,38 @@
     if (!anyOverlayOpen()) document.body.style.overflow = "";
   }
 
+  function revealActiveNavItem(section) {
+    var nav = document.getElementById("cf2-nav");
+    var btn = nav && nav.querySelector('[data-cf2-nav="' + section + '"]');
+    if (!nav || !btn) return;
+    if (typeof btn.scrollIntoView === "function") {
+      try {
+        btn.scrollIntoView({ inline: "nearest", block: "nearest" });
+      } catch (err) {
+        btn.scrollIntoView();
+      }
+    }
+    var navBox = nav.getBoundingClientRect();
+    var btnBox = btn.getBoundingClientRect();
+    var pad = 8;
+    var shift = 0;
+    if (btnBox.left < navBox.left + pad) {
+      shift = btnBox.left - navBox.left - pad;
+    } else if (btnBox.right > navBox.right - pad) {
+      shift = btnBox.right - navBox.right + pad;
+    }
+    if (shift && typeof nav.scrollBy === "function") {
+      nav.scrollBy(shift, 0);
+    }
+  }
+
   function setActiveNav(section) {
     $all("[data-cf2-nav]").forEach(function (btn) {
       var on = btn.getAttribute("data-cf2-nav") === section;
       btn.classList.toggle("is-active", on);
       btn.setAttribute("aria-current", on ? "page" : "false");
     });
+    revealActiveNavItem(section);
   }
 
   function bindGlobalNavClicks(root) {
@@ -130,6 +156,15 @@
       })
       .join("");
     bindGlobalNavClicks(upbar);
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          revealActiveNavItem(active);
+        });
+      });
+    } else {
+      revealActiveNavItem(active);
+    }
   }
 
   function paintCtxMarkup(conf, activeId) {

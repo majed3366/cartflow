@@ -1,0 +1,1037 @@
+{
+  "ok": true,
+  "first_load_gets": [
+    "/api/merchant/subscription",
+    "/api/merchant/store-connection",
+    "/api/recovery-settings"
+  ],
+  "desktop": {
+    "overview": {
+      "hash": "#settings",
+      "detailOpen": false,
+      "question": "ما الذي أحتاج ضبطه لكي يعمل CartFlow بشكل صحيح وآمن؟",
+      "questionDisplay": "block",
+      "rows": [
+        {
+          "id": "store",
+          "selected": false,
+          "needs": true,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "NEEDS_SETUP",
+              "text": "يحتاج ضبط"
+            },
+            {
+              "state": "READ_ONLY",
+              "text": "قراءة فقط · الباقة"
+            },
+            {
+              "state": "UNAVAILABLE",
+              "text": "غير متاح · سلة"
+            }
+          ],
+          "text": "المتجر غير مربوط يحتاج ضبط قراءة فقط · الباقة غير متاح · سلة"
+        },
+        {
+          "id": "communication",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "التواصل واتساب مضبوط جاهز"
+        },
+        {
+          "id": "recovery",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "سياسة الاسترجاع التأخير والمحاولات مضبوطة جاهز"
+        },
+        {
+          "id": "policy",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "سياسة السلال المهمة عتبة السلال المهمة مضبوطة جاهز"
+        },
+        {
+          "id": "experience",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "التجربة اسم العرض: CartFlow جاهز"
+        }
+      ],
+      "tealSelected": 0,
+      "tealNeedsBorder": 0,
+      "storeConnectedHidden": true,
+      "storeConnectedDisplay": "none",
+      "storeConnectDisplay": "flex",
+      "pathBtns": [],
+      "backText": "رجوع",
+      "emptyBorder": "none",
+      "settingsNavInView": true,
+      "overflowX": false,
+      "vw": 1440
+    },
+    "store": {
+      "hash": "#settings",
+      "detailOpen": true,
+      "question": "ما الذي أحتاج ضبطه لكي يعمل CartFlow بشكل صحيح وآمن؟",
+      "questionDisplay": "block",
+      "rows": [
+        {
+          "id": "store",
+          "selected": true,
+          "needs": true,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "rgb(24, 176, 168) 3px 0px 0px 0px inset",
+          "states": [
+            {
+              "state": "NEEDS_SETUP",
+              "text": "يحتاج ضبط"
+            },
+            {
+              "state": "READ_ONLY",
+              "text": "قراءة فقط · الباقة"
+            },
+            {
+              "state": "UNAVAILABLE",
+              "text": "غير متاح · سلة"
+            }
+          ],
+          "text": "المتجر غير مربوط يحتاج ضبط قراءة فقط · الباقة غير متاح · سلة"
+        },
+        {
+          "id": "communication",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "التواصل واتساب مضبوط جاهز"
+        },
+        {
+          "id": "recovery",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "سياسة الاسترجاع التأخير والمحاولات مضبوطة جاهز"
+        },
+        {
+          "id": "policy",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "سياسة السلال المهمة عتبة السلال المهمة مضبوطة جاهز"
+        },
+        {
+          "id": "experience",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "التجربة اسم العرض: CartFlow جاهز"
+        }
+      ],
+      "tealSelected": 1,
+      "tealNeedsBorder": 1,
+      "storeConnectedHidden": true,
+      "storeConnectedDisplay": "none",
+      "storeConnectDisplay": "flex",
+      "pathBtns": [],
+      "backText": "رجوع · المتجر",
+      "emptyBorder": "none",
+      "settingsNavInView": true,
+      "overflowX": false,
+      "vw": 1440
+    },
+    "communication": {
+      "hash": "#settings",
+      "detailOpen": true,
+      "question": "ما الذي أحتاج ضبطه لكي يعمل CartFlow بشكل صحيح وآمن؟",
+      "questionDisplay": "block",
+      "rows": [
+        {
+          "id": "store",
+          "selected": false,
+          "needs": true,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "NEEDS_SETUP",
+              "text": "يحتاج ضبط"
+            },
+            {
+              "state": "READ_ONLY",
+              "text": "قراءة فقط · الباقة"
+            },
+            {
+              "state": "UNAVAILABLE",
+              "text": "غير متاح · سلة"
+            }
+          ],
+          "text": "المتجر غير مربوط يحتاج ضبط قراءة فقط · الباقة غير متاح · سلة"
+        },
+        {
+          "id": "communication",
+          "selected": true,
+          "needs": false,
+          "border": "rgb(8, 32, 72)",
+          "shadow": "rgb(24, 176, 168) 3px 0px 0px 0px inset",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "التواصل واتساب مضبوط جاهز"
+        },
+        {
+          "id": "recovery",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "سياسة الاسترجاع التأخير والمحاولات مضبوطة جاهز"
+        },
+        {
+          "id": "policy",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "سياسة السلال المهمة عتبة السلال المهمة مضبوطة جاهز"
+        },
+        {
+          "id": "experience",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "التجربة اسم العرض: CartFlow جاهز"
+        }
+      ],
+      "tealSelected": 1,
+      "tealNeedsBorder": 0,
+      "storeConnectedHidden": true,
+      "storeConnectedDisplay": "none",
+      "storeConnectDisplay": "flex",
+      "pathBtns": [
+        {
+          "cls": "ma-fw-save ma-wa-mode-select-btn is-current",
+          "text": "المسار الحالي",
+          "disabled": true
+        },
+        {
+          "cls": "ma-wa-mode-select-btn is-secondary",
+          "text": "استخدام واتساب أعمالي",
+          "disabled": false
+        }
+      ],
+      "backText": "رجوع · التواصل",
+      "emptyBorder": "none",
+      "settingsNavInView": true,
+      "overflowX": false,
+      "vw": 1440
+    },
+    "recovery": {
+      "hash": "#settings",
+      "detailOpen": true,
+      "question": "ما الذي أحتاج ضبطه لكي يعمل CartFlow بشكل صحيح وآمن؟",
+      "questionDisplay": "block",
+      "rows": [
+        {
+          "id": "store",
+          "selected": false,
+          "needs": true,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "NEEDS_SETUP",
+              "text": "يحتاج ضبط"
+            },
+            {
+              "state": "READ_ONLY",
+              "text": "قراءة فقط · الباقة"
+            },
+            {
+              "state": "UNAVAILABLE",
+              "text": "غير متاح · سلة"
+            }
+          ],
+          "text": "المتجر غير مربوط يحتاج ضبط قراءة فقط · الباقة غير متاح · سلة"
+        },
+        {
+          "id": "communication",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "التواصل واتساب مضبوط جاهز"
+        },
+        {
+          "id": "recovery",
+          "selected": true,
+          "needs": false,
+          "border": "rgb(8, 32, 72)",
+          "shadow": "rgb(24, 176, 168) 3px 0px 0px 0px inset",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "سياسة الاسترجاع التأخير والمحاولات مضبوطة جاهز"
+        },
+        {
+          "id": "policy",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "سياسة السلال المهمة عتبة السلال المهمة مضبوطة جاهز"
+        },
+        {
+          "id": "experience",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "التجربة اسم العرض: CartFlow جاهز"
+        }
+      ],
+      "tealSelected": 1,
+      "tealNeedsBorder": 0,
+      "storeConnectedHidden": true,
+      "storeConnectedDisplay": "none",
+      "storeConnectDisplay": "flex",
+      "pathBtns": [
+        {
+          "cls": "ma-fw-save ma-wa-mode-select-btn is-current",
+          "text": "المسار الحالي",
+          "disabled": true
+        },
+        {
+          "cls": "ma-wa-mode-select-btn is-secondary",
+          "text": "استخدام واتساب أعمالي",
+          "disabled": false
+        }
+      ],
+      "backText": "رجوع · سياسة الاسترجاع",
+      "emptyBorder": "none",
+      "settingsNavInView": true,
+      "overflowX": false,
+      "vw": 1440
+    },
+    "policy": {
+      "hash": "#settings",
+      "detailOpen": true,
+      "question": "ما الذي أحتاج ضبطه لكي يعمل CartFlow بشكل صحيح وآمن؟",
+      "questionDisplay": "block",
+      "rows": [
+        {
+          "id": "store",
+          "selected": false,
+          "needs": true,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "NEEDS_SETUP",
+              "text": "يحتاج ضبط"
+            },
+            {
+              "state": "READ_ONLY",
+              "text": "قراءة فقط · الباقة"
+            },
+            {
+              "state": "UNAVAILABLE",
+              "text": "غير متاح · سلة"
+            }
+          ],
+          "text": "المتجر غير مربوط يحتاج ضبط قراءة فقط · الباقة غير متاح · سلة"
+        },
+        {
+          "id": "communication",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "التواصل واتساب مضبوط جاهز"
+        },
+        {
+          "id": "recovery",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "سياسة الاسترجاع التأخير والمحاولات مضبوطة جاهز"
+        },
+        {
+          "id": "policy",
+          "selected": true,
+          "needs": false,
+          "border": "rgb(8, 32, 72)",
+          "shadow": "rgb(24, 176, 168) 3px 0px 0px 0px inset",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "سياسة السلال المهمة عتبة السلال المهمة مضبوطة جاهز"
+        },
+        {
+          "id": "experience",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "التجربة اسم العرض: CartFlow جاهز"
+        }
+      ],
+      "tealSelected": 1,
+      "tealNeedsBorder": 0,
+      "storeConnectedHidden": true,
+      "storeConnectedDisplay": "none",
+      "storeConnectDisplay": "flex",
+      "pathBtns": [
+        {
+          "cls": "ma-fw-save ma-wa-mode-select-btn is-current",
+          "text": "المسار الحالي",
+          "disabled": true
+        },
+        {
+          "cls": "ma-wa-mode-select-btn is-secondary",
+          "text": "استخدام واتساب أعمالي",
+          "disabled": false
+        }
+      ],
+      "backText": "رجوع · سياسة السلال المهمة",
+      "emptyBorder": "none",
+      "settingsNavInView": true,
+      "overflowX": false,
+      "vw": 1440
+    },
+    "experience": {
+      "hash": "#settings",
+      "detailOpen": true,
+      "question": "ما الذي أحتاج ضبطه لكي يعمل CartFlow بشكل صحيح وآمن؟",
+      "questionDisplay": "block",
+      "rows": [
+        {
+          "id": "store",
+          "selected": false,
+          "needs": true,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "NEEDS_SETUP",
+              "text": "يحتاج ضبط"
+            },
+            {
+              "state": "READ_ONLY",
+              "text": "قراءة فقط · الباقة"
+            },
+            {
+              "state": "UNAVAILABLE",
+              "text": "غير متاح · سلة"
+            }
+          ],
+          "text": "المتجر غير مربوط يحتاج ضبط قراءة فقط · الباقة غير متاح · سلة"
+        },
+        {
+          "id": "communication",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "التواصل واتساب مضبوط جاهز"
+        },
+        {
+          "id": "recovery",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "سياسة الاسترجاع التأخير والمحاولات مضبوطة جاهز"
+        },
+        {
+          "id": "policy",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "سياسة السلال المهمة عتبة السلال المهمة مضبوطة جاهز"
+        },
+        {
+          "id": "experience",
+          "selected": true,
+          "needs": false,
+          "border": "rgb(8, 32, 72)",
+          "shadow": "rgb(24, 176, 168) 3px 0px 0px 0px inset",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "التجربة اسم العرض: CartFlow جاهز"
+        }
+      ],
+      "tealSelected": 1,
+      "tealNeedsBorder": 0,
+      "storeConnectedHidden": true,
+      "storeConnectedDisplay": "none",
+      "storeConnectDisplay": "flex",
+      "pathBtns": [
+        {
+          "cls": "ma-fw-save ma-wa-mode-select-btn is-current",
+          "text": "المسار الحالي",
+          "disabled": true
+        },
+        {
+          "cls": "ma-wa-mode-select-btn is-secondary",
+          "text": "استخدام واتساب أعمالي",
+          "disabled": false
+        }
+      ],
+      "backText": "رجوع · التجربة",
+      "emptyBorder": "none",
+      "settingsNavInView": true,
+      "overflowX": false,
+      "vw": 1440
+    }
+  },
+  "mobile": {
+    "overview": {
+      "hash": "#settings",
+      "detailOpen": false,
+      "question": "ما الذي أحتاج ضبطه لكي يعمل CartFlow بشكل صحيح وآمن؟",
+      "questionDisplay": "block",
+      "rows": [
+        {
+          "id": "store",
+          "selected": false,
+          "needs": true,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "NEEDS_SETUP",
+              "text": "يحتاج ضبط"
+            },
+            {
+              "state": "READ_ONLY",
+              "text": "قراءة فقط · الباقة"
+            },
+            {
+              "state": "UNAVAILABLE",
+              "text": "غير متاح · سلة"
+            }
+          ],
+          "text": "المتجر غير مربوط يحتاج ضبط قراءة فقط · الباقة غير متاح · سلة"
+        },
+        {
+          "id": "communication",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "التواصل واتساب مضبوط جاهز"
+        },
+        {
+          "id": "recovery",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "سياسة الاسترجاع التأخير والمحاولات مضبوطة جاهز"
+        },
+        {
+          "id": "policy",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "سياسة السلال المهمة عتبة السلال المهمة مضبوطة جاهز"
+        },
+        {
+          "id": "experience",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "التجربة اسم العرض: CartFlow جاهز"
+        }
+      ],
+      "tealSelected": 0,
+      "tealNeedsBorder": 0,
+      "storeConnectedHidden": true,
+      "storeConnectedDisplay": "none",
+      "storeConnectDisplay": "flex",
+      "pathBtns": [],
+      "backText": "رجوع",
+      "emptyBorder": "none",
+      "settingsNavInView": true,
+      "overflowX": false,
+      "vw": 390
+    },
+    "store": {
+      "hash": "#settings",
+      "detailOpen": true,
+      "question": "ما الذي أحتاج ضبطه لكي يعمل CartFlow بشكل صحيح وآمن؟",
+      "questionDisplay": "none",
+      "rows": [
+        {
+          "id": "store",
+          "selected": true,
+          "needs": true,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "rgb(24, 176, 168) 3px 0px 0px 0px inset",
+          "states": [
+            {
+              "state": "NEEDS_SETUP",
+              "text": "يحتاج ضبط"
+            },
+            {
+              "state": "READ_ONLY",
+              "text": "قراءة فقط · الباقة"
+            },
+            {
+              "state": "UNAVAILABLE",
+              "text": "غير متاح · سلة"
+            }
+          ],
+          "text": "المتجرغير مربوطيحتاج ضبطقراءة فقط · الباقةغير متاح · سلة"
+        },
+        {
+          "id": "communication",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "التواصلواتساب مضبوطجاهز"
+        },
+        {
+          "id": "recovery",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "سياسة الاسترجاعالتأخير والمحاولات مضبوطةجاهز"
+        },
+        {
+          "id": "policy",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "سياسة السلال المهمةعتبة السلال المهمة مضبوطةجاهز"
+        },
+        {
+          "id": "experience",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "التجربةاسم العرض: CartFlowجاهز"
+        }
+      ],
+      "tealSelected": 1,
+      "tealNeedsBorder": 1,
+      "storeConnectedHidden": true,
+      "storeConnectedDisplay": "none",
+      "storeConnectDisplay": "flex",
+      "pathBtns": [],
+      "backText": "رجوع · المتجر",
+      "emptyBorder": "none",
+      "settingsNavInView": true,
+      "overflowX": false,
+      "vw": 390
+    },
+    "after_back": {
+      "hash": "#settings",
+      "detailOpen": false,
+      "question": "ما الذي أحتاج ضبطه لكي يعمل CartFlow بشكل صحيح وآمن؟",
+      "questionDisplay": "block",
+      "rows": [
+        {
+          "id": "store",
+          "selected": false,
+          "needs": true,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "NEEDS_SETUP",
+              "text": "يحتاج ضبط"
+            },
+            {
+              "state": "READ_ONLY",
+              "text": "قراءة فقط · الباقة"
+            },
+            {
+              "state": "UNAVAILABLE",
+              "text": "غير متاح · سلة"
+            }
+          ],
+          "text": "المتجر غير مربوط يحتاج ضبط قراءة فقط · الباقة غير متاح · سلة"
+        },
+        {
+          "id": "communication",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "التواصل واتساب مضبوط جاهز"
+        },
+        {
+          "id": "recovery",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "سياسة الاسترجاع التأخير والمحاولات مضبوطة جاهز"
+        },
+        {
+          "id": "policy",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "سياسة السلال المهمة عتبة السلال المهمة مضبوطة جاهز"
+        },
+        {
+          "id": "experience",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "التجربة اسم العرض: CartFlow جاهز"
+        }
+      ],
+      "tealSelected": 0,
+      "tealNeedsBorder": 0,
+      "storeConnectedHidden": true,
+      "storeConnectedDisplay": "none",
+      "storeConnectDisplay": "flex",
+      "pathBtns": [],
+      "backText": "رجوع",
+      "emptyBorder": "none",
+      "settingsNavInView": true,
+      "overflowX": false,
+      "vw": 390
+    },
+    "communication": {
+      "hash": "#settings",
+      "detailOpen": true,
+      "question": "ما الذي أحتاج ضبطه لكي يعمل CartFlow بشكل صحيح وآمن؟",
+      "questionDisplay": "none",
+      "rows": [
+        {
+          "id": "store",
+          "selected": false,
+          "needs": true,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "NEEDS_SETUP",
+              "text": "يحتاج ضبط"
+            },
+            {
+              "state": "READ_ONLY",
+              "text": "قراءة فقط · الباقة"
+            },
+            {
+              "state": "UNAVAILABLE",
+              "text": "غير متاح · سلة"
+            }
+          ],
+          "text": "المتجرغير مربوطيحتاج ضبطقراءة فقط · الباقةغير متاح · سلة"
+        },
+        {
+          "id": "communication",
+          "selected": true,
+          "needs": false,
+          "border": "rgb(8, 32, 72)",
+          "shadow": "rgb(24, 176, 168) 3px 0px 0px 0px inset",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "التواصلواتساب مضبوطجاهز"
+        },
+        {
+          "id": "recovery",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "سياسة الاسترجاعالتأخير والمحاولات مضبوطةجاهز"
+        },
+        {
+          "id": "policy",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "سياسة السلال المهمةعتبة السلال المهمة مضبوطةجاهز"
+        },
+        {
+          "id": "experience",
+          "selected": false,
+          "needs": false,
+          "border": "rgba(8, 32, 72, 0.1)",
+          "shadow": "none",
+          "states": [
+            {
+              "state": "READY",
+              "text": "جاهز"
+            }
+          ],
+          "text": "التجربةاسم العرض: CartFlowجاهز"
+        }
+      ],
+      "tealSelected": 1,
+      "tealNeedsBorder": 0,
+      "storeConnectedHidden": true,
+      "storeConnectedDisplay": "none",
+      "storeConnectDisplay": "flex",
+      "pathBtns": [
+        {
+          "cls": "ma-fw-save ma-wa-mode-select-btn is-current",
+          "text": "المسار الحالي",
+          "disabled": true
+        },
+        {
+          "cls": "ma-wa-mode-select-btn is-secondary",
+          "text": "استخدام واتساب أعمالي",
+          "disabled": false
+        }
+      ],
+      "backText": "رجوع · التواصل",
+      "emptyBorder": "none",
+      "settingsNavInView": true,
+      "overflowX": false,
+      "vw": 390
+    }
+  }
+}
