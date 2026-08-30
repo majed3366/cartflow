@@ -14,6 +14,10 @@ from typing import Any, Optional
 from services.db_lifecycle_v1.holder_diag_v1 import emit, thread_task_identity
 from services.db_lifecycle_v1.pool_truth import note_checked_out, note_timeout, pool_truth_from_pool
 from services.db_lifecycle_v1.request_owner import LONG_HOLD_WARN_MS, current_owner
+from services.db_lifecycle_v1.request_session_scope import (
+    current_logical_scope_id,
+    current_uow_id,
+)
 
 log = logging.getLogger("cartflow")
 
@@ -81,6 +85,8 @@ def maybe_install_connection_trace() -> None:
                     "record_id": id(connection_record),
                     "dbapi_id": id(dbapi_conn),
                     "request_id": owner.get("request_id") or "unowned",
+                    "uow_id": current_uow_id() or "",
+                    "logical_scope": current_logical_scope_id() or "",
                     "route": owner.get("route") or "-",
                     "method": owner.get("method") or "-",
                     "merchant": owner.get("merchant") or "",
@@ -100,23 +106,25 @@ def maybe_install_connection_trace() -> None:
                     owner["checkout_count"] = int(owner.get("checkout_count") or 0) + 1
                     owner["last_checkout_ts"] = rec["ts"]
                 snap = pool_truth_from_pool(pool)
-                emit(
-                    "[DB CHECKOUT] request_id=%s route=%s method=%s conn=%s "
-                    "record=%s thread=%s/%s task=%s checked_out=%s overflow=%s admission=%s"
-                    % (
-                        rec["request_id"],
-                        rec["route"],
-                        rec["method"],
-                        ident,
-                        rec["record_id"],
-                        rec["thread_ident"],
-                        rec["thread_name"],
-                        rec["task_name"] or "-",
-                        snap.get("checked_out"),
-                        snap.get("overflow"),
-                        rec["admission"],
+                if not str(rec["route"]).startswith("/static/"):
+                    emit(
+                        "[DB CHECKOUT] request_id=%s uow=%s route=%s method=%s conn=%s "
+                        "record=%s thread=%s/%s task=%s checked_out=%s overflow=%s admission=%s"
+                        % (
+                            rec["request_id"],
+                            rec["uow_id"] or "-",
+                            rec["route"],
+                            rec["method"],
+                            ident,
+                            rec["record_id"],
+                            rec["thread_ident"],
+                            rec["thread_name"],
+                            rec["task_name"] or "-",
+                            snap.get("checked_out"),
+                            snap.get("overflow"),
+                            rec["admission"],
+                        )
                     )
-                )
 
             @event.listens_for(pool, "checkin")
             def _on_checkin(dbapi_conn: Any, connection_record: Any) -> None:  # noqa: ARG001
@@ -139,19 +147,20 @@ def maybe_install_connection_trace() -> None:
                 route = (held or {}).get("route") or owner.get("route") or "-"
                 rid = (held or {}).get("request_id") or owner.get("request_id") or "unowned"
                 ctx = thread_task_identity()
-                emit(
-                    "[DB CHECKIN] request_id=%s route=%s conn=%s hold_ms=%.1f "
-                    "checkout_thread=%s finally_thread=%s/%s"
-                    % (
-                        rid,
-                        route,
-                        ident,
-                        hold_ms,
-                        (held or {}).get("thread_ident") or "-",
-                        ctx["thread_ident"],
-                        ctx["thread_name"],
+                if not str(route).startswith("/static/"):
+                    emit(
+                        "[DB CHECKIN] request_id=%s route=%s conn=%s hold_ms=%.1f "
+                        "checkout_thread=%s finally_thread=%s/%s"
+                        % (
+                            rid,
+                            route,
+                            ident,
+                            hold_ms,
+                            (held or {}).get("thread_ident") or "-",
+                            ctx["thread_ident"],
+                            ctx["thread_name"],
+                        )
                     )
-                )
                 if hold_ms >= LONG_HOLD_WARN_MS:
                     emit(
                         "[DB LONG HOLD] request_id=%s route=%s method=%s conn=%s "

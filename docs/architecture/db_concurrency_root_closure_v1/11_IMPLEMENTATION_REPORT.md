@@ -20,6 +20,16 @@
 
 Pool 5+5+5s. Scheduler. Visual files. Autodeploy.
 
+## Ownership root fix (local candidate after `5e03be7b`)
+
+| Area | Change |
+|------|--------|
+| `request_session_scope.py` | ContextVar logical scope + `scopefunc` |
+| `extensions.py` | `scoped_session(..., scopefunc=logical_request_scopefunc)` |
+| `http_bind.py` | Begin scope on bind; `remove()` before scope end |
+| Routes | **None** |
+| Pool / Scheduler | **Unchanged** |
+
 ## How production will prove it (when authorized)
 
 Stage 0–5 in `17_PRODUCTION_VALIDATION.md`. Not run. Not deployed.

@@ -1,10 +1,8 @@
 # Database Concurrency & Connection Lifecycle Root Closure V1
 
-**Status:** PRODUCTION VERIFICATION V1 STOP — Stage 1 FAIL; class **not closed**.  
-**Live SHA:** `b728856fa26e34811f4973b26a4392b89655e54f`  
+**Status:** LOCAL ownership-root candidate ready; **not deployed**; production class **not closed**.  
+**Live SHA:** `5e03be7bec8cad754199571628c8acff3f7a6fb1`  
 **Branch:** `feat/db-concurrency-root-closure-v1`  
-**Parent / base:** `c453d33680d4c70f9e52098cb7e6f8bf39cc5a1c`  
-**Deployment:** `26e5c277-3dee-4c60-b3ec-0e14c7135b84`  
 **Date (UTC):** 2026-08-30
 
 This pack closes the *class* of failures in which normal merchant request activity can exhaust the API QueuePool and make unrelated traffic unavailable.
@@ -49,6 +47,12 @@ API QueuePool remains `pool_size=5`, `max_overflow=5`, `pool_timeout=5s`. Do not
 | [18_FIRST_100_VALIDATION.md](18_FIRST_100_VALIDATION.md) | 17 Paused |
 | [19_ADR_DB_RESOURCE_MODEL.md](19_ADR_DB_RESOURCE_MODEL.md) | 18 Binding ADR |
 | [20_FINAL_VERDICT.md](20_FINAL_VERDICT.md) | Acceptance |
+| [21_RESIDUAL_CHECKOUT_OWNER.md](21_RESIDUAL_CHECKOUT_OWNER.md) | Residual owner ID |
+| [22_OWNERSHIP_INVARIANTS.md](22_OWNERSHIP_INVARIANTS.md) | INV-OWN-01…08 |
+| [23_SESSION_MODEL_AUDIT.md](23_SESSION_MODEL_AUDIT.md) | Pre-fix session model |
+| [24_OWNERSHIP_DESIGN.md](24_OWNERSHIP_DESIGN.md) | Design A/B/C |
+| [25_STATIC_OWNERSHIP_SEARCH.md](25_STATIC_OWNERSHIP_SEARCH.md) | Residual thread-local search |
+| [26_OWNERSHIP_ROOT_FIX.md](26_OWNERSHIP_ROOT_FIX.md) | This candidate |
 
 ## Process isolation
 

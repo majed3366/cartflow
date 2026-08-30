@@ -12,6 +12,10 @@ from services.db_lifecycle_v1.request_owner import (
     request_owner_begin,
     request_owner_end,
 )
+from services.db_lifecycle_v1.request_session_scope import (
+    begin_logical_session_scope,
+    end_logical_session_scope,
+)
 from services.db_lifecycle_v1.unit_of_work import release_before_response
 
 # Always-heavy GETs: admit before auth DB. Projection stays handler-level
@@ -28,8 +32,10 @@ HEAVY_GET_ROUTES = frozenset(
 def bind_request(request: Any) -> dict[str, Any]:
     maybe_install_connection_trace()
     rec = request_owner_begin(request)
+    token = begin_logical_session_scope(request_id=str(rec.get("request_id") or ""))
     try:
         request.state.db_lifecycle_request_id = rec.get("request_id") or ""
+        request.state.db_logical_scope_token = token
     except Exception:  # noqa: BLE001
         pass
     return rec
@@ -116,11 +122,21 @@ def finish_request(
     from services.db_lifecycle_v1.holder_diag_v1 import emit, thread_task_identity
 
     holders_before = active_holders()
-    rec = request_owner_end(outcome=str(status_code or exception or "")) or {}
-    rec["pool"] = pool_truth_snapshot()
     release_admission_if_held(request)
+    # INV-OWN-05: remove() while the logical request scope is still bound.
     release_before_response(reason="request_finally")
     holders_after = active_holders()
+    rec = request_owner_end(outcome=str(status_code or exception or "")) or {}
+    rec["pool"] = pool_truth_snapshot()
+    token = None
+    try:
+        token = getattr(request.state, "db_logical_scope_token", None)
+    except Exception:  # noqa: BLE001
+        token = None
+    end_logical_session_scope(token)
+    route = str(rec.get("route") or "")
+    if route.startswith("/static/"):
+        return rec
     ctx = thread_task_identity()
     emit(
         "[DB REQUEST FINALLY] request_id=%s route=%s status=%s request_ms=%s "

@@ -26,6 +26,21 @@ Local test: `test_remove_on_other_thread_does_not_checkin`.
 
 `POST /dev/living-store-home-review-session` ends `checked_out=0` because `j()` releases **on the worker thread**.
 
+## Production proof (deploy `5beb6c09` / SHA `5e03be7b`)
+
+Idle `checked_out=0`. One authenticated `GET /dashboard` (`71c1b85122b241c0`):
+
+```
+[DB CHECKOUT] .../dashboard conn=pg:22451 thread=MainThread     # auth
+[DB CHECKIN]  .../dashboard conn=pg:22451 hold_ms=28.1          # auth release
+[DB CHECKOUT] .../dashboard conn=pg:22451 thread=AnyIO worker   # handler
+[DB REQUEST FINALLY] ... finally_thread=MainThread holders_after=1 residual_threads=<worker>
+```
+
+Registry + `pg_stat_activity` (isolated NullPool): pid 22451, **idle in transaction**, last query `SELECT stores.id ...`. Request already finished. Peak checked_out=3.
+
+Owner class: **REQUEST_TEARDOWN_DEFECT** (sync worker `scoped_session` not closed by async `finally`). Also **FRAMEWORK_CONTEXT_LIFETIME** + **IDLE_IN_TRANSACTION**. No application fix in this SHA.
+
 ## What this change does not do
 
 No dashboard/auth/UoW behavior change. No pool size change. No Scheduler change.

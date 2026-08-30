@@ -41,10 +41,24 @@ def thread_task_identity() -> dict[str, Any]:
             task_name = (task.get_name() or "")[:64]
     except Exception:  # noqa: BLE001
         task_name = ""
+    logical_scope = ""
+    uow_id = ""
+    try:
+        from services.db_lifecycle_v1.request_session_scope import (
+            current_logical_scope_id,
+            current_uow_id,
+        )
+
+        logical_scope = current_logical_scope_id() or ""
+        uow_id = current_uow_id() or ""
+    except Exception:  # noqa: BLE001
+        pass
     return {
         "thread_ident": int(th.ident or 0),
         "thread_name": (th.name or "")[:64],
         "task_name": task_name,
+        "logical_scope": logical_scope,
+        "uow_id": uow_id,
     }
 
 

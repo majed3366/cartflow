@@ -17,6 +17,8 @@ Documented **before** implementation. These are testable laws, not aspirations.
 | **INV-DB-11** | Every abnormal long DB hold is attributable to a request/route owner. | Ledger row has `request_id`, `route`, `method`, `connection_id`. | Long-hold warning includes those fields (no secrets). |
 | **INV-DB-12** | Production health reflects real QueuePool and real DB probe state, not a `status()` string without numeric checkout. | `/health` includes in-process pool numbers without a checkout; `/health?db=1` is an honest probe or honest `pool_pressure`. | Health JSON `pool.checked_out` matches SQLAlchemy `pool.checkedout()`. |
 
+Request-session **ownership** laws (INV-OWN-01…08) are in [22_OWNERSHIP_INVARIANTS.md](22_OWNERSHIP_INVARIANTS.md). They bind the common lifecycle: session identity follows the logical request, not the OS thread.
+
 ## Non-invariants (explicitly out of scope)
 
 - Enlarging `pool_size` / `max_overflow` / `pool_timeout`

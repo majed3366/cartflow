@@ -1187,8 +1187,8 @@ async def no_dev_in_production(request: Request, call_next: Any) -> Any:
 @app.middleware("http")
 async def db_scoped_session_cleanup(request: Request, call_next: Any) -> Any:
     """
-    ‎scoped_session‎ / ‎QueuePool‎: ‎remove_scoped_session()‎ لكل طلب في ‎finally‎
-    (مسجّل بعد باقي الـ middleware — يغلف السلسلة بحيث يُنظَّف الجلسة بعد المسار).
+    Logical-request scoped_session: remove() in finally while the request
+    scope is still bound (not the cleanup thread identity).
     """
     from services.db_request_audit import (  # noqa: PLC0415
         audit_leak_suspected_check,

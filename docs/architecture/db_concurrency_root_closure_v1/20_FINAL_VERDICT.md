@@ -1,7 +1,8 @@
 # Final verdict
 
 **Program status: NOT CLOSED.**  
-**Production verification V1: STOP after Stage 1.**
+**Production verification V1: STOP after Stage 1.**  
+**Local ownership-root candidate:** ready for authorized production verification only. Not deployed.
 
 | Gate | Result |
 |------|--------|

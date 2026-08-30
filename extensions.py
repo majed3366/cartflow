@@ -125,7 +125,9 @@ def init_database(url: Optional[str] = None) -> None:
         **engine_kw,
     )
     factory = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
-    _Scoped = scoped_session(factory)
+    from services.db_lifecycle_v1.request_session_scope import logical_request_scopefunc
+
+    _Scoped = scoped_session(factory, scopefunc=logical_request_scopefunc)
     try:
         from services.db_lifecycle_v1.connection_trace import maybe_install_connection_trace
 
