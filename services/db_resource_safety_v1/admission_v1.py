@@ -4,6 +4,14 @@ Per-route concurrency admission so one heavy surface cannot consume the whole po
 
 Pool is 5+5=10. Reserve slots for health/auth/light reads.
 Heavy merchant reads share a small semaphore.
+
+Admission unit is one HTTP request (INV-ADM-07: reject before checkout).
+After messages read-model correction, remaining connection demand of
+GET /api/dashboard/messages is one scoped-session checkout reused for the
+bounded DB phase (not ~60 engine inspects). Measured remaining demand is
+the same class as other heavy GETs, so try_acquire cost stays 1.
+Do not invent extra weights without a new checkout-count measurement.
+HEAVY_GLOBAL_LIMIT=4 already leaves 6 of 10 for critical/light traffic.
 """
 from __future__ import annotations
 

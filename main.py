@@ -19897,6 +19897,9 @@ def api_dashboard_messages():
             _merchant_dashboard_db_ready()
             dash_store = _dashboard_recovery_store_row()
             body = _api_json_dashboard_messages(dash_store)
+            from services.dashboard_messages_read_v1 import release_messages_db_phase
+
+            release_messages_db_phase()
             return j({"ok": True, **body})
     except Exception as e:  # noqa: BLE001
         db.session.rollback()
@@ -21226,21 +21229,22 @@ def _api_json_dashboard_widget_panel(dash_store: Optional[Any]) -> Dict[str, Any
 
 
 def _api_json_dashboard_messages(dash_store: Optional[Any]) -> Dict[str, Any]:
+    from services.dashboard_messages_read_v1 import compose_messages_payload
+
     try:
         message_history_rows = _merchant_recovery_message_history_rows(
             dash_store, limit=40
         )
     except (SQLAlchemyError, OSError, TypeError, ValueError):
         message_history_rows = []
-    last_send_ar = "—"
-    if message_history_rows:
-        last_send_ar = str(message_history_rows[0].get("time_ar") or "—")
-    out = {
-        "merchant_message_history_rows": message_history_rows,
-        "merchant_wa_last_send_ar": last_send_ar,
-    }
-    out.update(_merchant_dashboard_refresh_state_payload(dash_store))
-    return out
+    try:
+        refresh_state = _merchant_dashboard_refresh_state_payload(dash_store)
+    except (SQLAlchemyError, OSError, TypeError, ValueError):
+        refresh_state = {}
+    return compose_messages_payload(
+        message_history_rows=message_history_rows,
+        refresh_state=refresh_state,
+    )
 
 
 def _normal_carts_dashboard_page_response(request: Request, *, audience: str) -> Any:

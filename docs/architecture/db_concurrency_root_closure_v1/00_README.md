@@ -1,7 +1,7 @@
 # Database Concurrency & Connection Lifecycle Root Closure V1
 
-**Status:** Request-scoped ownership class **closed in production**. Startup unowned hold remains. First-100 / visual paused.  
-**Live SHA:** `76c0d4111afe5fedeb8e3f4fc24b7ede7915f9ab`  
+**Status:** Request-scoped and startup-unowned classes **closed in production**. First-100 scale **NOT_CLOSED** (50 PASS, 100 FAIL). Connection-demand / messages read-model correction is a **local candidate** (A+B). Visual paused.  
+**Live SHA:** `f613ec7145a5e29c56257187159bfe366c26b3c0`  
 **Branch:** `feat/db-concurrency-root-closure-v1`  
 **Date (UTC):** 2026-08-30
 
@@ -44,7 +44,7 @@ API QueuePool remains `pool_size=5`, `max_overflow=5`, `pool_timeout=5s`. Do not
 | [15_EQUILIBRIUM_HARNESS.md](15_EQUILIBRIUM_HARNESS.md) | 13 Permanent harness |
 | [16_LOCAL_VALIDATION.md](16_LOCAL_VALIDATION.md) | 14 QueuePool local |
 | [17_PRODUCTION_VALIDATION.md](17_PRODUCTION_VALIDATION.md) | 16 Not run until authorized |
-| [18_FIRST_100_VALIDATION.md](18_FIRST_100_VALIDATION.md) | 17 Paused |
+| [18_FIRST_100_VALIDATION.md](18_FIRST_100_VALIDATION.md) | 17 First-100 stages (50 PASS / 100 FAIL) |
 | [19_ADR_DB_RESOURCE_MODEL.md](19_ADR_DB_RESOURCE_MODEL.md) | 18 Binding ADR |
 | [20_FINAL_VERDICT.md](20_FINAL_VERDICT.md) | Acceptance |
 | [21_RESIDUAL_CHECKOUT_OWNER.md](21_RESIDUAL_CHECKOUT_OWNER.md) | Residual owner ID |
@@ -56,6 +56,13 @@ API QueuePool remains `pool_size=5`, `max_overflow=5`, `pool_timeout=5s`. Do not
 | [27_PRODUCTION_OWNERSHIP_PROOF.md](27_PRODUCTION_OWNERSHIP_PROOF.md) | Production proof |
 | [28_STARTUP_UNOWNED_OWNER.md](28_STARTUP_UNOWNED_OWNER.md) | Startup leftover owner |
 | [29_STARTUP_INVARIANTS.md](29_STARTUP_INVARIANTS.md) | INV-START-01…06 |
+| [31_HEAVY_SURFACE_VERIFICATION.md](31_HEAVY_SURFACE_VERIFICATION.md) | Heavy-surface prod proof |
+| [32_FIRST_100_OPERATIONAL_SCALE.md](32_FIRST_100_OPERATIONAL_SCALE.md) | First-100 operational scale |
+| [33_100_CONCURRENCY_SATURATION_RCA.md](33_100_CONCURRENCY_SATURATION_RCA.md) | 100-concurrency saturation root cause |
+| [34_ADM_INVARIANTS.md](34_ADM_INVARIANTS.md) | INV-ADM-01…09 |
+| [35_MESSAGES_CHECKOUT_AUDIT.md](35_MESSAGES_CHECKOUT_AUDIT.md) | Messages checkout + spanning hold |
+| [36_CONNECTION_DEMAND_DESIGN.md](36_CONNECTION_DEMAND_DESIGN.md) | Options A–E |
+| [37_MESSAGES_READ_MODEL_FIX.md](37_MESSAGES_READ_MODEL_FIX.md) | Messages read-model implementation |
 
 ## Process isolation
 

@@ -234,6 +234,23 @@ def ensure_timeline_table_ready(*, recovery_key: str = "") -> bool:
 
         ensure_recovery_truth_timeline_schema(db)
         executed_schema_check = not schema_once_before
+        from schema_recovery_truth_timeline import (  # noqa: PLC0415
+            timeline_schema_is_verified,
+        )
+
+        if timeline_schema_is_verified():
+            duration_ms = (time.perf_counter() - t0) * 1000.0
+            log.info(
+                "[TIMELINE ENSURE PROFILE] caller=%s duration_ms=%.2f endpoint=%s "
+                "recovery_key=%s request_path=%s executed_schema_check=%s",
+                caller,
+                duration_ms,
+                endpoint,
+                rk_log,
+                request_path,
+                "true" if executed_schema_check else "false",
+            )
+            return True
     except Exception as exc:  # noqa: BLE001
         duration_ms = (time.perf_counter() - t0) * 1000.0
         log.info(

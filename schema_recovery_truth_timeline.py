@@ -21,6 +21,11 @@ def reset_recovery_truth_timeline_schema_guard_for_tests() -> None:
     _schema_once = False
 
 
+def timeline_schema_is_verified() -> bool:
+    """True after a process-verified create/inspect. Avoids per-call inspect()."""
+    return bool(_schema_once)
+
+
 def ensure_recovery_truth_timeline_schema(db: Any) -> None:
     global _schema_once
     if _schema_once:
@@ -47,4 +52,5 @@ def ensure_recovery_truth_timeline_schema(db: Any) -> None:
 __all__ = [
     "ensure_recovery_truth_timeline_schema",
     "reset_recovery_truth_timeline_schema_guard_for_tests",
+    "timeline_schema_is_verified",
 ]

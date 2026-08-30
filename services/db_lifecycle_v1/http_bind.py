@@ -141,7 +141,7 @@ def finish_request(
     emit(
         "[DB REQUEST FINALLY] request_id=%s route=%s status=%s request_ms=%s "
         "finally_thread=%s/%s holders_before=%s holders_after=%s "
-        "checked_out=%s residual_threads=%s"
+        "checked_out=%s checkout_count=%s last_hold_ms=%s residual_threads=%s"
         % (
             rec.get("request_id") or "-",
             rec.get("route") or "-",
@@ -152,6 +152,8 @@ def finish_request(
             len(holders_before),
             len(holders_after),
             (rec.get("pool") or {}).get("checked_out"),
+            rec.get("checkout_count"),
+            rec.get("last_hold_ms"),
             ",".join(
                 str(h.get("thread_ident") or "")
                 for h in holders_after

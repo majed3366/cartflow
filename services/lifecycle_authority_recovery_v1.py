@@ -8,6 +8,7 @@ archive) feed classification; they do not own merchant lifecycle labels.
 """
 from __future__ import annotations
 
+from datetime import timezone
 from typing import Any, Mapping, Optional, Sequence
 
 from services.customer_lifecycle_states_v1 import (
@@ -278,12 +279,81 @@ def lifecycle_authority_waiting_count(rows: Sequence[Mapping[str, Any]]) -> int:
     return int(counts.get("waiting", 0) or 0)
 
 
+def prefetch_recovery_schedule_facts(
+    recovery_keys: Sequence[str],
+) -> dict[str, dict[str, Any]]:
+    """One bounded query: earliest scheduled due_at + delay per recovery_key."""
+    keys: list[str] = []
+    seen: set[str] = set()
+    for raw in recovery_keys or ():
+        rk = str(raw or "").strip()[:512]
+        if rk and rk not in seen:
+            seen.add(rk)
+            keys.append(rk)
+    if not keys:
+        return {}
+    try:
+        from extensions import db  # noqa: PLC0415
+        from models import RecoverySchedule  # noqa: PLC0415
+
+        from services.db_resource_safety_v1.query_bounds_v1 import (  # noqa: PLC0415
+            RECOVERY_SCHEDULE_BULK_LIMIT,
+        )
+        from services.recovery_restart_survival import STATUS_SCHEDULED  # noqa: PLC0415
+
+        rows = (
+            db.session.query(
+                RecoverySchedule.recovery_key,
+                RecoverySchedule.due_at,
+                RecoverySchedule.effective_delay_seconds,
+            )
+            .filter(
+                RecoverySchedule.recovery_key.in_(keys),
+                RecoverySchedule.status == STATUS_SCHEDULED,
+            )
+            .order_by(RecoverySchedule.due_at.asc())
+            .limit(RECOVERY_SCHEDULE_BULK_LIMIT)
+            .all()
+        )
+    except Exception:  # noqa: BLE001
+        try:
+            from extensions import db as _db  # noqa: PLC0415
+
+            _db.session.rollback()
+        except Exception:  # noqa: BLE001
+            pass
+        return {}
+    out: dict[str, dict[str, Any]] = {}
+    for rk_raw, due, delay in rows:
+        key = str(rk_raw or "").strip()
+        if not key or key in out:
+            continue
+        due_iso = None
+        if due is not None:
+            due_dt = due
+            if getattr(due_dt, "tzinfo", None) is None:
+                due_dt = due_dt.replace(tzinfo=timezone.utc)
+            else:
+                due_dt = due_dt.astimezone(timezone.utc)
+            due_iso = due_dt.isoformat()
+        delay_f = float(delay) if delay is not None else None
+        out[key] = {
+            "due_at": due_iso,
+            "effective_delay_seconds": delay_f,
+        }
+    return out
+
+
 def enrich_message_history_rows_with_lifecycle(
     rows: list[dict[str, Any]],
     *,
     dash_store: Any,
 ) -> None:
-    """Attach lifecycle SoT per message row from recovery_key evidence."""
+    """Attach lifecycle SoT per message row from recovery_key evidence.
+
+    Bounded DB: one CartRecoveryLog IN, one timeline IN, one schedule IN.
+    Classify in memory with prefetched timeline/schedule (no per-row checkout).
+    """
     if not rows or dash_store is None:
         return
     from services.merchant_dashboard_recovery_resolve_v1 import store_slug_from_dash  # noqa: PLC0415
@@ -300,13 +370,14 @@ def enrich_message_history_rows_with_lifecycle(
     if not keys:
         return
 
+    unique_keys = list(dict.fromkeys(keys))[:80]
     try:
         from models import CartRecoveryLog  # noqa: PLC0415
         from extensions import db  # noqa: PLC0415
 
         logs = (
             db.session.query(CartRecoveryLog)
-            .filter(CartRecoveryLog.recovery_key.in_(list(dict.fromkeys(keys))[:80]))
+            .filter(CartRecoveryLog.recovery_key.in_(unique_keys))
             .limit(400)
             .all()
         )
@@ -323,12 +394,24 @@ def enrich_message_history_rows_with_lifecycle(
         if rk:
             by_rk.setdefault(rk, []).append(lg)
 
+    try:
+        from services.recovery_truth_timeline_v1 import (  # noqa: PLC0415
+            bulk_timeline_status_sets,
+        )
+
+        tl_by_rk = bulk_timeline_status_sets(unique_keys)
+    except Exception:  # noqa: BLE001
+        tl_by_rk = {k: frozenset() for k in unique_keys}
+
+    sched_by_rk = prefetch_recovery_schedule_facts(unique_keys)
+
     for row in rows:
         rk = str(row.get("recovery_key") or "").strip()
         if not rk:
             continue
         matched = by_rk.get(rk, [])
         log_ss, sent_n, _ = log_statuses_from_logs(matched, recovery_keys=[rk])
+        facts = sched_by_rk.get(rk) or {}
         payload: dict[str, Any] = {}
         attach_customer_lifecycle_state_v1(
             payload,
@@ -338,6 +421,10 @@ def enrich_message_history_rows_with_lifecycle(
             log_statuses=log_ss,
             coarse="sent" if sent_n else "pending",
             matched_logs=matched,
+            timeline_statuses=tl_by_rk.get(rk, frozenset()),
+            next_attempt_due_at=facts.get("due_at"),
+            schedule_prefetched=True,
+            effective_delay_seconds_prefetched=facts.get("effective_delay_seconds"),
         )
         row["customer_lifecycle_state"] = payload.get("customer_lifecycle_state")
         row["customer_lifecycle_label_ar"] = payload.get("customer_lifecycle_label_ar")
@@ -351,6 +438,7 @@ __all__ = [
     "lifecycle_authority_waiting_count",
     "log_statuses_from_logs",
     "normalize_vip_lifecycle_evidence",
+    "prefetch_recovery_schedule_facts",
     "sync_merchant_followup_clarity_from_lifecycle",
     "sync_vip_legacy_display_from_lifecycle",
 ]
