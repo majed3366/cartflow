@@ -4,6 +4,25 @@
 
   var bound = false;
   var loading = false;
+  var loaded = false;
+
+  var SETTINGS_HASH_ALIASES = {
+    settings: true,
+    whatsapp: true,
+    "whatsapp-connect": true,
+    widget: true,
+    "trigger-templates": true,
+    templates: true,
+    plans: true,
+  };
+
+  function settingsSurfaceActive() {
+    if (window.CartFlowUiV2 && typeof window.CartFlowUiV2.currentHash === "function") {
+      return window.CartFlowUiV2.currentHash() === "settings";
+    }
+    var h = (window.location.hash || "").replace(/^#/, "").split("?")[0].toLowerCase();
+    return !!(h && SETTINGS_HASH_ALIASES[h]);
+  }
 
   function byId(id) {
     return document.getElementById(id);
@@ -140,8 +159,10 @@
 
   window.maApplySubscriptionExperience = applySubscriptionExperience;
 
-  function loadSubscription() {
+  function loadSubscription(opts) {
     if (loading) return;
+    if (loaded && !(opts && opts.force)) return;
+    if (!settingsSurfaceActive()) return;
     loading = true;
     fetch("/api/merchant/subscription", { credentials: "same-origin" })
       .then(function (r) {
@@ -157,16 +178,18 @@
       })
       .finally(function () {
         loading = false;
+        loaded = true;
       });
   }
 
   function bind() {
     if (bound) return;
     bound = true;
-    loadSubscription();
+    if (settingsSurfaceActive()) {
+      loadSubscription();
+    }
     window.addEventListener("hashchange", function () {
-      var h = (window.location.hash || "").toLowerCase();
-      if (h.indexOf("#settings") === 0 || h.indexOf("#plans") === 0) {
+      if (settingsSurfaceActive()) {
         loadSubscription();
       }
     });

@@ -1,0 +1,32 @@
+{
+  "home_active": ["/api/dashboard/summary"],
+  "nav_workspace": ["/api/cart-workspace/v1/projection"],
+  "nav_carts": ["/api/dashboard/normal-carts"],
+  "nav_comms": [
+    "/api/dashboard/messages",
+    "/api/dashboard/followups",
+    "/api/dashboard/summary"
+  ],
+  "nav_settings": [
+    "/api/merchant/subscription",
+    "/api/merchant/store-connection",
+    "/api/recovery-settings"
+  ],
+  "return_visits": [],
+  "workspace_active_only": ["/api/cart-workspace/v1/projection"],
+  "carts_active_only": ["/api/dashboard/normal-carts"],
+  "comms_active_only": [
+    "/api/dashboard/messages",
+    "/api/dashboard/followups",
+    "/api/dashboard/summary"
+  ],
+  "settings_active_only": [
+    "/api/merchant/subscription",
+    "/api/merchant/store-connection",
+    "/api/recovery-settings"
+  ],
+  "two_home_viewports": {
+    "a": ["/api/dashboard/summary"],
+    "b": ["/api/dashboard/summary"]
+  }
+}

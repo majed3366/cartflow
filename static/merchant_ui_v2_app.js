@@ -39,6 +39,14 @@
 
   var SECTIONS = NAV.global;
   var activeCtxItem = null;
+  /** One-shot product-data init per surface. Chrome may re-paint; data may not. */
+  var SURFACE_PRODUCT_INIT = {
+    home: false,
+    workspace: false,
+    carts: false,
+    comms: false,
+    settings: false,
+  };
 
   function $(sel, root) {
     return (root || document).querySelector(sel);
@@ -334,48 +342,56 @@
     else openCtxDrawer();
   }
 
-  function loadSection(section) {
+  function initSurfaceProductData(section, opts) {
+    var force = !!(opts && opts.force);
+    if (SURFACE_PRODUCT_INIT[section] && !force) {
+      return;
+    }
+    var started = false;
+    if (section === "home") {
+      var homeRoot = $("#cf2-home-root");
+      if (homeRoot && window.CartFlowUiV2Home) {
+        window.CartFlowUiV2Home.loadAndPaint(homeRoot);
+        started = true;
+      }
+    } else if (section === "workspace") {
+      var wsRoot = $("#cf2-workspace-root");
+      if (wsRoot && window.CartFlowUiV2Workspace) {
+        window.CartFlowUiV2Workspace.loadAndPaint(wsRoot);
+        started = true;
+      }
+    } else if (section === "carts") {
+      var cartsRoot = $("#cf2-carts-root");
+      if (cartsRoot && window.CartFlowUiV2Carts) {
+        window.CartFlowUiV2Carts.loadAndPaint(cartsRoot);
+        started = true;
+      }
+    } else if (section === "comms") {
+      var commsRoot = $("#cf2-comms-root");
+      if (commsRoot && window.CartFlowUiV2Comms) {
+        window.CartFlowUiV2Comms.loadAndPaint(commsRoot);
+        started = true;
+      }
+    } else if (section === "settings") {
+      var settingsRoot = $("#cf2-settings-root");
+      if (settingsRoot && window.CartFlowUiV2Settings) {
+        window.CartFlowUiV2Settings.loadAndPaint(settingsRoot);
+        started = true;
+      }
+    }
+    if (started) {
+      SURFACE_PRODUCT_INIT[section] = true;
+    }
+  }
+
+  function loadSection(section, opts) {
     paintGlobalNavigation(section);
     setActiveNav(section);
     setContext(section);
     showPage(section);
     closeDrawer();
     closeCtxDrawer();
-
-    if (section === "home") {
-      var homeRoot = $("#cf2-home-root");
-      if (homeRoot && window.CartFlowUiV2Home) {
-        window.CartFlowUiV2Home.loadAndPaint(homeRoot);
-      }
-      return;
-    }
-    if (section === "workspace") {
-      var wsRoot = $("#cf2-workspace-root");
-      if (wsRoot && window.CartFlowUiV2Workspace) {
-        window.CartFlowUiV2Workspace.loadAndPaint(wsRoot);
-      }
-      return;
-    }
-    if (section === "carts") {
-      var cartsRoot = $("#cf2-carts-root");
-      if (cartsRoot && window.CartFlowUiV2Carts) {
-        window.CartFlowUiV2Carts.loadAndPaint(cartsRoot);
-      }
-      return;
-    }
-    if (section === "comms") {
-      var commsRoot = $("#cf2-comms-root");
-      if (commsRoot && window.CartFlowUiV2Comms) {
-        window.CartFlowUiV2Comms.loadAndPaint(commsRoot);
-      }
-      return;
-    }
-    if (section === "settings") {
-      var settingsRoot = $("#cf2-settings-root");
-      if (settingsRoot && window.CartFlowUiV2Settings) {
-        window.CartFlowUiV2Settings.loadAndPaint(settingsRoot);
-      }
-    }
+    initSurfaceProductData(section, opts);
   }
 
   function go(section) {
@@ -384,7 +400,7 @@
     if (location.hash !== "#" + hashId) {
       location.hash = "#" + hashId;
     } else {
-      loadSection(id);
+      loadSection(id, { force: true });
     }
   }
 
@@ -436,6 +452,8 @@
     nav: NAV,
     sections: SECTIONS,
     ctx: NAV.contextual,
+    currentHash: currentHash,
+    surfaceProductInit: SURFACE_PRODUCT_INIT,
     paintGlobalNavigation: paintGlobalNavigation,
     openCtxDrawer: openCtxDrawer,
     closeCtxDrawer: closeCtxDrawer,
