@@ -1,9 +1,10 @@
 # Database Concurrency & Connection Lifecycle Root Closure V1
 
-**Status:** ENGINEERING IN PROGRESS — not closed.  
-**Base / claimed live SHA:** `c453d33680d4c70f9e52098cb7e6f8bf39cc5a1c`  
+**Status:** PRODUCTION VERIFICATION V1 STOP — Stage 1 FAIL; class **not closed**.  
+**Live SHA:** `b728856fa26e34811f4973b26a4392b89655e54f`  
 **Branch:** `feat/db-concurrency-root-closure-v1`  
-**Parent:** `58a82f344cd3ba92c737cc7448e7e9d05910211f`  
+**Parent / base:** `c453d33680d4c70f9e52098cb7e6f8bf39cc5a1c`  
+**Deployment:** `26e5c277-3dee-4c60-b3ec-0e14c7135b84`  
 **Date (UTC):** 2026-08-30
 
 This pack closes the *class* of failures in which normal merchant request activity can exhaust the API QueuePool and make unrelated traffic unavailable.

@@ -11,6 +11,7 @@ import threading
 import time
 from typing import Any, Optional
 
+from services.db_lifecycle_v1.holder_diag_v1 import emit, thread_task_identity
 from services.db_lifecycle_v1.pool_truth import note_checked_out, note_timeout, pool_truth_from_pool
 from services.db_lifecycle_v1.request_owner import LONG_HOLD_WARN_MS, current_owner
 
@@ -23,6 +24,8 @@ _holders: dict[int, dict[str, Any]] = {}
 
 def active_holders() -> list[dict[str, Any]]:
     now = time.perf_counter()
+    owner = current_owner()
+    active_rid = (owner or {}).get("request_id") if owner else None
     with _lock:
         out = []
         for rec in _holders.values():
@@ -31,6 +34,7 @@ def active_holders() -> list[dict[str, Any]]:
             row["hold_ms"] = (
                 round((now - float(t0)) * 1000.0, 1) if t0 is not None else 0.0
             )
+            row["request_active"] = bool(active_rid) and row.get("request_id") == active_rid
             out.append(row)
         return out
 
@@ -71,14 +75,20 @@ def maybe_install_connection_trace() -> None:
             def _on_checkout(dbapi_conn: Any, connection_record: Any, connection_proxy: Any) -> None:  # noqa: ARG001
                 owner = current_owner() or {}
                 ident = _conn_identity(dbapi_conn, connection_record)
+                ident_ctx = thread_task_identity()
                 rec = {
                     "connection_id": ident,
+                    "record_id": id(connection_record),
+                    "dbapi_id": id(dbapi_conn),
                     "request_id": owner.get("request_id") or "unowned",
                     "route": owner.get("route") or "-",
                     "method": owner.get("method") or "-",
                     "merchant": owner.get("merchant") or "",
                     "t0": time.perf_counter(),
                     "ts": time.time(),
+                    "request_start_t0": owner.get("t0"),
+                    "admission": owner.get("admission") or "n/a",
+                    **ident_ctx,
                 }
                 connection_record._cartflow_lifecycle_ident = ident  # type: ignore[attr-defined]
                 connection_record._cartflow_lifecycle_t0 = rec["t0"]  # type: ignore[attr-defined]
@@ -90,16 +100,22 @@ def maybe_install_connection_trace() -> None:
                     owner["checkout_count"] = int(owner.get("checkout_count") or 0) + 1
                     owner["last_checkout_ts"] = rec["ts"]
                 snap = pool_truth_from_pool(pool)
-                log.info(
+                emit(
                     "[DB CHECKOUT] request_id=%s route=%s method=%s conn=%s "
-                    "checked_out=%s overflow=%s admission=%s",
-                    rec["request_id"],
-                    rec["route"],
-                    rec["method"],
-                    ident,
-                    snap.get("checked_out"),
-                    snap.get("overflow"),
-                    owner.get("admission") or "n/a",
+                    "record=%s thread=%s/%s task=%s checked_out=%s overflow=%s admission=%s"
+                    % (
+                        rec["request_id"],
+                        rec["route"],
+                        rec["method"],
+                        ident,
+                        rec["record_id"],
+                        rec["thread_ident"],
+                        rec["thread_name"],
+                        rec["task_name"] or "-",
+                        snap.get("checked_out"),
+                        snap.get("overflow"),
+                        rec["admission"],
+                    )
                 )
 
             @event.listens_for(pool, "checkin")
@@ -122,23 +138,33 @@ def maybe_install_connection_trace() -> None:
                     owner["last_hold_ms"] = hold_ms
                 route = (held or {}).get("route") or owner.get("route") or "-"
                 rid = (held or {}).get("request_id") or owner.get("request_id") or "unowned"
-                log.info(
-                    "[DB CHECKIN] request_id=%s route=%s conn=%s hold_ms=%.1f",
-                    rid,
-                    route,
-                    ident,
-                    hold_ms,
-                )
-                if hold_ms >= LONG_HOLD_WARN_MS:
-                    log.warning(
-                        "[DB LONG HOLD] request_id=%s route=%s method=%s conn=%s "
-                        "hold_ms=%.1f merchant=%s",
+                ctx = thread_task_identity()
+                emit(
+                    "[DB CHECKIN] request_id=%s route=%s conn=%s hold_ms=%.1f "
+                    "checkout_thread=%s finally_thread=%s/%s"
+                    % (
                         rid,
                         route,
-                        (held or {}).get("method") or owner.get("method") or "-",
                         ident,
                         hold_ms,
-                        (held or {}).get("merchant") or owner.get("merchant") or "",
+                        (held or {}).get("thread_ident") or "-",
+                        ctx["thread_ident"],
+                        ctx["thread_name"],
+                    )
+                )
+                if hold_ms >= LONG_HOLD_WARN_MS:
+                    emit(
+                        "[DB LONG HOLD] request_id=%s route=%s method=%s conn=%s "
+                        "hold_ms=%.1f merchant=%s checkout_thread=%s"
+                        % (
+                            rid,
+                            route,
+                            (held or {}).get("method") or owner.get("method") or "-",
+                            ident,
+                            hold_ms,
+                            (held or {}).get("merchant") or owner.get("merchant") or "",
+                            (held or {}).get("thread_ident") or "-",
+                        )
                     )
                 try:
                     from services.db_resource_safety_v1.observability_v1 import record_hold
@@ -169,7 +195,12 @@ def maybe_install_connection_trace() -> None:
                     )
 
             _installed = True
+            emit(
+                "[DB TRACE INSTALLED] engine=%s pool=%s pool_type=%s"
+                % (id(eng), id(pool), type(pool).__name__)
+            )
         except Exception as exc:  # noqa: BLE001
+            emit("[DB TRACE INSTALL SKIPPED] %s" % (type(exc).__name__,))
             log.debug("connection_trace install skipped: %s", exc)
             _installed = True
 

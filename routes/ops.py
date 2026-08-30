@@ -74,6 +74,12 @@ def health(
         alias="db",
         description="1=run SELECT 1 for load/integrity checks",
     ),
+    diag: int = Query(
+        0,
+        ge=0,
+        le=1,
+        description="1=holders + isolated NullPool pg_stat_activity (diagnostic)",
+    ),
 ) -> Any:
     """
     خفيف لـ‎ LB‎؛ ‎?db=1‎ يُنفّذ ‎SELECT 1‎ (استخدمه باعتدال تحت الضغط العالي).
@@ -83,6 +89,18 @@ def health(
         from services.db_lifecycle_v1.pool_truth import pool_truth_snapshot
 
         out["pool"] = pool_truth_snapshot()
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from services.db_lifecycle_v1.holder_diag_v1 import diagnostic_bundle
+
+        bundle = diagnostic_bundle(include_pg=int(diag) == 1)
+        out["holders"] = bundle.get("holders") or []
+        out["holder_count"] = bundle.get("holder_count")
+        out["engine"] = bundle.get("engine")
+        if int(diag) == 1:
+            out["pg"] = bundle.get("pg")
+            out["reconcile"] = bundle.get("reconcile")
     except Exception:  # noqa: BLE001
         pass
     if int(db_probe) == 1:

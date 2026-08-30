@@ -112,10 +112,36 @@ def finish_request(
     status_code: Optional[int] = None,
     exception: str = "",
 ) -> dict[str, Any]:
+    from services.db_lifecycle_v1.connection_trace import active_holders
+    from services.db_lifecycle_v1.holder_diag_v1 import emit, thread_task_identity
+
+    holders_before = active_holders()
     rec = request_owner_end(outcome=str(status_code or exception or "")) or {}
     rec["pool"] = pool_truth_snapshot()
     release_admission_if_held(request)
     release_before_response(reason="request_finally")
+    holders_after = active_holders()
+    ctx = thread_task_identity()
+    emit(
+        "[DB REQUEST FINALLY] request_id=%s route=%s status=%s request_ms=%s "
+        "finally_thread=%s/%s holders_before=%s holders_after=%s "
+        "checked_out=%s residual_threads=%s"
+        % (
+            rec.get("request_id") or "-",
+            rec.get("route") or "-",
+            rec.get("outcome") or "",
+            rec.get("request_ms"),
+            ctx["thread_ident"],
+            ctx["thread_name"],
+            len(holders_before),
+            len(holders_after),
+            (rec.get("pool") or {}).get("checked_out"),
+            ",".join(
+                str(h.get("thread_ident") or "")
+                for h in holders_after
+            ) or "-",
+        )
+    )
     return rec
 
 

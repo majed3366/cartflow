@@ -126,6 +126,12 @@ def init_database(url: Optional[str] = None) -> None:
     )
     factory = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
     _Scoped = scoped_session(factory)
+    try:
+        from services.db_lifecycle_v1.connection_trace import maybe_install_connection_trace
+
+        maybe_install_connection_trace()
+    except Exception:
+        pass
 
 
 def remove_scoped_session() -> None:
