@@ -973,6 +973,12 @@ async def _startup_whatsapp_queue() -> None:
     except Exception as exc:  # noqa: BLE001
         log.warning("startup resend password reset check skipped: %s", exc)
     _log_registered_route_at_startup("/dev/purchase-truth-trace")
+    try:
+        from services.db_session_lifecycle import release_scoped_db_session
+
+        release_scoped_db_session()
+    except Exception:  # noqa: BLE001
+        pass
     await start_whatsapp_queue_worker()
 
 

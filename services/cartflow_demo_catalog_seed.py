@@ -32,36 +32,34 @@ def seed_demo_store_product_catalog_if_empty() -> int:
     """
     from extensions import db
     from models import Store
+    from services.db_session_lifecycle import non_request_db_phase
     from services.demo_sandbox_catalog import merchant_catalog_json_string
 
     updated = 0
     try:
-        db.create_all()
-        rows = (
-            db.session.query(Store)
-            .filter(Store.zid_store_id.in_(("demo", "demo2")))
-            .all()
-        )
-        for st in rows:
-            if not demo_store_catalog_needs_seed(getattr(st, "cf_product_catalog_json", None)):
-                continue
-            slug = (st.zid_store_id or "").strip()
-            nav = "/demo/store2" if slug == "demo2" else "/demo/store"
-            st.cf_product_catalog_json = merchant_catalog_json_string(nav_base=nav)
-            updated += 1
-            log.info(
-                "[DEMO CATALOG SEED] zid_store_id=%s store_pk=%s json_len=%s",
-                slug,
-                getattr(st, "id", None),
-                len(st.cf_product_catalog_json or ""),
+        with non_request_db_phase(owner="startup.demo_catalog_seed"):
+            db.create_all()
+            rows = (
+                db.session.query(Store)
+                .filter(Store.zid_store_id.in_(("demo", "demo2")))
+                .all()
             )
-        if updated:
-            db.session.commit()
+            for st in rows:
+                if not demo_store_catalog_needs_seed(getattr(st, "cf_product_catalog_json", None)):
+                    continue
+                slug = (st.zid_store_id or "").strip()
+                nav = "/demo/store2" if slug == "demo2" else "/demo/store"
+                st.cf_product_catalog_json = merchant_catalog_json_string(nav_base=nav)
+                updated += 1
+                log.info(
+                    "[DEMO CATALOG SEED] zid_store_id=%s store_pk=%s json_len=%s",
+                    slug,
+                    getattr(st, "id", None),
+                    len(st.cf_product_catalog_json or ""),
+                )
+            if updated:
+                db.session.commit()
     except Exception as exc:  # noqa: BLE001
         log.warning("demo catalog seed failed: %s", exc, exc_info=True)
-        try:
-            db.session.rollback()
-        except Exception:  # noqa: BLE001
-            pass
         return 0
     return updated

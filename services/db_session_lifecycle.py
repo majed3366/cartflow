@@ -27,6 +27,28 @@ def release_scoped_db_session() -> None:
     remove_scoped_session()
 
 
+@contextmanager
+def non_request_db_phase(*, owner: str) -> Generator[Any, None, None]:
+    """
+    Bounded UoW for startup/CLI/lifespan (INV-START-01…05).
+
+    Uses the current scoped_session (thread fallback when no request scope).
+    Always rollback+remove on exit. Callers commit writes before exit.
+    """
+    scoped_db_session_begin()
+    try:
+        yield db.session
+    except Exception:
+        try:
+            db.session.rollback()
+        except (SQLAlchemyError, OSError, RuntimeError):
+            pass
+        raise
+    finally:
+        release_scoped_db_session()
+        log.debug("non_request_db_phase closed owner=%s", (owner or "")[:64])
+
+
 def scoped_db_session_begin() -> None:
     """بداية عمل خلفي/مهمة: لا تُورّث جلسة الطلب السابق."""
     clear_request_scoped_orm_caches()

@@ -1,7 +1,7 @@
 # Phase 16 — Production validation
 
 **Date (UTC):** 2026-08-30  
-**Status:** RUN. **STOP after Stage 1.** Failure class **not closed**.
+**Status:** Superseded for the dashboard thread-local class by [27_PRODUCTION_OWNERSHIP_PROOF.md](27_PRODUCTION_OWNERSHIP_PROOF.md) on live `76c0d411`. This file remains the Stage 1 FAIL record for `b728856f`.
 
 ## Identity
 

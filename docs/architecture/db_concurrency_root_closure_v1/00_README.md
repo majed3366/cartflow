@@ -1,7 +1,7 @@
 # Database Concurrency & Connection Lifecycle Root Closure V1
 
-**Status:** LOCAL ownership-root candidate ready; **not deployed**; production class **not closed**.  
-**Live SHA:** `5e03be7bec8cad754199571628c8acff3f7a6fb1`  
+**Status:** Request-scoped ownership class **closed in production**. Startup unowned hold remains. First-100 / visual paused.  
+**Live SHA:** `76c0d4111afe5fedeb8e3f4fc24b7ede7915f9ab`  
 **Branch:** `feat/db-concurrency-root-closure-v1`  
 **Date (UTC):** 2026-08-30
 
@@ -52,7 +52,10 @@ API QueuePool remains `pool_size=5`, `max_overflow=5`, `pool_timeout=5s`. Do not
 | [23_SESSION_MODEL_AUDIT.md](23_SESSION_MODEL_AUDIT.md) | Pre-fix session model |
 | [24_OWNERSHIP_DESIGN.md](24_OWNERSHIP_DESIGN.md) | Design A/B/C |
 | [25_STATIC_OWNERSHIP_SEARCH.md](25_STATIC_OWNERSHIP_SEARCH.md) | Residual thread-local search |
-| [26_OWNERSHIP_ROOT_FIX.md](26_OWNERSHIP_ROOT_FIX.md) | This candidate |
+| [26_OWNERSHIP_ROOT_FIX.md](26_OWNERSHIP_ROOT_FIX.md) | Local candidate |
+| [27_PRODUCTION_OWNERSHIP_PROOF.md](27_PRODUCTION_OWNERSHIP_PROOF.md) | Production proof |
+| [28_STARTUP_UNOWNED_OWNER.md](28_STARTUP_UNOWNED_OWNER.md) | Startup leftover owner |
+| [29_STARTUP_INVARIANTS.md](29_STARTUP_INVARIANTS.md) | INV-START-01…06 |
 
 ## Process isolation
 
