@@ -45,6 +45,30 @@ body[data-cf-ui="v2"] .cf2-dobj--primary[data-cf2-tension="ready"] {
   border-inline-start-color: var(--cf2-navy);
 }
 
+body[data-cf-ui="v2"] .cf2-dobj--primary > .cf2-co-row {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  margin: 0 0 12px;
+}
+
+body[data-cf-ui="v2"] .cf2-dobj--primary > .cf2-co-row .cf2-co__glyph {
+  --cf2-co-size: 48px;
+  width: 48px;
+  height: 48px;
+}
+
+body[data-cf-ui="v2"] .cf2-dobj--primary > .cf2-co-row .cf2-co__label {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--cf2-ink);
+}
+
 /* Lead: one mark + stance + decision (glance) */
 body[data-cf-ui="v2"] .cf2-ws__head {
   display: flex;
@@ -379,6 +403,17 @@ body[data-cf-ui="v2"]
 
 /* Mobile Hierarchy Refinement V1 — first-viewport breathing; desktop untouched */
 @media (max-width: 1023px) {
+  body[data-cf-ui="v2"] .cf2-dobj--primary > .cf2-co-row {
+    gap: 8px 12px;
+    margin-bottom: 10px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-dobj--primary > .cf2-co-row .cf2-co__glyph {
+    --cf2-co-size: 36px;
+    width: 36px;
+    height: 36px;
+  }
+
   body[data-cf-ui="v2"] .cf2-dobj--primary {
     padding: 2px 0 8px;
     border: none;

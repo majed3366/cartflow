@@ -1,7 +1,8 @@
 /**
  * CartFlow Merchant UI V2 — Decision Workspace
- * Composition Closure + Mobile Hierarchy Refinement V1.
- * Shell contract untouched. Living route + one CO.
+ * Composition Closure + Mobile Hierarchy Refinement V1
+ * + Visual Language Restoration V1 (visible CO family on current Decision Object).
+ * Shell contract untouched. Living route + Decision Mass + CO row.
  */
 (function (global) {
   "use strict";
@@ -133,13 +134,15 @@
     return "";
   }
 
-  function silentMark(kind) {
-    if (!L()) return "";
-    return (
-      '<div class="cf2-ws__mark" aria-hidden="true">' +
-      L().commerceObject(kind, " ") +
-      "</div>"
-    );
+  function objectRow(kinds) {
+    if (!L() || !kinds || !kinds.length) return "";
+    var html =
+      '<div class="cf2-co-row" data-cf2-grammar="commerce-objects">';
+    kinds.forEach(function (k) {
+      html += L().commerceObject(k);
+    });
+    html += "</div>";
+    return html;
   }
 
   function renderDecisionObject(card, isPrimary) {
@@ -214,8 +217,12 @@
       esc(card.decision_id || "") +
       '">';
 
+    html += objectRow(
+      lang && lang.mapWorkspaceObjects
+        ? lang.mapWorkspaceObjects(card).slice(0, 3)
+        : [kind]
+    );
     html += '<header class="cf2-ws__head">';
-    html += silentMark(kind);
     html += '<div class="cf2-ws__head-text">';
     html += '<p class="cf2-ws__eyebrow">' + esc(eyebrow) + "</p>";
     html +=
@@ -327,8 +334,8 @@
     var lang = L();
     var html =
       '<article class="cf2-dobj cf2-dobj--primary cf2-dobj--quiet" data-cf2-tension="open" data-cf2-evidence="sparse" data-cf2-progress="evidence" data-cf2-grammar="core-silence">';
+    html += objectRow(["attention", "insufficient", "waiting"]);
     html += '<header class="cf2-ws__head">';
-    html += silentMark("waiting");
     html += '<div class="cf2-ws__head-text">';
     html += '<p class="cf2-ws__eyebrow">لا قرار عاجل</p>';
     html +=

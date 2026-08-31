@@ -1,0 +1,62 @@
+{
+  "review_sha_header": "5a612d0f",
+  "base": "http://127.0.0.1:8773",
+  "probes": {
+    "desktop_home": {
+      "overflowX": false,
+      "kicker": true,
+      "gravity": true,
+      "rail": 3,
+      "mtrace": 1,
+      "evfield": 1,
+      "route": 0,
+      "dmass": 0,
+      "utility": true,
+      "upbar": true,
+      "ctx": true,
+      "text": "مشهد تنفيذي\n\nالحالة · الدليل · المعنى · القرار\n\nانتباه\nأدلة ناقصة\nعدم يقين\n\nمركز الجاذبية\n\nالأهم الآن\n\nأهم قرار اليوم\n\nلا يستطيع CartFlow بعد تحديد السبب التشغيلي بثقة كافية.\n\nالأدلة ما زالت محدودة\n\nدليل\nقرار\n\nالوضع الآن\n\nلا يلزم تغيير تجار"
+    },
+    "desktop_workspace": {
+      "overflowX": false,
+      "kicker": false,
+      "gravity": false,
+      "rail": 0,
+      "mtrace": 0,
+      "evfield": 0,
+      "route": 0,
+      "dmass": 0,
+      "utility": true,
+      "upbar": true,
+      "ctx": true,
+      "text": "\n            جاري تحميل الملخص…\n          "
+    },
+    "mobile_home": {
+      "overflowX": false,
+      "kicker": true,
+      "gravity": true,
+      "rail": 3,
+      "mtrace": 1,
+      "evfield": 1,
+      "route": 0,
+      "dmass": 0,
+      "utility": true,
+      "upbar": true,
+      "ctx": true,
+      "text": "مشهد تنفيذي\n\nالحالة · الدليل · المعنى · القرار\n\nانتباه\nأدلة ناقصة\nعدم يقين\n\nمركز الجاذبية\n\nالأهم الآن\n\nأهم قرار اليوم\n\nلا يستطيع CartFlow بعد تحديد السبب التشغيلي بثقة كافية.\n\nالأدلة ما زالت محدودة\n\nدليل\nقرار\n\nالوضع الآن\n\nلا يلزم تغيير تجار"
+    },
+    "mobile_workspace": {
+      "overflowX": false,
+      "kicker": false,
+      "gravity": false,
+      "rail": 0,
+      "mtrace": 0,
+      "evfield": 0,
+      "route": 0,
+      "dmass": 0,
+      "utility": true,
+      "upbar": true,
+      "ctx": true,
+      "text": "\n            جاري تحميل الملخص…\n          "
+    }
+  }
+}

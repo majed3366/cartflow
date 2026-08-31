@@ -1,7 +1,8 @@
 /**
  * CartFlow Merchant UI V2 — Home executive composition V1.3
+ * + Visual Language Restoration V1 (current-line emitters).
  * One continuous scene: understand → evidence → stance → monitoring.
- * No two-column SaaS split. Language / truth locked.
+ * No two-column SaaS split. Current HES truth. Language vocabulary restored.
  */
 (function (global) {
   "use strict";
@@ -117,20 +118,88 @@
     return "راجع التفاصيل عندما تكون جاهزًا لاتخاذ قرار.";
   }
 
-  /** Silent CO — participates in lead, not a corner ornament. */
-  function primaryMark(weak, lane) {
-    if (!L()) return "";
-    var kind = "attention";
-    if (!weak && lane === "decision") kind = "decision-ready";
-    else if (!weak && lane === "recovery") kind = "recovery-continue";
-    else if (weak) kind = "attention";
+  function objectRow(kinds) {
+    if (!L() || !kinds || !kinds.length) return "";
+    var html =
+      '<div class="cf2-co-row cf2-home__rail" data-cf2-grammar="commerce-objects">';
+    kinds.forEach(function (k) {
+      html += L().commerceObject(k);
+    });
+    html += "</div>";
+    return html;
+  }
+
+  function sceneSpine() {
     return (
-      '<div class="cf2-home__mark" data-cf2-state="' +
-      esc(weak ? "open" : "resolved") +
-      '" aria-hidden="true">' +
-      L().commerceObject(kind, " ") +
-      "</div>"
+      '<header class="cf2-home__spine">' +
+      '<p class="cf2-home__kicker">مشهد تنفيذي</p>' +
+      '<p class="cf2-home__spine-line">الحالة · الدليل · المعنى · القرار</p>' +
+      "</header>"
     );
+  }
+
+  /** Momentum only from sections that exist — never invent a full fake journey. */
+  function buildMomentum(parts, weak) {
+    var all = []
+      .concat(parts.primary ? [parts.primary] : [])
+      .concat(parts.know || [])
+      .concat(parts.watch || [])
+      .concat(parts.learning || []);
+    var steps = [];
+    var text = all
+      .map(function (s) {
+        return truthText(s);
+      })
+      .join(" ");
+    if (/تردّد|تردد|hesitat/i.test(text)) steps.push("تردّد");
+    if (
+      all.some(function (s) {
+        return laneOf(s) === "evidence" || laneOf(s) === "condition";
+      })
+    ) {
+      steps.push("دليل");
+    }
+    if (
+      all.some(function (s) {
+        return laneOf(s) === "decision";
+      })
+    ) {
+      steps.push("قرار");
+    }
+    if (
+      all.some(function (s) {
+        return laneOf(s) === "momentum";
+      })
+    ) {
+      steps.push("حركة");
+    }
+    if (
+      all.some(function (s) {
+        return laneOf(s) === "recovery";
+      })
+    ) {
+      steps.push("استرداد");
+    }
+    if (steps.length < 2) return { steps: [], active: 0 };
+    var active = 0;
+    if (weak) {
+      active = Math.max(0, steps.indexOf("دليل"));
+    } else if (steps.indexOf("قرار") >= 0) {
+      active = steps.indexOf("قرار");
+    } else {
+      active = steps.length - 1;
+    }
+    return { steps: steps, active: active };
+  }
+
+  function railKinds(sec, weak, lane) {
+    var lang = L();
+    if (lang && sec) {
+      return lang.mapHomeObjects(sec).slice(0, 3);
+    }
+    if (!weak && lane === "decision") return ["decision-ready"];
+    if (!weak && lane === "recovery") return ["recovery-continue"];
+    return ["attention"];
   }
 
   function tierLabel(tier) {
@@ -142,11 +211,16 @@
   function monitorItem(sec, tier) {
     var diagnosis = truthText(sec);
     var html =
-      '<article class="cf2-home__monitor-item" data-hes-section="' +
+      '<article class="cf2-home__monitor-item cf2-capsule" data-hes-section="' +
       esc(sec.id || "") +
       '" data-cf2-tier="' +
       esc(tier) +
+      '" data-cf2-lane="' +
+      esc(laneOf(sec)) +
       '">';
+    if (L()) {
+      html += objectRow(L().mapHomeObjects(sec).slice(0, 1));
+    }
     html +=
       '<p class="cf2-home__tier">' + esc(tierLabel(tier)) + "</p>";
     html +=
@@ -185,18 +259,26 @@
     var sections = Array.isArray(pkg.sections) ? pkg.sections : [];
     if (!sections.length) {
       return (
-        '<div class="cf2-home"><p class="cf2-empty">' +
+        '<section class="cf2-home" data-cf2="home-stage-closure-v1" data-cf2-grammar="attention-gravity" data-cf2-truth="empty">' +
+        sceneSpine() +
+        objectRow(["attention", "insufficient"]) +
+        '<p class="cf2-empty">' +
         esc(pkg.lede_ar || "لا تتوفر معرفة كافية الآن.") +
-        "</p></div>"
+        '</p><hr class="cf2-taper" /></section>'
       );
     }
     var parts = split(sections);
     var lang = L();
     var html =
-      '<section class="cf2-home" data-cf2="home-stage-closure-v1">';
+      '<section class="cf2-home" data-cf2="home-stage-closure-v1" data-cf2-grammar="attention-gravity">';
+    html += sceneSpine();
 
     if (!parts.primary) {
-      html += "</section>";
+      html += objectRow(["attention", "insufficient"]);
+      html +=
+        '<p class="cf2-empty">' +
+        esc(pkg.lede_ar || "لا تتوفر معرفة كافية الآن.") +
+        '</p><hr class="cf2-taper" /></section>';
       return html;
     }
 
@@ -243,9 +325,10 @@
 
     /* ——— Primary reading path (one organism) ——— */
     html += '<div class="cf2-home__scene">';
+    html += objectRow(railKinds(p, weak, laneOf(p)));
     html += '<div class="cf2-home__lead">';
-    html += primaryMark(weak, laneOf(p));
     html += '<div class="cf2-home__lead-text">';
+    html += '<p class="cf2-home__lane">مركز الجاذبية</p>';
     html += '<p class="cf2-home__eyebrow">الأهم الآن</p>';
     html +=
       '<h2 class="cf2-home__title">' + esc(p.title_ar || "") + "</h2>";
@@ -268,6 +351,13 @@
         "</div>";
     }
     html += "</div>";
+
+    if (lang) {
+      var mom = buildMomentum(parts, weak);
+      if (mom.steps.length >= 2) {
+        html += lang.momentumTrace(mom.steps, mom.active);
+      }
+    }
 
     html +=
       '<div class="cf2-home__stance cf2-terminus" data-cf2-tension="' +
@@ -330,6 +420,7 @@
       html += "</div>";
     }
 
+    html += '<hr class="cf2-taper" />';
     html += "</section>";
     return html;
   }
@@ -370,5 +461,6 @@
   global.CartFlowUiV2Home = {
     loadAndPaint: loadAndPaint,
     paint: paint,
+    render: render,
   };
 })(typeof window !== "undefined" ? window : globalThis);

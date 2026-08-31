@@ -40,6 +40,63 @@ body[data-cf-ui="v2"] .cf2-home__board[data-cf2-tension="resolved"] {
   border-inline-start-color: var(--cf2-navy);
 }
 
+body[data-cf-ui="v2"] .cf2-home__spine {
+  margin: 0 0 12px;
+  padding: 0;
+}
+
+body[data-cf-ui="v2"] .cf2-home__kicker {
+  margin: 0 0 2px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--cf2-teal-dark);
+}
+
+body[data-cf-ui="v2"] .cf2-home__spine-line {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cf2-mute);
+}
+
+body[data-cf-ui="v2"] .cf2-home__lane {
+  margin: 0 0 2px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: var(--cf2-teal-dark);
+}
+
+body[data-cf-ui="v2"] .cf2-home__rail.cf2-co-row {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 14px 20px;
+  margin: 0 0 14px;
+}
+
+body[data-cf-ui="v2"] .cf2-home__rail .cf2-co__glyph {
+  --cf2-co-size: 52px;
+  width: 52px;
+  height: 52px;
+}
+
+body[data-cf-ui="v2"] .cf2-home__rail .cf2-co__label {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--cf2-ink);
+}
+
+body[data-cf-ui="v2"] .cf2-home .cf2-mtrace {
+  margin: 0 0 12px;
+  max-width: 46rem;
+}
+
 /* ——— Primary reading path ——— */
 body[data-cf-ui="v2"] .cf2-home__scene {
   padding: 18px 22px 8px 18px;
@@ -219,6 +276,17 @@ body[data-cf-ui="v2"] .cf2-home__monitor-item {
   background: transparent;
 }
 
+body[data-cf-ui="v2"] .cf2-home__monitor-item > .cf2-co-row {
+  margin: 0 0 6px;
+  gap: 8px;
+}
+
+body[data-cf-ui="v2"] .cf2-home__monitor-item > .cf2-co-row .cf2-co__glyph {
+  --cf2-co-size: 32px;
+  width: 32px;
+  height: 32px;
+}
+
 body[data-cf-ui="v2"] .cf2-home__monitor-item[data-cf2-tier="watch"],
 body[data-cf-ui="v2"] .cf2-home__monitor-item[data-cf2-tier="learning"] {
   border-inline-start-color: rgba(115, 133, 158, 0.4);
@@ -363,6 +431,23 @@ body[data-cf-ui="v2"] .cf2-home__item-body {
   body[data-cf-ui="v2"] .cf2-home__monitor {
     padding: 12px 0 0;
     background: transparent;
+  }
+
+  body[data-cf-ui="v2"] .cf2-home__rail.cf2-co-row {
+    gap: 10px 14px;
+    margin-bottom: 10px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-home__rail .cf2-co__glyph {
+    --cf2-co-size: 40px;
+    width: 40px;
+    height: 40px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-home__monitor-item > .cf2-co-row .cf2-co__glyph {
+    --cf2-co-size: 28px;
+    width: 28px;
+    height: 28px;
   }
 
   body[data-cf-ui="v2"] .cf2-home__monitor-row {
