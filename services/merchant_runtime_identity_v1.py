@@ -15,7 +15,10 @@ from services.merchant_ui_v2.flag_v1 import (
     merchant_ui_selection_source,
     merchant_ui_v2_requested,
 )
-from services.merchant_visual_identity_v1 import VISUAL_SYSTEM_VERSION
+from services.merchant_visual_identity_v1 import (
+    FIGMA_PARITY_CONTRACT,
+    VISUAL_SYSTEM_VERSION,
+)
 
 CANONICAL_ROUTE = "/dashboard"
 CANONICAL_TEMPLATE = "merchant_app_v2.html"
@@ -42,6 +45,7 @@ HEADER_HOME = "X-CartFlow-Merchant-Home-Painter"
 HEADER_WORKSPACE = "X-CartFlow-Merchant-Workspace-Painter"
 HEADER_ROLE = "X-CartFlow-Merchant-Role"
 HEADER_VISUAL_SYSTEM = "X-CartFlow-Merchant-Visual-System"
+HEADER_FIGMA_PARITY = "X-CartFlow-Merchant-Figma-Parity"
 
 _PARITY_KEYS = (
     "renderer_family",
@@ -79,6 +83,7 @@ def _v2_identity(*, selection_source: str, role: str = "canonical") -> dict[str,
         "query": QUERY_MERCHANT_UI_V2,
         "env_raw": (os.environ.get(FLAG_MERCHANT_UI_V2) or "").strip() or None,
         "visual_system_version": VISUAL_SYSTEM_VERSION,
+        "figma_parity_contract": FIGMA_PARITY_CONTRACT,
     }
 
 
@@ -109,6 +114,7 @@ def _v1_identity(*, selection_source: str) -> dict[str, Any]:
         "query": QUERY_MERCHANT_UI_V2,
         "env_raw": (os.environ.get(FLAG_MERCHANT_UI_V2) or "").strip() or None,
         "visual_system_version": VISUAL_SYSTEM_VERSION,
+        "figma_parity_contract": FIGMA_PARITY_CONTRACT,
     }
 
 
@@ -161,6 +167,9 @@ def apply_merchant_runtime_identity_headers(
     headers[HEADER_ROLE] = str(identity.get("role") or "")
     headers[HEADER_VISUAL_SYSTEM] = str(
         identity.get("visual_system_version") or VISUAL_SYSTEM_VERSION
+    )
+    headers[HEADER_FIGMA_PARITY] = str(
+        identity.get("figma_parity_contract") or FIGMA_PARITY_CONTRACT
     )
     headers.setdefault("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
     return response

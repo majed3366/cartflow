@@ -15,9 +15,12 @@ from services.merchant_runtime_identity_v1 import (
     CANONICAL_UI_VERSION,
 )
 from services.merchant_visual_identity_v1 import (
+    FIGMA_MAPPED_PRIMITIVES,
+    FIGMA_PARITY_CONTRACT,
     REGRESSION_GATE,
     VISUAL_SYSTEM_VERSION,
     forbidden_present,
+    missing_markers,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,6 +28,8 @@ V2 = (ROOT / "templates" / "merchant_app_v2.html").read_text(encoding="utf-8")
 HOME_JS = (ROOT / "static" / "merchant_ui_v2_home.js").read_text(encoding="utf-8")
 WS_JS = (ROOT / "static" / "merchant_ui_v2_workspace.js").read_text(encoding="utf-8")
 FRAME_CSS = (ROOT / "static" / "merchant_ui_v2_frame.css").read_text(encoding="utf-8")
+LANG_CSS = (ROOT / "static" / "merchant_ui_v2_language.css").read_text(encoding="utf-8")
+LANG_JS = (ROOT / "static" / "merchant_ui_v2_language.js").read_text(encoding="utf-8")
 
 
 class MerchantVisualIdentityRegressionGate(unittest.TestCase):
@@ -45,6 +50,9 @@ class MerchantVisualIdentityRegressionGate(unittest.TestCase):
         self.assertEqual(
             r.headers.get("X-CartFlow-Merchant-Visual-System"), VISUAL_SYSTEM_VERSION
         )
+        self.assertEqual(
+            r.headers.get("X-CartFlow-Merchant-Figma-Parity"), FIGMA_PARITY_CONTRACT
+        )
         self.assertEqual(forbidden_present(r.text), [])
 
     def test_home_workspace_anchors_present(self) -> None:
@@ -64,7 +72,16 @@ class MerchantVisualIdentityRegressionGate(unittest.TestCase):
     def test_visual_system_version_matches_runtime(self) -> None:
         probe = TestClient(app).get("/dev/merchant-runtime-identity").json()
         self.assertEqual(probe.get("visual_system_version"), VISUAL_SYSTEM_VERSION)
+        self.assertEqual(probe.get("figma_parity_contract"), FIGMA_PARITY_CONTRACT)
         self.assertTrue(probe.get("canonical"))
+
+    def test_figma_mapped_primitives_remain_in_language_layer(self) -> None:
+        blob = LANG_CSS + LANG_JS + HOME_JS + WS_JS
+        self.assertEqual(missing_markers(blob, FIGMA_MAPPED_PRIMITIVES), [])
+        self.assertIn("clip-path: polygon", LANG_CSS)
+        self.assertIn("open-C", LANG_CSS)
+        self.assertIn("cf2-co--attention", LANG_CSS)
+        self.assertIn("cf2-co--recovery-opportunity", LANG_CSS)
 
     def test_mobile_frame_keeps_canonical_shell(self) -> None:
         self.assertIn("@media (max-width: 1023px)", FRAME_CSS)

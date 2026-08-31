@@ -61,6 +61,7 @@ class MerchantRuntimeIdentityUnitTests(unittest.TestCase):
         self.assertEqual(ident["home_renderer_version"], CANONICAL_HOME_PAINTER)
         self.assertEqual(ident["workspace_renderer_version"], CANONICAL_WORKSPACE_PAINTER)
         self.assertEqual(ident["visual_system_version"], "merchant-visual-system-v1")
+        self.assertEqual(ident["figma_parity_contract"], "visual-language-constitution-v1")
 
     def test_v1_is_rollback_not_canonical(self) -> None:
         ident = build_merchant_runtime_identity(ui_v2=False, selection_source="query")

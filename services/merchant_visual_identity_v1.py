@@ -5,7 +5,22 @@ from __future__ import annotations
 from typing import Iterable
 
 VISUAL_SYSTEM_VERSION = "merchant-visual-system-v1"
+FIGMA_PARITY_CONTRACT = "visual-language-constitution-v1"
 REGRESSION_GATE = "MERCHANT_VISUAL_IDENTITY_REGRESSION_GATE"
+
+FIGMA_MAPPED_PRIMITIVES = (
+    "cf2-co__glyph",
+    "cf2-co-row",
+    "cf2-evfield",
+    "cf2-mtrace",
+    "cf2-route",
+    "cf2-dmass",
+    "cf2-capsule",
+    "cf2-taper",
+    "cf2-terminus",
+    "cf2-home__board",
+    "cf2-dobj--primary",
+)
 
 CANONICAL_SHELL_MARKERS = (
     "cf2-utility",
@@ -95,6 +110,8 @@ __all__ = [
     "CANONICAL_WORKSPACE_EMITTERS",
     "FORBIDDEN_CANONICAL_MARKERS",
     "LEGACY_SIGNATURE",
+    "FIGMA_MAPPED_PRIMITIVES",
+    "FIGMA_PARITY_CONTRACT",
     "REGRESSION_GATE",
     "VISUAL_SYSTEM_VERSION",
     "forbidden_present",
