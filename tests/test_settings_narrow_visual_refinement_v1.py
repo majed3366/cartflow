@@ -74,7 +74,9 @@ class SettingsNarrowVisualRefinementV1Tests(unittest.TestCase):
         self.assertIn(".cf2-settings__row.is-needs", SETTINGS_CSS)
         self.assertIn(".cf2-settings__row:focus-visible", SETTINGS_CSS)
         self.assertIn("document.activeElement.blur()", SETTINGS_JS)
-        self.assertIn("inset 3px 0 0 var(--cf2-teal)", SETTINGS_CSS)
+        self.assertNotIn("inset 3px 0 0 var(--cf2-teal)", SETTINGS_CSS)
+        self.assertIn("border-inline-start: 3px solid transparent", SETTINGS_CSS)
+        self.assertIn("border-inline-start-color: var(--cf2-navy)", SETTINGS_CSS)
 
     def test_settings_nav_scrolls_active_item_into_view(self) -> None:
         self.assertIn("revealActiveNavItem", APP_JS)

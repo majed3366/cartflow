@@ -348,7 +348,8 @@ body[data-cf-ui="v2"] .cf2-comms__empty {
   padding: 16px 12px;
   text-align: center;
   background: var(--cf2-surface);
-  border: 1px dashed var(--cf2-border-strong);
+  border: 1px solid var(--cf2-border);
+  border-inline-start: 3px solid rgba(8, 32, 72, 0.22);
   border-radius: var(--cf2-r-md);
 }
 

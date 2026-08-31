@@ -32,9 +32,13 @@
   align-items: start;
   min-width: 0;
 }
-[data-cf-ui="v2"] .cf2-settings__overview,
+[data-cf-ui="v2"] .cf2-settings__overview {
+  min-width: 0;
+}
 [data-cf-ui="v2"] .cf2-settings__detail {
   min-width: 0;
+  padding-inline-start: 10px;
+  border-inline-start: 3px solid rgba(8, 32, 72, 0.2);
 }
 [data-cf-ui="v2"] .cf2-settings__needs {
   margin: 0 0 8px;
@@ -56,6 +60,7 @@
   text-align: right;
   padding: 12px 14px;
   border: 1px solid var(--cf2-border);
+  border-inline-start: 3px solid transparent;
   border-radius: var(--cf2-r-md);
   background: var(--cf2-surface);
   color: inherit;
@@ -64,10 +69,15 @@
 }
 [data-cf-ui="v2"] .cf2-settings__row.is-needs {
   border-color: var(--cf2-border);
+  border-inline-start-color: rgba(122, 78, 12, 0.42);
 }
 [data-cf-ui="v2"] .cf2-settings__row.is-selected {
-  border-color: var(--cf2-navy);
-  box-shadow: inset 3px 0 0 var(--cf2-teal);
+  border-color: var(--cf2-border-strong);
+  border-inline-start-color: var(--cf2-navy);
+  box-shadow: none;
+}
+[data-cf-ui="v2"] .cf2-settings__row.is-selected.is-needs {
+  border-inline-start-color: var(--cf2-navy);
 }
 [data-cf-ui="v2"] .cf2-settings__row:focus {
   outline: none;
