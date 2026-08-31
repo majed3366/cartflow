@@ -1,0 +1,445 @@
+{
+  "identity": {
+    "url": "https://smartreplyai.net/",
+    "status": 200,
+    "sha": "de0997ee81d13b4be70128dd1ec0eb36b7c7d69a"
+  },
+  "baseline": {
+    "/ping": {
+      "status": 200,
+      "sha": "",
+      "body": {
+        "ok": true
+      }
+    },
+    "/health": {
+      "status": 200,
+      "sha": "",
+      "body": {
+        "ok": true,
+        "service": "cartflow",
+        "pool": {
+          "available": true,
+          "pool_impl": "QueuePool",
+          "size": 5,
+          "checked_out": 0,
+          "checked_in": 1,
+          "overflow": -4,
+          "max_connections": 10,
+          "available_slots": 10,
+          "peak_checked_out": 1,
+          "timeout_count": 0,
+          "configured_pool_size": 5,
+          "configured_max_overflow": 5
+        },
+        "holders": [],
+        "holder_count": 0,
+        "engine": {
+          "engine_count": 1,
+          "pool_count": 1,
+          "request_engine_id": 140629824536336,
+          "request_pool_id": 140629824514960,
+          "request_engine_type": "Engine",
+          "request_pool_type": "QueuePool",
+          "instrumented_engine_id": 140629824536336,
+          "same_object": true,
+          "create_engine_runtime_paths": [
+            "extensions.init_database"
+          ],
+          "note": "alembic/env.py create_engine is not imported by the API process"
+        }
+      }
+    },
+    "/health?db=1": {
+      "status": 200,
+      "sha": "",
+      "body": {
+        "ok": true,
+        "service": "cartflow",
+        "pool": {
+          "available": true,
+          "pool_impl": "QueuePool",
+          "size": 5,
+          "checked_out": 0,
+          "checked_in": 1,
+          "overflow": -4,
+          "max_connections": 10,
+          "available_slots": 10,
+          "peak_checked_out": 1,
+          "timeout_count": 0,
+          "configured_pool_size": 5,
+          "configured_max_overflow": 5
+        },
+        "holders": [],
+        "holder_count": 0,
+        "engine": {
+          "engine_count": 1,
+          "pool_count": 1,
+          "request_engine_id": 140629824536336,
+          "request_pool_id": 140629824514960,
+          "request_engine_type": "Engine",
+          "request_pool_type": "QueuePool",
+          "instrumented_engine_id": 140629824536336,
+          "same_object": true,
+          "create_engine_runtime_paths": [
+            "extensions.init_database"
+          ],
+          "note": "alembic/env.py create_engine is not imported by the API process"
+        },
+        "database": "ok",
+        "database_name": "cartflow_restore_20260827",
+        "database_host_class": "railway_private"
+      }
+    },
+    "/health?diag=1": {
+      "status": 200,
+      "sha": "",
+      "body": {
+        "ok": true,
+        "service": "cartflow",
+        "pool": {
+          "available": true,
+          "pool_impl": "QueuePool",
+          "size": 5,
+          "checked_out": 0,
+          "checked_in": 1,
+          "overflow": -4,
+          "max_connections": 10,
+          "available_slots": 10,
+          "peak_checked_out": 1,
+          "timeout_count": 0,
+          "configured_pool_size": 5,
+          "configured_max_overflow": 5
+        },
+        "holders": [],
+        "holder_count": 0,
+        "engine": {
+          "engine_count": 1,
+          "pool_count": 1,
+          "request_engine_id": 140629824536336,
+          "request_pool_id": 140629824514960,
+          "request_engine_type": "Engine",
+          "request_pool_type": "QueuePool",
+          "instrumented_engine_id": 140629824536336,
+          "same_object": true,
+          "create_engine_runtime_paths": [
+            "extensions.init_database"
+          ],
+          "note": "alembic/env.py create_engine is not imported by the API process"
+        },
+        "pg": {
+          "available": true,
+          "via": "isolated_nullpool",
+          "backend_count": 2,
+          "counts": {
+            "ACTIVE": 0,
+            "IDLE": 2,
+            "IDLE_IN_TRANSACTION": 0,
+            "LOCK_WAIT": 0,
+            "OTHER_WAIT": 0,
+            "LONG_RUNNING": 0,
+            "OTHER": 0
+          },
+          "backends": [
+            {
+              "pid": 25958,
+              "application_name": "",
+              "client_addr": "fd12:8a2b:956:1:b000:87:6b82:fb09/128",
+              "state": "idle",
+              "backend_type": "client backend",
+              "xact_s": null,
+              "query_s": 14,
+              "wait_event_type": "Client",
+              "wait_event": "ClientRead",
+              "query_prefix": "ROLLBACK",
+              "class": "IDLE"
+            },
+            {
+              "pid": 25965,
+              "application_name": "",
+              "client_addr": "fd12:8a2b:956:1:b000:f:f147:1e5/128",
+              "state": "idle",
+              "backend_type": "client backend",
+              "xact_s": null,
+              "query_s": 0,
+              "wait_event_type": "Client",
+              "wait_event": "ClientRead",
+              "query_prefix": "COMMIT",
+              "class": "IDLE"
+            }
+          ]
+        },
+        "reconcile": []
+      }
+    },
+    "/login": {
+      "url": "https://smartreplyai.net/login",
+      "status": 200,
+      "sha": ""
+    }
+  },
+  "styles": {
+    "desktop_comms_empty": {
+      "missing": true,
+      "sel": ".cf2-comms__empty"
+    },
+    "desktop_comms_detail": {
+      "sel": ".cf2-comms__detail",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "borderInlineStartWidth": "3px",
+      "borderInlineStartColor": "rgba(8, 32, 72, 0.2)",
+      "borderTopColor": "rgb(8, 32, 72)",
+      "boxShadow": "none",
+      "borderRadius": "0px",
+      "overflowX": false,
+      "text": "بانتظار تأكيد التسليم\n\n9665XXXX234 · رسالة استرداد\n\nحالة التسليم: بانتظار تأكيد التسليم\n\nنص أُرسل\n\n[SRS] mock_sent — no provider call\n\nأحداث"
+    },
+    "desktop_settings_row": {
+      "sel": ".cf2-settings__row",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "borderInlineStartWidth": "3px",
+      "borderInlineStartColor": "rgba(0, 0, 0, 0)",
+      "borderTopColor": "rgb(8, 32, 72)",
+      "boxShadow": "none",
+      "borderRadius": "0px",
+      "overflowX": false,
+      "text": "المتجر\nجاري التحميل…\nمكتمل جزئياً"
+    },
+    "desktop_settings_needs": {
+      "missing": true,
+      "sel": ".cf2-settings__row.is-needs"
+    },
+    "desktop_settings_selected": {
+      "sel": ".cf2-settings__row.is-selected",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "borderInlineStartWidth": "3px",
+      "borderInlineStartColor": "rgb(8, 32, 72)",
+      "borderTopColor": "rgb(8, 32, 72)",
+      "boxShadow": "none",
+      "borderRadius": "0px",
+      "overflowX": false,
+      "text": "المتجر\nغير مربوط\nيحتاج ضبط\nقراءة فقط · الباقة\nغير متاح · سلة"
+    },
+    "desktop_settings_detail": {
+      "sel": ".cf2-settings__detail",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "borderInlineStartWidth": "3px",
+      "borderInlineStartColor": "rgba(8, 32, 72, 0.2)",
+      "borderTopColor": "rgb(8, 32, 72)",
+      "boxShadow": "none",
+      "borderRadius": "0px",
+      "overflowX": false,
+      "text": "ربط المتجر\nزد فقط — الربط الحالي لقراءة الطلبات والسلال.\nغير مربوط\n\nابدأ بربط متجرك لتفعيل استرجاع السلال.\n\nربط زد\n\nسلة: غير متاحة حالياً. S"
+    },
+    "mobile_comms_empty": {
+      "missing": true,
+      "sel": ".cf2-comms__empty"
+    },
+    "mobile_comms_detail": {
+      "sel": ".cf2-comms__detail",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "borderInlineStartWidth": "0px",
+      "borderInlineStartColor": "rgb(8, 32, 72)",
+      "borderTopColor": "rgb(8, 32, 72)",
+      "boxShadow": "none",
+      "borderRadius": "0px",
+      "overflowX": false,
+      "text": "اختر حدث تواصل من السجل."
+    },
+    "mobile_settings_row": {
+      "sel": ".cf2-settings__row",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "borderInlineStartWidth": "3px",
+      "borderInlineStartColor": "rgba(122, 78, 12, 0.42)",
+      "borderTopColor": "rgb(8, 32, 72)",
+      "boxShadow": "none",
+      "borderRadius": "0px",
+      "overflowX": false,
+      "text": "المتجر\nغير مربوط\nيحتاج ضبط\nقراءة فقط · الباقة\nغير متاح · سلة"
+    },
+    "mobile_settings_needs": {
+      "sel": ".cf2-settings__row.is-needs",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "borderInlineStartWidth": "3px",
+      "borderInlineStartColor": "rgba(122, 78, 12, 0.42)",
+      "borderTopColor": "rgb(8, 32, 72)",
+      "boxShadow": "none",
+      "borderRadius": "0px",
+      "overflowX": false,
+      "text": "المتجر\nغير مربوط\nيحتاج ضبط\nقراءة فقط · الباقة\nغير متاح · سلة"
+    },
+    "mobile_settings_selected": {
+      "sel": ".cf2-settings__row.is-selected",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "borderInlineStartWidth": "3px",
+      "borderInlineStartColor": "rgb(8, 32, 72)",
+      "borderTopColor": "rgb(8, 32, 72)",
+      "boxShadow": "none",
+      "borderRadius": "0px",
+      "overflowX": false,
+      "text": "المتجرغير مربوطيحتاج ضبطقراءة فقط · الباقةغير متاح · سلة"
+    },
+    "mobile_settings_detail": {
+      "sel": ".cf2-settings__detail",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "borderInlineStartWidth": "3px",
+      "borderInlineStartColor": "rgba(8, 32, 72, 0.2)",
+      "borderTopColor": "rgb(8, 32, 72)",
+      "boxShadow": "none",
+      "borderRadius": "0px",
+      "overflowX": false,
+      "text": "رجوع · المتجر\nربط المتجر\nزد فقط — الربط الحالي لقراءة الطلبات والسلال.\nغير مربوط\n\nابدأ بربط متجرك لتفعيل استرجاع السلال.\n\nربط زد\n\nسلة: غير م"
+    }
+  },
+  "smoke": {
+    "desktop": {
+      "api_count": 9,
+      "api_paths": [
+        "/api/cart-workspace/v1/projection",
+        "/api/dashboard/followups",
+        "/api/dashboard/messages",
+        "/api/dashboard/normal-carts",
+        "/api/dashboard/summary",
+        "/api/merchant/store-connection",
+        "/api/merchant/subscription",
+        "/api/recovery-settings"
+      ],
+      "overflow": false
+    },
+    "mobile": {
+      "api_count": 9,
+      "api_paths": [
+        "/api/cart-workspace/v1/projection",
+        "/api/dashboard/followups",
+        "/api/dashboard/messages",
+        "/api/dashboard/normal-carts",
+        "/api/dashboard/summary",
+        "/api/merchant/store-connection",
+        "/api/merchant/subscription",
+        "/api/recovery-settings"
+      ],
+      "overflow": false
+    }
+  },
+  "html": {
+    "desktop": {
+      "resid1": true,
+      "assim1": true,
+      "qpool1": true,
+      "sha_meta": false
+    },
+    "mobile": {
+      "resid1": true,
+      "assim1": true,
+      "qpool1": true,
+      "sha_meta": false
+    }
+  },
+  "post": {
+    "status": 200,
+    "sha": "",
+    "body": {
+      "ok": true,
+      "service": "cartflow",
+      "pool": {
+        "available": true,
+        "pool_impl": "QueuePool",
+        "size": 5,
+        "checked_out": 0,
+        "checked_in": 3,
+        "overflow": -2,
+        "max_connections": 10,
+        "available_slots": 10,
+        "peak_checked_out": 3,
+        "timeout_count": 0,
+        "configured_pool_size": 5,
+        "configured_max_overflow": 5
+      },
+      "holders": [],
+      "holder_count": 0,
+      "engine": {
+        "engine_count": 1,
+        "pool_count": 1,
+        "request_engine_id": 140629824536336,
+        "request_pool_id": 140629824514960,
+        "request_engine_type": "Engine",
+        "request_pool_type": "QueuePool",
+        "instrumented_engine_id": 140629824536336,
+        "same_object": true,
+        "create_engine_runtime_paths": [
+          "extensions.init_database"
+        ],
+        "note": "alembic/env.py create_engine is not imported by the API process"
+      },
+      "pg": {
+        "available": true,
+        "via": "isolated_nullpool",
+        "backend_count": 4,
+        "counts": {
+          "ACTIVE": 0,
+          "IDLE": 4,
+          "IDLE_IN_TRANSACTION": 0,
+          "LOCK_WAIT": 0,
+          "OTHER_WAIT": 0,
+          "LONG_RUNNING": 0,
+          "OTHER": 0
+        },
+        "backends": [
+          {
+            "pid": 25972,
+            "application_name": "",
+            "client_addr": "fd12:8a2b:956:1:b000:f:f147:1e5/128",
+            "state": "idle",
+            "backend_type": "client backend",
+            "xact_s": null,
+            "query_s": 4,
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "query_prefix": "ROLLBACK",
+            "class": "IDLE"
+          },
+          {
+            "pid": 25958,
+            "application_name": "",
+            "client_addr": "fd12:8a2b:956:1:b000:87:6b82:fb09/128",
+            "state": "idle",
+            "backend_type": "client backend",
+            "xact_s": null,
+            "query_s": 20,
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "query_prefix": "ROLLBACK",
+            "class": "IDLE"
+          },
+          {
+            "pid": 25965,
+            "application_name": "",
+            "client_addr": "fd12:8a2b:956:1:b000:f:f147:1e5/128",
+            "state": "idle",
+            "backend_type": "client backend",
+            "xact_s": null,
+            "query_s": 4,
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "query_prefix": "ROLLBACK",
+            "class": "IDLE"
+          },
+          {
+            "pid": 25974,
+            "application_name": "",
+            "client_addr": "fd12:8a2b:956:1:b000:f:f147:1e5/128",
+            "state": "idle",
+            "backend_type": "client backend",
+            "xact_s": null,
+            "query_s": 4,
+            "wait_event_type": "Client",
+            "wait_event": "ClientRead",
+            "query_prefix": "ROLLBACK",
+            "class": "IDLE"
+          }
+        ]
+      },
+      "reconcile": []
+    }
+  }
+}
