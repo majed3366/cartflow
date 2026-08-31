@@ -62,6 +62,7 @@ def dashboard(request: Request):
 
     from services.merchant_ui_v2.flag_v1 import (  # noqa: PLC0415
         apply_merchant_ui_v2_cookie,
+        heal_silent_v1_cookie,
         merchant_ui_selection_source,
         merchant_ui_v2_requested,
     )
@@ -149,10 +150,16 @@ def dashboard(request: Request):
         _ctx,
     )
     apply_merchant_runtime_identity_headers(resp, _identity)
-    # Persist review toggle when ?cf_ui= is present.
+    # Persist V2 only. V1 is query-scoped. Heal leftover cf_ui_v2=0.
     _q = (request.query_params.get("cf_ui") or "").strip().lower()
-    if _q in {"v2", "1", "true", "on", "v1", "0", "false", "off"}:
-        apply_merchant_ui_v2_cookie(resp, _ui_v2)
+    if _q in {"v2", "1", "true", "on"}:
+        apply_merchant_ui_v2_cookie(resp, True)
+    elif _q in {"v1", "0", "false", "off"}:
+        apply_merchant_ui_v2_cookie(resp, False)
+    else:
+        heal_silent_v1_cookie(
+            resp, query=request.query_params, cookies=request.cookies
+        )
     stall_trace_checkpoint("dashboard_after_template_before_shell_profile")
     _log_dashboard_shell_profile(wall_perf_start=wall0)
     stall_trace_checkpoint("dashboard_response_ready")
@@ -320,8 +327,9 @@ def merchant_ui_v2_review_entry(request: Request):
 @router.get("/dev/merchant-ui-v1")
 def merchant_ui_v1_review_entry(request: Request):
     """
-    Rollback entry: persist V1 UI cookie and open legacy dashboard presentation.
-    Also available via ?cf_ui=v1 or CARTFLOW_MERCHANT_UI_V2=0.
+    Rollback entry: open legacy dashboard via explicit ?cf_ui=v1 only.
+    Does not persist cookie=0 (INV-VIS-07 — no silent leftover V1).
+    Also available via CARTFLOW_MERCHANT_UI_V2=0.
     """
     from services.merchant_ui_v2.flag_v1 import apply_merchant_ui_v2_cookie  # noqa: PLC0415
 

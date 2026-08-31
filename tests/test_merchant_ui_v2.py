@@ -35,8 +35,8 @@ class MerchantUiV2FlagTests(unittest.TestCase):
             merchant_ui_v2_requested(query={"cf_ui": "v1"}, cookies={"cf_ui_v2": "1"})
         )
 
-    def test_cookie_v1_rollback(self) -> None:
-        self.assertFalse(
+    def test_cookie_v1_is_ignored_not_silent_rollback(self) -> None:
+        self.assertTrue(
             merchant_ui_v2_requested(query={}, cookies={"cf_ui_v2": "0"})
         )
 

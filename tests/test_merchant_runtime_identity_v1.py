@@ -60,6 +60,7 @@ class MerchantRuntimeIdentityUnitTests(unittest.TestCase):
         self.assertEqual(ident["shell_version"], CANONICAL_SHELL)
         self.assertEqual(ident["home_renderer_version"], CANONICAL_HOME_PAINTER)
         self.assertEqual(ident["workspace_renderer_version"], CANONICAL_WORKSPACE_PAINTER)
+        self.assertEqual(ident["visual_system_version"], "merchant-visual-system-v1")
 
     def test_v1_is_rollback_not_canonical(self) -> None:
         ident = build_merchant_runtime_identity(ui_v2=False, selection_source="query")
@@ -75,6 +76,10 @@ class MerchantRuntimeIdentityUnitTests(unittest.TestCase):
         )
         self.assertEqual(
             merchant_ui_selection_source(query={}, cookies={"cf_ui_v2": "0"}),
+            "default",
+        )
+        self.assertEqual(
+            merchant_ui_selection_source(query={}, cookies={"cf_ui_v2": "1"}),
             "cookie",
         )
         self.assertEqual(merchant_ui_selection_source(query={}, cookies={}), "default")
@@ -131,11 +136,12 @@ class MerchantRuntimeParityRouteTests(unittest.TestCase):
         self.assertEqual(probe["home_renderer_version"], dash["home_renderer_version"])
         self.assertEqual(probe["workspace_renderer_version"], dash["workspace_renderer_version"])
 
-    def test_identity_endpoint_exposes_cookie_rollback(self) -> None:
+    def test_identity_endpoint_ignores_leftover_v1_cookie(self) -> None:
         probe = self.client.get(IDENTITY_ROUTE, cookies={"cf_ui_v2": "0"}).json()
-        self.assertFalse(probe["canonical"])
-        self.assertEqual(probe["selection_source"], "cookie")
-        self.assertEqual(probe["ui_version"], "v1")
+        self.assertTrue(probe["canonical"])
+        self.assertEqual(probe["selection_source"], "default")
+        self.assertEqual(probe["ui_version"], "v2")
+        self.assertEqual(probe["visual_system_version"], "merchant-visual-system-v1")
 
     @patch("services.living_store_reality_prod_v1.issue_demo_home_review_session_v1")
     def test_review_bind_forces_canonical_v2(self, mock_issue) -> None:

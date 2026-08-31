@@ -16,10 +16,11 @@ _TEMPLATE = (_ROOT / "templates" / "merchant_app.html").read_text(encoding="utf-
 
 
 class MerchantVisualIdentityV1Tests(unittest.TestCase):
-    def test_dashboard_shell_loads_frame_not_vi_override(self) -> None:
+    def test_dashboard_shell_loads_v2_not_vi_override(self) -> None:
         html = TestClient(app).get("/dashboard").text
-        self.assertIn("merchant_frame_v1.css", html)
+        self.assertIn("merchant_ui_v2_frame.css", html)
         self.assertNotIn("merchant_visual_identity_v1.css", html)
+        self.assertNotIn("merchant_frame_v1.css", html)
 
     def test_brand_tokens_live_in_frame(self) -> None:
         for token in ("--cf-navy: #082048", "--cf-teal: #18b0a8", "--cfvi-chrome-bg"):

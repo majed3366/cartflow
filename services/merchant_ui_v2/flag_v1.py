@@ -39,7 +39,10 @@ def merchant_ui_selection_source(
     query: Optional[Mapping[str, Any]] = None,
     cookies: Optional[Mapping[str, Any]] = None,
 ) -> str:
-    """How V1/V2 was chosen. query | cookie | env | default."""
+    """How V1/V2 was chosen. query | cookie_v2 | env | default.
+
+    Cookie ``cf_ui_v2=0`` is not a selector (INV-VIS-07). Only ``=1`` counts.
+    """
     q = query or {}
     raw_q = ""
     if hasattr(q, "get"):
@@ -50,11 +53,23 @@ def merchant_ui_selection_source(
     raw_c = ""
     if hasattr(c, "get"):
         raw_c = str(c.get(COOKIE_MERCHANT_UI_V2) or "")
-    if _truthy(raw_c) is not None:
+    if _truthy(raw_c) is True:
         return "cookie"
     if (os.environ.get(FLAG_MERCHANT_UI_V2) or "").strip():
         return "env"
     return "default"
+
+
+def leftover_v1_cookie(
+    *,
+    cookies: Optional[Mapping[str, Any]] = None,
+) -> bool:
+    """True when a stale rollback cookie is present (must not select V1)."""
+    c = cookies or {}
+    raw_c = ""
+    if hasattr(c, "get"):
+        raw_c = str(c.get(COOKIE_MERCHANT_UI_V2) or "")
+    return _truthy(raw_c) is False
 
 
 def merchant_ui_v2_requested(
@@ -66,8 +81,8 @@ def merchant_ui_v2_requested(
     Production Home V2 is the default surface.
 
     Priority (highest first):
-    1. ?cf_ui=v2|v1 (explicit compare / rollback)
-    2. cookie cf_ui_v2=1|0 (persisted review choice)
+    1. ?cf_ui=v2|v1 (explicit compare / rollback) — only explicit V1
+    2. cookie cf_ui_v2=1 (persisted V2 / review bind). Cookie=0 is ignored.
     3. env CARTFLOW_MERCHANT_UI_V2 (or DEFAULT_MERCHANT_UI_V2 when unset)
     """
     q = query or {}
@@ -83,8 +98,8 @@ def merchant_ui_v2_requested(
     if hasattr(c, "get"):
         raw_c = str(c.get(COOKIE_MERCHANT_UI_V2) or "")
     decided_c = _truthy(raw_c)
-    if decided_c is not None:
-        return decided_c
+    if decided_c is True:
+        return True
 
     return merchant_ui_v2_env_enabled()
 
@@ -99,15 +114,39 @@ def apply_merchant_ui_v2_cookie(
     *,
     max_age: int = 60 * 60 * 24 * 14,
 ) -> Any:
-    """Persist explicit ?cf_ui= choice across subsequent /dashboard loads."""
+    """Persist V2 only. V1 rollback is query-scoped and must not leave cookie=0."""
+    if not enabled:
+        if hasattr(response, "delete_cookie"):
+            response.delete_cookie(key=COOKIE_MERCHANT_UI_V2, path="/")
+        return response
     response.set_cookie(
         key=COOKIE_MERCHANT_UI_V2,
-        value=merchant_ui_v2_cookie_value(enabled),
+        value=merchant_ui_v2_cookie_value(True),
         max_age=max_age,
         httponly=False,
         samesite="lax",
         path="/",
     )
+    return response
+
+
+def heal_silent_v1_cookie(
+    response: Any,
+    *,
+    query: Optional[Mapping[str, Any]] = None,
+    cookies: Optional[Mapping[str, Any]] = None,
+) -> Any:
+    """Overwrite leftover cf_ui_v2=0 when this request is canonical V2."""
+    q = query or {}
+    raw_q = ""
+    if hasattr(q, "get"):
+        raw_q = str(q.get(QUERY_MERCHANT_UI_V2) or "")
+    if _truthy(raw_q) is False:
+        return response
+    if leftover_v1_cookie(cookies=cookies) and merchant_ui_v2_requested(
+        query=query, cookies=cookies
+    ):
+        apply_merchant_ui_v2_cookie(response, True)
     return response
 
 

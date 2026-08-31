@@ -1,0 +1,76 @@
+# -*- coding: utf-8 -*-
+"""MERCHANT_VISUAL_IDENTITY_REGRESSION_GATE — fail closed on silent legacy."""
+from __future__ import annotations
+
+import unittest
+from pathlib import Path
+
+from fastapi.testclient import TestClient
+
+from main import app
+from services.merchant_runtime_identity_v1 import (
+    CANONICAL_RENDERER,
+    CANONICAL_SHELL,
+    CANONICAL_TEMPLATE,
+    CANONICAL_UI_VERSION,
+)
+from services.merchant_visual_identity_v1 import (
+    REGRESSION_GATE,
+    VISUAL_SYSTEM_VERSION,
+    forbidden_present,
+)
+
+ROOT = Path(__file__).resolve().parents[1]
+V2 = (ROOT / "templates" / "merchant_app_v2.html").read_text(encoding="utf-8")
+HOME_JS = (ROOT / "static" / "merchant_ui_v2_home.js").read_text(encoding="utf-8")
+WS_JS = (ROOT / "static" / "merchant_ui_v2_workspace.js").read_text(encoding="utf-8")
+FRAME_CSS = (ROOT / "static" / "merchant_ui_v2_frame.css").read_text(encoding="utf-8")
+
+
+class MerchantVisualIdentityRegressionGate(unittest.TestCase):
+    """Binding gate. A future Merchant UI deploy must fail these assertions."""
+
+    GATE = REGRESSION_GATE
+
+    def test_gate_name_stable(self) -> None:
+        self.assertEqual(self.GATE, "MERCHANT_VISUAL_IDENTITY_REGRESSION_GATE")
+
+    def test_canonical_renderer_not_legacy(self) -> None:
+        client = TestClient(app)
+        r = client.get("/dashboard")
+        self.assertEqual(r.headers.get("X-CartFlow-Merchant-Template"), CANONICAL_TEMPLATE)
+        self.assertEqual(r.headers.get("X-CartFlow-Merchant-Renderer"), CANONICAL_RENDERER)
+        self.assertEqual(r.headers.get("X-CartFlow-Merchant-UI-Version"), CANONICAL_UI_VERSION)
+        self.assertEqual(r.headers.get("X-CartFlow-Merchant-Shell"), CANONICAL_SHELL)
+        self.assertEqual(
+            r.headers.get("X-CartFlow-Merchant-Visual-System"), VISUAL_SYSTEM_VERSION
+        )
+        self.assertEqual(forbidden_present(r.text), [])
+
+    def test_home_workspace_anchors_present(self) -> None:
+        self.assertIn("cf2-home__kicker", HOME_JS)
+        self.assertIn("cf2-co-row", HOME_JS)
+        self.assertIn("cf2-co-row", WS_JS)
+        self.assertIn("cf2-dmass", WS_JS)
+        self.assertIn("cf2-route", WS_JS)
+
+    def test_shell_not_legacy_app_bar(self) -> None:
+        self.assertIn("cf2-utility", V2)
+        self.assertIn("cf2-global", V2)
+        self.assertIn("cf2-ctx", V2)
+        self.assertNotIn("cf-rail", FRAME_CSS)
+        self.assertNotIn("merchant_frame_v1.css", V2)
+
+    def test_visual_system_version_matches_runtime(self) -> None:
+        probe = TestClient(app).get("/dev/merchant-runtime-identity").json()
+        self.assertEqual(probe.get("visual_system_version"), VISUAL_SYSTEM_VERSION)
+        self.assertTrue(probe.get("canonical"))
+
+    def test_mobile_frame_keeps_canonical_shell(self) -> None:
+        self.assertIn("@media (max-width: 1023px)", FRAME_CSS)
+        self.assertIn("cf2-ctx-handle", V2)
+        self.assertNotIn("cf-rail__brand", V2)
+
+
+if __name__ == "__main__":
+    unittest.main()
