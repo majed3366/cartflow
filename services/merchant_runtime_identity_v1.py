@@ -16,7 +16,10 @@ from services.merchant_ui_v2.flag_v1 import (
     merchant_ui_v2_requested,
 )
 from services.merchant_visual_identity_v1 import (
+    FIGMA_IDENTITY_PARITY,
     FIGMA_PARITY_CONTRACT,
+    VISUAL_INVARIANTS,
+    VISUAL_LAW_SET,
     VISUAL_SYSTEM_VERSION,
 )
 from services.semantic_visual_model_v1 import SEMANTIC_MODEL_VERSION
@@ -48,6 +51,8 @@ HEADER_ROLE = "X-CartFlow-Merchant-Role"
 HEADER_VISUAL_SYSTEM = "X-CartFlow-Merchant-Visual-System"
 HEADER_FIGMA_PARITY = "X-CartFlow-Merchant-Figma-Parity"
 HEADER_SEMANTIC_MODEL = "X-CartFlow-Merchant-Semantic-Model"
+HEADER_VISUAL_LAW = "X-CartFlow-Merchant-Visual-Law"
+HEADER_FIGMA_IDENTITY_PARITY = "X-CartFlow-Merchant-Figma-Identity-Parity"
 
 _PARITY_KEYS = (
     "renderer_family",
@@ -86,6 +91,9 @@ def _v2_identity(*, selection_source: str, role: str = "canonical") -> dict[str,
         "env_raw": (os.environ.get(FLAG_MERCHANT_UI_V2) or "").strip() or None,
         "visual_system_version": VISUAL_SYSTEM_VERSION,
         "figma_parity_contract": FIGMA_PARITY_CONTRACT,
+        "visual_law_set": VISUAL_LAW_SET,
+        "figma_identity_parity": FIGMA_IDENTITY_PARITY,
+        "visual_invariants": list(VISUAL_INVARIANTS.keys()),
         "semantic_model_version": SEMANTIC_MODEL_VERSION,
     }
 
@@ -118,6 +126,9 @@ def _v1_identity(*, selection_source: str) -> dict[str, Any]:
         "env_raw": (os.environ.get(FLAG_MERCHANT_UI_V2) or "").strip() or None,
         "visual_system_version": VISUAL_SYSTEM_VERSION,
         "figma_parity_contract": FIGMA_PARITY_CONTRACT,
+        "visual_law_set": VISUAL_LAW_SET,
+        "figma_identity_parity": FIGMA_IDENTITY_PARITY,
+        "visual_invariants": list(VISUAL_INVARIANTS.keys()),
         "semantic_model_version": SEMANTIC_MODEL_VERSION,
     }
 
@@ -177,6 +188,10 @@ def apply_merchant_runtime_identity_headers(
     )
     headers[HEADER_SEMANTIC_MODEL] = str(
         identity.get("semantic_model_version") or SEMANTIC_MODEL_VERSION
+    )
+    headers[HEADER_VISUAL_LAW] = str(identity.get("visual_law_set") or VISUAL_LAW_SET)
+    headers[HEADER_FIGMA_IDENTITY_PARITY] = str(
+        identity.get("figma_identity_parity") or FIGMA_IDENTITY_PARITY
     )
     headers.setdefault("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
     return response

@@ -6,7 +6,53 @@ from typing import Iterable
 
 VISUAL_SYSTEM_VERSION = "merchant-visual-system-v1"
 FIGMA_PARITY_CONTRACT = "visual-language-constitution-v1"
+VISUAL_LAW_SET = "constitution-v1+semantic-visual-model-v1"
+FIGMA_IDENTITY_PARITY = "pass"
 REGRESSION_GATE = "MERCHANT_VISUAL_IDENTITY_REGRESSION_GATE"
+
+# Constitution states the semantic model currently does not drive.
+# They are superseded, not missing implementations.
+CONSTITUTION_STATES_SUPERSEDED_BY_SEMANTIC_MODEL = (
+    "momentum / living-route animation",
+    "evidence density sparse/gathering/mixed/aligned/converging",
+    "CO kinds without a bounded semantic variable",
+)
+
+VISUAL_INVARIANTS = {
+    "VIS-INV-01": "Home and Workspace remain the strongest CartFlow identity anchors.",
+    "VIS-INV-02": "No canonical surface may collapse into generic card-grid SaaS composition.",
+    "VIS-INV-03": "Signature geometry remains recognizable without logo or color.",
+    "VIS-INV-04": "Semantic truth overrides decorative symmetry.",
+    "VIS-INV-05": "Core Silence remains intentional, not empty or generic.",
+    "VIS-INV-06": "Carts / Communication / Settings share CartFlow grammar without becoming copies of Home.",
+    "VIS-INV-07": "Mobile preserves structural identity, not just responsive layout.",
+    "VIS-INV-08": "Any future material visual change must retain traceability to an approved visual law or explicitly supersede it.",
+    "VIS-INV-09": "No visual implementation may weaken semantic truth mappings in semantic-visual-model-v1.",
+    "VIS-INV-10": "Current Shell remains canonical unless separately authorized.",
+}
+
+# Binding visual laws still in force after semantic-visual-model-v1 filter.
+CANONICAL_VISUAL_LAWS = (
+    "VL-DNA-01-open-geometry",
+    "VL-DNA-02-controlled-interruption",
+    "VL-DNA-03-central-silence",
+    "VL-DNA-04-tapered-direction",
+    "VL-DNA-05-asymmetric-balance",
+    "VL-DNA-06-densification-via-sufficiency",
+    "VL-DNA-07-recovery-scoop",
+    "VL-DNA-08-directional-termination",
+    "VL-CO-01-truth-supported-roles",
+    "VL-HOME-01-executive-scene",
+    "VL-WS-01-decision-object",
+    "VL-MASS-01-readiness",
+    "VL-TENS-01-conflict-block",
+    "VL-EV-01-sufficiency-field",
+    "VL-SIL-01-intentional-silence",
+    "VL-DIR-01-rtl-start-edge",
+    "VL-MOB-01-structural-identity",
+    "VL-SHELL-01-canonical-shell",
+    "VL-OPS-01-shared-grammar-not-home-copies",
+)
 
 FIGMA_MAPPED_PRIMITIVES = (
     "cf2-co__glyph",
@@ -109,9 +155,14 @@ __all__ = [
     "CANONICAL_WORKSPACE_EMITTERS",
     "FORBIDDEN_CANONICAL_MARKERS",
     "LEGACY_SIGNATURE",
+    "CANONICAL_VISUAL_LAWS",
+    "CONSTITUTION_STATES_SUPERSEDED_BY_SEMANTIC_MODEL",
+    "FIGMA_IDENTITY_PARITY",
     "FIGMA_MAPPED_PRIMITIVES",
     "FIGMA_PARITY_CONTRACT",
     "REGRESSION_GATE",
+    "VISUAL_INVARIANTS",
+    "VISUAL_LAW_SET",
     "VISUAL_SYSTEM_VERSION",
     "forbidden_present",
     "missing_markers",

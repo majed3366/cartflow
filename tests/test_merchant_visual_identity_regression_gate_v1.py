@@ -15,9 +15,12 @@ from services.merchant_runtime_identity_v1 import (
     CANONICAL_UI_VERSION,
 )
 from services.merchant_visual_identity_v1 import (
+    FIGMA_IDENTITY_PARITY,
     FIGMA_MAPPED_PRIMITIVES,
     FIGMA_PARITY_CONTRACT,
     REGRESSION_GATE,
+    VISUAL_INVARIANTS,
+    VISUAL_LAW_SET,
     VISUAL_SYSTEM_VERSION,
     forbidden_present,
     missing_markers,
@@ -57,6 +60,11 @@ class MerchantVisualIdentityRegressionGate(unittest.TestCase):
             r.headers.get("X-CartFlow-Merchant-Semantic-Model"),
             "semantic-visual-model-v1",
         )
+        self.assertEqual(r.headers.get("X-CartFlow-Merchant-Visual-Law"), VISUAL_LAW_SET)
+        self.assertEqual(
+            r.headers.get("X-CartFlow-Merchant-Figma-Identity-Parity"),
+            FIGMA_IDENTITY_PARITY,
+        )
         self.assertEqual(forbidden_present(r.text), [])
 
     def test_home_workspace_anchors_present(self) -> None:
@@ -77,6 +85,9 @@ class MerchantVisualIdentityRegressionGate(unittest.TestCase):
         probe = TestClient(app).get("/dev/merchant-runtime-identity").json()
         self.assertEqual(probe.get("visual_system_version"), VISUAL_SYSTEM_VERSION)
         self.assertEqual(probe.get("figma_parity_contract"), FIGMA_PARITY_CONTRACT)
+        self.assertEqual(probe.get("visual_law_set"), VISUAL_LAW_SET)
+        self.assertEqual(probe.get("figma_identity_parity"), FIGMA_IDENTITY_PARITY)
+        self.assertEqual(probe.get("visual_invariants"), list(VISUAL_INVARIANTS.keys()))
         self.assertTrue(probe.get("canonical"))
 
     def test_figma_mapped_primitives_remain_in_language_layer(self) -> None:
