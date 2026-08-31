@@ -11,6 +11,10 @@
     return global.CartFlowUiV2Lang || null;
   }
 
+  function S() {
+    return global.CartFlowSemanticVisualV1 || null;
+  }
+
   function esc(s) {
     return L() ? L().esc(s) : String(s == null ? "" : s);
   }
@@ -25,10 +29,9 @@
     return "knowledge";
   }
 
-  function isWeakText(text) {
-    return /أدلة|غير كافية|insufficient|لا يكفي|منخفض|محدود/i.test(
-      String(text || "")
-    );
+  function statusNeedsFollow(status) {
+    var s = String(status || "").trim();
+    return s === "يتطلب متابعة" || s === "يحتاج تدخلاً عاجلاً";
   }
 
   function truthText(sec) {
@@ -82,9 +85,9 @@
       var lane = laneOf(sec);
       var diag = truthText(sec);
       var status = String(sec.status_ar || "");
-      if (lane === "condition" || /يتطلب|متابعة|عاجل/i.test(status + diag)) {
+      if (lane === "condition" || statusNeedsFollow(status)) {
         know.push(sec);
-      } else if (lane === "evidence" || isWeakText(diag) || sec.empty) {
+      } else if (lane === "evidence" || sec.empty) {
         learning.push(sec);
       } else {
         watch.push(sec);
@@ -98,35 +101,28 @@
     };
   }
 
-  function confidenceCopy(weak, density) {
-    if (weak || density === "insufficient" || density === "sparse") {
-      return "الأدلة ما زالت محدودة";
-    }
-    if (density === "gathering") return "بدأت الإشارة تتكرر";
-    if (density === "aligned" || density === "mixed") {
-      return "الأدلة أصبحت أكثر اتساقًا";
-    }
-    if (density === "converging") return "توجد أدلة كافية لاتخاذ قرار";
-    return "الأدلة ما زالت محدودة";
+  function confidenceCopy(density) {
+    if (density === "LOW") return "الأدلة ما زالت محدودة";
+    if (density === "PRESENT") return "توجد أدلة كافية لاتخاذ قرار";
+    return "";
   }
 
-  function actionCopy(weak, meaning) {
-    if (weak) {
+  function actionCopy(meaning, sufficiency) {
+    if (sufficiency === "INSUFFICIENT") {
       return "لا يلزم تغيير تجاري الآن — واصل المراقبة حتى تتضح الإشارة.";
     }
     if (meaning) return meaning;
     return "راجع التفاصيل عندما تكون جاهزًا لاتخاذ قرار.";
   }
 
-  function objectRow(kinds) {
-    if (!L() || !kinds || !kinds.length) return "";
-    var html =
-      '<div class="cf2-co-row cf2-home__rail" data-cf2-grammar="commerce-objects">';
-    kinds.forEach(function (k) {
-      html += L().commerceObject(k);
-    });
-    html += "</div>";
-    return html;
+  function objectClause(sem, extraClass) {
+    if (!L() || !L().commerceClause || !sem) return "";
+    var html = L().commerceClause(sem);
+    if (!html || !extraClass) return html;
+    return html.replace(
+      'class="cf2-co-row"',
+      'class="cf2-co-row ' + extraClass + '"'
+    );
   }
 
   function sceneSpine() {
@@ -138,69 +134,7 @@
     );
   }
 
-  /** Momentum only from sections that exist — never invent a full fake journey. */
-  function buildMomentum(parts, weak) {
-    var all = []
-      .concat(parts.primary ? [parts.primary] : [])
-      .concat(parts.know || [])
-      .concat(parts.watch || [])
-      .concat(parts.learning || []);
-    var steps = [];
-    var text = all
-      .map(function (s) {
-        return truthText(s);
-      })
-      .join(" ");
-    if (/تردّد|تردد|hesitat/i.test(text)) steps.push("تردّد");
-    if (
-      all.some(function (s) {
-        return laneOf(s) === "evidence" || laneOf(s) === "condition";
-      })
-    ) {
-      steps.push("دليل");
-    }
-    if (
-      all.some(function (s) {
-        return laneOf(s) === "decision";
-      })
-    ) {
-      steps.push("قرار");
-    }
-    if (
-      all.some(function (s) {
-        return laneOf(s) === "momentum";
-      })
-    ) {
-      steps.push("حركة");
-    }
-    if (
-      all.some(function (s) {
-        return laneOf(s) === "recovery";
-      })
-    ) {
-      steps.push("استرداد");
-    }
-    if (steps.length < 2) return { steps: [], active: 0 };
-    var active = 0;
-    if (weak) {
-      active = Math.max(0, steps.indexOf("دليل"));
-    } else if (steps.indexOf("قرار") >= 0) {
-      active = steps.indexOf("قرار");
-    } else {
-      active = steps.length - 1;
-    }
-    return { steps: steps, active: active };
-  }
-
-  function railKinds(sec, weak, lane) {
-    var lang = L();
-    if (lang && sec) {
-      return lang.mapHomeObjects(sec).slice(0, 3);
-    }
-    if (!weak && lane === "decision") return ["decision-ready"];
-    if (!weak && lane === "recovery") return ["recovery-continue"];
-    return ["attention"];
-  }
+  /** Momentum is NOT_CURRENTLY_SUPPORTED — never emit a semantic journey. */
 
   function tierLabel(tier) {
     if (tier === "know") return "اعرف الآن";
@@ -208,7 +142,7 @@
     return "ما زال يتعلّم";
   }
 
-  function monitorItem(sec, tier) {
+  function monitorItem(sec, tier, pkg) {
     var diagnosis = truthText(sec);
     var html =
       '<article class="cf2-home__monitor-item cf2-capsule" data-hes-section="' +
@@ -218,8 +152,8 @@
       '" data-cf2-lane="' +
       esc(laneOf(sec)) +
       '">';
-    if (L()) {
-      html += objectRow(L().mapHomeObjects(sec).slice(0, 1));
+    if (S() && L()) {
+      html += objectClause(S().projectHomeSurface(pkg, sec), "");
     }
     html +=
       '<p class="cf2-home__tier">' + esc(tierLabel(tier)) + "</p>";
@@ -259,9 +193,8 @@
     var sections = Array.isArray(pkg.sections) ? pkg.sections : [];
     if (!sections.length) {
       return (
-        '<section class="cf2-home" data-cf2="home-stage-closure-v1" data-cf2-grammar="attention-gravity" data-cf2-truth="empty">' +
+        '<section class="cf2-home" data-cf2="home-stage-closure-v1" data-cf2-grammar="attention-gravity" data-cf2-truth="empty" data-cf2-silence="quiet">' +
         sceneSpine() +
-        objectRow(["attention", "insufficient"]) +
         '<p class="cf2-empty">' +
         esc(pkg.lede_ar || "لا تتوفر معرفة كافية الآن.") +
         '</p><hr class="cf2-taper" /></section>'
@@ -270,11 +203,10 @@
     var parts = split(sections);
     var lang = L();
     var html =
-      '<section class="cf2-home" data-cf2="home-stage-closure-v1" data-cf2-grammar="attention-gravity">';
+      '<section class="cf2-home" data-cf2="home-stage-closure-v1" data-cf2-grammar="attention-gravity" data-cf2-model="semantic-visual-model-v1">';
     html += sceneSpine();
 
     if (!parts.primary) {
-      html += objectRow(["attention", "insufficient"]);
       html +=
         '<p class="cf2-empty">' +
         esc(pkg.lede_ar || "لا تتوفر معرفة كافية الآن.") +
@@ -286,19 +218,17 @@
     var why = truthText(p);
     var meaning = String(p.recommendation_ar || "").trim();
     var href = String(p.view_details_href || "").trim();
-    var weak = isWeakText(why + meaning) || !!p.empty;
-    var tension = weak ? "open" : "resolved";
-    var distinctCount =
-      parts.know.length + parts.watch.length + parts.learning.length;
-    var evCount = why ? 2 : 1;
-    if (distinctCount) evCount += 1;
-    var density = weak
-      ? "insufficient"
-      : lang
-        ? lang.densityFromCount(evCount)
-        : "gathering";
-    var confidence = confidenceCopy(weak, density);
-    var action = actionCopy(weak, meaning);
+    var sem = S() ? S().projectHomeSurface(pkg, p) : null;
+    var silence = sem ? sem.core_silence : "ACTIVE";
+    var density = sem ? sem.density : "NEUTRAL";
+    var confidence = confidenceCopy(density);
+    var action = actionCopy(meaning, sem ? sem.evidence_sufficiency : "UNKNOWN");
+    var boardEdge =
+      silence === "QUIET"
+        ? "quiet"
+        : sem && sem.attention_intensity === "PRIMARY"
+          ? "attention"
+          : "neutral";
 
     var monitor = [];
     parts.know.forEach(function (sec) {
@@ -317,15 +247,19 @@
     });
 
     html +=
-      '<div class="cf2-home__board" data-cf2-tension="' +
-      esc(tension) +
+      '<div class="cf2-home__board" data-cf2-edge="' +
+      esc(boardEdge) +
+      '" data-cf2-silence="' +
+      esc(silence.toLowerCase()) +
       '" data-cf2-monitor="' +
       (monitor.length ? "on" : "empty") +
       '">';
 
     /* ——— Primary reading path (one organism) ——— */
     html += '<div class="cf2-home__scene">';
-    html += objectRow(railKinds(p, weak, laneOf(p)));
+    if (sem && silence !== "QUIET") {
+      html += objectClause(sem, "cf2-home__rail");
+    }
     html += '<div class="cf2-home__lead">';
     html += '<div class="cf2-home__lead-text">';
     html += '<p class="cf2-home__lane">مركز الجاذبية</p>';
@@ -340,38 +274,48 @@
 
     html +=
       '<div class="cf2-home__evidence" data-cf2-density="' +
-      esc(density) +
+      esc(String(density || "NEUTRAL").toLowerCase()) +
       '">';
-    html +=
-      '<p class="cf2-home__confidence">' + esc(confidence) + "</p>";
-    if (lang) {
+    if (confidence) {
+      html +=
+        '<p class="cf2-home__confidence">' + esc(confidence) + "</p>";
+    }
+    if (
+      silence !== "QUIET" &&
+      lang &&
+      lang.evidenceFieldFromSufficiency &&
+      density !== "NEUTRAL"
+    ) {
       html +=
         '<div class="cf2-home__field" aria-hidden="true">' +
-        lang.evidenceField(evCount, density) +
+        lang.evidenceFieldFromSufficiency(density) +
         "</div>";
     }
     html += "</div>";
 
-    if (lang) {
-      var mom = buildMomentum(parts, weak);
-      if (mom.steps.length >= 2) {
-        html += lang.momentumTrace(mom.steps, mom.active);
-      }
-    }
-
     html +=
-      '<div class="cf2-home__stance cf2-terminus" data-cf2-tension="' +
-      esc(tension) +
+      '<div class="cf2-home__stance cf2-terminus" data-cf2-wait="' +
+      esc(sem ? String(sem.wait_kind || "UNKNOWN").toLowerCase() : "unknown") +
       '">';
     html +=
       '<p class="cf2-home__stance-label">' +
-      esc(weak ? "الوضع الآن" : "ماذا تفعل؟") +
+      esc(
+        sem && sem.evidence_sufficiency === "INSUFFICIENT"
+          ? "الوضع الآن"
+          : "ماذا تفعل؟"
+      ) +
       "</p>";
     html +=
       '<p class="cf2-home__stance-body">' + esc(action) + "</p>";
     if (href) {
-      var btnClass = weak ? "cf2-btn cf2-btn--quiet" : "cf2-btn";
-      var btnLabel = weak ? "عرض الأساس" : "افتح القرار";
+      var btnClass =
+        sem && sem.evidence_sufficiency === "INSUFFICIENT"
+          ? "cf2-btn cf2-btn--quiet"
+          : "cf2-btn";
+      var btnLabel =
+        sem && sem.evidence_sufficiency === "INSUFFICIENT"
+          ? "عرض الأساس"
+          : "افتح القرار";
       html +=
         '<div class="cf2-home__action"><a class="' +
         btnClass +
@@ -392,7 +336,7 @@
         '<p class="cf2-home__monitor-label">ما يراقبه CartFlow أيضًا</p>';
       html += '<div class="cf2-home__monitor-row">';
       monitor.forEach(function (r) {
-        html += monitorItem(r.sec, r.tier);
+        html += monitorItem(r.sec, r.tier, pkg);
       });
       html += "</div></aside>";
     }

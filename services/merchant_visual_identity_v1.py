@@ -35,7 +35,6 @@ CANONICAL_HOME_EMITTERS = (
     "مشهد تنفيذي",
     "cf2-co-row",
     "cf2-evfield",
-    "cf2-mtrace",
     "cf2-home__board",
     "مركز الجاذبية",
 )

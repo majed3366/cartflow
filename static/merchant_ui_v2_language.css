@@ -892,7 +892,60 @@ body[data-cf-ui="v2"] .cf2-co-row--rail {
   }
 }
 
+/* Semantic Visual Model V1 — bounded state, not decorative motion */
+body[data-cf-ui="v2"] .cf2-co[data-cf2-attention="secondary"] .cf2-co__glyph {
+  --cf2-co-size: 36px;
+  width: 36px;
+  height: 36px;
+  opacity: 0.78;
+}
+
+body[data-cf-ui="v2"] .cf2-co[data-cf2-uncertainty="high"] .cf2-co__glyph::after {
+  inset: 22% 24%;
+  opacity: 0.72;
+  transform: translate(3px, -2px);
+}
+
+body[data-cf-ui="v2"] .cf2-co[data-cf2-tension="high"] .cf2-co__glyph::after {
+  transform: translate(4px, -3px) rotate(-6deg);
+}
+
+body[data-cf-ui="v2"] .cf2-dmass[data-cf2-mass="held"]::before,
+body[data-cf-ui="v2"] .cf2-dmass.is-held::before {
+  width: 4px;
+  background: repeating-linear-gradient(
+    180deg,
+    var(--cf2-mute) 0 4px,
+    transparent 4px 9px
+  );
+}
+
+body[data-cf-ui="v2"] .cf2-dmass[data-cf2-tension="none"]::before {
+  /* readiness/mass still apply; no conflict offset */
+}
+
+body[data-cf-ui="v2"] .cf2-terminus[data-cf2-wait="waiting_readiness"],
+body[data-cf-ui="v2"] .cf2-terminus[data-cf2-wait="waiting_external"],
+body[data-cf-ui="v2"] .cf2-terminus[data-cf2-wait="blocked"] {
+  border-inline-start: 2px dashed rgba(115, 133, 158, 0.55);
+  padding-inline-start: 10px;
+}
+
+body[data-cf-ui="v2"] .cf2-terminus[data-cf2-wait="action_required"] {
+  border-inline-start: 3px solid var(--cf2-navy);
+}
+
+body[data-cf2-sem-proof="labels-hidden"] .cf2-co__label {
+  visibility: hidden;
+}
+
 @media (max-width: 1023px) {
+  body[data-cf-ui="v2"] .cf2-co[data-cf2-attention="secondary"] .cf2-co__glyph {
+    --cf2-co-size: 28px;
+    width: 28px;
+    height: 28px;
+  }
+
   body[data-cf-ui="v2"] .cf2-co-row--rail .cf2-co__glyph,
   body[data-cf-ui="v2"] .cf2-dobj--primary > .cf2-co-row .cf2-co__glyph {
     --cf2-co-size: 64px;

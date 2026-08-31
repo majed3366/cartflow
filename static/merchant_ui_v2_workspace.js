@@ -11,6 +11,10 @@
     return global.CartFlowUiV2Lang || null;
   }
 
+  function S() {
+    return global.CartFlowSemanticVisualV1 || null;
+  }
+
   function esc(s) {
     return L() ? L().esc(s) : String(s == null ? "" : s);
   }
@@ -80,18 +84,10 @@
     );
   }
 
-  function confidenceCopy(density, tension) {
-    if (tension === "open" || density === "insufficient" || density === "sparse") {
-      return "الأدلة ما زالت محدودة";
-    }
-    if (density === "gathering") return "بدأت الإشارة تتكرر";
-    if (density === "aligned" || density === "mixed") {
-      return "الأدلة أصبحت أكثر اتساقًا";
-    }
-    if (density === "converging" || tension === "ready" || tension === "resolved") {
-      return "توجد أدلة كافية لاتخاذ قرار";
-    }
-    return "الأدلة ما زالت محدودة";
+  function confidenceCopy(density) {
+    if (density === "LOW") return "الأدلة ما زالت محدودة";
+    if (density === "PRESENT") return "توجد أدلة كافية لاتخاذ قرار";
+    return "";
   }
 
   function stanceEyebrow(tension, actionReady) {
@@ -115,13 +111,13 @@
     return "decision-forming";
   }
 
-  function routeProgress(tension, actionReady) {
-    if (actionReady || tension === "ready" || tension === "resolved") {
-      return "action";
+  function routeProgress(readiness) {
+    if (readiness === "READY") return "action";
+    if (readiness === "EXTERNAL_DEPENDENCY" || readiness === "BLOCKED") {
+      return "decision";
     }
-    if (tension === "waiting" || tension === "forming") return "decision";
-    if (tension === "high") return "understanding";
-    return "evidence";
+    if (readiness === "NEEDS_MORE_EVIDENCE") return "evidence";
+    return "understanding";
   }
 
   function nodeState(progress, name) {
@@ -134,28 +130,20 @@
     return "";
   }
 
-  function objectRow(kinds) {
-    if (!L() || !kinds || !kinds.length) return "";
-    var html =
-      '<div class="cf2-co-row" data-cf2-grammar="commerce-objects">';
-    kinds.forEach(function (k) {
-      html += L().commerceObject(k);
-    });
-    html += "</div>";
-    return html;
+  function objectClause(sem) {
+    if (!L() || !L().commerceClause || !sem) return "";
+    return L().commerceClause(sem); /* cf2-co-row */
   }
 
-  function renderDecisionObject(card, isPrimary) {
+  function renderDecisionObject(card, isPrimary, projection) {
     var lang = L();
+    var sem = S() ? S().projectWorkspace(projection, card) : null;
     var lines = evidenceLines(card);
-    var density = lang
-      ? lang.densityFromCount(lines.length)
-      : lines.length >= 3
-        ? "converging"
-        : lines.length <= 1
-          ? "sparse"
-          : "gathering";
-    var tension = lang ? lang.tensionFromCard(card) : "forming";
+    var density = sem ? sem.density : "NEUTRAL";
+    var readiness = sem ? sem.decision_readiness : "UNKNOWN";
+    var waitKind = sem ? sem.wait_kind : "UNKNOWN";
+    var tension = sem ? sem.tension : "UNKNOWN";
+    var mass = sem ? sem.mass : "OPEN";
     var decision = safeAr(
       card.decision_sentence_ar ||
         card.operational_guidance_ar ||
@@ -163,22 +151,29 @@
         "",
       "راجع القرار المطلوب الآن"
     );
-    var actionReady =
-      card.execution_available === true ||
-      String(card.execution_readiness || "") === "READY";
-    var waitingExt =
-      String(card.execution_readiness || "") === "EXTERNAL_DEPENDENCY";
+    var actionReady = waitKind === "ACTION_REQUIRED";
+    var waitingExt = waitKind === "WAITING_EXTERNAL";
     var href = String(card.view_details_href || "").trim();
     var label = safeAr(card.view_details_ar || "", "افتح القرار");
     var wait = Array.isArray(card.action_wait_lines_ar)
       ? card.action_wait_lines_ar
       : ["لا يوجد إجراء حالياً.", "سيخبرك CartFlow عندما يصبح القرار جاهزاً."];
-    var conf = confidenceCopy(density, tension);
-    var eyebrow = stanceEyebrow(tension, actionReady);
-    var kind = primaryObjectKind(tension, actionReady || waitingExt);
-    var progress = routeProgress(tension, actionReady);
+    var conf = confidenceCopy(density);
+    var eyebrow = stanceEyebrow(
+      readiness === "READY"
+        ? "ready"
+        : waitKind === "WAITING_EXTERNAL"
+          ? "waiting"
+          : waitKind === "BLOCKED"
+            ? "high"
+            : readiness === "NEEDS_MORE_EVIDENCE"
+              ? "open"
+              : "forming",
+      actionReady
+    );
+    var progress = routeProgress(readiness);
     var showLines = isPrimary ? lines.slice(0, 3) : lines.slice(0, 1);
-    var tensionAttr = tension === "ready" ? "resolved" : tension;
+    var tensionAttr = tension === "HIGH" ? "high" : "none";
 
     if (!isPrimary) {
       var nextHtml =
@@ -209,19 +204,21 @@
     var html =
       '<article class="cf2-dobj cf2-dobj--primary" data-cf2-tension="' +
       esc(tensionAttr) +
+      '" data-cf2-mass="' +
+      esc(String(mass || "OPEN").toLowerCase()) +
       '" data-cf2-evidence="' +
-      esc(density) +
+      esc(String(density || "NEUTRAL").toLowerCase()) +
+      '" data-cf2-readiness="' +
+      esc(readiness) +
+      '" data-cf2-wait="' +
+      esc(String(waitKind).toLowerCase()) +
       '" data-cf2-progress="' +
       esc(progress) +
       '" data-decision-id="' +
       esc(card.decision_id || "") +
       '">';
 
-    html += objectRow(
-      lang && lang.mapWorkspaceObjects
-        ? lang.mapWorkspaceObjects(card).slice(0, 3)
-        : [kind]
-    );
+    html += objectClause(sem);
     html += '<header class="cf2-ws__head">';
     html += '<div class="cf2-ws__head-text">';
     html += '<p class="cf2-ws__eyebrow">' + esc(eyebrow) + "</p>";
@@ -231,8 +228,8 @@
 
     html +=
       '<div class="cf2-route" data-cf2-tension="' +
-      esc(tension) +
-      '" data-cf2-grammar="living-route" data-cf2-progress="' +
+      esc(tensionAttr) +
+      '" data-cf2-grammar="living-route-scaffold" data-cf2-progress="' +
       esc(progress) +
       '">';
 
@@ -242,16 +239,13 @@
       nodeState(progress, "evidence") +
       '" data-cf2-node="evidence">';
     html += '<p class="cf2-beat__label">ما يظهر الآن</p>';
-    html +=
-      '<p class="cf2-ws__confidence">' + esc(conf) + "</p>";
+    if (conf) {
+      html +=
+        '<p class="cf2-ws__confidence">' + esc(conf) + "</p>";
+    }
     html += '<div class="cf2-dobj__ev-row">';
-    if (lang) {
-      html += lang
-        .evidenceField(lines.length, density)
-        .replace(
-          'class="cf2-evfield"',
-          'class="cf2-evfield is-arriving"'
-        );
+    if (lang && lang.evidenceFieldFromSufficiency && density !== "NEUTRAL") {
+      html += lang.evidenceFieldFromSufficiency(density);
     }
     html += '<ul class="cf2-beat__list">';
     showLines.forEach(function (line) {
@@ -275,12 +269,15 @@
       '" data-cf2-node="decision">';
     html += '<p class="cf2-beat__label">ما يقرره CartFlow</p>';
     var massClass = "cf2-dmass";
-    if (actionReady) massClass += " is-ready";
+    if (mass === "READY") massClass += " is-ready";
     else massClass += " is-forming";
+    if (mass === "HELD") massClass += " is-held";
     html +=
       '<div class="' +
       massClass +
-      ' cf2-dmass--echo" data-cf2-tension="' +
+      ' cf2-dmass--echo" data-cf2-mass="' +
+      esc(String(mass).toLowerCase()) +
+      '" data-cf2-tension="' +
       esc(tensionAttr) +
       '"><p class="cf2-dmass__text">' +
       esc(decision) +
@@ -295,6 +292,8 @@
     html +=
       '<div class="cf2-beat__action cf2-terminus' +
       (actionReady ? " is-armed" : "") +
+      '" data-cf2-wait="' +
+      esc(String(waitKind).toLowerCase()) +
       '">';
     if (actionReady && href) {
       html +=
@@ -331,10 +330,8 @@
   }
 
   function renderQuietEnvironment() {
-    var lang = L();
     var html =
-      '<article class="cf2-dobj cf2-dobj--primary cf2-dobj--quiet" data-cf2-tension="open" data-cf2-evidence="sparse" data-cf2-progress="evidence" data-cf2-grammar="core-silence">';
-    html += objectRow(["attention", "insufficient", "waiting"]);
+      '<article class="cf2-dobj cf2-dobj--primary cf2-dobj--quiet" data-cf2-tension="none" data-cf2-mass="open" data-cf2-evidence="neutral" data-cf2-wait="no_action" data-cf2-progress="evidence" data-cf2-silence="quiet" data-cf2-grammar="core-silence">';
     html += '<header class="cf2-ws__head">';
     html += '<div class="cf2-ws__head-text">';
     html += '<p class="cf2-ws__eyebrow">لا قرار عاجل</p>';
@@ -342,21 +339,11 @@
       '<h2 class="cf2-ws__title">لا يوجد قرار يحتاج انتباهك الآن</h2>';
     html += "</div></header>";
     html +=
-      '<div class="cf2-route" data-cf2-tension="open" data-cf2-grammar="living-route" data-cf2-progress="evidence">';
+      '<div class="cf2-route" data-cf2-tension="none" data-cf2-grammar="living-route-scaffold" data-cf2-progress="evidence">';
     html +=
       '<section class="cf2-route__node cf2-beat cf2-beat--evidence is-active" data-cf2-node="evidence">';
     html += '<p class="cf2-beat__label">ما يظهر الآن</p>';
-    html +=
-      '<p class="cf2-ws__confidence">الأدلة ما زالت محدودة</p>';
     html += '<div class="cf2-dobj__ev-row">';
-    if (lang) {
-      html += lang
-        .evidenceField(1, "sparse")
-        .replace(
-          'class="cf2-evfield"',
-          'class="cf2-evfield is-arriving"'
-        );
-    }
     html +=
       '<ul class="cf2-beat__list"><li>لا توجد سلة أو إشارة تشغيلية جاهزة للتحوّل إلى قرار الآن.</li></ul>';
     html += "</div></section>";
@@ -369,7 +356,7 @@
       '<section class="cf2-route__node cf2-beat cf2-beat--decision" data-cf2-node="decision">';
     html += '<p class="cf2-beat__label">ما يقرره CartFlow</p>';
     html +=
-      '<div class="cf2-dmass is-forming cf2-dmass--echo" data-cf2-tension="open"><p class="cf2-dmass__text">واصل المراقبة — لا إجراء مطلوب الآن.</p></div></section>';
+      '<div class="cf2-dmass is-forming cf2-dmass--echo" data-cf2-mass="open" data-cf2-tension="none"><p class="cf2-dmass__text">واصل المراقبة — لا إجراء مطلوب الآن.</p></div></section>';
     html +=
       '<section class="cf2-route__node cf2-beat cf2-beat--action" data-cf2-node="action">';
     html += '<p class="cf2-beat__label">خطوتك الآن</p>';
@@ -399,7 +386,7 @@
     var zoneB = Array.isArray(projection.zone_b) ? projection.zone_b : [];
     var split = splitPrimary(zoneB);
     var html =
-      '<div class="cf2-ws cf2-ws--lang cf2-ws--mobile-hierarchy-v1" data-cf2="workspace-composition-closure-v1" data-cf2-mobile-hierarchy="v1">';
+      '<div class="cf2-ws cf2-ws--lang cf2-ws--mobile-hierarchy-v1" data-cf2="workspace-composition-closure-v1" data-cf2-mobile-hierarchy="v1" data-cf2-model="semantic-visual-model-v1">';
     if (!split.primary) {
       html +=
         '<section class="cf2-ws__primary" aria-label="هدوء القرار">' +
@@ -410,13 +397,13 @@
     }
     html +=
       '<section class="cf2-ws__primary" aria-label="القرار الأساسي">' +
-      renderDecisionObject(split.primary, true) +
+      renderDecisionObject(split.primary, true, projection) +
       "</section>";
     if (split.next.length) {
       html +=
         '<section class="cf2-ws__next" aria-label="قرارات تالية"><p class="cf2-ws__next-label">بعده</p><div class="cf2-ws__next-list">';
       split.next.forEach(function (c) {
-        html += renderDecisionObject(c, false);
+        html += renderDecisionObject(c, false, projection);
       });
       html += "</div></section>";
     }

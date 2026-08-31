@@ -48,23 +48,68 @@
     return k;
   }
 
-  function commerceObject(kind, label) {
+  function commerceObject(kind, label, attrs) {
     var raw = String(kind || "evidence");
     var k = canonicalKind(raw);
     var lab = label || CO_LABELS[raw] || CO_LABELS[k] || k;
+    attrs = attrs || {};
+    var extra = "";
+    if (attrs.role) extra += ' data-cf2-role="' + esc(attrs.role) + '"';
+    if (attrs.attention) extra += ' data-cf2-attention="' + esc(attrs.attention) + '"';
+    if (attrs.sufficiency) {
+      extra += ' data-cf2-sufficiency="' + esc(attrs.sufficiency) + '"';
+    }
+    if (attrs.uncertainty) {
+      extra += ' data-cf2-uncertainty="' + esc(attrs.uncertainty) + '"';
+    }
+    if (attrs.tension) extra += ' data-cf2-tension="' + esc(attrs.tension) + '"';
+    if (attrs.openness) extra += ' data-cf2-openness="' + esc(attrs.openness) + '"';
     return (
       '<span class="cf2-co cf2-co--' +
       esc(k) +
       (raw !== k ? " cf2-co--" + esc(raw) : "") +
       '" data-cf2-co="' +
       esc(k) +
-      '" title="' +
+      '"' +
+      extra +
+      ' title="' +
       esc(lab) +
       '">' +
       '<span class="cf2-co__glyph" aria-hidden="true"></span>' +
       '<span class="cf2-co__label">' +
       esc(lab) +
       "</span></span>"
+    );
+  }
+
+  function commerceClause(sem) {
+    var roles = (sem && sem.roles) || [];
+    if (!roles.length) return "";
+    var html =
+      '<div class="cf2-co-row" data-cf2-grammar="commerce-objects" data-cf2-clause="1" data-cf2-role-count="' +
+      esc(String(roles.length)) +
+      '">';
+    roles.forEach(function (r) {
+      html += commerceObject(r.kind, r.label, r);
+    });
+    html += "</div>";
+    return html;
+  }
+
+  function evidenceFieldFromSufficiency(density) {
+    var d = String(density || "NEUTRAL");
+    if (d === "NEUTRAL") return "";
+    var inner =
+      d === "LOW"
+        ? evidenceField(2, "insufficient")
+        : d === "PRESENT"
+          ? evidenceField(3, "aligned")
+          : "";
+    if (!inner) return "";
+    var token = d === "LOW" ? "low" : "present";
+    return inner.replace(
+      /data-cf2-density="[^"]+"/,
+      'data-cf2-density="' + token + '"'
     );
   }
 
@@ -218,8 +263,10 @@
   global.CartFlowUiV2Lang = {
     esc: esc,
     commerceObject: commerceObject,
+    commerceClause: commerceClause,
     canonicalKind: canonicalKind,
     evidenceField: evidenceField,
+    evidenceFieldFromSufficiency: evidenceFieldFromSufficiency,
     densityFromCount: densityFromCount,
     momentumTrace: momentumTrace,
     mapHomeObjects: mapHomeObjects,

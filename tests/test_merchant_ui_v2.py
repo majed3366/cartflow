@@ -156,7 +156,8 @@ class MerchantUiV2RouteTests(unittest.TestCase):
         self.assertIn("unwrapProjection", ws_js)
         self.assertIn("is-ready", ws_js)
         self.assertIn("is-armed", ws_js)
-        self.assertIn("is-arriving", ws_js)
+        self.assertIn("projectWorkspace", ws_js)
+        self.assertIn("living-route-scaffold", ws_js)
         app_js = (ROOT / "static" / "merchant_ui_v2_app.js").read_text(
             encoding="utf-8"
         )

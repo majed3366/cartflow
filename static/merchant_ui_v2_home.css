@@ -32,11 +32,15 @@ body[data-cf-ui="v2"] .cf2-home__board {
   overflow: hidden;
 }
 
-body[data-cf-ui="v2"] .cf2-home__board[data-cf2-tension="open"] {
-  border-inline-start-color: rgba(115, 133, 158, 0.55);
+body[data-cf-ui="v2"] .cf2-home__board[data-cf2-edge="quiet"] {
+  border-inline-start-color: rgba(115, 133, 158, 0.35);
 }
 
-body[data-cf-ui="v2"] .cf2-home__board[data-cf2-tension="resolved"] {
+body[data-cf-ui="v2"] .cf2-home__board[data-cf2-edge="neutral"] {
+  border-inline-start-color: rgba(8, 32, 72, 0.18);
+}
+
+body[data-cf-ui="v2"] .cf2-home__board[data-cf2-edge="attention"] {
   border-inline-start-color: var(--cf2-navy);
 }
 

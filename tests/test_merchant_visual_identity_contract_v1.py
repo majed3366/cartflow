@@ -46,8 +46,8 @@ class VisualIdentitySourceContracts(unittest.TestCase):
     def test_home_emitters(self) -> None:
         blob = HOME_JS + LANG_JS
         self.assertEqual(missing_markers(blob, CANONICAL_HOME_EMITTERS), [])
-        self.assertIn("evidenceField", HOME_JS)
-        self.assertIn("momentumTrace", HOME_JS)
+        self.assertIn("evidenceFieldFromSufficiency", HOME_JS)
+        self.assertIn("projectHomeSurface", HOME_JS)
 
     def test_workspace_emitters(self) -> None:
         self.assertEqual(missing_markers(WS_JS, CANONICAL_WORKSPACE_EMITTERS), [])

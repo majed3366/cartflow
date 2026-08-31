@@ -24,13 +24,12 @@ V2_HTML = (ROOT / "templates" / "merchant_app_v2.html").read_text(encoding="utf-
 class HomeWorkspaceVisualLanguageRestorationV1Tests(unittest.TestCase):
     def test_home_restores_lkg_emitters_on_current_board(self) -> None:
         self.assertIn("home-stage-closure-v1", HOME_JS)
-        self.assertIn("mapHomeObjects", HOME_JS)
-        self.assertIn("momentumTrace", HOME_JS)
+        self.assertIn("projectHomeSurface", HOME_JS)
+        self.assertIn("CartFlowSemanticVisualV1", HOME_JS)
         self.assertIn("مركز الجاذبية", HOME_JS)
         self.assertIn("مشهد تنفيذي", HOME_JS)
         self.assertIn("cf2-co-row", HOME_JS)
-        self.assertIn("buildMomentum", HOME_JS)
-        self.assertIn("never invent a full fake journey", HOME_JS)
+        self.assertIn("NOT_CURRENTLY_SUPPORTED", HOME_JS)
         self.assertIn("isDuplicateTruth", HOME_JS)
         self.assertIn("الأهم الآن", HOME_JS)
         self.assertIn("/api/dashboard/summary", HOME_JS)
@@ -38,20 +37,21 @@ class HomeWorkspaceVisualLanguageRestorationV1Tests(unittest.TestCase):
 
     def test_home_incomplete_and_empty_keep_identity(self) -> None:
         self.assertIn('data-cf2-truth="empty"', HOME_JS)
-        self.assertIn('objectRow(["attention", "insufficient"])', HOME_JS)
+        self.assertIn('data-cf2-silence="quiet"', HOME_JS)
         self.assertIn("جاري تحميل معرفة متجرك", HOME_JS)
         self.assertIn("تعذّر تحميل معرفة المتجر", HOME_JS)
-        self.assertIn("steps.length < 2", HOME_JS)
+        self.assertNotIn("isWeakText", HOME_JS)
 
     def test_workspace_restores_co_row_on_current_decision_object(self) -> None:
         self.assertIn("workspace-composition-closure-v1", WS_JS)
         self.assertIn("unwrapProjection", WS_JS)
-        self.assertIn("mapWorkspaceObjects", WS_JS)
+        self.assertIn("projectWorkspace", WS_JS)
         self.assertIn("cf2-co-row", WS_JS)
         self.assertIn("living-route", WS_JS)
         self.assertIn("cf2-dmass", WS_JS)
         self.assertIn("/api/cart-workspace/v1/projection", WS_JS)
-        self.assertIn("execution_readiness", WS_JS)
+        self.assertIn("projectWorkspace", WS_JS)
+        self.assertIn("decision_readiness", WS_JS)
         self.assertIn("core-silence", WS_JS)
 
     def test_current_shell_and_startup_preserved(self) -> None:
@@ -64,6 +64,7 @@ class HomeWorkspaceVisualLanguageRestorationV1Tests(unittest.TestCase):
         self.assertNotIn("openGlobalNav", APP_JS)
 
     def test_cache_bust_and_queuepool_markers(self) -> None:
+        self.assertIn("semvis1", V2_HTML)
         self.assertIn("langrest1", V2_HTML)
         self.assertIn("qpool1", V2_HTML)
         self.assertIn("nvis1-fanout1", V2_HTML)
@@ -91,6 +92,7 @@ class HomeWorkspaceVisualLanguageRestorationV1Tests(unittest.TestCase):
         os.environ["ENV"] = "development"
         try:
             html = TestClient(app).get("/dashboard?cf_ui=v2").text
+            self.assertIn("semvis1", html)
             self.assertIn("langrest1", html)
             self.assertIn("merchant_ui_v2_home.js", html)
             self.assertIn("merchant_ui_v2_workspace.js", html)

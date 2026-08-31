@@ -53,6 +53,10 @@ class MerchantVisualIdentityRegressionGate(unittest.TestCase):
         self.assertEqual(
             r.headers.get("X-CartFlow-Merchant-Figma-Parity"), FIGMA_PARITY_CONTRACT
         )
+        self.assertEqual(
+            r.headers.get("X-CartFlow-Merchant-Semantic-Model"),
+            "semantic-visual-model-v1",
+        )
         self.assertEqual(forbidden_present(r.text), [])
 
     def test_home_workspace_anchors_present(self) -> None:
