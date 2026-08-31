@@ -2,6 +2,7 @@
 
 **Date (UTC):** 2026-08-31  
 **Base / live production SHA:** `2bf18ebcdff069a1b16a7a896b6f6ecb494b92e8`  
+**New candidate SHA:** see git HEAD of `feat/merchant-platform-visual-assimilation-reconciliation-v1`  
 **Old visual candidate (do not deploy):** `9d078cc0a3eba47c327374da8b9e21451e07e140`  
 **Old visual ancestor:** `58a82f344cd3ba92c737cc7448e7e9d05910211f`  
 **Mode:** audit → surgical port of approved M1–M3 only. No deploy.
