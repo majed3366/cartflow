@@ -1,0 +1,13 @@
+{# Safe, non-secret Merchant UI runtime identity. No visual chrome. #}
+{% if merchant_runtime %}
+<meta name="cartflow-runtime-git-sha" content="{{ merchant_runtime.git_sha }}">
+<meta name="cartflow-runtime-ui" content="{{ merchant_runtime.ui_version }}">
+<meta name="cartflow-runtime-template" content="{{ merchant_runtime.template_id }}">
+<meta name="cartflow-runtime-renderer" content="{{ merchant_runtime.renderer_id }}">
+<meta name="cartflow-runtime-shell" content="{{ merchant_runtime.shell_version }}">
+<meta name="cartflow-runtime-home-painter" content="{{ merchant_runtime.home_renderer_version }}">
+<meta name="cartflow-runtime-workspace-painter" content="{{ merchant_runtime.workspace_renderer_version }}">
+<meta name="cartflow-runtime-role" content="{{ merchant_runtime.role }}">
+<meta name="cartflow-runtime-selection" content="{{ merchant_runtime.selection_source }}">
+<script>window.CARTFLOW_MERCHANT_RUNTIME={{ merchant_runtime_json | safe }};</script>
+{% endif %}

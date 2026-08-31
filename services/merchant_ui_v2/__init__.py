@@ -7,6 +7,7 @@ from services.merchant_ui_v2.flag_v1 import (
     DEFAULT_MERCHANT_UI_V2,
     FLAG_MERCHANT_UI_V2,
     apply_merchant_ui_v2_cookie,
+    merchant_ui_selection_source,
     merchant_ui_v2_flag_state,
     merchant_ui_v2_requested,
 )
@@ -16,6 +17,7 @@ __all__ = [
     "DEFAULT_MERCHANT_UI_V2",
     "FLAG_MERCHANT_UI_V2",
     "apply_merchant_ui_v2_cookie",
+    "merchant_ui_selection_source",
     "merchant_ui_v2_flag_state",
     "merchant_ui_v2_requested",
 ]

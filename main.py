@@ -1069,6 +1069,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/living-store-reality-status",
         "/dev/living-store-home-review-session",
         "/dev/living-store-home-review",
+        "/dev/merchant-runtime-identity",
         "/dev/diagnostic-reasoning-materialize",
         "/dev/commerce-intelligence-synthesis",
         "/dev/commerce-intelligence-knowledge",
@@ -12942,21 +12943,44 @@ def dev_diagnostic_reasoning_materialize(
     return j({"ok": bool(result.get("ok")), **result}, 200)
 
 
+@app.get("/dev/merchant-runtime-identity")
+def dev_merchant_runtime_identity(request: Request) -> Any:
+    """Non-secret Merchant UI runtime identity for review/prod diagnostics."""
+    from services.merchant_runtime_identity_v1 import (  # noqa: PLC0415
+        apply_merchant_runtime_identity_headers,
+        build_identity_from_request,
+    )
+
+    identity = build_identity_from_request(request)
+    resp = j(identity, 200)
+    apply_merchant_runtime_identity_headers(resp, identity)
+    return resp
+
+
 @app.get("/dev/living-store-home-review")
 def dev_living_store_home_review() -> Any:
-    """Set demo-primary review cookie and redirect to production Home."""
+    """Bind Living Store session and open the canonical Merchant UI runtime."""
     from fastapi.responses import RedirectResponse  # noqa: PLC0415
 
     from services.living_store_reality_prod_v1 import (  # noqa: PLC0415
         issue_demo_home_review_session_v1,
     )
     from services.merchant_auth_v1 import is_development_env  # noqa: PLC0415
+    from services.merchant_runtime_identity_v1 import (  # noqa: PLC0415
+        apply_merchant_runtime_identity_headers,
+        build_canonical_identity,
+    )
+    from services.merchant_ui_v2.flag_v1 import apply_merchant_ui_v2_cookie  # noqa: PLC0415
 
     try:
         payload = issue_demo_home_review_session_v1()
     except Exception as exc:  # noqa: BLE001
         return j({"ok": False, "error": f"{type(exc).__name__}:{exc}"[:400]}, 500)
     resp = RedirectResponse(url="/dashboard#home", status_code=302)
+    apply_merchant_ui_v2_cookie(resp, True)
+    apply_merchant_runtime_identity_headers(
+        resp, build_canonical_identity(selection_source="review_bind")
+    )
     resp.set_cookie(
         key=str(payload["cookie_name"]),
         value=str(payload["cookie_value"]),

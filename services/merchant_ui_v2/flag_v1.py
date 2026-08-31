@@ -34,6 +34,29 @@ def merchant_ui_v2_env_enabled() -> bool:
     return bool(decided) if decided is not None else DEFAULT_MERCHANT_UI_V2
 
 
+def merchant_ui_selection_source(
+    *,
+    query: Optional[Mapping[str, Any]] = None,
+    cookies: Optional[Mapping[str, Any]] = None,
+) -> str:
+    """How V1/V2 was chosen. query | cookie | env | default."""
+    q = query or {}
+    raw_q = ""
+    if hasattr(q, "get"):
+        raw_q = str(q.get(QUERY_MERCHANT_UI_V2) or "")
+    if _truthy(raw_q) is not None:
+        return "query"
+    c = cookies or {}
+    raw_c = ""
+    if hasattr(c, "get"):
+        raw_c = str(c.get(COOKIE_MERCHANT_UI_V2) or "")
+    if _truthy(raw_c) is not None:
+        return "cookie"
+    if (os.environ.get(FLAG_MERCHANT_UI_V2) or "").strip():
+        return "env"
+    return "default"
+
+
 def merchant_ui_v2_requested(
     *,
     query: Optional[Mapping[str, Any]] = None,

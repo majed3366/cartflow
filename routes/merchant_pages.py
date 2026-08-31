@@ -62,7 +62,13 @@ def dashboard(request: Request):
 
     from services.merchant_ui_v2.flag_v1 import (  # noqa: PLC0415
         apply_merchant_ui_v2_cookie,
+        merchant_ui_selection_source,
         merchant_ui_v2_requested,
+    )
+    from services.merchant_runtime_identity_v1 import (  # noqa: PLC0415
+        apply_merchant_runtime_identity_headers,
+        attach_identity_to_template_context,
+        build_merchant_runtime_identity,
     )
 
     _meif_on = merchant_experience_integration_v1_enabled()
@@ -130,11 +136,19 @@ def dashboard(request: Request):
             "merchant_month_revenue_fmt": "…",
             **shell_store,
         }
+    _identity = build_merchant_runtime_identity(
+        ui_v2=_ui_v2,
+        selection_source=merchant_ui_selection_source(
+            query=request.query_params, cookies=request.cookies
+        ),
+    )
+    attach_identity_to_template_context(_ctx, _identity)
     resp = templates.TemplateResponse(
         request,
         _template,
         _ctx,
     )
+    apply_merchant_runtime_identity_headers(resp, _identity)
     # Persist review toggle when ?cf_ui= is present.
     _q = (request.query_params.get("cf_ui") or "").strip().lower()
     if _q in {"v2", "1", "true", "on", "v1", "0", "false", "off"}:

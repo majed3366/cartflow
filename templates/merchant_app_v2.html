@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="cartflow-merchant-setup-build" content="{{ merchant_setup_render_build | default('unknown') }}">
 <meta name="cartflow-ui" content="v2">
+{% include "partials/merchant_runtime_identity_v1.html" %}
 <title>{{ merchant_html_title | default("CartFlow — لوحة التاجر") }}</title>
 <script>window.CARTFLOW_STORE_SLUG = "{{ merchant_store_slug | default('demo') }}";</script>
 <script>window.CARTFLOW_UI_V2 = true;</script>
