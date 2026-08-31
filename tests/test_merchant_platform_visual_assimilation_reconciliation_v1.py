@@ -81,6 +81,7 @@ class MerchantPlatformVisualAssimilationReconciliationV1Tests(unittest.TestCase)
         self.assertIn("nvis1", V2_HTML)
         self.assertIn("fanout1", V2_HTML)
         self.assertIn("assim1", V2_HTML)
+        self.assertIn("resid1", V2_HTML)
 
     def test_dashboard_hosts_assimilation_cache_bust(self) -> None:
         prev = os.environ.get("ENV")
@@ -89,7 +90,7 @@ class MerchantPlatformVisualAssimilationReconciliationV1Tests(unittest.TestCase)
             html = TestClient(app).get("/dashboard?cf_ui=v2").text
             self.assertIn("cartsempty1-assim1", html)
             self.assertIn("commshier1-assim1", html)
-            self.assertIn("nvis1-assim1", html)
+            self.assertIn("nvis1-assim1-resid1", html)
             self.assertIn("qpool1", html)
             self.assertIn("nvis1-fanout1", html)
         finally:

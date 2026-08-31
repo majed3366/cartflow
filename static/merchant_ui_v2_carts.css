@@ -96,7 +96,8 @@ body[data-cf-ui="v2"] .cf2-carts__row {
   text-align: right;
   padding: 12px 14px;
   border: 1px solid var(--cf2-border);
-  border-radius: var(--cf2-r-md);
+  border-inline-start: 3px solid transparent;
+  border-radius: 0 var(--cf2-r-md) var(--cf2-r-md) 0;
   background: var(--cf2-surface);
   cursor: pointer;
   min-width: 0;
@@ -118,8 +119,9 @@ body[data-cf-ui="v2"] .cf2-carts__row.is-archived {
 }
 
 body[data-cf-ui="v2"] .cf2-carts__row.is-selected {
-  border-color: var(--cf2-navy);
-  box-shadow: inset 3px 0 0 var(--cf2-teal);
+  border-color: var(--cf2-border);
+  border-inline-start-color: var(--cf2-navy);
+  box-shadow: none;
 }
 
 body[data-cf-ui="v2"] .cf2-carts__row-main,

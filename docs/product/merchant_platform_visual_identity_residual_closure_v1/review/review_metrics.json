@@ -1,0 +1,266 @@
+{
+  "review_sha_header": "011f7d8b",
+  "base": "http://127.0.0.1:8772",
+  "styles": {
+    "desktop_carts_selected": {
+      "sel": ".cf2-carts__row.is-selected",
+      "backgroundColor": "rgb(255, 255, 255)",
+      "borderTopStyle": "solid",
+      "borderInlineStartStyle": "solid",
+      "borderInlineStartWidth": "3px",
+      "borderInlineStartColor": "rgb(8, 32, 72)",
+      "borderTopColor": "rgba(8, 32, 72, 0.1)",
+      "boxShadow": "none",
+      "borderRadius": "0px 12px 12px 0px",
+      "overflowX": false,
+      "w": 672,
+      "h": 112,
+      "text": "اسم المنتج غير متوفر\nبانتظار الإرسال\nمنذ 3 أيام\nانتظر — CartFlow يتابع"
+    },
+    "desktop_comms_empty": {
+      "sel": ".cf2-comms__empty",
+      "backgroundColor": "rgb(255, 255, 255)",
+      "borderTopStyle": "solid",
+      "borderInlineStartStyle": "solid",
+      "borderInlineStartWidth": "3px",
+      "borderInlineStartColor": "rgba(8, 32, 72, 0.22)",
+      "borderTopColor": "rgba(8, 32, 72, 0.1)",
+      "boxShadow": "none",
+      "borderRadius": "12px",
+      "overflowX": false,
+      "w": 655,
+      "h": 77,
+      "text": "لا توجد عناصر في هذا العرض\n\nتواصل العملاء يحتاج انتباهاً."
+    },
+    "desktop_comms_detail": {
+      "sel": ".cf2-comms__detail",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "borderTopStyle": "none",
+      "borderInlineStartStyle": "solid",
+      "borderInlineStartWidth": "3px",
+      "borderInlineStartColor": "rgba(8, 32, 72, 0.2)",
+      "borderTopColor": "rgb(8, 32, 72)",
+      "boxShadow": "none",
+      "borderRadius": "0px",
+      "overflowX": false,
+      "w": 687,
+      "h": 48,
+      "text": "اختر حدث تواصل من السجل."
+    },
+    "desktop_comms_row": {
+      "missing": true,
+      "sel": ".cf2-comms__row"
+    },
+    "desktop_settings_row": {
+      "sel": ".cf2-settings__row",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "borderTopStyle": "none",
+      "borderInlineStartStyle": "solid",
+      "borderInlineStartWidth": "3px",
+      "borderInlineStartColor": "rgba(122, 78, 12, 0.42)",
+      "borderTopColor": "rgb(8, 32, 72)",
+      "boxShadow": "none",
+      "borderRadius": "0px",
+      "overflowX": false,
+      "w": 272,
+      "h": 116,
+      "text": "المتجر\nغير مربوط\nيحتاج ضبط\nقراءة فقط · الباقة\nغير متاح · سلة"
+    },
+    "desktop_settings_needs": {
+      "sel": ".cf2-settings__row.is-needs",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "borderTopStyle": "none",
+      "borderInlineStartStyle": "solid",
+      "borderInlineStartWidth": "3px",
+      "borderInlineStartColor": "rgba(122, 78, 12, 0.42)",
+      "borderTopColor": "rgb(8, 32, 72)",
+      "boxShadow": "none",
+      "borderRadius": "0px",
+      "overflowX": false,
+      "w": 272,
+      "h": 116,
+      "text": "المتجر\nغير مربوط\nيحتاج ضبط\nقراءة فقط · الباقة\nغير متاح · سلة"
+    },
+    "desktop_settings_detail": {
+      "sel": ".cf2-settings__detail",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "borderTopStyle": "none",
+      "borderInlineStartStyle": "solid",
+      "borderInlineStartWidth": "3px",
+      "borderInlineStartColor": "rgba(8, 32, 72, 0.2)",
+      "borderTopColor": "rgb(8, 32, 72)",
+      "boxShadow": "none",
+      "borderRadius": "0px",
+      "overflowX": false,
+      "w": 1072,
+      "h": 18,
+      "text": "اختر منطقة لعرض حالتها وضبطها."
+    },
+    "desktop_settings_selected": {
+      "sel": ".cf2-settings__row.is-selected",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "borderTopStyle": "none",
+      "borderInlineStartStyle": "solid",
+      "borderInlineStartWidth": "3px",
+      "borderInlineStartColor": "rgb(8, 32, 72)",
+      "borderTopColor": "rgb(8, 32, 72)",
+      "boxShadow": "none",
+      "borderRadius": "0px",
+      "overflowX": false,
+      "w": 272,
+      "h": 116,
+      "text": "المتجر\nغير مربوط\nيحتاج ضبط\nقراءة فقط · الباقة\nغير متاح · سلة"
+    },
+    "mobile_carts_selected": {
+      "sel": ".cf2-carts__row.is-selected",
+      "backgroundColor": "rgb(255, 255, 255)",
+      "borderTopStyle": "solid",
+      "borderInlineStartStyle": "solid",
+      "borderInlineStartWidth": "3px",
+      "borderInlineStartColor": "rgb(8, 32, 72)",
+      "borderTopColor": "rgba(8, 32, 72, 0.1)",
+      "boxShadow": "none",
+      "borderRadius": "0px 12px 12px 0px",
+      "overflowX": false,
+      "w": 0,
+      "h": 0,
+      "text": "اسم المنتج غير متوفربانتظار الإرسالمنذ 3 أيامانتظر — CartFlow يتابع"
+    },
+    "mobile_comms_empty": {
+      "sel": ".cf2-comms__empty",
+      "backgroundColor": "rgb(255, 255, 255)",
+      "borderTopStyle": "solid",
+      "borderInlineStartStyle": "solid",
+      "borderInlineStartWidth": "3px",
+      "borderInlineStartColor": "rgba(8, 32, 72, 0.22)",
+      "borderTopColor": "rgba(8, 32, 72, 0.1)",
+      "boxShadow": "none",
+      "borderRadius": "12px",
+      "overflowX": false,
+      "w": 358,
+      "h": 77,
+      "text": "لا توجد عناصر في هذا العرض\n\nتواصل العملاء يحتاج انتباهاً."
+    },
+    "mobile_comms_detail": {
+      "sel": ".cf2-comms__detail",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "borderTopStyle": "none",
+      "borderInlineStartStyle": "none",
+      "borderInlineStartWidth": "0px",
+      "borderInlineStartColor": "rgb(8, 32, 72)",
+      "borderTopColor": "rgb(8, 32, 72)",
+      "boxShadow": "none",
+      "borderRadius": "0px",
+      "overflowX": false,
+      "w": 0,
+      "h": 0,
+      "text": "اختر حدث تواصل من السجل."
+    },
+    "mobile_comms_row": {
+      "missing": true,
+      "sel": ".cf2-comms__row"
+    },
+    "mobile_settings_row": {
+      "sel": ".cf2-settings__row",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "borderTopStyle": "none",
+      "borderInlineStartStyle": "solid",
+      "borderInlineStartWidth": "3px",
+      "borderInlineStartColor": "rgba(122, 78, 12, 0.42)",
+      "borderTopColor": "rgb(8, 32, 72)",
+      "boxShadow": "none",
+      "borderRadius": "0px",
+      "overflowX": false,
+      "w": 358,
+      "h": 92,
+      "text": "المتجر\nغير مربوط\nيحتاج ضبط\nقراءة فقط · الباقة\nغير متاح · سلة"
+    },
+    "mobile_settings_needs": {
+      "sel": ".cf2-settings__row.is-needs",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "borderTopStyle": "none",
+      "borderInlineStartStyle": "solid",
+      "borderInlineStartWidth": "3px",
+      "borderInlineStartColor": "rgba(122, 78, 12, 0.42)",
+      "borderTopColor": "rgb(8, 32, 72)",
+      "boxShadow": "none",
+      "borderRadius": "0px",
+      "overflowX": false,
+      "w": 358,
+      "h": 92,
+      "text": "المتجر\nغير مربوط\nيحتاج ضبط\nقراءة فقط · الباقة\nغير متاح · سلة"
+    },
+    "mobile_settings_detail": {
+      "sel": ".cf2-settings__detail",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "borderTopStyle": "none",
+      "borderInlineStartStyle": "solid",
+      "borderInlineStartWidth": "3px",
+      "borderInlineStartColor": "rgba(8, 32, 72, 0.2)",
+      "borderTopColor": "rgb(8, 32, 72)",
+      "boxShadow": "none",
+      "borderRadius": "0px",
+      "overflowX": false,
+      "w": 0,
+      "h": 0,
+      "text": "\n      رجوع\n      اختر منطقة لعرض حالتها وضبطها.\n\n      \n        \n        \n        \n          \n            \n              ربط المتجر\n              زد فقط — الرب"
+    },
+    "mobile_settings_selected": {
+      "sel": ".cf2-settings__row.is-selected",
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "borderTopStyle": "none",
+      "borderInlineStartStyle": "solid",
+      "borderInlineStartWidth": "3px",
+      "borderInlineStartColor": "rgb(8, 32, 72)",
+      "borderTopColor": "rgb(8, 32, 72)",
+      "boxShadow": "none",
+      "borderRadius": "0px",
+      "overflowX": false,
+      "w": 0,
+      "h": 0,
+      "text": "المتجرغير مربوطيحتاج ضبطقراءة فقط · الباقةغير متاح · سلة"
+    }
+  },
+  "smoke": {
+    "desktop": {
+      "api_count": 9,
+      "api_paths": [
+        "/api/cart-workspace/v1/projection",
+        "/api/dashboard/followups",
+        "/api/dashboard/messages",
+        "/api/dashboard/normal-carts",
+        "/api/dashboard/summary",
+        "/api/merchant/store-connection",
+        "/api/merchant/subscription",
+        "/api/recovery-settings"
+      ],
+      "overflow": false
+    },
+    "mobile": {
+      "api_count": 9,
+      "api_paths": [
+        "/api/cart-workspace/v1/projection",
+        "/api/dashboard/followups",
+        "/api/dashboard/messages",
+        "/api/dashboard/normal-carts",
+        "/api/dashboard/summary",
+        "/api/merchant/store-connection",
+        "/api/merchant/subscription",
+        "/api/recovery-settings"
+      ],
+      "overflow": false
+    }
+  },
+  "html": {
+    "desktop": {
+      "resid1": true,
+      "assim1": true,
+      "qpool1": true
+    },
+    "mobile": {
+      "resid1": true,
+      "assim1": true,
+      "qpool1": true
+    }
+  }
+}
