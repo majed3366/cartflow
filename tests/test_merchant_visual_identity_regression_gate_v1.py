@@ -105,6 +105,43 @@ class MerchantVisualIdentityRegressionGate(unittest.TestCase):
         self.assertIn("cf2-ctx-handle", V2)
         self.assertNotIn("cf-rail__brand", V2)
 
+    def test_visual_deploy_requires_production_config_parity(self) -> None:
+        """MERCHANT-UI-INV-CONFIG-01 — deploy auth fails closed without config parity."""
+        from services.merchant_ui_config_parity_v1 import (  # noqa: PLC0415
+            FLAG_CART_WORKSPACE_V1,
+            FLAG_CARTS_V2_UI,
+            FLAG_MERCHANT_UI_V2,
+            REGRESSION_GATE as CONFIG_PARITY_GATE,
+            compare_merchant_ui_config_parity,
+        )
+        from services.merchant_visual_deploy_authorization_v1 import (  # noqa: PLC0415
+            evaluate_merchant_visual_deploy_authorization,
+        )
+
+        parity = compare_merchant_ui_config_parity(
+            env={
+                FLAG_CART_WORKSPACE_V1: "true",
+                FLAG_MERCHANT_UI_V2: "1",
+                FLAG_CARTS_V2_UI: "1",
+            }
+        )
+        self.assertEqual(parity["gate"], CONFIG_PARITY_GATE)
+        self.assertEqual(parity["status"], "pass")
+        auth = evaluate_merchant_visual_deploy_authorization(
+            visual_contracts="pass",
+            semantic_regression="pass",
+            real_device_review="pass",
+            production_config_parity=parity["status"],
+        )
+        self.assertTrue(auth["safe_for_exact_sha_deploy"])
+        blocked = evaluate_merchant_visual_deploy_authorization(
+            visual_contracts="pass",
+            semantic_regression="pass",
+            real_device_review="pass",
+            production_config_parity="fail",
+        )
+        self.assertFalse(blocked["safe_for_exact_sha_deploy"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -64,7 +64,11 @@ _PARITY_KEYS = (
 
 
 def _v2_identity(*, selection_source: str, role: str = "canonical") -> dict[str, Any]:
-    return {
+    from services.merchant_ui_config_parity_v1 import (  # noqa: PLC0415
+        attach_config_parity_to_identity,
+    )
+
+    identity: dict[str, Any] = {
         "ok": True,
         "canonical": True,
         "role": role,
@@ -96,6 +100,8 @@ def _v2_identity(*, selection_source: str, role: str = "canonical") -> dict[str,
         "visual_invariants": list(VISUAL_INVARIANTS.keys()),
         "semantic_model_version": SEMANTIC_MODEL_VERSION,
     }
+    attach_config_parity_to_identity(identity)
+    return identity
 
 
 def _v1_identity(*, selection_source: str) -> dict[str, Any]:
