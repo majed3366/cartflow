@@ -334,11 +334,12 @@
 
     /* ——— Monitoring: embedded continuation, not a sidebar column ——— */
     if (monitor.length) {
+      html += '<div class="cf2-home__orbit-axis" aria-hidden="true"></div>';
       html +=
-        '<aside class="cf2-home__monitor" aria-label="ما يراقبه CartFlow أيضًا">';
+        '<aside class="cf2-home__monitor" data-cf2-orbit="satellites" aria-label="ما يراقبه CartFlow أيضًا">';
       html +=
         '<p class="cf2-home__monitor-label">ما يراقبه CartFlow أيضًا</p>';
-      html += '<div class="cf2-home__monitor-row">';
+      html += '<div class="cf2-home__monitor-row" data-cf2-orbit-row="1">';
       monitor.forEach(function (r) {
         html += monitorItem(r.sec, r.tier);
       });

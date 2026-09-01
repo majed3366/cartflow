@@ -14,7 +14,86 @@ body[data-cf-ui="v2"] .cf2-carts {
 }
 
 body[data-cf-ui="v2"] .cf2-carts[data-cf2-organism="weighted-queue"] .cf2-carts__filters {
-  opacity: 0.92;
+  opacity: 0.88;
+  margin-bottom: 4px;
+}
+
+body[data-cf-ui="v2"] .cf2-carts[data-cf2-organism="weighted-queue"] .cf2-carts__workspace {
+  gap: 0;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  align-items: stretch;
+}
+
+body[data-cf-ui="v2"] .cf2-carts[data-cf2-organism="weighted-queue"] .cf2-carts__queue {
+  gap: 4px;
+  border-inline-end: 0;
+  padding-inline-end: 0;
+}
+
+body[data-cf-ui="v2"] .cf2-carts__object,
+body[data-cf-ui="v2"] .cf2-carts__row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  width: 100%;
+  text-align: right;
+  padding: 12px 14px;
+  border: 0;
+  border-inline-start: 3px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+body[data-cf-ui="v2"] .cf2-carts__object.is-actionable,
+body[data-cf-ui="v2"] .cf2-carts__row.is-actionable {
+  border-inline-start-width: 6px;
+  border-inline-start-color: var(--cf2-navy);
+  background: rgba(8, 32, 72, 0.055);
+  padding-block: 14px;
+  box-shadow: none;
+}
+
+body[data-cf-ui="v2"] .cf2-carts__object.is-waiting,
+body[data-cf-ui="v2"] .cf2-carts__row.is-waiting {
+  border-inline-start-style: dashed;
+  border-inline-start-width: 4px;
+  border-inline-start-color: rgba(115, 133, 158, 0.65);
+  opacity: 1;
+  background: transparent;
+}
+
+body[data-cf-ui="v2"] .cf2-carts__object.is-terminal,
+body[data-cf-ui="v2"] .cf2-carts__object.is-archived,
+body[data-cf-ui="v2"] .cf2-carts__row.is-terminal,
+body[data-cf-ui="v2"] .cf2-carts__row.is-archived {
+  border-inline-start-color: rgba(115, 133, 158, 0.28);
+  opacity: 0.72;
+}
+
+body[data-cf-ui="v2"] .cf2-carts__object.is-selected,
+body[data-cf-ui="v2"] .cf2-carts__row.is-selected {
+  border-inline-start-color: var(--cf2-navy);
+  border-inline-start-width: 6px;
+  box-shadow: none;
+  background: rgba(8, 32, 72, 0.06);
+  position: relative;
+}
+
+/* Selected object bridges into detail — same cart-object spine */
+body[data-cf-ui="v2"] .cf2-carts[data-cf2-organism="weighted-queue"] .cf2-carts__object.is-selected::after,
+body[data-cf-ui="v2"] .cf2-carts[data-cf2-organism="weighted-queue"] .cf2-carts__row.is-selected::after {
+  content: "";
+  position: absolute;
+  inset-inline-end: -1px;
+  top: 12%;
+  bottom: 12%;
+  width: 3px;
+  background: var(--cf2-navy);
+  opacity: 0.55;
 }
 
 body[data-cf-ui="v2"] .cf2-carts__orient {
@@ -83,6 +162,12 @@ body[data-cf-ui="v2"] .cf2-carts__workspace {
   min-width: 0;
 }
 
+body[data-cf-ui="v2"] .cf2-carts[data-cf2-organism="weighted-queue"] .cf2-carts__workspace {
+  gap: 0;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  align-items: stretch;
+}
+
 body[data-cf-ui="v2"] .cf2-carts__queue,
 body[data-cf-ui="v2"] .cf2-carts__detail {
   min-width: 0;
@@ -94,54 +179,6 @@ body[data-cf-ui="v2"] .cf2-carts__queue {
   flex-direction: column;
   gap: 6px;
   overflow-x: hidden;
-}
-
-body[data-cf-ui="v2"] .cf2-carts__object,
-body[data-cf-ui="v2"] .cf2-carts__row {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 6px;
-  width: 100%;
-  text-align: right;
-  padding: 12px 14px;
-  border: 0;
-  border-inline-start: 3px solid transparent;
-  border-radius: 0;
-  background: transparent;
-  cursor: pointer;
-  min-width: 0;
-  overflow-x: hidden;
-}
-
-body[data-cf-ui="v2"] .cf2-carts__object.is-actionable,
-body[data-cf-ui="v2"] .cf2-carts__row.is-actionable {
-  border-inline-start-width: 4px;
-  border-inline-start-color: var(--cf2-navy);
-  background: rgba(8, 32, 72, 0.03);
-  box-shadow: none;
-}
-
-body[data-cf-ui="v2"] .cf2-carts__object.is-waiting,
-body[data-cf-ui="v2"] .cf2-carts__row.is-waiting {
-  border-inline-start-style: dashed;
-  border-inline-start-color: rgba(115, 133, 158, 0.55);
-  opacity: 1;
-}
-
-body[data-cf-ui="v2"] .cf2-carts__object.is-terminal,
-body[data-cf-ui="v2"] .cf2-carts__object.is-archived,
-body[data-cf-ui="v2"] .cf2-carts__row.is-terminal,
-body[data-cf-ui="v2"] .cf2-carts__row.is-archived {
-  border-inline-start-color: rgba(115, 133, 158, 0.28);
-  opacity: 0.72;
-}
-
-body[data-cf-ui="v2"] .cf2-carts__object.is-selected,
-body[data-cf-ui="v2"] .cf2-carts__row.is-selected {
-  border-inline-start-color: var(--cf2-navy);
-  box-shadow: inset 0 0 0 1px rgba(8, 32, 72, 0.06);
-  background: rgba(8, 32, 72, 0.04);
 }
 
 body[data-cf-ui="v2"] .cf2-carts__object.is-withheld {
@@ -251,10 +288,16 @@ body[data-cf-ui="v2"] .cf2-carts__chip--vip {
 }
 
 body[data-cf-ui="v2"] .cf2-carts__detail {
-  background: var(--cf2-surface);
-  border: 1px solid var(--cf2-border);
-  border-radius: var(--cf2-r-md);
-  padding: 16px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  border-inline-start: 4px solid var(--cf2-navy);
+  padding: 12px 8px 16px 14px;
+  box-shadow: none;
+}
+
+body[data-cf-ui="v2"] .cf2-carts[data-cf2-organism="weighted-queue"] .cf2-carts__detail {
+  background: rgba(8, 32, 72, 0.02);
 }
 
 body[data-cf-ui="v2"] .cf2-carts__detail-inner {
@@ -405,8 +448,14 @@ body[data-cf-ui="v2"] .cf2-carts.is-empty .cf2-carts__orient-h {
 
   body[data-cf-ui="v2"] .cf2-carts__detail {
     border: 0;
-    padding: 0;
+    padding: 8px 4px 12px 0;
     background: transparent;
+    border-inline-start: 4px solid var(--cf2-navy);
+  }
+
+  body[data-cf-ui="v2"] .cf2-carts[data-cf2-organism="weighted-queue"] .cf2-carts__object.is-actionable,
+  body[data-cf-ui="v2"] .cf2-carts[data-cf2-organism="weighted-queue"] .cf2-carts__row.is-actionable {
+    border-inline-start-width: 6px;
   }
 
   body[data-cf-ui="v2"] .cf2-carts__action-block {

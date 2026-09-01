@@ -1,0 +1,10 @@
+﻿SHA=67ed1432
+review_server=http://127.0.0.1:8777
+ENV=development
+workspace_projection=404 feature_flag_off CARTFLOW_CART_WORKSPACE_V1
+home_organism=gravity-well (DOM)
+home_satellites=3 (near/near/far) in equal monitor grid
+workspace_void_when_painted=22px opacity=0.72 translate(4px,-2px)
+carts_organism=weighted-queue detail=white-card radius=12px
+comms_organism=lifecycle-continuum ticks=0 rows=0
+settings_organism=config-ledger joints=10x10px

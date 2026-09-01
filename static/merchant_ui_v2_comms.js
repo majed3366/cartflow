@@ -417,22 +417,49 @@
     return d.indexOf("deliver") >= 0 || d.indexOf("وصل") >= 0 || d.indexOf("تسليم") >= 0;
   }
 
+  /** Lifecycle marks from existing truth only — no invented future steps. */
   function lifecycleTicksHtml(stage) {
     var steps = ["send", "delivery", "response", "wait", "followup"];
     var active = steps.indexOf(stage);
-    if (stage === "closed") active = steps.length;
+    if (stage === "closed") active = steps.length - 1;
     if (stage === "broken") active = 1;
-    var html = '<span class="cf2-comms__life" data-cf2-lifecycle="' + esc(stage) + '" aria-hidden="true">';
-    steps.forEach(function (step, i) {
+    var end = stage === "closed" ? steps.length : Math.max(active + 1, 1);
+    var html =
+      '<span class="cf2-comms__life" data-cf2-lifecycle="' +
+      esc(stage) +
+      '" data-cf2-life-count="' +
+      end +
+      '" aria-hidden="true">';
+    steps.slice(0, end).forEach(function (step, i) {
       var cls = "cf2-comms__tick";
       if (stage === "broken" && i === 1) cls += " is-broken";
       else if (stage === "closed") cls += " is-complete";
       else if (i < active) cls += " is-complete";
       else if (i === active) cls += stage === "followup" ? " is-held" : " is-active";
-      html += '<span class="' + cls + '" data-cf2-tick="' + esc(step) + '"></span>';
+      html +=
+        '<span class="' +
+        cls +
+        '" data-cf2-tick="' +
+        esc(step) +
+        '"></span>';
     });
     html += "</span>";
     return html;
+  }
+
+  function continuumScaffoldHtml() {
+    var steps = ["send", "delivery", "response", "wait", "followup"];
+    return (
+      '<div class="cf2-comms__continuum-scaffold" data-cf2-continuum="dormant" aria-hidden="true">' +
+      steps
+        .map(function (step) {
+          return (
+            '<span class="cf2-comms__tick" data-cf2-tick="' + esc(step) + '"></span>'
+          );
+        })
+        .join("") +
+      "</div>"
+    );
   }
 
   function itemHtml(it, selected) {
@@ -599,7 +626,8 @@
     }
     var empty = emptyCopy(list, orient);
     var listInner = empty
-      ? '<div class="cf2-comms__empty" data-comms-empty="' +
+      ? continuumScaffoldHtml() +
+        '<div class="cf2-comms__empty" data-comms-empty="' +
         esc(orient.mode) +
         '"><p class="cf2-comms__empty-title">' +
         esc(empty.title) +

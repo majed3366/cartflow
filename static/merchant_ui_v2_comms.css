@@ -156,27 +156,43 @@ body[data-cf-ui="v2"] .cf2-comms__row.is-failed {
   opacity: 0.9;
 }
 
-/* Lifecycle continuum — progression ticks, not a cart queue */
+/* Lifecycle continuum — progression marks (rdfix1: merchant-visible) */
 body[data-cf-ui="v2"] .cf2-comms[data-cf2-organism="lifecycle-continuum"] .cf2-comms__list {
-  gap: 4px;
-  border-inline-start: 1px solid rgba(8, 32, 72, 0.08);
-  padding-inline-start: 2px;
+  gap: 6px;
+  border-inline-start: 2px solid rgba(8, 32, 72, 0.12);
+  padding-inline-start: 6px;
 }
 
 body[data-cf-ui="v2"] .cf2-comms__life {
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 0;
   flex: 0 0 auto;
-  margin-inline-end: 4px;
+  margin-inline-end: 8px;
+  position: relative;
+  min-width: 5.5rem;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__life::before {
+  content: "";
+  position: absolute;
+  inset-inline: 6px;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  background: rgba(8, 32, 72, 0.18);
+  z-index: 0;
 }
 
 body[data-cf-ui="v2"] .cf2-comms__tick {
-  width: 7px;
-  height: 7px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  border: 1.5px solid rgba(115, 133, 158, 0.45);
-  background: transparent;
+  border: 2px solid rgba(115, 133, 158, 0.55);
+  background: var(--cf2-canvas, #f3f6f9);
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
 }
 
 body[data-cf-ui="v2"] .cf2-comms__tick.is-complete {
@@ -187,30 +203,69 @@ body[data-cf-ui="v2"] .cf2-comms__tick.is-complete {
 body[data-cf-ui="v2"] .cf2-comms__tick.is-active {
   background: var(--cf2-teal);
   border-color: var(--cf2-teal);
+  box-shadow: 0 0 0 3px rgba(24, 176, 168, 0.2);
 }
 
 body[data-cf-ui="v2"] .cf2-comms__tick.is-held {
   background: transparent;
   border-color: var(--cf2-navy);
   border-style: dashed;
-  box-shadow: 0 0 0 2px rgba(8, 32, 72, 0.06);
+  box-shadow: 0 0 0 3px rgba(8, 32, 72, 0.08);
 }
 
 body[data-cf-ui="v2"] .cf2-comms__tick.is-broken {
   background: transparent;
-  border-color: rgba(122, 78, 12, 0.65);
-  border-radius: 1px;
+  border-color: rgba(122, 78, 12, 0.75);
+  border-radius: 2px;
   transform: rotate(45deg);
 }
 
 body[data-cf-ui="v2"] .cf2-comms__life-row {
   align-items: center;
+  min-height: 52px;
 }
 
 body[data-cf-ui="v2"] .cf2-comms__handoff-terminus {
   margin-top: 8px;
   padding-inline-start: 10px;
-  border-inline-start: 2px dashed rgba(8, 32, 72, 0.35);
+  border-inline-start: 3px dashed rgba(8, 32, 72, 0.4);
+}
+
+/* Dormant page continuum when list empty — structural, not fabricated events */
+body[data-cf-ui="v2"] .cf2-comms__continuum-scaffold {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin: 10px 0 14px;
+  padding: 10px 8px;
+  border-inline-start: 3px solid rgba(8, 32, 72, 0.2);
+  position: relative;
+  min-height: 36px;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__continuum-scaffold::before {
+  content: "";
+  position: absolute;
+  inset-inline: 14px;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  background: rgba(8, 32, 72, 0.14);
+}
+
+body[data-cf-ui="v2"] .cf2-comms__continuum-scaffold .cf2-comms__tick {
+  margin-inline-end: 10px;
+}
+
+@media (max-width: 1023px) {
+  body[data-cf-ui="v2"] .cf2-comms__tick {
+    width: 11px;
+    height: 11px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-comms__life {
+    min-width: 4.75rem;
+  }
 }
 
 body[data-cf-ui="v2"] .cf2-comms__row.is-selected {

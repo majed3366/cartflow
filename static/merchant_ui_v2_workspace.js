@@ -275,11 +275,16 @@
     });
     html += "</ul></div></section>";
 
-    /* Uncertainty void — relationship between evidence and mass */
-    if (uncertainty === "MEDIUM" || uncertainty === "HIGH") {
+    /* Uncertainty / insufficiency void — relationship between evidence and mass */
+    if (
+      uncertainty === "MEDIUM" ||
+      uncertainty === "HIGH" ||
+      sufficiency === "INSUFFICIENT" ||
+      tensionAttr === "high"
+    ) {
       html +=
         '<div class="cf2-ws__void" data-cf2-void="' +
-        esc(voidSize) +
+        esc(voidSize === "remnant" || voidSize === "identity" ? "standard" : voidSize) +
         '" data-cf2-tension="' +
         esc(tensionAttr) +
         '" aria-hidden="true"></div>';
@@ -363,7 +368,7 @@
 
   function renderQuietEnvironment() {
     var html =
-      '<article class="cf2-dobj cf2-dobj--primary cf2-dobj--quiet" data-cf2-tension="none" data-cf2-mass="open" data-cf2-evidence="neutral" data-cf2-wait="no_action" data-cf2-progress="evidence" data-cf2-silence="quiet" data-cf2-grammar="core-silence">';
+      '<article class="cf2-dobj cf2-dobj--primary cf2-dobj--quiet" data-cf2-organism="formation" data-cf2-composition="page-specific-v1" data-cf2-tension="none" data-cf2-mass="open" data-cf2-readiness="QUIET" data-cf2-evidence="neutral" data-cf2-wait="no_action" data-cf2-progress="evidence" data-cf2-silence="quiet" data-cf2-grammar="core-silence">';
     html += '<header class="cf2-ws__head">';
     html += '<div class="cf2-ws__head-text">';
     html += '<p class="cf2-ws__eyebrow">لا قرار عاجل</p>';
@@ -373,12 +378,15 @@
     html +=
       '<div class="cf2-route" data-cf2-tension="none" data-cf2-grammar="living-route-scaffold" data-cf2-progress="evidence">';
     html +=
-      '<section class="cf2-route__node cf2-beat cf2-beat--evidence is-active" data-cf2-node="evidence">';
+      '<section class="cf2-route__node cf2-beat cf2-beat--evidence is-active" data-cf2-node="evidence" data-cf2-openness="identity">';
     html += '<p class="cf2-beat__label">ما يظهر الآن</p>';
     html += '<div class="cf2-dobj__ev-row">';
     html +=
       '<ul class="cf2-beat__list"><li>لا توجد سلة أو إشارة تشغيلية جاهزة للتحوّل إلى قرار الآن.</li></ul>';
     html += "</div></section>";
+    /* Quiet remnant void keeps formation relationship readable */
+    html +=
+      '<div class="cf2-ws__void" data-cf2-void="remnant" data-cf2-tension="none" aria-hidden="true"></div>';
     html +=
       '<section class="cf2-route__node cf2-beat cf2-beat--understanding" data-cf2-node="understanding">';
     html += '<p class="cf2-beat__label">ماذا يعني</p>';

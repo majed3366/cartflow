@@ -44,52 +44,123 @@ body[data-cf-ui="v2"] .cf2-home__board[data-cf2-edge="attention"] {
   border-inline-start-color: var(--cf2-navy);
 }
 
-/* Gravity well — attention is board mass, not a CO glyph */
+/* Gravity well — primary mass dominates; satellites orbit smaller (rdfix1) */
+body[data-cf-ui="v2"] .cf2-home[data-cf2-organism="gravity-well"] {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
 body[data-cf-ui="v2"] .cf2-home[data-cf2-organism="gravity-well"] .cf2-home__board[data-cf2-gravity="primary"] {
-  border-inline-start-width: 6px;
+  border-inline-start-width: 10px;
   border-inline-start-color: var(--cf2-navy);
+  min-height: 11.5rem;
+  padding-block: 4px;
   background:
     radial-gradient(
-      42% 48% at 100% 0%,
-      rgba(24, 176, 168, 0.14) 0%,
-      transparent 60%
+      58% 62% at 100% 8%,
+      rgba(24, 176, 168, 0.22) 0%,
+      transparent 58%
+    ),
+    radial-gradient(
+      40% 36% at 72% 100%,
+      rgba(8, 32, 72, 0.06) 0%,
+      transparent 70%
     ),
     linear-gradient(
       168deg,
-      rgba(255, 255, 255, 0.96) 0%,
-      rgba(243, 246, 249, 0.7) 100%
+      rgba(255, 255, 255, 0.98) 0%,
+      rgba(236, 242, 248, 0.88) 100%
     );
+  box-shadow: inset -18px 0 48px -28px rgba(8, 32, 72, 0.12);
+}
+
+body[data-cf-ui="v2"] .cf2-home[data-cf2-organism="gravity-well"] .cf2-home__board[data-cf2-gravity="primary"] .cf2-home__scene {
+  padding-block: 22px 14px;
 }
 
 body[data-cf-ui="v2"] .cf2-home[data-cf2-organism="gravity-well"] .cf2-home__board[data-cf2-gravity="primary"] .cf2-home__title {
-  font-size: clamp(1.35rem, 2.2vw, 1.7rem);
+  font-size: clamp(1.55rem, 2.6vw, 2rem);
+  letter-spacing: -0.03em;
 }
 
 body[data-cf-ui="v2"] .cf2-home[data-cf2-organism="gravity-well"] .cf2-home__board[data-cf2-gravity="secondary"] {
-  border-inline-start-width: 4px;
-  opacity: 0.96;
+  border-inline-start-width: 5px;
+  opacity: 0.94;
 }
 
 body[data-cf-ui="v2"] .cf2-home[data-cf2-organism="gravity-well"] .cf2-home__board[data-cf2-gravity="none"] {
   border-inline-start-color: rgba(115, 133, 158, 0.35);
 }
 
+/* Relationship axis: well → satellites */
+body[data-cf-ui="v2"] .cf2-home[data-cf2-organism="gravity-well"] .cf2-home__orbit-axis {
+  display: block;
+  height: 18px;
+  margin: 0 12% 0 22%;
+  border-inline-start: 2px solid rgba(8, 32, 72, 0.18);
+  background: linear-gradient(
+    to bottom,
+    rgba(8, 32, 72, 0.2) 0%,
+    rgba(24, 176, 168, 0.25) 100%
+  );
+  background-size: 2px 100%;
+  background-repeat: no-repeat;
+  background-position: 100% 0;
+  opacity: 0.9;
+}
+
 body[data-cf-ui="v2"] .cf2-home__satellite {
   margin: 0;
   padding: 0;
-  padding-inline-start: 10px;
-  border-inline-start: 2px solid rgba(24, 176, 168, 0.35);
+  padding-inline-start: 12px;
+  border-inline-start: 3px solid rgba(24, 176, 168, 0.45);
   background: transparent;
+  max-width: 22rem;
+}
+
+body[data-cf-ui="v2"] .cf2-home__satellite[data-cf2-distance="near"] {
+  max-width: 20rem;
+  transform: translateX(0);
 }
 
 body[data-cf-ui="v2"] .cf2-home__satellite[data-cf2-distance="mid"] {
-  border-inline-start-color: rgba(115, 133, 158, 0.4);
-  opacity: 0.92;
+  border-inline-start-width: 2px;
+  border-inline-start-color: rgba(115, 133, 158, 0.45);
+  max-width: 16.5rem;
+  margin-inline-start: 1.25rem;
+  opacity: 0.9;
 }
 
 body[data-cf-ui="v2"] .cf2-home__satellite[data-cf2-distance="far"] {
+  border-inline-start-width: 2px;
   border-inline-start-color: rgba(115, 133, 158, 0.28);
-  opacity: 0.84;
+  max-width: 13.5rem;
+  margin-inline-start: 2.5rem;
+  opacity: 0.78;
+}
+
+body[data-cf-ui="v2"] .cf2-home__satellite .cf2-home__monitor-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+body[data-cf-ui="v2"] .cf2-home__satellite[data-cf2-distance="mid"] .cf2-home__monitor-title,
+body[data-cf-ui="v2"] .cf2-home__satellite[data-cf2-distance="far"] .cf2-home__monitor-title {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--cf2-ink-soft);
+}
+
+body[data-cf-ui="v2"] .cf2-home__satellite .cf2-home__monitor-body {
+  font-size: 0.78rem;
+}
+
+body[data-cf-ui="v2"] .cf2-home__satellite[data-cf2-distance="far"] .cf2-home__monitor-body {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 body[data-cf-ui="v2"] .cf2-home__spine {
@@ -297,27 +368,27 @@ body[data-cf-ui="v2"] .cf2-home__action {
   display: inline-flex;
 }
 
-/* ——— Monitoring: stepped continuation under the scene ——— */
-body[data-cf-ui="v2"] .cf2-home__monitor {
+/* ——— Satellites: asymmetric orbit — never equal card grid ——— */
+body[data-cf-ui="v2"] .cf2-home[data-cf2-organism="gravity-well"] .cf2-home__monitor {
   margin: 0;
-  padding: 14px 22px 16px 18px;
-  border-block-start: 1px solid rgba(8, 32, 72, 0.1);
-  background: rgba(8, 32, 72, 0.028);
+  padding: 8px 22px 20px 18px;
+  border-block-start: 0;
+  background: transparent;
 }
 
 body[data-cf-ui="v2"] .cf2-home__monitor-label {
-  margin: 0 0 10px;
+  margin: 0 0 12px;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.05em;
   color: var(--cf2-mute);
 }
 
-body[data-cf-ui="v2"] .cf2-home__monitor-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px 28px;
-  align-items: start;
+body[data-cf-ui="v2"] .cf2-home[data-cf2-organism="gravity-well"] .cf2-home__monitor-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 14px;
 }
 
 body[data-cf-ui="v2"] .cf2-home__monitor-item {
@@ -326,6 +397,8 @@ body[data-cf-ui="v2"] .cf2-home__monitor-item {
   padding-inline-start: 10px;
   border-inline-start: 2px solid rgba(24, 176, 168, 0.35);
   background: transparent;
+  box-shadow: none;
+  border-radius: 0;
 }
 
 body[data-cf-ui="v2"] .cf2-home__monitor-item > .cf2-co-row {
@@ -443,6 +516,55 @@ body[data-cf-ui="v2"] .cf2-home__item-body {
     border-inline-start: none;
     border: none;
     background: transparent;
+  }
+
+  /* MOBILE_VISIBILITY: gravity well must survive stack */
+  body[data-cf-ui="v2"] .cf2-home[data-cf2-organism="gravity-well"] .cf2-home__board[data-cf2-gravity="primary"] {
+    border-inline-start: 8px solid var(--cf2-navy);
+    min-height: 10rem;
+    background:
+      radial-gradient(
+        70% 55% at 100% 0%,
+        rgba(24, 176, 168, 0.2) 0%,
+        transparent 62%
+      ),
+      linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.96) 0%,
+        rgba(236, 242, 248, 0.85) 100%
+      );
+    box-shadow: none;
+  }
+
+  body[data-cf-ui="v2"] .cf2-home[data-cf2-organism="gravity-well"] .cf2-home__board[data-cf2-gravity="primary"] .cf2-home__title {
+    font-size: 1.48rem;
+  }
+
+  body[data-cf-ui="v2"] .cf2-home[data-cf2-organism="gravity-well"] .cf2-home__orbit-axis {
+    height: 14px;
+    margin: 0 8% 0 18%;
+  }
+
+  body[data-cf-ui="v2"] .cf2-home[data-cf2-organism="gravity-well"] .cf2-home__monitor-row {
+    gap: 12px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-home__satellite,
+  body[data-cf-ui="v2"] .cf2-home__satellite[data-cf2-distance="near"],
+  body[data-cf-ui="v2"] .cf2-home__satellite[data-cf2-distance="mid"],
+  body[data-cf-ui="v2"] .cf2-home__satellite[data-cf2-distance="far"] {
+    max-width: none;
+    width: 100%;
+  }
+
+  body[data-cf-ui="v2"] .cf2-home__satellite[data-cf2-distance="mid"] {
+    margin-inline-start: 0.75rem;
+    width: calc(100% - 0.75rem);
+  }
+
+  body[data-cf-ui="v2"] .cf2-home__satellite[data-cf2-distance="far"] {
+    margin-inline-start: 1.5rem;
+    width: calc(100% - 1.5rem);
   }
 
   body[data-cf-ui="v2"] .cf2-home__scene {

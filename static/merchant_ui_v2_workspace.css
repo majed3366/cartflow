@@ -45,58 +45,123 @@ body[data-cf-ui="v2"] .cf2-dobj--primary[data-cf2-tension="ready"] {
   border-inline-start-color: var(--cf2-navy);
 }
 
-/* Formation body — relationships, not icon clause */
+/* Formation body — relationships, not icon clause (rdfix1) */
+body[data-cf-ui="v2"] .cf2-dobj--primary[data-cf2-organism="formation"] {
+  border-inline-start-width: 6px;
+  padding-inline-start: 4px;
+}
+
 body[data-cf-ui="v2"] .cf2-dobj--primary[data-cf2-organism="formation"][data-cf2-readiness="READY"] {
-  border-inline-start-width: 5px;
+  border-inline-start-width: 8px;
   border-inline-start-color: var(--cf2-navy);
 }
 
 body[data-cf-ui="v2"] .cf2-dobj--primary[data-cf2-organism="formation"][data-cf2-sufficiency="insufficient"]
   .cf2-route__node[data-cf2-node="evidence"] {
-  opacity: 0.92;
+  opacity: 0.95;
+  min-height: 4.5rem;
 }
 
 body[data-cf-ui="v2"] .cf2-dobj--primary[data-cf2-organism="formation"]
   .cf2-route__node[data-cf2-openness="open"] {
-  padding-inline-start: 8px;
-  border-inline-start: 2px dashed rgba(115, 133, 158, 0.45);
+  padding-inline-start: 12px;
+  border-inline-start: 3px dashed rgba(115, 133, 158, 0.55);
 }
 
 body[data-cf-ui="v2"] .cf2-dobj--primary[data-cf2-organism="formation"]
   .cf2-route__node[data-cf2-openness="closed"] {
-  border-inline-start: 2px solid rgba(8, 32, 72, 0.2);
-  padding-inline-start: 8px;
+  border-inline-start: 3px solid rgba(8, 32, 72, 0.28);
+  padding-inline-start: 12px;
 }
 
+/* Void must be merchant-perceptible (was ~22px / weak) */
 body[data-cf-ui="v2"] .cf2-ws__void {
   display: block;
-  height: 14px;
-  margin: 2px 12% 6px;
-  border-radius: 50% / 40%;
-  box-shadow: inset 0 0 0 2px rgba(115, 133, 158, 0.35);
-  background: transparent;
-  opacity: 0.55;
+  height: 40px;
+  margin: 8px 10% 12px;
+  border-radius: 50% / 42%;
+  box-shadow: inset 0 0 0 2px rgba(115, 133, 158, 0.55);
+  background:
+    radial-gradient(
+      ellipse at 50% 50%,
+      rgba(8, 32, 72, 0.04) 0%,
+      transparent 70%
+    );
+  opacity: 0.92;
 }
 
 body[data-cf-ui="v2"] .cf2-ws__void[data-cf2-void="large"] {
-  height: 22px;
-  margin-inline: 8%;
-  opacity: 0.72;
+  height: 56px;
+  margin-inline: 6%;
+  opacity: 1;
+  box-shadow: inset 0 0 0 3px rgba(115, 133, 158, 0.65);
 }
 
 body[data-cf-ui="v2"] .cf2-ws__void[data-cf2-void="standard"] {
-  height: 16px;
+  height: 46px;
+}
+
+body[data-cf-ui="v2"] .cf2-ws__void[data-cf2-void="remnant"],
+body[data-cf-ui="v2"] .cf2-ws__void[data-cf2-void="identity"] {
+  height: 32px;
+  opacity: 0.8;
 }
 
 body[data-cf-ui="v2"] .cf2-ws__void[data-cf2-tension="high"] {
-  transform: translate(4px, -2px);
-  box-shadow: inset 0 0 0 2px rgba(115, 133, 158, 0.55);
-  border-radius: 40% 55% 45% 60%;
+  transform: translate(10px, -4px);
+  box-shadow: inset 0 0 0 3px rgba(115, 133, 158, 0.7);
+  border-radius: 38% 58% 42% 62%;
 }
 
 body[data-cf-ui="v2"] .cf2-dobj--primary[data-cf2-organism="formation"][data-cf2-tension="high"]
   .cf2-dobj__ev-row .cf2-evfield {
-  transform: translate(3px, -1px);
+  transform: translate(8px, -2px);
+}
+
+/* Decision mass dominates readiness */
+body[data-cf-ui="v2"] .cf2-dobj--primary[data-cf2-organism="formation"] .cf2-dmass {
+  padding: 14px 16px;
+  min-height: 4.25rem;
+  border-inline-start: 4px solid var(--cf2-navy);
+  background: rgba(8, 32, 72, 0.045);
+}
+
+body[data-cf-ui="v2"] .cf2-dobj--primary[data-cf2-organism="formation"] .cf2-dmass.is-ready {
+  border-inline-start-width: 6px;
+  background: rgba(8, 32, 72, 0.07);
+}
+
+body[data-cf-ui="v2"] .cf2-dobj--primary[data-cf2-organism="formation"] .cf2-dmass__text {
+  font-size: 1.12rem;
+  font-weight: 800;
+  line-height: 1.35;
+  color: var(--cf2-navy);
+}
+
+body[data-cf-ui="v2"] .cf2-dobj--primary[data-cf2-organism="formation"] .cf2-terminus.is-armed {
+  border-inline-start: 4px solid var(--cf2-navy);
+  padding: 10px 12px;
+  margin-top: 6px;
+}
+
+@media (max-width: 1023px) {
+  body[data-cf-ui="v2"] .cf2-ws__void,
+  body[data-cf-ui="v2"] .cf2-ws__void[data-cf2-void="standard"] {
+    height: 44px;
+    margin-inline: 4%;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ws__void[data-cf2-void="large"] {
+    height: 52px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-dobj--primary[data-cf2-organism="formation"] .cf2-dmass {
+    min-height: 3.75rem;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ws__void[data-cf2-tension="high"] {
+    transform: translate(8px, -3px);
+  }
 }
 
 /* Lead: one mark + stance + decision (glance) */
