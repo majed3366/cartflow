@@ -185,7 +185,38 @@
     return html;
   }
 
-  function render(pkg) {
+  /**
+   * Recovery outcome summary — operational AbandonedCart recovered + cart_value only.
+   * Not purchase-attribution SAR. No invented metrics.
+   */
+  function recoveryOutcomeHtml(summary) {
+    if (!summary || typeof summary !== "object") return "";
+    var countRaw = summary.merchant_kpi_recovered_fmt;
+    var valueRaw = summary.merchant_kpi_revenue_fmt;
+    var countOk = countRaw != null && String(countRaw).trim() !== "";
+    var valueOk = valueRaw != null && String(valueRaw).trim() !== "";
+    if (!countOk && !valueOk) return "";
+    var countLine = countOk
+      ? esc(String(countRaw)) + " سلة مسترجعة"
+      : "عدد السلال المسترجعة غير متاح";
+    var valueLine = valueOk
+      ? esc(String(valueRaw)) + " قيمة السلال المسترجعة"
+      : "قيمة الاسترجاع المنسوبة غير متاحة من عقد الإسناد";
+    return (
+      '<aside class="cf2-home__recovery" data-cf2-recovery="operational-kpi-v1" aria-label="خلاصة نتيجة الاسترجاع">' +
+      '<p class="cf2-home__recovery-label">نتيجة الاسترجاع · اليوم</p>' +
+      '<p class="cf2-home__recovery-line">' +
+      countLine +
+      " · " +
+      valueLine +
+      "</p>" +
+      '<p class="cf2-home__recovery-note">حسب حالة السلة المسترجعة وقيمتها التشغيلية — وليس إسناد شراء منسوباً.</p>' +
+      "</aside>"
+    );
+  }
+
+  function render(pkg, summary) {
+    var recovery = recoveryOutcomeHtml(summary);
     var sections = Array.isArray(pkg.sections) ? pkg.sections : [];
     if (!sections.length) {
       return (
@@ -193,7 +224,9 @@
         sceneSpine() +
         '<p class="cf2-empty">' +
         esc(pkg.lede_ar || "لا تتوفر معرفة كافية الآن.") +
-        '</p><hr class="cf2-taper" /></section>'
+        "</p>" +
+        recovery +
+        '<hr class="cf2-taper" /></section>'
       );
     }
     var parts = split(sections);
@@ -206,7 +239,9 @@
       html +=
         '<p class="cf2-empty">' +
         esc(pkg.lede_ar || "لا تتوفر معرفة كافية الآن.") +
-        '</p><hr class="cf2-taper" /></section>';
+        "</p>" +
+        recovery +
+        '<hr class="cf2-taper" /></section>';
       return html;
     }
 
@@ -348,6 +383,9 @@
 
     html += "</div>";
 
+    /* Recovery outcome sits below today's decision — summary only, not analytics. */
+    html += recovery;
+
     function notInMonitor(sec) {
       return !(sec && sec.id && monitorIds[sec.id]);
     }
@@ -384,10 +422,11 @@
         : null;
     if (!pkg || pkg.enabled === false) {
       root.innerHTML =
-        '<p class="cf2-empty">تعذّر تحميل معرفة المتجر.</p>';
+        '<p class="cf2-empty">تعذّر تحميل معرفة المتجر.</p>' +
+        recoveryOutcomeHtml(summary);
       return false;
     }
-    root.innerHTML = render(pkg);
+    root.innerHTML = render(pkg, summary);
     return true;
   }
 

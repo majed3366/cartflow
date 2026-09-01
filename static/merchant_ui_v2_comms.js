@@ -194,10 +194,25 @@
     return out;
   }
 
+  function normalizeMessageBody(raw) {
+    var t = String(raw || "").trim();
+    if (!t || t === "—" || t === "-") return "";
+    return t;
+  }
+
+  function messageBodyFromRow(mr) {
+    var full = normalizeMessageBody(mr && mr.full_message_ar);
+    var preview = normalizeMessageBody(mr && mr.preview_ar);
+    if (full) return { text: full, provenance: "exact" };
+    if (preview) return { text: preview, provenance: "partial" };
+    return { text: "", provenance: "unavailable" };
+  }
+
   function itemFromMessage(mr, fu) {
     var cat = classifyMessage(mr, fu);
     var failed = isFailedMessage(mr);
     var purchased = isPurchasedMessage(mr);
+    var body = messageBodyFromRow(mr);
     var status =
       cat === CAT.NEEDS_MERCHANT_RESPONSE
         ? "يحتاج متابعتك"
@@ -222,7 +237,8 @@
       purchased: purchased,
       noPhone: false,
       events: messageEvents(mr),
-      outboundText: mr.full_message_ar || mr.preview_ar || "",
+      outboundText: body.text,
+      outboundProvenance: body.provenance,
       inboundText: (fu && fu.inbound_message) || mr.customer_reply_ar || "",
       deliveryAr: mr.delivery_outcome_ar || mr.delivery_status_ar || "",
       followupId: fu && fu.id,
@@ -254,6 +270,7 @@
         },
       ],
       outboundText: "",
+      outboundProvenance: "unavailable",
       inboundText: fr.inbound_message || fr.last_message_line_ar || "",
       deliveryAr: "",
       followupId: fr.id,
@@ -462,8 +479,33 @@
     );
   }
 
+  function previewSnippet(text, max) {
+    var t = String(text || "").trim();
+    if (!t) return "";
+    var n = max || 96;
+    if (t.length <= n) return t;
+    return t.slice(0, n) + "…";
+  }
+
   function itemHtml(it, selected) {
     var stage = lifecycleStage(it);
+    var bodyPreview = "";
+    if (it.outboundText) {
+      bodyPreview =
+        '<span class="cf2-comms__body" data-cf2-msg-provenance="' +
+        esc(it.outboundProvenance || "exact") +
+        '">' +
+        esc(previewSnippet(it.outboundText, 110)) +
+        "</span>";
+    } else if (it.kind === "message") {
+      bodyPreview =
+        '<span class="cf2-comms__body cf2-comms__body--missing" data-cf2-msg-provenance="unavailable">نص الرسالة غير متاح في السجل</span>';
+    } else if (it.inboundText) {
+      bodyPreview =
+        '<span class="cf2-comms__body cf2-comms__body--inbound" data-cf2-msg-provenance="reply">' +
+        esc(previewSnippet(it.inboundText, 110)) +
+        "</span>";
+    }
     return (
       '<button type="button" class="cf2-comms__row cf2-comms__life-row ' +
       rowTone(it) +
@@ -480,7 +522,9 @@
       "</span>" +
       '<span class="cf2-comms__what">' +
       esc(it.titleAr) +
-      "</span></span>" +
+      "</span>" +
+      bodyPreview +
+      "</span>" +
       '<span class="cf2-comms__row-meta">' +
       '<span class="cf2-comms__state">' +
       esc(it.statusAr) +
@@ -573,11 +617,12 @@
         esc(it.inboundText) +
         "</p></div>"
       : "";
-    var outbound =
-      it.outboundText && it.outboundText !== "—"
-        ? '<div class="cf2-comms__fact"><h3>نص أُرسل</h3><p>' +
-          esc(it.outboundText) +
-          "</p></div>"
+    var outbound = it.outboundText
+      ? '<div class="cf2-comms__fact"><h3>نص أُرسل</h3><p>' +
+        esc(it.outboundText) +
+        "</p></div>"
+      : it.kind === "message"
+        ? '<div class="cf2-comms__fact"><h3>نص أُرسل</h3><p class="cf2-comms__muted">النص التاريخي غير متاح في السجل.</p></div>'
         : "";
     return (
       '<div class="cf2-comms__detail-inner" data-comms-detail="' +
@@ -643,7 +688,7 @@
     var constraintLink = "";
     if (orient.mode === "blocked") {
       constraintLink =
-        '<a class="cf2-comms__setup" href="#settings">ضبط التواصل</a>';
+        '<a class="cf2-comms__setup" href="#settings">إعدادات واتساب</a>';
     }
     var nophoneLink = "";
     if (orient.mode === "calm" && noPhoneCount(state.summary) > 0 && needsCount() === 0) {
@@ -788,6 +833,7 @@
     classifyMessage: classifyMessage,
     buildItems: buildItems,
     matchFollowup: matchFollowup,
+    setFilter: setFilter,
     categories: CAT,
     filters: FILTERS,
   };

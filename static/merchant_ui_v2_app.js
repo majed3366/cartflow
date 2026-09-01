@@ -31,9 +31,33 @@
         items: [{ id: "attention", label: "ما يحتاج قرارك" }],
       },
       products: null,
-      carts: null,
-      comms: null,
-      settings: null,
+      carts: {
+        title: "السلال",
+        items: [
+          { id: "attention", label: "يحتاجني" },
+          { id: "nophone", label: "بانتظار رقم العميل" },
+          { id: "sent", label: "بانتظار الرد" },
+          { id: "recovered", label: "اكتمل" },
+        ],
+      },
+      comms: {
+        title: "التواصل",
+        items: [
+          { id: "needs", label: "يحتاج متابعتي" },
+          { id: "active", label: "جاري" },
+          { id: "all", label: "السجل" },
+        ],
+      },
+      settings: {
+        title: "الإعدادات",
+        items: [
+          { id: "store", label: "المتجر" },
+          { id: "communication", label: "إعدادات واتساب" },
+          { id: "recovery", label: "سياسة الاسترجاع" },
+          { id: "policy", label: "سياسة السلال المهمة" },
+          { id: "experience", label: "التجربة" },
+        ],
+      },
     },
   };
 
@@ -200,17 +224,38 @@
     return html;
   }
 
+  function applyCtxItem(section, itemId) {
+    if (!itemId) return;
+    if (section === "carts" && window.CartFlowUiV2Carts && typeof window.CartFlowUiV2Carts.setFilter === "function") {
+      window.CartFlowUiV2Carts.setFilter(itemId);
+      return;
+    }
+    if (section === "comms" && window.CartFlowUiV2Comms && typeof window.CartFlowUiV2Comms.setFilter === "function") {
+      window.CartFlowUiV2Comms.setFilter(itemId);
+      return;
+    }
+    if (
+      section === "settings" &&
+      window.CartFlowUiV2Settings &&
+      typeof window.CartFlowUiV2Settings.showPanel === "function"
+    ) {
+      window.CartFlowUiV2Settings.showPanel(itemId);
+    }
+  }
+
   function bindCtxItems() {
     $all("[data-cf2-ctx-item]").forEach(function (btn) {
       btn.addEventListener("click", function () {
         activeCtxItem = btn.getAttribute("data-cf2-ctx-item");
-        var conf = contextualFor(currentHash());
+        var section = currentHash();
+        var conf = contextualFor(section);
         if (!conf) return;
         var ctx = $("#cf2-ctx");
         if (!ctx) return;
         ctx.innerHTML = paintCtxMarkup(conf, activeCtxItem);
         bindCtxClose();
         bindCtxItems();
+        applyCtxItem(section, activeCtxItem);
         if (window.matchMedia("(max-width: 1023px)").matches) {
           closeCtxDrawer();
         }

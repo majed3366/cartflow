@@ -185,44 +185,147 @@ body[data-cf-ui="v2"] .cf2-comms__life::before {
 }
 
 body[data-cf-ui="v2"] .cf2-comms__tick {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
+  /* Frame Open DNA — asymmetric open mass, not a status circle */
+  width: 14px;
+  height: 14px;
+  border-radius: 2px 7px 4px 2px;
   border: 2px solid rgba(115, 133, 158, 0.55);
-  background: var(--cf2-canvas, #f3f6f9);
+  border-inline-start-color: transparent;
+  background: transparent;
   position: relative;
   z-index: 1;
   flex: 0 0 auto;
+  clip-path: polygon(10% 0, 100% 0, 100% 100%, 0 100%, 0 40%, 12% 28%, 12% 10%);
+  box-shadow: none;
+}
+
+/* send — open channel (Frame Open) */
+body[data-cf-ui="v2"] .cf2-comms__tick[data-cf2-tick="send"] {
+  border-color: rgba(8, 32, 72, 0.45);
+  border-inline-start-color: transparent;
+}
+
+/* delivery — signal in transit (momentum bar mass) */
+body[data-cf-ui="v2"] .cf2-comms__tick[data-cf2-tick="delivery"] {
+  border: none;
+  clip-path: polygon(0 20%, 100% 0, 100% 100%, 0 80%);
+  background: linear-gradient(90deg, transparent, rgba(24, 176, 168, 0.55) 40%, rgba(8, 32, 72, 0.7));
+  border-radius: 0;
+  height: 8px;
+  width: 16px;
+}
+
+/* response — inbound evidence strips */
+body[data-cf-ui="v2"] .cf2-comms__tick[data-cf2-tick="response"] {
+  border: none;
+  clip-path: none;
+  border-radius: 0;
+  background:
+    linear-gradient(var(--cf2-teal), var(--cf2-teal)) 0 22% / 70% 2px no-repeat,
+    linear-gradient(var(--cf2-teal), var(--cf2-teal)) 10% 55% / 55% 2px no-repeat,
+    linear-gradient(var(--cf2-navy), var(--cf2-navy)) 0 85% / 40% 2px no-repeat;
+  opacity: 0.9;
+}
+
+/* wait — waiting grammar (dashed channel) */
+body[data-cf-ui="v2"] .cf2-comms__tick[data-cf2-tick="wait"] {
+  border-style: dashed;
+  border-color: var(--cf2-mute, #73859e);
+  border-inline-start-color: transparent;
+  background: transparent;
+}
+
+/* followup — attention interrupt (held for merchant) */
+body[data-cf-ui="v2"] .cf2-comms__tick[data-cf2-tick="followup"] {
+  border-color: var(--cf2-navy);
+  border-inline-start-color: transparent;
+  transform: rotate(-6deg);
 }
 
 body[data-cf-ui="v2"] .cf2-comms__tick.is-complete {
   background: var(--cf2-navy);
   border-color: var(--cf2-navy);
+  border-inline-start-color: transparent;
+  clip-path: polygon(0 0, 100% 6%, 100% 100%, 0 94%);
+  border-radius: 2px 6px 5px 2px;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__tick[data-cf2-tick="delivery"].is-complete {
+  background: linear-gradient(90deg, var(--cf2-teal), var(--cf2-navy));
+  clip-path: polygon(0 20%, 100% 0, 100% 100%, 0 80%);
+  border: none;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__tick[data-cf2-tick="response"].is-complete {
+  background:
+    linear-gradient(var(--cf2-navy), var(--cf2-navy)) 0 22% / 85% 2.5px no-repeat,
+    linear-gradient(var(--cf2-navy), var(--cf2-navy)) 0 55% / 85% 2.5px no-repeat,
+    linear-gradient(var(--cf2-teal), var(--cf2-teal)) 0 85% / 70% 2.5px no-repeat;
+  border: none;
 }
 
 body[data-cf-ui="v2"] .cf2-comms__tick.is-active {
-  background: var(--cf2-teal);
+  background: transparent;
   border-color: var(--cf2-teal);
-  box-shadow: 0 0 0 3px rgba(24, 176, 168, 0.2);
+  border-inline-start-color: transparent;
+  box-shadow: none;
+  outline: 2px solid rgba(24, 176, 168, 0.25);
+  outline-offset: 1px;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__tick[data-cf2-tick="delivery"].is-active {
+  background: linear-gradient(90deg, transparent, var(--cf2-teal) 35%, var(--cf2-navy));
+  border: none;
+  outline: none;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__tick[data-cf2-tick="response"].is-active {
+  border: none;
+  outline: none;
+  opacity: 1;
 }
 
 body[data-cf-ui="v2"] .cf2-comms__tick.is-held {
   background: transparent;
   border-color: var(--cf2-navy);
   border-style: dashed;
-  box-shadow: 0 0 0 3px rgba(8, 32, 72, 0.08);
+  border-inline-start-color: transparent;
+  box-shadow: none;
+  outline: none;
 }
 
 body[data-cf-ui="v2"] .cf2-comms__tick.is-broken {
   background: transparent;
-  border-color: rgba(122, 78, 12, 0.75);
-  border-radius: 2px;
-  transform: rotate(45deg);
+  border: 2px solid rgba(122, 78, 12, 0.75);
+  border-inline-start-color: transparent;
+  border-radius: 2px 6px 4px 2px;
+  clip-path: polygon(14% 0, 100% 0, 100% 100%, 0 100%, 0 48%, 16% 36%, 16% 14%);
+  transform: none;
 }
 
 body[data-cf-ui="v2"] .cf2-comms__life-row {
   align-items: center;
   min-height: 52px;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__body {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--cf2-ink-soft, #3a4a5c);
+  max-width: 36rem;
+  white-space: normal;
+  text-align: start;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__body--missing {
+  color: var(--cf2-mute, #73859e);
+  font-style: normal;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__body--inbound {
+  color: var(--cf2-navy);
 }
 
 body[data-cf-ui="v2"] .cf2-comms__handoff-terminus {
@@ -259,8 +362,13 @@ body[data-cf-ui="v2"] .cf2-comms__continuum-scaffold .cf2-comms__tick {
 
 @media (max-width: 1023px) {
   body[data-cf-ui="v2"] .cf2-comms__tick {
-    width: 11px;
-    height: 11px;
+    width: 12px;
+    height: 12px;
+  }
+
+  body[data-cf-ui="v2"] .cf2-comms__tick[data-cf2-tick="delivery"] {
+    width: 14px;
+    height: 7px;
   }
 
   body[data-cf-ui="v2"] .cf2-comms__life {

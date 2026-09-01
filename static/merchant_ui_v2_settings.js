@@ -32,8 +32,8 @@
     },
     {
       id: "communication",
-      title: "التواصل",
-      line: "واتساب والقوالب والإشعارات",
+      title: "إعدادات واتساب",
+      line: "القناة والقوالب والإشعارات",
     },
     {
       id: "recovery",
@@ -121,11 +121,11 @@
   }
 
   function classifyComms(wa) {
-    if (!wa) return { state: "PARTIAL", line: "تعذّر قراءة إعداد التواصل" };
+    if (!wa) return { state: "PARTIAL", line: "تعذّر قراءة إعدادات واتساب" };
     var num = String(wa.store_whatsapp_number || "").trim();
     var on = wa.whatsapp_recovery_enabled !== false;
     if (!num && !on) return { state: "NEEDS_SETUP", line: "واتساب غير جاهز" };
-    if (!num || !on) return { state: "PARTIAL", line: "التواصل مكتمل جزئياً" };
+    if (!num || !on) return { state: "PARTIAL", line: "إعدادات واتساب مكتملة جزئياً" };
     return { state: "READY", line: "واتساب مضبوط" };
   }
 

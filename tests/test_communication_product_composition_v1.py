@@ -64,7 +64,7 @@ class CommunicationProductCompositionV1Tests(unittest.TestCase):
 
     def test_settings_not_embedded(self) -> None:
         self.assertIn('href="#settings"', COMMS_JS)
-        self.assertIn("ضبط التواصل", COMMS_JS)
+        self.assertIn("إعدادات واتساب", COMMS_JS)
         self.assertNotIn("trigger-templates", COMMS_JS)
         self.assertNotIn("WABA", COMMS_JS)
 
@@ -92,8 +92,9 @@ class CommunicationProductCompositionV1Tests(unittest.TestCase):
         self.assertIn("home-stage-closure-v1", HOME_JS)
         self.assertIn("workspace-composition-closure-v1", WS_JS)
         self.assertIn("carts-product-composition-v1", CARTS_JS)
-        self.assertIn("comms: null", APP_JS)
-        self.assertIn("carts: null", APP_JS)
+        self.assertIn("products: null", APP_JS)
+        self.assertIn("carts: {", APP_JS)
+        self.assertIn("comms: {", APP_JS)
 
     def test_purchase_terminal_copy(self) -> None:
         self.assertIn("لا إجراء استرداد بعد تأكيد الشراء", COMMS_JS)

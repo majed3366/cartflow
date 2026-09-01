@@ -447,6 +447,38 @@ body[data-cf-ui="v2"] .cf2-home__monitor-body {
   color: var(--cf2-ink-soft);
 }
 
+/* Recovery outcome — quiet summary under the decision board */
+body[data-cf-ui="v2"] .cf2-home__recovery {
+  margin: 14px 0 0;
+  padding: 10px 12px 12px;
+  border-inline-start: 3px solid rgba(8, 32, 72, 0.22);
+  background: transparent;
+  max-width: 36rem;
+}
+
+body[data-cf-ui="v2"] .cf2-home__recovery-label {
+  margin: 0 0 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--cf2-mute, #73859e);
+}
+
+body[data-cf-ui="v2"] .cf2-home__recovery-line {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--cf2-navy);
+}
+
+body[data-cf-ui="v2"] .cf2-home__recovery-note {
+  margin: 4px 0 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--cf2-mute, #73859e);
+}
+
 /* Optional floor */
 body[data-cf-ui="v2"] .cf2-home__floor {
   margin-top: 10px;

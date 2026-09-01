@@ -1118,6 +1118,7 @@
     merchantResponsibility: merchantResponsibility,
     countPrimary: countPrimary,
     rowMatchesFilter: rowMatchesFilter,
+    setFilter: setFilter,
     filters: FILTERS,
   };
 })(window);
