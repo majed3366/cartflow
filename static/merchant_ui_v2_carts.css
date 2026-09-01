@@ -181,24 +181,49 @@ body[data-cf-ui="v2"] .cf2-carts__queue {
   overflow-x: hidden;
 }
 
-body[data-cf-ui="v2"] .cf2-carts__object.is-withheld {
-  min-height: 52px;
-  border-inline-start: 3px dashed rgba(115, 133, 158, 0.4);
-  background: rgba(8, 32, 72, 0.02);
+/* Incomplete truth: one open queue mass (organism continuity) — not skeleton bars */
+body[data-cf-ui="v2"] .cf2-carts__queue.is-withheld {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 6px 0 4px;
+}
+
+body[data-cf-ui="v2"] .cf2-carts__withheld-mass {
+  min-height: 4.25rem;
+  padding: 12px 10px 14px;
+  border-inline-start: 4px dashed rgba(115, 133, 158, 0.55);
+  background: transparent;
   cursor: default;
   pointer-events: none;
 }
 
-body[data-cf-ui="v2"] .cf2-carts__queue.is-withheld {
-  gap: 10px;
-  padding: 4px 0;
+body[data-cf-ui="v2"] .cf2-carts__withheld-rail {
+  display: block;
+  width: 42%;
+  max-width: 9rem;
+  height: 3px;
+  margin: 0 0 10px;
+  border-radius: 0;
+  background: linear-gradient(
+    to left,
+    rgba(8, 32, 72, 0.28) 0%,
+    rgba(8, 32, 72, 0.06) 100%
+  );
 }
 
 body[data-cf-ui="v2"] .cf2-carts__withheld-note {
-  margin: 4px 0 0;
+  margin: 0;
   font-size: 13px;
-  color: var(--cf2-mute);
-  line-height: 1.4;
+  font-weight: 600;
+  color: var(--cf2-ink-soft);
+  line-height: 1.45;
+  max-width: 28rem;
+}
+
+/* Legacy empty shells must not remain as skeleton grammar */
+body[data-cf-ui="v2"] .cf2-carts__object.is-withheld {
+  display: none;
 }
 
 body[data-cf-ui="v2"] .cf2-carts__empty-truth {

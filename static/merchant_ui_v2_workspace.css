@@ -74,27 +74,51 @@ body[data-cf-ui="v2"] .cf2-dobj--primary[data-cf2-organism="formation"]
   padding-inline-start: 12px;
 }
 
-/* Void must be merchant-perceptible (was ~22px / weak) */
+/* Uncertainty void = interrupted route between evidence → mass (not decorative oval).
+   Geometry: open channel + spine stubs — relational absence in the formation. */
 body[data-cf-ui="v2"] .cf2-ws__void {
   display: block;
+  position: relative;
   height: 40px;
-  margin: 8px 10% 12px;
-  border-radius: 50% / 42%;
-  box-shadow: inset 0 0 0 2px rgba(115, 133, 158, 0.55);
-  background:
-    radial-gradient(
-      ellipse at 50% 50%,
-      rgba(8, 32, 72, 0.04) 0%,
-      transparent 70%
-    );
-  opacity: 0.92;
+  margin: 4px 4% 10px 12px;
+  border-radius: 0;
+  box-shadow: none;
+  border: none;
+  border-inline-start: 3px dashed rgba(115, 133, 158, 0.55);
+  background: linear-gradient(
+    180deg,
+    rgba(115, 133, 158, 0.1) 0%,
+    rgba(115, 133, 158, 0.03) 42%,
+    rgba(115, 133, 158, 0.03) 58%,
+    rgba(115, 133, 158, 0.1) 100%
+  );
+  opacity: 0.95;
+}
+
+body[data-cf-ui="v2"] .cf2-ws__void::before,
+body[data-cf-ui="v2"] .cf2-ws__void::after {
+  content: "";
+  position: absolute;
+  inset-inline-start: -3px;
+  width: 3px;
+  height: 7px;
+  background: rgba(8, 32, 72, 0.42);
+}
+
+body[data-cf-ui="v2"] .cf2-ws__void::before {
+  top: 0;
+}
+
+body[data-cf-ui="v2"] .cf2-ws__void::after {
+  bottom: 0;
 }
 
 body[data-cf-ui="v2"] .cf2-ws__void[data-cf2-void="large"] {
   height: 56px;
-  margin-inline: 6%;
+  margin-inline-end: 2%;
   opacity: 1;
-  box-shadow: inset 0 0 0 3px rgba(115, 133, 158, 0.65);
+  border-inline-start-width: 4px;
+  border-inline-start-color: rgba(115, 133, 158, 0.7);
 }
 
 body[data-cf-ui="v2"] .cf2-ws__void[data-cf2-void="standard"] {
@@ -104,13 +128,20 @@ body[data-cf-ui="v2"] .cf2-ws__void[data-cf2-void="standard"] {
 body[data-cf-ui="v2"] .cf2-ws__void[data-cf2-void="remnant"],
 body[data-cf-ui="v2"] .cf2-ws__void[data-cf2-void="identity"] {
   height: 32px;
-  opacity: 0.8;
+  opacity: 0.85;
+  border-inline-start-style: dotted;
 }
 
 body[data-cf-ui="v2"] .cf2-ws__void[data-cf2-tension="high"] {
-  transform: translate(10px, -4px);
-  box-shadow: inset 0 0 0 3px rgba(115, 133, 158, 0.7);
-  border-radius: 38% 58% 42% 62%;
+  transform: translate(6px, 0);
+  border-inline-start-width: 4px;
+  border-inline-start-color: rgba(115, 133, 158, 0.75);
+  background: linear-gradient(
+    180deg,
+    rgba(115, 133, 158, 0.16) 0%,
+    rgba(115, 133, 158, 0.04) 50%,
+    rgba(115, 133, 158, 0.16) 100%
+  );
 }
 
 body[data-cf-ui="v2"] .cf2-dobj--primary[data-cf2-organism="formation"][data-cf2-tension="high"]
@@ -148,7 +179,8 @@ body[data-cf-ui="v2"] .cf2-dobj--primary[data-cf2-organism="formation"] .cf2-ter
   body[data-cf-ui="v2"] .cf2-ws__void,
   body[data-cf-ui="v2"] .cf2-ws__void[data-cf2-void="standard"] {
     height: 44px;
-    margin-inline: 4%;
+    margin-inline-start: 10px;
+    margin-inline-end: 2%;
   }
 
   body[data-cf-ui="v2"] .cf2-ws__void[data-cf2-void="large"] {
@@ -160,7 +192,7 @@ body[data-cf-ui="v2"] .cf2-dobj--primary[data-cf2-organism="formation"] .cf2-ter
   }
 
   body[data-cf-ui="v2"] .cf2-ws__void[data-cf2-tension="high"] {
-    transform: translate(8px, -3px);
+    transform: translate(4px, 0);
   }
 }
 

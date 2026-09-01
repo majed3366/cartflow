@@ -65,7 +65,14 @@ class Frc01HomeMassRatio(unittest.TestCase):
             HOME_CSS[HOME_CSS.find("@media (max-width: 1023px)") :],
         )
         mob = HOME_CSS[HOME_CSS.find("@media (max-width: 1023px)") :]
-        self.assertIn("border-inline-start: 8px solid", mob)
+        # Balanced spine (not 8px dominance); still wider than satellite 3px
+        self.assertRegex(mob, r"border-inline-start:\s*5px solid")
+        self.assertNotIn("border-inline-start: 8px solid", mob)
+        # Relational satellite widths survive mobile (not forced 100%)
+        self.assertIn("max-width: 92%", mob)
+        self.assertIn("max-width: 78%", mob)
+        self.assertIn("max-width: 64%", mob)
+        self.assertNotIn("width: 100%", mob[mob.find(".cf2-home__satellite") : mob.find(".cf2-home__satellite") + 800])
 
 
 class Frc03WorkspaceVoidGeometry(unittest.TestCase):

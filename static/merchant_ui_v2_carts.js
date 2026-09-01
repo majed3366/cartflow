@@ -820,13 +820,18 @@
   }
 
   function withheldQueueHtml(orient) {
+    /* Single withheld queue mass — not repeated empty shells (skeleton ambiguity). */
     return (
       '<div class="cf2-carts__queue is-withheld" data-carts-truth="incomplete" aria-label="طابور غير مكتمل">' +
-      '<div class="cf2-carts__object is-withheld" aria-hidden="true"></div>' +
-      '<div class="cf2-carts__object is-withheld" aria-hidden="true"></div>' +
+      '<div class="cf2-carts__withheld-mass" data-cf2-withheld="queue" role="status">' +
+      '<span class="cf2-carts__withheld-rail" aria-hidden="true"></span>' +
       '<p class="cf2-carts__withheld-note">' +
-      esc(orient.detail || orient.headline || "الحقيقة غير مكتملة حالياً.") +
-      "</p></div>"
+      esc(
+        orient.detail ||
+          orient.headline ||
+          "الحقيقة غير مكتملة حالياً. لا نعرض هدوءاً افتراضياً."
+      ) +
+      "</p></div></div>"
     );
   }
 

@@ -463,13 +463,18 @@ body[data-cf-ui="v2"] .cf2-comms__tl-at {
   color: var(--cf2-mute);
 }
 
+/* Empty history stays on continuum grammar — no generic white surface card */
 body[data-cf-ui="v2"] .cf2-comms__empty {
-  padding: 16px 12px;
-  text-align: center;
-  background: var(--cf2-surface);
-  border: 1px solid var(--cf2-border);
+  padding: 8px 4px 14px 8px;
+  text-align: start;
+  background: transparent;
+  border: none;
+  border-radius: 0;
   border-inline-start: 3px solid rgba(8, 32, 72, 0.22);
-  border-radius: var(--cf2-r-md);
+}
+
+body[data-cf-ui="v2"] .cf2-comms__continuum-scaffold + .cf2-comms__empty {
+  margin-top: 0;
 }
 
 body[data-cf-ui="v2"] .cf2-comms__empty-title {
