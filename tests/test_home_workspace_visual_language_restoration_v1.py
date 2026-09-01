@@ -28,12 +28,14 @@ class HomeWorkspaceVisualLanguageRestorationV1Tests(unittest.TestCase):
         self.assertIn("CartFlowSemanticVisualV1", HOME_JS)
         self.assertIn("مركز الجاذبية", HOME_JS)
         self.assertIn("مشهد تنفيذي", HOME_JS)
-        self.assertIn("cf2-co-row", HOME_JS)
+        self.assertIn("gravity-well", HOME_JS)
         self.assertIn("NOT_CURRENTLY_SUPPORTED", HOME_JS)
         self.assertIn("isDuplicateTruth", HOME_JS)
         self.assertIn("الأهم الآن", HOME_JS)
         self.assertIn("/api/dashboard/summary", HOME_JS)
         self.assertIn("home_executive_summary_v1", HOME_JS)
+        self.assertNotIn("L().commerceClause", HOME_JS)
+        self.assertNotIn("commerceClause(sem", HOME_JS)
 
     def test_home_incomplete_and_empty_keep_identity(self) -> None:
         self.assertIn('data-cf2-truth="empty"', HOME_JS)
@@ -46,13 +48,15 @@ class HomeWorkspaceVisualLanguageRestorationV1Tests(unittest.TestCase):
         self.assertIn("workspace-composition-closure-v1", WS_JS)
         self.assertIn("unwrapProjection", WS_JS)
         self.assertIn("projectWorkspace", WS_JS)
-        self.assertIn("cf2-co-row", WS_JS)
+        self.assertIn("formation", WS_JS)
         self.assertIn("living-route", WS_JS)
         self.assertIn("cf2-dmass", WS_JS)
         self.assertIn("/api/cart-workspace/v1/projection", WS_JS)
         self.assertIn("projectWorkspace", WS_JS)
         self.assertIn("decision_readiness", WS_JS)
         self.assertIn("core-silence", WS_JS)
+        self.assertNotIn("L().commerceClause", WS_JS)
+        self.assertNotIn("commerceClause(sem", WS_JS)
 
     def test_current_shell_and_startup_preserved(self) -> None:
         self.assertIn("UtilityRow", V2_HTML)
@@ -66,20 +70,21 @@ class HomeWorkspaceVisualLanguageRestorationV1Tests(unittest.TestCase):
     def test_cache_bust_and_queuepool_markers(self) -> None:
         self.assertIn("semvis1", V2_HTML)
         self.assertIn("langrest1", V2_HTML)
+        self.assertIn("psg1", V2_HTML)
         self.assertIn("qpool1", V2_HTML)
         self.assertIn("nvis1-fanout1", V2_HTML)
         self.assertIn("resid1", V2_HTML)
 
     def test_home_css_keeps_stage_board_and_shows_rail(self) -> None:
         self.assertIn("border-inline-start: 5px solid", HOME_CSS)
-        self.assertIn(".cf2-home__rail", HOME_CSS)
+        self.assertIn("data-cf2-gravity", HOME_CSS)
         self.assertIn(".cf2-home__kicker", HOME_CSS)
-        self.assertIn("--cf2-co-size: 40px", HOME_CSS)
+        self.assertIn("gravity-well", HOME_CSS)
 
     def test_workspace_css_co_row_is_operational_not_poster(self) -> None:
         self.assertIn("border-inline-start: 4px solid", WS_CSS)
-        self.assertIn(".cf2-dobj--primary > .cf2-co-row", WS_CSS)
-        self.assertIn("--cf2-co-size: 36px", WS_CSS)
+        self.assertIn("data-cf2-organism=\"formation\"", WS_CSS)
+        self.assertIn("cf2-ws__void", WS_CSS)
 
     def test_language_helpers_unchanged(self) -> None:
         self.assertIn("function commerceObject", LANG_JS)

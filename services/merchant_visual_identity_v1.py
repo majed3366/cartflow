@@ -66,6 +66,7 @@ FIGMA_MAPPED_PRIMITIVES = (
     "cf2-terminus",
     "cf2-home__board",
     "cf2-dobj--primary",
+    "data-cf2-organism",
 )
 
 CANONICAL_SHELL_MARKERS = (
@@ -79,23 +80,26 @@ CANONICAL_SHELL_MARKERS = (
 CANONICAL_HOME_EMITTERS = (
     "cf2-home__kicker",
     "مشهد تنفيذي",
-    "cf2-co-row",
+    "gravity-well",
     "cf2-evfield",
     "cf2-home__board",
     "مركز الجاذبية",
+    "data-cf2-organism",
 )
 
 CANONICAL_WORKSPACE_EMITTERS = (
-    "cf2-co-row",
+    "formation",
     "cf2-dmass",
     "cf2-route",
     "cf2-dobj--primary",
+    "data-cf2-organism",
 )
 
 CANONICAL_CARTS_EMITTERS = (
     "cf2-carts__empty",
     "cf2-carts__row",
     "cf2-carts__detail",
+    "weighted-queue",
 )
 
 CANONICAL_COMMS_EMITTERS = (
@@ -103,12 +107,14 @@ CANONICAL_COMMS_EMITTERS = (
     "cf2-comms__row",
     "cf2-comms__detail",
     "Not an inbox",
+    "lifecycle-continuum",
 )
 
 CANONICAL_SETTINGS_EMITTERS = (
     "cf2-settings__row",
     "cf2-settings__detail",
     "cf2-settings__state",
+    "config-ledger",
 )
 
 FORBIDDEN_CANONICAL_MARKERS = (

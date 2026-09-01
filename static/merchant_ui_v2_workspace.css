@@ -45,28 +45,58 @@ body[data-cf-ui="v2"] .cf2-dobj--primary[data-cf2-tension="ready"] {
   border-inline-start-color: var(--cf2-navy);
 }
 
-body[data-cf-ui="v2"] .cf2-dobj--primary > .cf2-co-row {
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 12px 18px;
-  margin: 0 0 12px;
+/* Formation body — relationships, not icon clause */
+body[data-cf-ui="v2"] .cf2-dobj--primary[data-cf2-organism="formation"][data-cf2-readiness="READY"] {
+  border-inline-start-width: 5px;
+  border-inline-start-color: var(--cf2-navy);
 }
 
-body[data-cf-ui="v2"] .cf2-dobj--primary > .cf2-co-row .cf2-co__glyph {
-  --cf2-co-size: 48px;
-  width: 48px;
-  height: 48px;
+body[data-cf-ui="v2"] .cf2-dobj--primary[data-cf2-organism="formation"][data-cf2-sufficiency="insufficient"]
+  .cf2-route__node[data-cf2-node="evidence"] {
+  opacity: 0.92;
 }
 
-body[data-cf-ui="v2"] .cf2-dobj--primary > .cf2-co-row .cf2-co__label {
-  position: static;
-  width: auto;
-  height: auto;
-  overflow: visible;
-  clip: auto;
-  font-size: 11px;
-  font-weight: 800;
-  color: var(--cf2-ink);
+body[data-cf-ui="v2"] .cf2-dobj--primary[data-cf2-organism="formation"]
+  .cf2-route__node[data-cf2-openness="open"] {
+  padding-inline-start: 8px;
+  border-inline-start: 2px dashed rgba(115, 133, 158, 0.45);
+}
+
+body[data-cf-ui="v2"] .cf2-dobj--primary[data-cf2-organism="formation"]
+  .cf2-route__node[data-cf2-openness="closed"] {
+  border-inline-start: 2px solid rgba(8, 32, 72, 0.2);
+  padding-inline-start: 8px;
+}
+
+body[data-cf-ui="v2"] .cf2-ws__void {
+  display: block;
+  height: 14px;
+  margin: 2px 12% 6px;
+  border-radius: 50% / 40%;
+  box-shadow: inset 0 0 0 2px rgba(115, 133, 158, 0.35);
+  background: transparent;
+  opacity: 0.55;
+}
+
+body[data-cf-ui="v2"] .cf2-ws__void[data-cf2-void="large"] {
+  height: 22px;
+  margin-inline: 8%;
+  opacity: 0.72;
+}
+
+body[data-cf-ui="v2"] .cf2-ws__void[data-cf2-void="standard"] {
+  height: 16px;
+}
+
+body[data-cf-ui="v2"] .cf2-ws__void[data-cf2-tension="high"] {
+  transform: translate(4px, -2px);
+  box-shadow: inset 0 0 0 2px rgba(115, 133, 158, 0.55);
+  border-radius: 40% 55% 45% 60%;
+}
+
+body[data-cf-ui="v2"] .cf2-dobj--primary[data-cf2-organism="formation"][data-cf2-tension="high"]
+  .cf2-dobj__ev-row .cf2-evfield {
+  transform: translate(3px, -1px);
 }
 
 /* Lead: one mark + stance + decision (glance) */

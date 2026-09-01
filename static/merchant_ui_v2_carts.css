@@ -1,6 +1,7 @@
 /**
  * CartFlow Merchant UI V2 — Carts Product Composition V1.
  * Operations workspace: ATTENTION → CART → STATE → ACTION.
+ * Page-Specific: weighted queue of cart-objects (not generic cards).
  * Desktop master-detail. Mobile queue → detail → back.
  */
 body[data-cf-ui="v2"] .cf2-carts {
@@ -12,11 +13,19 @@ body[data-cf-ui="v2"] .cf2-carts {
   overflow-x: hidden;
 }
 
+body[data-cf-ui="v2"] .cf2-carts[data-cf2-organism="weighted-queue"] .cf2-carts__filters {
+  opacity: 0.92;
+}
+
 body[data-cf-ui="v2"] .cf2-carts__orient {
   display: flex;
   flex-direction: column;
   gap: 8px;
   min-width: 0;
+}
+
+body[data-cf-ui="v2"] .cf2-carts__orient--compact {
+  gap: 4px;
 }
 
 body[data-cf-ui="v2"] .cf2-carts__orient-h {
@@ -47,8 +56,8 @@ body[data-cf-ui="v2"] .cf2-carts__filter {
   min-height: 34px;
   padding: 0 12px;
   border: 1px solid var(--cf2-border);
-  border-radius: 999px;
-  background: var(--cf2-surface);
+  border-radius: 6px;
+  background: transparent;
   color: var(--cf2-ink-soft);
   font-size: 12px;
   font-weight: 700;
@@ -83,10 +92,11 @@ body[data-cf-ui="v2"] .cf2-carts__detail {
 body[data-cf-ui="v2"] .cf2-carts__queue {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   overflow-x: hidden;
 }
 
+body[data-cf-ui="v2"] .cf2-carts__object,
 body[data-cf-ui="v2"] .cf2-carts__row {
   display: flex;
   flex-direction: column;
@@ -95,33 +105,93 @@ body[data-cf-ui="v2"] .cf2-carts__row {
   width: 100%;
   text-align: right;
   padding: 12px 14px;
-  border: 1px solid var(--cf2-border);
+  border: 0;
   border-inline-start: 3px solid transparent;
-  border-radius: 0 var(--cf2-r-md) var(--cf2-r-md) 0;
-  background: var(--cf2-surface);
+  border-radius: 0;
+  background: transparent;
   cursor: pointer;
   min-width: 0;
   overflow-x: hidden;
 }
 
+body[data-cf-ui="v2"] .cf2-carts__object.is-actionable,
 body[data-cf-ui="v2"] .cf2-carts__row.is-actionable {
-  border-color: rgba(24, 176, 168, 0.45);
-  box-shadow: 0 1px 0 rgba(8, 32, 72, 0.04);
+  border-inline-start-width: 4px;
+  border-inline-start-color: var(--cf2-navy);
+  background: rgba(8, 32, 72, 0.03);
+  box-shadow: none;
 }
 
+body[data-cf-ui="v2"] .cf2-carts__object.is-waiting,
 body[data-cf-ui="v2"] .cf2-carts__row.is-waiting {
-  opacity: 0.82;
+  border-inline-start-style: dashed;
+  border-inline-start-color: rgba(115, 133, 158, 0.55);
+  opacity: 1;
 }
 
+body[data-cf-ui="v2"] .cf2-carts__object.is-terminal,
+body[data-cf-ui="v2"] .cf2-carts__object.is-archived,
 body[data-cf-ui="v2"] .cf2-carts__row.is-terminal,
 body[data-cf-ui="v2"] .cf2-carts__row.is-archived {
-  opacity: 0.62;
+  border-inline-start-color: rgba(115, 133, 158, 0.28);
+  opacity: 0.72;
 }
 
+body[data-cf-ui="v2"] .cf2-carts__object.is-selected,
 body[data-cf-ui="v2"] .cf2-carts__row.is-selected {
-  border-color: var(--cf2-border);
   border-inline-start-color: var(--cf2-navy);
-  box-shadow: none;
+  box-shadow: inset 0 0 0 1px rgba(8, 32, 72, 0.06);
+  background: rgba(8, 32, 72, 0.04);
+}
+
+body[data-cf-ui="v2"] .cf2-carts__object.is-withheld {
+  min-height: 52px;
+  border-inline-start: 3px dashed rgba(115, 133, 158, 0.4);
+  background: rgba(8, 32, 72, 0.02);
+  cursor: default;
+  pointer-events: none;
+}
+
+body[data-cf-ui="v2"] .cf2-carts__queue.is-withheld {
+  gap: 10px;
+  padding: 4px 0;
+}
+
+body[data-cf-ui="v2"] .cf2-carts__withheld-note {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--cf2-mute);
+  line-height: 1.4;
+}
+
+body[data-cf-ui="v2"] .cf2-carts__empty-truth {
+  margin: 0;
+  padding: 14px 12px;
+  border-inline-start: 3px solid rgba(8, 32, 72, 0.2);
+  background: transparent;
+}
+
+body[data-cf-ui="v2"] .cf2-carts__empty-title {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--cf2-navy);
+}
+
+body[data-cf-ui="v2"] .cf2-carts__empty-body {
+  margin: 0;
+  font-size: 13px;
+  color: var(--cf2-mute);
+}
+
+body[data-cf-ui="v2"] .cf2-carts__action-block.cf2-terminus.is-armed {
+  border-inline-start: 3px solid var(--cf2-navy);
+  padding-inline-start: 10px;
+}
+
+body[data-cf-ui="v2"] .cf2-carts__action-block.cf2-terminus.is-held {
+  border-inline-start: 2px dashed rgba(115, 133, 158, 0.55);
+  padding-inline-start: 10px;
 }
 
 body[data-cf-ui="v2"] .cf2-carts__row-main,

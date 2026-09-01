@@ -3,6 +3,7 @@
  * Operations workspace inside PageStage. Consumes V1 cart truth contracts.
  * Needs-You Truth Unification V1: orientation, يحتاجني, and queue membership
  * share one action-based classifier (primary-action), not attention tabs.
+ * Page-Specific Semantic Composition V1: weighted queue of cart-objects.
  * Does not own Decision Workspace reasoning, VIP policy, or analytics.
  */
 (function (global) {
@@ -10,6 +11,8 @@
 
   var MARKER = "carts-product-composition-v1";
   var NEEDS_YOU_UNIFICATION = "needs-you-unification-v1";
+  var COMPOSITION = "page-specific-v1";
+  var ORGANISM = "weighted-queue";
 
   var FILTERS = [
     { key: "all", label: "الكل", intent: "كل السلال" },
@@ -690,14 +693,26 @@
     var vipBit = isVipOperational(mc)
       ? '<span class="cf2-carts__chip cf2-carts__chip--vip">VIP</span>'
       : "";
+    var continuity =
+      weight === "is-actionable"
+        ? "continuous"
+        : weight === "is-waiting"
+          ? "interrupted"
+          : weight === "is-terminal" || weight === "is-archived"
+            ? "closed"
+            : "quiet";
     return (
-      '<button type="button" class="cf2-carts__row ' +
+      '<button type="button" class="cf2-carts__object cf2-carts__row ' +
       weight +
       (selected ? " is-selected" : "") +
       '" data-recovery-key="' +
       esc(rk) +
       '" data-cf-primary-action="' +
       esc(pa.key) +
+      '" data-cf2-queue-weight="' +
+      esc(weight.replace(/^is-/, "")) +
+      '" data-cf2-continuity="' +
+      esc(continuity) +
       '">' +
       '<span class="cf2-carts__row-main">' +
       '<span class="cf2-carts__who">' +
@@ -775,7 +790,11 @@
       '">' +
       esc(attentionLabel(mc) || pa.label) +
       "</p>" +
-      '<div class="cf2-carts__action-block">' +
+      '<div class="cf2-carts__action-block cf2-terminus' +
+      (ACTIONABLE[pa.key] ? " is-armed" : pa.key === "wait" ? " is-held" : "") +
+      '" data-cf2-wait="' +
+      esc(pa.key === "wait" ? "waiting" : ACTIONABLE[pa.key] ? "action_required" : "unknown") +
+      '">' +
       primaryActionHtml(mc) +
       secondaryActionHtml(mc) +
       "</div>" +
@@ -800,6 +819,17 @@
     );
   }
 
+  function withheldQueueHtml(orient) {
+    return (
+      '<div class="cf2-carts__queue is-withheld" data-carts-truth="incomplete" aria-label="طابور غير مكتمل">' +
+      '<div class="cf2-carts__object is-withheld" aria-hidden="true"></div>' +
+      '<div class="cf2-carts__object is-withheld" aria-hidden="true"></div>' +
+      '<p class="cf2-carts__withheld-note">' +
+      esc(orient.detail || orient.headline || "الحقيقة غير مكتملة حالياً.") +
+      "</p></div>"
+    );
+  }
+
   function paint() {
     var root = state.root;
     if (!root) return;
@@ -821,7 +851,6 @@
       state.selectedKey = recoveryKey(selected);
     }
     if (selected && list.indexOf(selected) < 0 && state.filter !== "all") {
-      /* keep selected even if filtered out on desktop? no — stay truthful to filter */
       if (!rowMatchesFilter(selected, state.filter)) {
         selected = list[0] || null;
         state.selectedKey = selected ? recoveryKey(selected) : "";
@@ -830,20 +859,49 @@
     if (storeHasNoCarts(counts)) {
       root.setAttribute("data-cf2", MARKER);
       root.setAttribute("data-cf2-needs-you", NEEDS_YOU_UNIFICATION);
+      root.setAttribute("data-cf2-organism", ORGANISM);
+      root.setAttribute("data-cf2-composition", COMPOSITION);
       root.setAttribute("data-carts-empty", "store");
       root.className = "cf2-carts is-empty";
       root.innerHTML =
         '<div class="cf2-carts__orient">' +
         '<p class="cf2-carts__orient-h">' +
         esc(orient.headline) +
-        "</p></div>";
+        "</p></div>" +
+        '<div class="cf2-carts__queue is-empty-truth" data-carts-truth="empty">' +
+        '<div class="cf2-carts__empty-truth">' +
+        '<p class="cf2-carts__empty-title">' +
+        esc(orient.headline) +
+        "</p></div></div>";
+      bind(root);
+      return;
+    }
+
+    /* Incomplete snapshot: withheld queue mass — never title + pills + white empty card */
+    if (snapshotTruthPending() || (state.loading && !counts.total_active)) {
+      root.setAttribute("data-cf2", MARKER);
+      root.setAttribute("data-cf2-needs-you", NEEDS_YOU_UNIFICATION);
+      root.setAttribute("data-cf2-organism", ORGANISM);
+      root.setAttribute("data-cf2-composition", COMPOSITION);
+      root.setAttribute("data-carts-truth", "incomplete");
+      root.removeAttribute("data-carts-empty");
+      root.className =
+        "cf2-carts is-incomplete" + (orient.mode ? " is-" + orient.mode : "");
+      root.innerHTML =
+        '<div class="cf2-carts__orient cf2-carts__orient--compact">' +
+        '<p class="cf2-carts__orient-h">' +
+        esc(orient.headline) +
+        "</p></div>" +
+        '<div class="cf2-carts__workspace">' +
+        withheldQueueHtml(orient) +
+        '<div class="cf2-carts__detail" aria-hidden="true"></div></div>';
       bind(root);
       return;
     }
 
     var empty = emptyCopy(list, counts);
     var queueInner = empty
-      ? '<div class="cf2-carts__empty" data-carts-empty="' +
+      ? '<div class="cf2-carts__empty-truth" data-carts-empty="' +
         esc(orient.mode) +
         '"><p class="cf2-carts__empty-title">' +
         esc(empty.title) +
@@ -858,7 +916,10 @@
 
     root.setAttribute("data-cf2", MARKER);
     root.setAttribute("data-cf2-needs-you", NEEDS_YOU_UNIFICATION);
+    root.setAttribute("data-cf2-organism", ORGANISM);
+    root.setAttribute("data-cf2-composition", COMPOSITION);
     root.removeAttribute("data-carts-empty");
+    root.removeAttribute("data-carts-truth");
     root.className =
       "cf2-carts" +
       (state.detailOpen ? " is-detail-open" : "") +

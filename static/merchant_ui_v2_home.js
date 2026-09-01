@@ -1,8 +1,8 @@
 /**
  * CartFlow Merchant UI V2 — Home executive composition V1.3
- * + Visual Language Restoration V1 (current-line emitters).
- * One continuous scene: understand → evidence → stance → monitoring.
- * No two-column SaaS split. Current HES truth. Language vocabulary restored.
+ * + Page-Specific Semantic Composition V1: gravity well + satellites.
+ * Board gravity encodes attention. No repeated attention glyph / CO clause.
+ * Current HES truth. semantic-visual-model-v1 drivers unchanged.
  */
 (function (global) {
   "use strict";
@@ -115,16 +115,6 @@
     return "راجع التفاصيل عندما تكون جاهزًا لاتخاذ قرار.";
   }
 
-  function objectClause(sem, extraClass) {
-    if (!L() || !L().commerceClause || !sem) return "";
-    var html = L().commerceClause(sem);
-    if (!html || !extraClass) return html;
-    return html.replace(
-      'class="cf2-co-row"',
-      'class="cf2-co-row ' + extraClass + '"'
-    );
-  }
-
   function sceneSpine() {
     return (
       '<header class="cf2-home__spine">' +
@@ -135,6 +125,7 @@
   }
 
   /** Momentum is NOT_CURRENTLY_SUPPORTED — never emit a semantic journey. */
+  /** Page-specific composition: no shared CO clause / attention glyph as page badge. */
 
   function tierLabel(tier) {
     if (tier === "know") return "اعرف الآن";
@@ -142,19 +133,24 @@
     return "ما زال يتعلّم";
   }
 
-  function monitorItem(sec, tier, pkg) {
+  function satelliteDistance(tier) {
+    if (tier === "know") return "near";
+    if (tier === "watch") return "mid";
+    return "far";
+  }
+
+  function monitorItem(sec, tier) {
     var diagnosis = truthText(sec);
     var html =
-      '<article class="cf2-home__monitor-item cf2-capsule" data-hes-section="' +
+      '<article class="cf2-home__monitor-item cf2-home__satellite" data-hes-section="' +
       esc(sec.id || "") +
       '" data-cf2-tier="' +
       esc(tier) +
       '" data-cf2-lane="' +
       esc(laneOf(sec)) +
+      '" data-cf2-satellite="1" data-cf2-distance="' +
+      esc(satelliteDistance(tier)) +
       '">';
-    if (S() && L()) {
-      html += objectClause(S().projectHomeSurface(pkg, sec), "");
-    }
     html +=
       '<p class="cf2-home__tier">' + esc(tierLabel(tier)) + "</p>";
     html +=
@@ -203,7 +199,7 @@
     var parts = split(sections);
     var lang = L();
     var html =
-      '<section class="cf2-home" data-cf2="home-stage-closure-v1" data-cf2-grammar="attention-gravity" data-cf2-model="semantic-visual-model-v1">';
+      '<section class="cf2-home" data-cf2="home-stage-closure-v1" data-cf2-grammar="attention-gravity" data-cf2-model="semantic-visual-model-v1" data-cf2-organism="gravity-well" data-cf2-composition="page-specific-v1">';
     html += sceneSpine();
 
     if (!parts.primary) {
@@ -221,14 +217,21 @@
     var sem = S() ? S().projectHomeSurface(pkg, p) : null;
     var silence = sem ? sem.core_silence : "ACTIVE";
     var density = sem ? sem.density : "NEUTRAL";
+    var attention = sem ? sem.attention_intensity : "NONE";
     var confidence = confidenceCopy(density);
     var action = actionCopy(meaning, sem ? sem.evidence_sufficiency : "UNKNOWN");
     var boardEdge =
       silence === "QUIET"
         ? "quiet"
-        : sem && sem.attention_intensity === "PRIMARY"
+        : attention === "PRIMARY"
           ? "attention"
           : "neutral";
+    var gravity =
+      silence === "QUIET" || attention === "NONE"
+        ? "none"
+        : attention === "PRIMARY"
+          ? "primary"
+          : "secondary";
 
     var monitor = [];
     parts.know.forEach(function (sec) {
@@ -249,17 +252,18 @@
     html +=
       '<div class="cf2-home__board" data-cf2-edge="' +
       esc(boardEdge) +
+      '" data-cf2-gravity="' +
+      esc(gravity) +
+      '" data-cf2-attention="' +
+      esc(String(attention || "NONE").toLowerCase()) +
       '" data-cf2-silence="' +
       esc(silence.toLowerCase()) +
       '" data-cf2-monitor="' +
       (monitor.length ? "on" : "empty") +
       '">';
 
-    /* ——— Primary reading path (one organism) ——— */
+    /* ——— Primary reading path (gravity well — no CO clause) ——— */
     html += '<div class="cf2-home__scene">';
-    if (sem && silence !== "QUIET") {
-      html += objectClause(sem, "cf2-home__rail");
-    }
     html += '<div class="cf2-home__lead">';
     html += '<div class="cf2-home__lead-text">';
     html += '<p class="cf2-home__lane">مركز الجاذبية</p>';
@@ -336,7 +340,7 @@
         '<p class="cf2-home__monitor-label">ما يراقبه CartFlow أيضًا</p>';
       html += '<div class="cf2-home__monitor-row">';
       monitor.forEach(function (r) {
-        html += monitorItem(r.sec, r.tier, pkg);
+        html += monitorItem(r.sec, r.tier);
       });
       html += "</div></aside>";
     }

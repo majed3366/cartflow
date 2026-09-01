@@ -44,6 +44,54 @@ body[data-cf-ui="v2"] .cf2-home__board[data-cf2-edge="attention"] {
   border-inline-start-color: var(--cf2-navy);
 }
 
+/* Gravity well — attention is board mass, not a CO glyph */
+body[data-cf-ui="v2"] .cf2-home[data-cf2-organism="gravity-well"] .cf2-home__board[data-cf2-gravity="primary"] {
+  border-inline-start-width: 6px;
+  border-inline-start-color: var(--cf2-navy);
+  background:
+    radial-gradient(
+      42% 48% at 100% 0%,
+      rgba(24, 176, 168, 0.14) 0%,
+      transparent 60%
+    ),
+    linear-gradient(
+      168deg,
+      rgba(255, 255, 255, 0.96) 0%,
+      rgba(243, 246, 249, 0.7) 100%
+    );
+}
+
+body[data-cf-ui="v2"] .cf2-home[data-cf2-organism="gravity-well"] .cf2-home__board[data-cf2-gravity="primary"] .cf2-home__title {
+  font-size: clamp(1.35rem, 2.2vw, 1.7rem);
+}
+
+body[data-cf-ui="v2"] .cf2-home[data-cf2-organism="gravity-well"] .cf2-home__board[data-cf2-gravity="secondary"] {
+  border-inline-start-width: 4px;
+  opacity: 0.96;
+}
+
+body[data-cf-ui="v2"] .cf2-home[data-cf2-organism="gravity-well"] .cf2-home__board[data-cf2-gravity="none"] {
+  border-inline-start-color: rgba(115, 133, 158, 0.35);
+}
+
+body[data-cf-ui="v2"] .cf2-home__satellite {
+  margin: 0;
+  padding: 0;
+  padding-inline-start: 10px;
+  border-inline-start: 2px solid rgba(24, 176, 168, 0.35);
+  background: transparent;
+}
+
+body[data-cf-ui="v2"] .cf2-home__satellite[data-cf2-distance="mid"] {
+  border-inline-start-color: rgba(115, 133, 158, 0.4);
+  opacity: 0.92;
+}
+
+body[data-cf-ui="v2"] .cf2-home__satellite[data-cf2-distance="far"] {
+  border-inline-start-color: rgba(115, 133, 158, 0.28);
+  opacity: 0.84;
+}
+
 body[data-cf-ui="v2"] .cf2-home__spine {
   margin: 0 0 12px;
   padding: 0;

@@ -298,18 +298,24 @@ class SemanticPainterContractTests(unittest.TestCase):
               return {
                 html: html,
                 roles: (html.match(/data-cf2-role="/g)||[]).length,
+                coAttention: html.indexOf('cf2-co--attention')>=0,
                 insufficient: html.indexOf('أدلة ناقصة')>=0,
                 uncertainty: html.indexOf('عدم يقين')>=0,
-                attention: html.indexOf('انتباه')>=0,
+                attentionLabel: html.indexOf('انتباه')>=0,
+                gravity: html.indexOf('data-cf2-gravity="primary"')>=0,
+                organism: html.indexOf('data-cf2-organism="gravity-well"')>=0,
                 mtrace: html.indexOf('cf2-mtrace')>=0,
                 evfield: html.indexOf('cf2-evfield')>=0
               };
             })()"""
         )
-        self.assertTrue(out["attention"])
+        self.assertFalse(out["coAttention"])
+        self.assertFalse(out["attentionLabel"])
         self.assertFalse(out["insufficient"])
         self.assertFalse(out["uncertainty"])
-        self.assertEqual(out["roles"], 1)
+        self.assertEqual(out["roles"], 0)
+        self.assertTrue(out["gravity"])
+        self.assertTrue(out["organism"])
         self.assertFalse(out["mtrace"])
         self.assertFalse(out["evfield"])
 
@@ -326,33 +332,41 @@ class SemanticPainterContractTests(unittest.TestCase):
               var conf = paint({execution_readiness:'NEEDS_MORE_EVIDENCE', diagnosis_status:'conflicting_evidence', decision_sentence_ar:'راجع القرار'});
               var quiet = W.render({quiet:true, zone_b:[]});
               function roles(h){ return (h.match(/data-cf2-role="/g)||[]).length; }
+              function co(h){ return (h.match(/cf2-co--/g)||[]).length; }
               function dens(h){ var m=h.match(/data-cf2-density="([^"]+)"/); return m&&m[1]; }
               function mass(h){ var m=h.match(/data-cf2-mass="([^"]+)"/); return m&&m[1]; }
               function tens(h){ var m=h.match(/cf2-dmass[^>]*data-cf2-tension="([^"]+)"/); return m&&m[1]; }
               return {
-                nmeRoles: roles(nme), nmeDens: dens(nme), nmeMass: mass(nme), nmeTens: tens(nme),
-                readyRoles: roles(ready), readyDens: dens(ready), readyMass: mass(ready), readyTens: tens(ready),
-                ready2Roles: roles(ready2), ready2Mass: mass(ready2),
-                confTens: tens(conf), confUnc: conf.indexOf('data-cf2-uncertainty="high"')>=0,
+                nmeRoles: roles(nme), nmeCo: co(nme), nmeDens: dens(nme), nmeMass: mass(nme), nmeTens: tens(nme),
+                nmeVoid: nme.indexOf('cf2-ws__void')>=0, nmeOpen: nme.indexOf('data-cf2-openness="open"')>=0,
+                readyRoles: roles(ready), readyCo: co(ready), readyDens: dens(ready), readyMass: mass(ready), readyTens: tens(ready),
+                ready2Roles: roles(ready2), ready2Mass: mass(ready2), readyOrganism: ready.indexOf('data-cf2-organism="formation"')>=0,
+                confTens: tens(conf), confVoidHigh: conf.indexOf('data-cf2-void="large"')>=0 && conf.indexOf('data-cf2-tension="high"')>=0,
+                confConflict: conf.indexOf('data-cf2-conflict="conflict"')>=0,
                 quietRoles: roles(quiet), quietSilence: quiet.indexOf('data-cf2-silence="quiet"')>=0,
                 arriving: nme.indexOf('is-arriving')>=0,
                 mtrace: nme.indexOf('cf2-mtrace')>=0
               };
             })()"""
         )
-        self.assertGreaterEqual(out["nmeRoles"], 2)
-        self.assertLessEqual(out["nmeRoles"], 3)
+        self.assertEqual(out["nmeRoles"], 0)
+        self.assertEqual(out["nmeCo"], 0)
         self.assertEqual(out["nmeDens"], "low")
         self.assertEqual(out["nmeMass"], "open")
         self.assertEqual(out["nmeTens"], "none")
-        self.assertEqual(out["readyRoles"], 1)
+        self.assertTrue(out["nmeVoid"])
+        self.assertTrue(out["nmeOpen"])
+        self.assertEqual(out["readyRoles"], 0)
+        self.assertEqual(out["readyCo"], 0)
         self.assertEqual(out["readyDens"], "present")
         self.assertEqual(out["readyMass"], "ready")
         self.assertEqual(out["readyTens"], "none")
+        self.assertTrue(out["readyOrganism"])
         self.assertEqual(out["ready2Roles"], out["readyRoles"])
         self.assertEqual(out["ready2Mass"], out["readyMass"])
         self.assertEqual(out["confTens"], "high")
-        self.assertTrue(out["confUnc"])
+        self.assertTrue(out["confVoidHigh"])
+        self.assertTrue(out["confConflict"])
         self.assertEqual(out["quietRoles"], 0)
         self.assertTrue(out["quietSilence"])
         self.assertFalse(out["arriving"])

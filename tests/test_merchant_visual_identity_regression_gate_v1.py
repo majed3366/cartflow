@@ -69,8 +69,10 @@ class MerchantVisualIdentityRegressionGate(unittest.TestCase):
 
     def test_home_workspace_anchors_present(self) -> None:
         self.assertIn("cf2-home__kicker", HOME_JS)
-        self.assertIn("cf2-co-row", HOME_JS)
-        self.assertIn("cf2-co-row", WS_JS)
+        self.assertIn("gravity-well", HOME_JS)
+        self.assertIn("data-cf2-organism", HOME_JS)
+        self.assertIn("formation", WS_JS)
+        self.assertIn("data-cf2-organism", WS_JS)
         self.assertIn("cf2-dmass", WS_JS)
         self.assertIn("cf2-route", WS_JS)
 

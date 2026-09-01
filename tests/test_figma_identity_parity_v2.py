@@ -128,11 +128,15 @@ class FigmaIdentityParityV2Anchors(unittest.TestCase):
         self.assertNotIn("cf-rail__brand", V2)
 
     def test_semantic_primitives_are_not_static_decorative(self) -> None:
-        self.assertIn("commerceClause", HOME_JS)
+        self.assertIn("projectHomeSurface", HOME_JS)
         self.assertIn("evidenceFieldFromSufficiency", WS_JS)
+        self.assertIn("data-cf2-organism", HOME_JS)
+        self.assertIn("data-cf2-organism", WS_JS)
         self.assertIn("semantic-visual-model-v1", SEM_JS)
         self.assertNotIn("densityFromCount", HOME_JS)
         self.assertNotIn("densityFromCount", WS_JS)
+        self.assertNotIn("L().commerceClause", HOME_JS)
+        self.assertNotIn("L().commerceClause", WS_JS)
 
     def test_visual_law_traceability_is_encoded(self) -> None:
         self.assertIn("cartflow-runtime-visual-law", IDENT_HTML)

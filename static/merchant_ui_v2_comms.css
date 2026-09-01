@@ -156,6 +156,63 @@ body[data-cf-ui="v2"] .cf2-comms__row.is-failed {
   opacity: 0.9;
 }
 
+/* Lifecycle continuum — progression ticks, not a cart queue */
+body[data-cf-ui="v2"] .cf2-comms[data-cf2-organism="lifecycle-continuum"] .cf2-comms__list {
+  gap: 4px;
+  border-inline-start: 1px solid rgba(8, 32, 72, 0.08);
+  padding-inline-start: 2px;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__life {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+  margin-inline-end: 4px;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__tick {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(115, 133, 158, 0.45);
+  background: transparent;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__tick.is-complete {
+  background: var(--cf2-navy);
+  border-color: var(--cf2-navy);
+}
+
+body[data-cf-ui="v2"] .cf2-comms__tick.is-active {
+  background: var(--cf2-teal);
+  border-color: var(--cf2-teal);
+}
+
+body[data-cf-ui="v2"] .cf2-comms__tick.is-held {
+  background: transparent;
+  border-color: var(--cf2-navy);
+  border-style: dashed;
+  box-shadow: 0 0 0 2px rgba(8, 32, 72, 0.06);
+}
+
+body[data-cf-ui="v2"] .cf2-comms__tick.is-broken {
+  background: transparent;
+  border-color: rgba(122, 78, 12, 0.65);
+  border-radius: 1px;
+  transform: rotate(45deg);
+}
+
+body[data-cf-ui="v2"] .cf2-comms__life-row {
+  align-items: center;
+}
+
+body[data-cf-ui="v2"] .cf2-comms__handoff-terminus {
+  margin-top: 8px;
+  padding-inline-start: 10px;
+  border-inline-start: 2px dashed rgba(8, 32, 72, 0.35);
+}
+
 body[data-cf-ui="v2"] .cf2-comms__row.is-selected {
   border-inline-start-color: var(--cf2-navy);
   box-shadow: none;

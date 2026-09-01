@@ -54,7 +54,13 @@ class VisualIdentitySourceContracts(unittest.TestCase):
 
     def test_carts_emitters_no_dashed_empty(self) -> None:
         self.assertEqual(missing_markers(CARTS_JS, CANONICAL_CARTS_EMITTERS), [])
-        self.assertNotIn("dashed", CARTS_CSS)
+        # Wait/withheld may interrupt continuity with dashed start-edge.
+        # Empty / calm truth must not be a dashed white-card stack.
+        self.assertIn("border-inline-start-style: dashed", CARTS_CSS)
+        self.assertNotRegex(
+            CARTS_CSS,
+            r"\.cf2-carts__empty\s*\{[^}]*dashed",
+        )
 
     def test_comms_not_inbox(self) -> None:
         self.assertEqual(missing_markers(COMMS_JS, CANONICAL_COMMS_EMITTERS), [])

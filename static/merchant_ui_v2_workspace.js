@@ -1,8 +1,9 @@
 /**
  * CartFlow Merchant UI V2 — Decision Workspace
  * Composition Closure + Mobile Hierarchy Refinement V1
- * + Visual Language Restoration V1 (visible CO family on current Decision Object).
- * Shell contract untouched. Living route + Decision Mass + CO row.
+ * + Page-Specific Semantic Composition V1: formation body.
+ * Meaning lives in evidence → void → mass → terminus.
+ * No three-icon semantic clause. READY = zero semantic icons.
  */
 (function (global) {
   "use strict";
@@ -130,10 +131,7 @@
     return "";
   }
 
-  function objectClause(sem) {
-    if (!L() || !L().commerceClause || !sem) return "";
-    return L().commerceClause(sem); /* cf2-co-row */
-  }
+  /** Page-specific: no shared CO clause — formation relationships carry meaning. */
 
   function renderDecisionObject(card, isPrimary, projection) {
     var lang = L();
@@ -144,6 +142,9 @@
     var waitKind = sem ? sem.wait_kind : "UNKNOWN";
     var tension = sem ? sem.tension : "UNKNOWN";
     var mass = sem ? sem.mass : "OPEN";
+    var sufficiency = sem ? sem.evidence_sufficiency : "UNKNOWN";
+    var uncertainty = sem ? sem.uncertainty_level : "UNKNOWN";
+    var conflict = sem ? sem.evidence_conflict : "UNKNOWN";
     var decision = safeAr(
       card.decision_sentence_ar ||
         card.operational_guidance_ar ||
@@ -174,6 +175,20 @@
     var progress = routeProgress(readiness);
     var showLines = isPrimary ? lines.slice(0, 3) : lines.slice(0, 1);
     var tensionAttr = tension === "HIGH" ? "high" : "none";
+    var openness =
+      sufficiency === "INSUFFICIENT"
+        ? "open"
+        : sufficiency === "SUFFICIENT"
+          ? "closed"
+          : "identity";
+    var voidSize =
+      uncertainty === "HIGH"
+        ? "large"
+        : uncertainty === "MEDIUM"
+          ? "standard"
+          : uncertainty === "NONE"
+            ? "remnant"
+            : "identity";
 
     if (!isPrimary) {
       var nextHtml =
@@ -202,12 +217,18 @@
     }
 
     var html =
-      '<article class="cf2-dobj cf2-dobj--primary" data-cf2-tension="' +
+      '<article class="cf2-dobj cf2-dobj--primary" data-cf2-organism="formation" data-cf2-tension="' +
       esc(tensionAttr) +
       '" data-cf2-mass="' +
       esc(String(mass || "OPEN").toLowerCase()) +
       '" data-cf2-evidence="' +
       esc(String(density || "NEUTRAL").toLowerCase()) +
+      '" data-cf2-sufficiency="' +
+      esc(String(sufficiency || "UNKNOWN").toLowerCase()) +
+      '" data-cf2-uncertainty="' +
+      esc(String(uncertainty || "UNKNOWN").toLowerCase()) +
+      '" data-cf2-conflict="' +
+      esc(String(conflict || "UNKNOWN").toLowerCase()) +
       '" data-cf2-readiness="' +
       esc(readiness) +
       '" data-cf2-wait="' +
@@ -218,7 +239,6 @@
       esc(card.decision_id || "") +
       '">';
 
-    html += objectClause(sem);
     html += '<header class="cf2-ws__head">';
     html += '<div class="cf2-ws__head-text">';
     html += '<p class="cf2-ws__eyebrow">' + esc(eyebrow) + "</p>";
@@ -233,11 +253,13 @@
       esc(progress) +
       '">';
 
-    /* Evidence — feeds the decision */
+    /* Evidence — sufficiency lives here, not in a badge */
     html +=
       '<section class="cf2-route__node cf2-beat cf2-beat--evidence' +
       nodeState(progress, "evidence") +
-      '" data-cf2-node="evidence">';
+      '" data-cf2-node="evidence" data-cf2-openness="' +
+      esc(openness) +
+      '">';
     html += '<p class="cf2-beat__label">ما يظهر الآن</p>';
     if (conf) {
       html +=
@@ -253,6 +275,16 @@
     });
     html += "</ul></div></section>";
 
+    /* Uncertainty void — relationship between evidence and mass */
+    if (uncertainty === "MEDIUM" || uncertainty === "HIGH") {
+      html +=
+        '<div class="cf2-ws__void" data-cf2-void="' +
+        esc(voidSize) +
+        '" data-cf2-tension="' +
+        esc(tensionAttr) +
+        '" aria-hidden="true"></div>';
+    }
+
     /* Meaning */
     html +=
       '<section class="cf2-route__node cf2-beat cf2-beat--understanding' +
@@ -262,7 +294,7 @@
     html +=
       '<p class="cf2-beat__body">' + esc(understanding(card)) + "</p></section>";
 
-    /* Decision mass — dominant */
+    /* Decision mass — readiness */
     html +=
       '<section class="cf2-route__node cf2-beat cf2-beat--decision' +
       nodeState(progress, "decision") +
@@ -386,7 +418,7 @@
     var zoneB = Array.isArray(projection.zone_b) ? projection.zone_b : [];
     var split = splitPrimary(zoneB);
     var html =
-      '<div class="cf2-ws cf2-ws--lang cf2-ws--mobile-hierarchy-v1" data-cf2="workspace-composition-closure-v1" data-cf2-mobile-hierarchy="v1" data-cf2-model="semantic-visual-model-v1">';
+      '<div class="cf2-ws cf2-ws--lang cf2-ws--mobile-hierarchy-v1" data-cf2="workspace-composition-closure-v1" data-cf2-mobile-hierarchy="v1" data-cf2-model="semantic-visual-model-v1" data-cf2-composition="page-specific-v1">';
     if (!split.primary) {
       html +=
         '<section class="cf2-ws__primary" aria-label="هدوء القرار">' +

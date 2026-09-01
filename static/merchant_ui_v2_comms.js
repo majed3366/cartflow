@@ -2,12 +2,15 @@
  * CartFlow Merchant UI V2 — Communication Product Composition V1.
  * Answers: ماذا حدث في التواصل مع العملاء، وما الذي يحتاج متابعتي الآن؟
  * Runtime truth only: send log + delivery + inbound-by-phone + needs_merchant_followup.
+ * Page-Specific Semantic Composition V1: lifecycle continuum.
  * Not an inbox. Not a thread. Carts owns execution. Settings owns configuration.
  */
 (function (global) {
   "use strict";
 
   var MARKER = "communication-product-composition-v1";
+  var COMPOSITION = "page-specific-v1";
+  var ORGANISM = "lifecycle-continuum";
 
   var FILTERS = [
     { key: "needs", label: "يحتاج متابعتي" },
@@ -398,14 +401,52 @@
     return "is-quiet";
   }
 
+  /** Lifecycle stage from existing truth only — no invented events. */
+  function lifecycleStage(it) {
+    if (it.purchased || it.category === CAT.COMPLETED_OR_TERMINAL) return "closed";
+    if (it.needsMerchant) return "followup";
+    if (it.failed) return "broken";
+    if (it.category === CAT.WAITING_FOR_CUSTOMER) return "wait";
+    if (it.inboundText) return "response";
+    if (it.deliveryAr || isDeliveredLike(it)) return "delivery";
+    return "send";
+  }
+
+  function isDeliveredLike(it) {
+    var d = String((it && it.deliveryAr) || "").toLowerCase();
+    return d.indexOf("deliver") >= 0 || d.indexOf("وصل") >= 0 || d.indexOf("تسليم") >= 0;
+  }
+
+  function lifecycleTicksHtml(stage) {
+    var steps = ["send", "delivery", "response", "wait", "followup"];
+    var active = steps.indexOf(stage);
+    if (stage === "closed") active = steps.length;
+    if (stage === "broken") active = 1;
+    var html = '<span class="cf2-comms__life" data-cf2-lifecycle="' + esc(stage) + '" aria-hidden="true">';
+    steps.forEach(function (step, i) {
+      var cls = "cf2-comms__tick";
+      if (stage === "broken" && i === 1) cls += " is-broken";
+      else if (stage === "closed") cls += " is-complete";
+      else if (i < active) cls += " is-complete";
+      else if (i === active) cls += stage === "followup" ? " is-held" : " is-active";
+      html += '<span class="' + cls + '" data-cf2-tick="' + esc(step) + '"></span>';
+    });
+    html += "</span>";
+    return html;
+  }
+
   function itemHtml(it, selected) {
+    var stage = lifecycleStage(it);
     return (
-      '<button type="button" class="cf2-comms__row ' +
+      '<button type="button" class="cf2-comms__row cf2-comms__life-row ' +
       rowTone(it) +
       (selected ? " is-selected" : "") +
       '" data-comms-id="' +
       esc(it.id) +
+      '" data-cf2-lifecycle="' +
+      esc(stage) +
       '">' +
+      lifecycleTicksHtml(stage) +
       '<span class="cf2-comms__row-main">' +
       '<span class="cf2-comms__who">' +
       esc(it.phoneMasked) +
@@ -485,8 +526,10 @@
     }
     if (it.needsMerchant) {
       return (
+        '<div class="cf2-comms__handoff-terminus cf2-terminus is-held" data-cf2-wait="followup">' +
         '<p class="cf2-comms__handoff">هذه الحالة تحتاج متابعتك.</p>' +
-        '<a class="cf2-btn" href="#carts">افتح المتابعة في السلال</a>'
+        '<a class="cf2-btn" href="#carts">افتح المتابعة في السلال</a>' +
+        "</div>"
       );
     }
     return "";
@@ -581,6 +624,8 @@
     }
 
     root.setAttribute("data-cf2", MARKER);
+    root.setAttribute("data-cf2-organism", ORGANISM);
+    root.setAttribute("data-cf2-composition", COMPOSITION);
     root.setAttribute("data-cf-needs-merchant-response", needsCount() > 0 ? "1" : "0");
     root.className =
       "cf2-comms" +

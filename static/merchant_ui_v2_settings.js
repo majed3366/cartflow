@@ -2,6 +2,7 @@
  * CartFlow Merchant UI V2 — Settings Product Composition V1.
  * Answers: ما الذي أحتاج ضبطه لكي يعمل CartFlow بشكل صحيح وآمن؟
  * Existing configuration truth only. Overview → detail. No new writers.
+ * Page-Specific Semantic Composition V1: quiet configuration ledger.
  *
  * QueuePool Pressure Remediation V1: first paint is overview-only.
  * Sequential reads (store-connection, then one recovery-settings).
@@ -12,6 +13,8 @@
 
   var MARKER = "settings-product-composition-v1";
   var LOAD_MODE = "settings-queuepool-pressure-remediation-v1";
+  var COMPOSITION = "page-specific-v1";
+  var ORGANISM = "config-ledger";
 
   var STATE_AR = {
     READY: "جاهز",
@@ -153,6 +156,14 @@
     return { state: "READY", line: name ? "اسم العرض: " + name : "تفضيلات العرض موجودة" };
   }
 
+  function jointFromState(st) {
+    if (st === "READY") return "closed";
+    if (st === "NEEDS_SETUP") return "open";
+    if (st === "PARTIAL") return "half";
+    if (st === "READ_ONLY" || st === "UNAVAILABLE") return "mute";
+    return "half";
+  }
+
   function paintOverview() {
     var list = $("#cf2-settings-list", state.root);
     if (!list) return;
@@ -161,6 +172,7 @@
       var line = state.lines[area.id] || area.line;
       var on = state.selected === area.id;
       var notes = state.notes[area.id] || [];
+      var joint = jointFromState(st);
       var chips =
         '<span class="cf2-settings__states">' +
         '<span class="cf2-settings__state" data-state="' +
@@ -183,12 +195,17 @@
           .join("") +
         "</span>";
       return (
-        '<button type="button" class="cf2-settings__row' +
+        '<button type="button" class="cf2-settings__row cf2-settings__ledger-row' +
         (on ? " is-selected" : "") +
         (st === "NEEDS_SETUP" ? " is-needs" : "") +
         '" data-cf2-settings-area="' +
         area.id +
+        '" data-cf2-joint="' +
+        esc(joint) +
+        '" data-cf2-config-state="' +
+        esc(st) +
         '">' +
+        '<span class="cf2-settings__joint" aria-hidden="true"></span>' +
         '<span class="cf2-settings__row-title">' +
         esc(area.title) +
         "</span>" +
@@ -366,6 +383,8 @@
     state.root = root;
     root.setAttribute("data-cf-settings-marker", MARKER);
     root.setAttribute("data-cf-settings-load", LOAD_MODE);
+    root.setAttribute("data-cf2-organism", ORGANISM);
+    root.setAttribute("data-cf2-composition", COMPOSITION);
     bindOnce(root);
     var initial = areaFromHash();
     paintFirstOverview();
