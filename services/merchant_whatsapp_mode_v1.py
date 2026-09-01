@@ -32,8 +32,8 @@ SAVE_SUCCESS_MESSAGE_AR = "تم حفظ إعدادات الواتساب."
 ADVANCED_SETTINGS_TITLE_AR = "إعدادات متقدمة"
 
 WHATSAPP_MODE_TITLE_AR: Mapping[str, str] = {
-    WHATSAPP_MODE_CARTFLOW_MANAGED: "🟢 واتساب CartFlow",
-    WHATSAPP_MODE_MERCHANT_WHATSAPP: "💼 واتساب أعمالي",
+    WHATSAPP_MODE_CARTFLOW_MANAGED: "واتساب CartFlow",
+    WHATSAPP_MODE_MERCHANT_WHATSAPP: "واتساب أعمالي",
     WHATSAPP_MODE_FUTURE_PROVIDER: "Future provider",
 }
 
@@ -119,7 +119,7 @@ def whatsapp_current_path_for_api(store: Optional[Any]) -> dict[str, Any]:
     )
     if mode == WHATSAPP_MODE_MERCHANT_WHATSAPP:
         return {
-            "title_ar": "🔵 المسار الحالي: واتساب أعمالي",
+            "title_ar": "المسار الحالي: واتساب أعمالي",
             "body_ar": "يستخدم النظام رقم الواتساب الخاص بمتجرك.",
             "subtext_ar": CURRENT_PATH_CHANGE_ANYTIME_AR,
             "card_tone": "merchant",
@@ -129,7 +129,7 @@ def whatsapp_current_path_for_api(store: Optional[Any]) -> dict[str, Any]:
             "footnote_ar": CURRENT_PATH_CHANGE_ANYTIME_AR,
         }
     return {
-        "title_ar": "🟢 المسار الحالي: واتساب CartFlow",
+        "title_ar": "المسار الحالي: واتساب CartFlow",
         "body_ar": "يتولى CartFlow إرسال الرسائل لعملائك.",
         "subtext_ar": CURRENT_PATH_CHANGE_ANYTIME_AR,
         "card_tone": "cartflow",
@@ -265,7 +265,7 @@ def whatsapp_connect_page_for_api(store: Optional[Any]) -> dict[str, Any]:
     status = ev.status or EMBEDDED_SIGNUP_NOT_STARTED
     return {
         "applicable": True,
-        "headline_ar": "💼 ربط رقم واتساب متجرك",
+        "headline_ar": "ربط رقم واتساب متجرك",
         "intro_ar": CONNECT_PAGE_MERCHANT_INTRO_AR,
         "body_ar": "",
         "status_label_ar": "حالة الربط",

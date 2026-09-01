@@ -19,6 +19,10 @@
     return L() ? L().esc(s) : String(s == null ? "" : s);
   }
 
+  var currentView = "overview";
+  var lastSummaryPayload = null;
+  var lastSummaryRoot = null;
+
   function laneOf(sec) {
     var id = String((sec && sec.id) || "");
     if (id === "decisions") return "decision";
@@ -215,8 +219,46 @@
     );
   }
 
-  function render(pkg, summary) {
+  /** Dedicated الملخص destination — operational outcomes only. */
+  function renderSummaryView(summary) {
+    if (!summary || typeof summary !== "object") {
+      return (
+        '<section class="cf2-home cf2-home--summary" data-cf2="home-summary-v1" data-cf2-view="summary">' +
+        '<p class="cf2-empty">تعذّر تحميل ملخص النتائج.</p></section>'
+      );
+    }
     var recovery = recoveryOutcomeHtml(summary);
+    var waSent = summary.merchant_kpi_wa_sent_fmt;
+    var abandoned = summary.merchant_kpi_abandoned_fmt;
+    var html =
+      '<section class="cf2-home cf2-home--summary" data-cf2="home-summary-v1" data-cf2-view="summary" data-cf2-truth="operational-kpi-v1">';
+    html += sceneSpine();
+    html += '<header class="cf2-home__summary-head">';
+    html += '<p class="cf2-home__kicker">الملخص</p>';
+    html += '<h2 class="cf2-home__title">نتائج تشغيلية · اليوم</h2>';
+    html +=
+      '<p class="cf2-home__summary-period">الفترة: اليوم (تشغيل CartFlow — وليس تحليلات متجر)</p>';
+    html += "</header>";
+    html += recovery || '<p class="cf2-empty">لا توجد نتائج استرجاع مسجّلة لليوم.</p>';
+    html += '<div class="cf2-home__summary-grid">';
+    if (abandoned != null && String(abandoned).trim() !== "") {
+      html +=
+        '<article class="cf2-home__summary-item"><p class="cf2-home__summary-label">سلال مهجورة · اليوم</p><p class="cf2-home__summary-value">' +
+        esc(String(abandoned)) +
+        "</p></article>";
+    }
+    if (waSent != null && String(waSent).trim() !== "") {
+      html +=
+        '<article class="cf2-home__summary-item"><p class="cf2-home__summary-label">رسائل واتساب · اليوم</p><p class="cf2-home__summary-value">' +
+        esc(String(waSent)) +
+        "</p></article>";
+    }
+    html += "</div>";
+    html += '<hr class="cf2-taper" /></section>';
+    return html;
+  }
+
+  function render(pkg) {
     var sections = Array.isArray(pkg.sections) ? pkg.sections : [];
     if (!sections.length) {
       return (
@@ -225,7 +267,6 @@
         '<p class="cf2-empty">' +
         esc(pkg.lede_ar || "لا تتوفر معرفة كافية الآن.") +
         "</p>" +
-        recovery +
         '<hr class="cf2-taper" /></section>'
       );
     }
@@ -240,7 +281,6 @@
         '<p class="cf2-empty">' +
         esc(pkg.lede_ar || "لا تتوفر معرفة كافية الآن.") +
         "</p>" +
-        recovery +
         '<hr class="cf2-taper" /></section>';
       return html;
     }
@@ -383,9 +423,6 @@
 
     html += "</div>";
 
-    /* Recovery outcome sits below today's decision — summary only, not analytics. */
-    html += recovery;
-
     function notInMonitor(sec) {
       return !(sec && sec.id && monitorIds[sec.id]);
     }
@@ -414,6 +451,12 @@
 
   function paint(root, summary) {
     if (!root) return false;
+    lastSummaryPayload = summary;
+    lastSummaryRoot = root;
+    if (currentView === "summary") {
+      root.innerHTML = renderSummaryView(summary);
+      return true;
+    }
     var pkg =
       summary &&
       summary.home_executive_summary_v1 &&
@@ -422,12 +465,22 @@
         : null;
     if (!pkg || pkg.enabled === false) {
       root.innerHTML =
-        '<p class="cf2-empty">تعذّر تحميل معرفة المتجر.</p>' +
-        recoveryOutcomeHtml(summary);
+        '<p class="cf2-empty">تعذّر تحميل معرفة المتجر.</p>';
       return false;
     }
-    root.innerHTML = render(pkg, summary);
+    root.innerHTML = render(pkg);
     return true;
+  }
+
+  function showView(viewId) {
+    var next = viewId === "summary" ? "summary" : "overview";
+    currentView = next;
+    if (!lastSummaryRoot) return;
+    if (next === "summary") {
+      lastSummaryRoot.innerHTML = renderSummaryView(lastSummaryPayload);
+      return;
+    }
+    paint(lastSummaryRoot, lastSummaryPayload);
   }
 
   async function loadAndPaint(root) {
@@ -450,5 +503,10 @@
     loadAndPaint: loadAndPaint,
     paint: paint,
     render: render,
+    renderSummaryView: renderSummaryView,
+    showView: showView,
+    currentView: function () {
+      return currentView;
+    },
   };
 })(typeof window !== "undefined" ? window : globalThis);

@@ -197,6 +197,8 @@
   function normalizeMessageBody(raw) {
     var t = String(raw || "").trim();
     if (!t || t === "—" || t === "-") return "";
+    if (/^\[SRS\]/i.test(t)) return "";
+    if (/mock_sent/i.test(t) && /no provider call/i.test(t)) return "";
     return t;
   }
 
@@ -305,6 +307,30 @@
 
   function needsCount() {
     return (state.followups || []).length;
+  }
+
+  function activeCount() {
+    return state.items.filter(function (it) {
+      return (
+        it.category === CAT.AUTOMATED_BY_CARTFLOW ||
+        it.category === CAT.WAITING_FOR_CUSTOMER ||
+        it.category === CAT.BLOCKED_BY_CONFIGURATION
+      );
+    }).length;
+  }
+
+  function ctxCounts() {
+    return {
+      needs: needsCount(),
+      active: activeCount(),
+      all: state.items.length,
+    };
+  }
+
+  function notifyCtxRefresh() {
+    if (global.CartFlowUiV2 && global.CartFlowUiV2.refreshContextualSidebar) {
+      global.CartFlowUiV2.refreshContextualSidebar();
+    }
   }
 
   function filteredItems() {
@@ -725,6 +751,7 @@
       detailHtml(selected) +
       "</div></div>";
     bind(root);
+    notifyCtxRefresh();
   }
 
   function bind(root) {
@@ -834,6 +861,7 @@
     buildItems: buildItems,
     matchFollowup: matchFollowup,
     setFilter: setFilter,
+    ctxCounts: ctxCounts,
     categories: CAT,
     filters: FILTERS,
   };

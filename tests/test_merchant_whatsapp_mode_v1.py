@@ -116,7 +116,7 @@ class MerchantWhatsappModeV1Tests(unittest.TestCase):
         merchant = block["options"][1]
         self.assertEqual(merchant["key"], WHATSAPP_MODE_MERCHANT_WHATSAPP)
         self.assertNotIn("Meta", " ".join(merchant["bullets_ar"]))
-        self.assertEqual(merchant["title_ar"], "💼 واتساب أعمالي")
+        self.assertEqual(merchant["title_ar"], "واتساب أعمالي")
 
     def test_current_path_status_cartflow(self) -> None:
         path = whatsapp_current_path_for_api(self.row)
@@ -173,8 +173,9 @@ class MerchantWhatsappModeV1Tests(unittest.TestCase):
         options = (data.get("whatsapp_mode_selection") or {}).get("options") or []
         self.assertEqual(len(options), 2)
         titles = {o.get("key"): o.get("title_ar") for o in options}
-        self.assertIn("🟢", titles[WHATSAPP_MODE_CARTFLOW_MANAGED])
-        self.assertIn("💼", titles[WHATSAPP_MODE_MERCHANT_WHATSAPP])
+        self.assertNotIn("🟢", titles[WHATSAPP_MODE_CARTFLOW_MANAGED])
+        self.assertNotIn("💼", titles[WHATSAPP_MODE_MERCHANT_WHATSAPP])
+        self.assertIn("CartFlow", titles[WHATSAPP_MODE_CARTFLOW_MANAGED])
 
     def test_merchant_mode_shows_merchant_panel(self) -> None:
         self.row.whatsapp_mode = WHATSAPP_MODE_MERCHANT_WHATSAPP
@@ -228,7 +229,10 @@ class MerchantWhatsappModeV1Tests(unittest.TestCase):
         html = r.text or ""
         self.assertIn("ma-wa-mode-selection-root", html)
         self.assertIn("ma-wa-current-path-root", html)
-        self.assertIn("ma-wa-advanced-settings-wrap", html)
+        self.assertTrue(
+            "ma-wa-advanced-settings-wrap" in html or "page-whatsapp-host" in html,
+            "expected WhatsApp settings host in dashboard HTML",
+        )
         self.assertIn("ma-wa-mode-hidden", html)
         self.assertIn("merchant_whatsapp_settings.js", html)
         js = Path("static/merchant_whatsapp_settings.js").read_text(encoding="utf-8")

@@ -948,6 +948,7 @@
       detailHtml(selected) +
       "</div></div>";
     bind(root);
+    notifyCtxRefresh();
   }
 
   function isMobile() {
@@ -975,6 +976,22 @@
     state.filterTouched = true;
     state.detailOpen = false;
     paint();
+  }
+
+  function ctxCounts() {
+    var fc = filterCounts();
+    return {
+      attention: fc.attention,
+      nophone: fc.nophone,
+      sent: fc.sent,
+      recovered: fc.recovered,
+    };
+  }
+
+  function notifyCtxRefresh() {
+    if (global.CartFlowUiV2 && global.CartFlowUiV2.refreshContextualSidebar) {
+      global.CartFlowUiV2.refreshContextualSidebar();
+    }
   }
 
   function lifecyclePayload(mc, rk) {
@@ -1119,6 +1136,7 @@
     countPrimary: countPrimary,
     rowMatchesFilter: rowMatchesFilter,
     setFilter: setFilter,
+    ctxCounts: ctxCounts,
     filters: FILTERS,
   };
 })(window);

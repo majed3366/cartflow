@@ -55,7 +55,7 @@
           { id: "communication", label: "إعدادات واتساب" },
           { id: "recovery", label: "سياسة الاسترجاع" },
           { id: "policy", label: "سياسة السلال المهمة" },
-          { id: "experience", label: "التجربة" },
+          { id: "experience", label: "الودجيت" },
         ],
       },
     },
@@ -199,7 +199,23 @@
     }
   }
 
-  function paintCtxMarkup(conf, activeId) {
+  function ctxCountSuffix(section, itemId) {
+    if (section === "carts" && window.CartFlowUiV2Carts && window.CartFlowUiV2Carts.ctxCounts) {
+      var cc = window.CartFlowUiV2Carts.ctxCounts()[itemId];
+      if (cc > 0) return " · " + cc;
+    }
+    if (section === "comms" && window.CartFlowUiV2Comms && window.CartFlowUiV2Comms.ctxCounts) {
+      var cm = window.CartFlowUiV2Comms.ctxCounts()[itemId];
+      if (cm > 0) return " · " + cm;
+    }
+    if (section === "settings" && window.CartFlowUiV2Settings && window.CartFlowUiV2Settings.ctxHint) {
+      var hint = window.CartFlowUiV2Settings.ctxHint(itemId);
+      if (hint) return " · " + hint;
+    }
+    return "";
+  }
+
+  function paintCtxMarkup(conf, activeId, section) {
     var title = conf.title || "";
     var html =
       '<div class="cf2-ctx__toolbar">' +
@@ -210,6 +226,7 @@
       "</p>";
     (conf.items || []).forEach(function (item) {
       var on = item.id === activeId;
+      var suffix = section ? ctxCountSuffix(section, item.id) : "";
       html +=
         '<button type="button" class="cf2-ctx__item' +
         (on ? " is-active" : "") +
@@ -219,6 +236,7 @@
         (on ? ' aria-current="true"' : "") +
         ">" +
         item.label +
+        suffix +
         "</button>";
     });
     return html;
@@ -226,6 +244,14 @@
 
   function applyCtxItem(section, itemId) {
     if (!itemId) return;
+    if (
+      section === "home" &&
+      window.CartFlowUiV2Home &&
+      typeof window.CartFlowUiV2Home.showView === "function"
+    ) {
+      window.CartFlowUiV2Home.showView(itemId === "summary" ? "summary" : "overview");
+      return;
+    }
     if (section === "carts" && window.CartFlowUiV2Carts && typeof window.CartFlowUiV2Carts.setFilter === "function") {
       window.CartFlowUiV2Carts.setFilter(itemId);
       return;
@@ -252,7 +278,7 @@
         if (!conf) return;
         var ctx = $("#cf2-ctx");
         if (!ctx) return;
-        ctx.innerHTML = paintCtxMarkup(conf, activeCtxItem);
+        ctx.innerHTML = paintCtxMarkup(conf, activeCtxItem, section);
         bindCtxClose();
         bindCtxItems();
         applyCtxItem(section, activeCtxItem);
@@ -287,9 +313,10 @@
     shell.setAttribute("data-cf2-ctx", "on");
     ctx.hidden = false;
     activeCtxItem = conf.items[0].id;
-    ctx.innerHTML = paintCtxMarkup(conf, activeCtxItem);
+    ctx.innerHTML = paintCtxMarkup(conf, activeCtxItem, section);
     bindCtxClose();
     bindCtxItems();
+    applyCtxItem(section, activeCtxItem);
     if (handle) {
       handle.hidden = false;
       handle.setAttribute("aria-expanded", "false");
@@ -429,6 +456,16 @@
     }
   }
 
+  function refreshContextualSidebar() {
+    var section = currentHash();
+    var conf = contextualFor(section);
+    var ctx = $("#cf2-ctx");
+    if (!conf || !ctx || ctx.hidden) return;
+    ctx.innerHTML = paintCtxMarkup(conf, activeCtxItem || conf.items[0].id, section);
+    bindCtxClose();
+    bindCtxItems();
+  }
+
   function loadSection(section, opts) {
     paintGlobalNavigation(section);
     setActiveNav(section);
@@ -502,5 +539,6 @@
     paintGlobalNavigation: paintGlobalNavigation,
     openCtxDrawer: openCtxDrawer,
     closeCtxDrawer: closeCtxDrawer,
+    refreshContextualSidebar: refreshContextualSidebar,
   };
 })();

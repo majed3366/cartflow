@@ -172,6 +172,12 @@
             </div>
           </form>
         </div>
+        <div class="setting-card ma-fw-card ma-recovery-templates-card">
+          <div class="setting-title">قوالب الرسائل حسب سبب التردد</div>
+          <div class="setting-desc">رسالة الاسترجاع لكل سبب تردد مدعوم — لا يغيّر سجل التواصل المرسل.</div>
+          <p class="ma-tpl-banner" id="ma-tpl-load-err" hidden>تعذر تحميل القوالب من الخادم.</p>
+          <div id="ma-tpl-root" class="ma-tpl-root-wrap"></div>
+        </div>
       </div>
 
       <div class="cf2-settings__panel" data-cf2-settings-panel="policy" hidden>
@@ -212,19 +218,66 @@
       </div>
 
       <div class="cf2-settings__panel" data-cf2-settings-panel="experience" hidden>
-        <div class="setting-card ma-fw-card">
-          <div class="setting-title">الودجيت</div>
-          <div class="setting-desc">تفضيلات العرض الحالية فقط — ليست منشئ مظهر.</div>
-          <div class="setting-row" style="align-items:center;justify-content:space-between;">
-            <label class="ma-fw-label" for="ma-general-widget-enabled" style="margin:0;">الودجيت مفعل</label>
-            <label class="ma-fw-check"><input type="checkbox" id="ma-general-widget-enabled" name="cartflow_widget_enabled" value="1" form="ma-general-settings-form" checked></label>
-          </div>
-          <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
-            <label class="ma-fw-label" for="ma-general-widget-name">اسم الودجيت</label>
-            <input class="ma-fw-input" id="ma-general-widget-name" name="widget_name" type="text" maxlength="120" dir="rtl" form="ma-general-settings-form">
-          </div>
-          <div class="ma-fw-actions">
-            <button type="submit" class="ma-fw-save" form="ma-general-settings-form">حفظ تفضيلات العرض</button>
+        <script type="application/json" id="ma-widget-bootstrap">{}</script>
+        <p class="ma-widget-banner" id="mw-save-msg" hidden></p>
+        <div class="ma-widget-host ma-widget-layout ma-widget-layout--simple">
+          <div class="ma-widget-form">
+            <div class="setting-card ma-fw-card">
+              <div class="setting-title">الودجيت</div>
+              <div class="setting-desc">اللون ومتى يظهر وتحت أي شرط — يُطبَّق في المتجر.</div>
+              <label class="ma-fw-label" for="mw-widget-name">اسم الودجيت</label>
+              <input class="ma-fw-input" id="mw-widget-name" type="text" maxlength="120" dir="rtl" autocomplete="organization">
+              <label class="ma-fw-label" for="mw-widget-color">اللون</label>
+              <input class="ma-fw-input ma-fw-color" id="mw-widget-color" type="color" value="#6C5CE7">
+              <label class="ma-fw-check">
+                <input type="checkbox" id="mw-widget-enabled" checked>
+                <span>إظهار الودجيت للعملاء في المتجر</span>
+              </label>
+            </div>
+            <div class="setting-card ma-fw-card">
+              <div class="setting-title">متى يظهر الودجيت؟</div>
+              <p class="ma-timing-summary" id="mw-timing-summary">التوقيت المقترح: يظهر عند تردد العميل بعد إضافة السلة</p>
+              <label class="ma-fw-check">
+                <input type="checkbox" id="mw-exit-enabled" checked>
+                <span>عند محاولة مغادرة الصفحة</span>
+              </label>
+              <label class="ma-fw-check">
+                <input type="checkbox" id="mw-hes-enabled" checked>
+                <span>عند تردد العميل داخل الصفحة</span>
+              </label>
+              <details class="ma-advanced-block">
+                <summary>تخصيص التوقيت والشرط</summary>
+                <div class="ma-advanced-inner">
+                  <label class="ma-fw-label" for="mw-hes-sec">التأخير بعد التردد</label>
+                  <select class="ma-fw-input" id="mw-hes-sec">
+                    <option value="0">فوري</option>
+                    <option value="5">بعد 5 ثوانٍ</option>
+                    <option value="10">بعد 10 ثوانٍ</option>
+                    <option value="20" selected>بعد 20 ثانية (مقترح)</option>
+                    <option value="30">بعد 30 ثانية</option>
+                    <option value="custom">مخصص</option>
+                  </select>
+                  <label class="ma-fw-label" for="mw-hes-sec-custom" id="mw-hes-sec-custom-label" style="display:none">ثوانٍ (1–600)</label>
+                  <input class="ma-fw-input" type="number" id="mw-hes-sec-custom" min="1" max="600" step="1" value="45" style="display:none;margin-top:6px;">
+                  <label class="ma-fw-label" for="mw-hes-cond">شرط الظهور</label>
+                  <select class="ma-fw-input" id="mw-hes-cond">
+                    <option value="after_cart_add" selected>بعد إضافة منتج للسلة</option>
+                    <option value="inactivity">بعد توقف التفاعل</option>
+                    <option value="repeated_view">بعد مشاهدة المنتج</option>
+                    <option value="cart_interaction">عند التفاعل مع السلة</option>
+                  </select>
+                  <label class="ma-fw-label" for="mw-scope">نطاق الصفحات</label>
+                  <select class="ma-fw-input" id="mw-scope">
+                    <option value="all" selected>كل صفحات المتجر</option>
+                    <option value="cart">صفحة السلة فقط</option>
+                    <option value="product">صفحات المنتجات فقط</option>
+                  </select>
+                </div>
+              </details>
+            </div>
+            <div class="ma-fw-actions">
+              <button type="button" class="ma-fw-save" id="mw-save-btn">حفظ إعدادات الودجيت</button>
+            </div>
           </div>
         </div>
       </div>

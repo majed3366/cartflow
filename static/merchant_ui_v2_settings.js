@@ -47,15 +47,15 @@
     },
     {
       id: "experience",
-      title: "التجربة",
-      line: "تفضيلات عرض الودجيت",
+      title: "الودجيت",
+      line: "اللون والتوقيت وظهور الودجيت",
     },
   ];
 
   var HASH_AREA = {
     whatsapp: "communication",
     "whatsapp-connect": "communication",
-    "trigger-templates": "communication",
+    "trigger-templates": "recovery",
     templates: "communication",
     widget: "experience",
     plans: "store",
@@ -151,9 +151,11 @@
   }
 
   function classifyExperience(gen) {
-    if (!gen) return { state: "PARTIAL", line: "تعذّر قراءة تفضيلات العرض" };
+    if (!gen) return { state: "PARTIAL", line: "تعذّر قراءة إعدادات الودجيت" };
     var name = String(gen.widget_name || gen.widget_display_name || "").trim();
-    return { state: "READY", line: name ? "اسم العرض: " + name : "تفضيلات العرض موجودة" };
+    var enabled = gen.cartflow_widget_enabled !== false;
+    if (!enabled) return { state: "PARTIAL", line: "الودجيت غير مفعّل" };
+    return { state: "READY", line: name ? "اسم العرض: " + name : "إعدادات الودجيت موجودة" };
   }
 
   function jointFromState(st) {
@@ -256,6 +258,9 @@
       if (typeof window.maInitRecoveryPolicySettingsPage === "function") {
         window.maInitRecoveryPolicySettingsPage();
       }
+      if (typeof window.maEnsureTriggerTemplatesLoaded === "function") {
+        window.maEnsureTriggerTemplatesLoaded();
+      }
       return;
     }
     if (id === "policy") {
@@ -265,10 +270,21 @@
       return;
     }
     if (id === "experience") {
-      if (typeof window.maInitGeneralSettingsPage === "function") {
+      if (typeof window.maInitWidgetSettingsPage === "function") {
+        window.maInitWidgetSettingsPage();
+      } else if (typeof window.maInitGeneralSettingsPage === "function") {
         window.maInitGeneralSettingsPage();
       }
     }
+  }
+
+  function ctxHint(itemId) {
+    var st = state.status[itemId];
+    if (!st) return "";
+    if (st === "READY") return "جاهز";
+    if (st === "NEEDS_SETUP") return "يحتاج ضبط";
+    if (st === "PARTIAL") return "جزئي";
+    return "";
   }
 
   function showPanel(id, opts) {
@@ -393,6 +409,9 @@
       state.loaded = true;
       paintOverview();
       if (state.selected) initDetail(state.selected);
+      if (window.CartFlowUiV2 && window.CartFlowUiV2.refreshContextualSidebar) {
+        window.CartFlowUiV2.refreshContextualSidebar();
+      }
     });
   }
 
@@ -401,5 +420,6 @@
     marker: MARKER,
     loadMode: LOAD_MODE,
     showPanel: showPanel,
+    ctxHint: ctxHint,
   };
 })(window);

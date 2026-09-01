@@ -348,8 +348,44 @@
     sync();
   }
 
+  function populateFromBootstrap(b) {
+    if (!b) return;
+    var tg = b.trigger || {};
+    var wn = byId("mw-widget-name");
+    if (wn) wn.value = String(b.widget_name || "").trim() || "مساعد المتجر";
+    var wc = byId("mw-widget-color");
+    if (wc) wc.value = String(b.widget_primary_color || "#6C5CE7");
+    var we = byId("mw-widget-enabled");
+    if (we) we.checked = b.cartflow_widget_enabled !== false;
+    var ge = byId("mw-exit-enabled");
+    if (ge) ge.checked = tg.exit_intent_enabled !== false;
+    var he = byId("mw-hes-enabled");
+    if (he) he.checked = tg.hesitation_trigger_enabled !== false;
+    var gd = byId("mw-exit-delay");
+    if (gd && tg.exit_intent_delay_seconds != null) gd.value = String(tg.exit_intent_delay_seconds);
+    var gs = byId("mw-exit-sens");
+    if (gs && tg.exit_intent_sensitivity) gs.value = tg.exit_intent_sensitivity;
+    var gf = byId("mw-exit-freq");
+    if (gf && tg.exit_intent_frequency) gf.value = tg.exit_intent_frequency;
+    var hs = byId("mw-hes-sec");
+    var hsc = byId("mw-hes-sec-custom");
+    var sec = parseInt(tg.hesitation_after_seconds, 10);
+    if (hs && isFinite(sec)) {
+      var presets = [0, 5, 10, 20, 30];
+      if (presets.indexOf(sec) >= 0) hs.value = String(sec);
+      else {
+        hs.value = "custom";
+        if (hsc) hsc.value = String(sec);
+      }
+    }
+    var hc = byId("mw-hes-cond");
+    if (hc && tg.hesitation_condition) hc.value = tg.hesitation_condition;
+    var sc = byId("mw-scope");
+    if (sc && tg.visibility_page_scope) sc.value = tg.visibility_page_scope;
+  }
+
   function init() {
-    if (!byId("page-widget")) return;
+    if (!byId("page-widget") && !byId("mw-widget-name")) return;
     bindReasonReorder();
     wireReasonSimpleSync();
     wireLive();
@@ -373,9 +409,33 @@
     refreshPreview();
   };
 
+  window.maInitWidgetSettingsPage = function () {
+    if (byId("mw-widget-name") && byId("mw-widget-name").getAttribute("data-mw-loaded") === "1") {
+      refreshPreview();
+      return;
+    }
+    fetch("/api/dashboard/widget-panel", { credentials: "same-origin", cache: "no-store" })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (body) {
+        var panel = (body && body.merchant_widget_panel) || body || {};
+        writeBootstrap(panel);
+        populateFromBootstrap(panel);
+        var wn = byId("mw-widget-name");
+        if (wn) wn.setAttribute("data-mw-loaded", "1");
+        init();
+      })
+      .catch(function () {
+        init();
+      });
+  };
+
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
-  } else {
+    document.addEventListener("DOMContentLoaded", function () {
+      if (byId("page-widget")) init();
+    });
+  } else if (byId("page-widget")) {
     init();
   }
 })();

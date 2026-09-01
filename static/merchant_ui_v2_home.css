@@ -479,6 +479,42 @@ body[data-cf-ui="v2"] .cf2-home__recovery-note {
   color: var(--cf2-mute, #73859e);
 }
 
+/* Independent الملخص destination */
+body[data-cf-ui="v2"] .cf2-home--summary .cf2-home__summary-head {
+  margin-bottom: 12px;
+}
+
+body[data-cf-ui="v2"] .cf2-home__summary-period {
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  color: var(--cf2-mute, #73859e);
+}
+
+body[data-cf-ui="v2"] .cf2-home__summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 10px 16px;
+  margin-top: 14px;
+}
+
+body[data-cf-ui="v2"] .cf2-home__summary-item {
+  padding: 8px 10px;
+  border-inline-start: 3px solid rgba(8, 32, 72, 0.14);
+}
+
+body[data-cf-ui="v2"] .cf2-home__summary-label {
+  margin: 0 0 2px;
+  font-size: 0.72rem;
+  color: var(--cf2-mute, #73859e);
+}
+
+body[data-cf-ui="v2"] .cf2-home__summary-value {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--cf2-navy);
+}
+
 /* Optional floor */
 body[data-cf-ui="v2"] .cf2-home__floor {
   margin-top: 10px;

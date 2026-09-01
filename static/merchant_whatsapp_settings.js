@@ -103,8 +103,11 @@
           (isSelected ? " is-selected" : "") +
           '">' +
           '<div class="ma-wa-mode-card-head">' +
+          '<span class="ma-wa-mode-marker" data-cf2-wa-mode="' +
+          (isCartflow ? "cartflow" : "merchant") +
+          '" aria-hidden="true"></span>' +
           '<p class="ma-wa-mode-card-title">' +
-          escHtml(opt.title_ar || opt.label_ar || key) +
+          escHtml(opt.label_ar || opt.title_ar || key) +
           "</p></div>" +
           (opt.subtitle_ar
             ? '<p class="ma-wa-mode-card-subtitle">' + escHtml(opt.subtitle_ar) + "</p>"

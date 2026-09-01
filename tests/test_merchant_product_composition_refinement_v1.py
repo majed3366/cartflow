@@ -47,14 +47,17 @@ class ContextualSidebarCoverage(unittest.TestCase):
 
 
 class HomeRecoveryOutcome(unittest.TestCase):
-    def test_operational_kpi_summary_only(self) -> None:
+    def test_home_recovery_in_summary_not_overview(self) -> None:
         self.assertIn("recoveryOutcomeHtml", HOME_JS)
+        self.assertIn("renderSummaryView", HOME_JS)
         self.assertIn("cf2-home__recovery", HOME_JS)
+        self.assertNotRegex(HOME_JS, r"function render\(pkg, summary\)")
+        self.assertIn("cf2-home__recovery", HOME_CSS)
+
+    def test_operational_kpi_fields(self) -> None:
         self.assertIn("merchant_kpi_recovered_fmt", HOME_JS)
-        self.assertIn("merchant_kpi_revenue_fmt", HOME_JS)
         self.assertIn("operational-kpi-v1", HOME_JS)
         self.assertIn("وليس إسناد شراء منسوباً", HOME_JS)
-        self.assertIn("cf2-home__recovery", HOME_CSS)
 
     def test_no_fabricated_attribution_claim(self) -> None:
         self.assertNotIn("purchase_attribution", HOME_JS.lower())

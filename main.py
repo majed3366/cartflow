@@ -15579,7 +15579,12 @@ def _merchant_recovery_message_history_rows(
             st_cls = "s-attention"
         ts = getattr(lg, "sent_at", None) or getattr(lg, "created_at", None)
         rel = merchant_relative_time_arabic(ts, now_utc=now_utc)
-        msg = (ctx.get("message_body") or getattr(lg, "message", None) or "").strip()
+        from services.merchant_message_presentation_v1 import (  # noqa: PLC0415
+            merchant_visible_message_body,
+        )
+
+        raw_msg = (ctx.get("message_body") or getattr(lg, "message", None) or "").strip()
+        msg = merchant_visible_message_body(raw_msg, status=st)
         if len(msg) > 200:
             msg = msg[:200] + "…"
         step = getattr(lg, "step", None)
@@ -15589,7 +15594,7 @@ def _merchant_recovery_message_history_rows(
             cart_label = (ctx.get("session_id") or getattr(lg, "session_id", None) or "")[
                 :24
             ]
-        full_msg = (ctx.get("message_body") or getattr(lg, "message", None) or "").strip()
+        full_msg = merchant_visible_message_body(raw_msg, status=st)
         if len(full_msg) > 4000:
             full_msg = full_msg[:4000] + "…"
         mtype = (ctx.get("message_type") or getattr(lg, "message_type", None) or "").strip()
