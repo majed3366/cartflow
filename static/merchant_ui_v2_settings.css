@@ -1129,3 +1129,41 @@
 [data-cf-ui="v2"] .cf2-settings__handoff-note {
   display: none !important;
 }
+
+/* Widget reason display order + advanced recovery demotion */
+[data-cf-ui="v2"] .mw-reason-order {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+[data-cf-ui="v2"] .mw-reason-order__item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(26, 35, 50, 0.12);
+  background: rgba(255, 255, 255, 0.55);
+  touch-action: none;
+  user-select: none;
+}
+[data-cf-ui="v2"] .mw-reason-order__item.is-dragging {
+  opacity: 0.55;
+}
+[data-cf-ui="v2"] .mw-reason-order__handle {
+  cursor: grab;
+  letter-spacing: -2px;
+  color: #7a8699;
+  font-size: 14px;
+  padding: 4px;
+}
+[data-cf-ui="v2"] .mw-reason-order__btns {
+  display: inline-flex;
+  gap: 4px;
+}
+[data-cf-ui="v2"] .cf2-rec-advanced > summary {
+  color: #5a6577;
+  font-size: 0.9rem;
+}

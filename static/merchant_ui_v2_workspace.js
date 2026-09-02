@@ -290,21 +290,58 @@
         '" aria-hidden="true"></div>';
     }
 
-    /* Meaning */
+    var ogl =
+      card.operational_guidance_v1 &&
+      typeof card.operational_guidance_v1 === "object"
+        ? card.operational_guidance_v1
+        : null;
+    var oglWs =
+      ogl && ogl.workspace_surface && typeof ogl.workspace_surface === "object"
+        ? ogl.workspace_surface
+        : null;
+    var diagnosisAr = safeAr(
+      (oglWs && oglWs.diagnosis_ar) || card.diagnosis_ar || ""
+    );
+    var whyAr = safeAr((oglWs && oglWs.why_ar) || card.why_ar || "");
+    var recheckAr = safeAr(
+      (oglWs && oglWs.recheck_condition_ar) || card.recheck_condition_ar || ""
+    );
+    var recAr = safeAr(
+      (oglWs && oglWs.recommendation_ar) ||
+        card.operational_guidance_ar ||
+        ""
+    );
+
+    /* Meaning / Diagnosis */
     html +=
       '<section class="cf2-route__node cf2-beat cf2-beat--understanding' +
       nodeState(progress, "understanding") +
       '" data-cf2-node="understanding">';
-    html += '<p class="cf2-beat__label">ماذا يعني</p>';
     html +=
-      '<p class="cf2-beat__body">' + esc(understanding(card)) + "</p></section>";
+      '<p class="cf2-beat__label">' +
+      esc(oglWs ? "التشخيص" : "ماذا يعني") +
+      "</p>";
+    html +=
+      '<p class="cf2-beat__body">' +
+      esc(diagnosisAr || understanding(card)) +
+      "</p>";
+    if (whyAr) {
+      html +=
+        '<p class="cf2-beat__why"><span class="cf2-beat__why-k">لماذا</span> ' +
+        esc(whyAr) +
+        "</p>";
+    }
+    html += "</section>";
 
-    /* Decision mass — readiness */
+    /* Decision mass — recommendation */
     html +=
       '<section class="cf2-route__node cf2-beat cf2-beat--decision' +
       nodeState(progress, "decision") +
       '" data-cf2-node="decision">';
-    html += '<p class="cf2-beat__label">ما يقرره CartFlow</p>';
+    html +=
+      '<p class="cf2-beat__label">' +
+      esc(oglWs ? "التوصية" : "ما يقرره CartFlow") +
+      "</p>";
     var massClass = "cf2-dmass";
     if (mass === "READY") massClass += " is-ready";
     else massClass += " is-forming";
@@ -317,10 +354,10 @@
       '" data-cf2-tension="' +
       esc(tensionAttr) +
       '"><p class="cf2-dmass__text">' +
-      esc(decision) +
+      esc(recAr || decision) +
       "</p></div></section>";
 
-    /* Action terminus */
+    /* Action terminus + recheck */
     html +=
       '<section class="cf2-route__node cf2-beat cf2-beat--action' +
       nodeState(progress, "action") +
@@ -354,11 +391,27 @@
       html +=
         '<div class="cf2-reason__wait" data-cf2-grammar="recovery-wait">' +
         '<p class="cf2-ws__wait-lead">' +
-        esc(safeAr(wait[0], "لا يلزم إجراء الآن — واصل المراقبة.")) +
+        esc(
+          safeAr(
+            (oglWs && oglWs.action_ar) || wait[0],
+            "لا يلزم إجراء الآن — واصل المراقبة."
+          )
+        ) +
         "</p>" +
         '<p class="cf2-ws__wait-note">' +
-        esc(safeAr(wait[1], "سيخبرك CartFlow عندما يصبح القرار جاهزاً.")) +
+        esc(
+          safeAr(
+            recheckAr || wait[1],
+            "سيخبرك CartFlow عندما يصبح القرار جاهزاً."
+          )
+        ) +
         "</p></div>";
+    }
+    if (recheckAr && (actionReady || waitingExt)) {
+      html +=
+        '<p class="cf2-ws__recheck" data-cf2-ogl-recheck="1"><span class="cf2-ws__recheck-k">شرط إعادة الفحص</span> ' +
+        esc(recheckAr) +
+        "</p>";
     }
     html += "</div></section>";
 

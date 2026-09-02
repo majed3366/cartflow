@@ -1,0 +1,67 @@
+{
+  "status": 200,
+  "headers": {
+    "sha": "90d919d850bef1c762bdb75ca80461b6b514c3d4",
+    "renderer": "merchant_ui_v2",
+    "template": "merchant_app_v2.html",
+    "semantic": "semantic-visual-model-v1"
+  },
+  "body": {
+    "ok": true,
+    "canonical": true,
+    "role": "canonical",
+    "git_sha": "90d919d850bef1c762bdb75ca80461b6b514c3d4",
+    "ui_version": "v2",
+    "template_id": "merchant_app_v2.html",
+    "renderer_id": "merchant_ui_v2",
+    "renderer_family": "merchant_ui_v2",
+    "shell_version": "utility-row+global-upbar+contextual-sidebar",
+    "shell_family": "cf2-shell-v1",
+    "home_renderer_version": "CartFlowUiV2Home",
+    "workspace_renderer_version": "CartFlowUiV2Workspace",
+    "home_asset": "merchant_ui_v2_home.js",
+    "workspace_asset": "merchant_ui_v2_workspace.js",
+    "data_home": "/api/dashboard/summary",
+    "data_workspace": "/api/cart-workspace/v1/projection",
+    "setup_build": "ui-setup-v8j-lifecycle-e2e-v1",
+    "selection_source": "default",
+    "route": "/dashboard",
+    "review_bind_route": "/dev/living-store-home-review",
+    "flag": "CARTFLOW_MERCHANT_UI_V2",
+    "cookie": "cf_ui_v2",
+    "query": "cf_ui",
+    "env_raw": null,
+    "visual_system_version": "merchant-visual-system-v1",
+    "figma_parity_contract": "visual-language-constitution-v1",
+    "visual_law_set": "constitution-v1+semantic-visual-model-v1",
+    "figma_identity_parity": "pass",
+    "visual_invariants": [
+      "VIS-INV-01",
+      "VIS-INV-02",
+      "VIS-INV-03",
+      "VIS-INV-04",
+      "VIS-INV-05",
+      "VIS-INV-06",
+      "VIS-INV-07",
+      "VIS-INV-08",
+      "VIS-INV-09",
+      "VIS-INV-10"
+    ],
+    "semantic_model_version": "semantic-visual-model-v1",
+    "merchant_ui_config_version": "merchant-ui-config-parity-v1",
+    "merchant_ui_config_invariant": "MERCHANT-UI-INV-CONFIG-01",
+    "merchant_ui_config_parity_gate": "MERCHANT_UI_PRODUCTION_CONFIG_PARITY_REGRESSION_GATE",
+    "merchant_ui_material_flags": {
+      "CARTFLOW_CART_WORKSPACE_V1": true,
+      "CARTFLOW_MERCHANT_UI_V2": true,
+      "CARTFLOW_CARTS_V2_UI": true
+    },
+    "merchant_ui_production_material_flags": {
+      "CARTFLOW_CART_WORKSPACE_V1": true,
+      "CARTFLOW_MERCHANT_UI_V2": true,
+      "CARTFLOW_CARTS_V2_UI": true
+    },
+    "merchant_ui_config_parity": "pass",
+    "merchant_ui_config_parity_ok": true
+  }
+}

@@ -1,8 +1,10 @@
 # Merchant Recovery Policy Semantics & Configurability V6
 
-**Status:** CANDIDATE — deploy NOT authorized  
+**Status:** DEPLOYED — exact SHA `90d919d850bef1c762bdb75ca80461b6b514c3d4`  
+**Deployment ID:** `4cfb6004-4689-4920-85ec-b952e7cdbc1d`  
 **Base:** `f03383647ed347bf143927b6176e956336a1b5fa`  
-**Cache:** `recv6`
+**Cache:** `recv6`  
+**Founder review:** PENDING  
 
 ## Timing truth (proven)
 
@@ -16,4 +18,4 @@
 
 ## Evidence
 
-`evidence/` — 390 RTL + 1280.
+`evidence/` — candidate review · `production_evidence/` — live production proof · `PRODUCTION_CLOSURE.md`

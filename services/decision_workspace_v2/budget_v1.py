@@ -248,6 +248,40 @@ def apply_decision_workspace_v2_budget(
             "monitor": 0,
         }
 
+    # Operational Guidance Layer V1 — deepen primary card (not Home duplicate).
+    try:
+        from services.operational_guidance_v1 import (  # noqa: PLC0415
+            compose_operational_guidance_v1,
+            project_guidance_onto_workspace_card_v1,
+        )
+
+        stub = {"store_slug": slug}
+        if slug:
+            try:
+                from services.diagnostic_reasoning_v1.snapshot_store_v1 import (  # noqa: PLC0415
+                    read_primary_diagnostic_publication_v1,
+                )
+
+                pub = read_primary_diagnostic_publication_v1(slug)
+                if isinstance(pub, Mapping):
+                    stub["diagnostic_publication_v1"] = pub
+            except Exception:  # noqa: BLE001
+                pass
+        guidance = compose_operational_guidance_v1(stub, store_slug=slug)
+        projection["operational_guidance_v1"] = {
+            "ok": bool(guidance.get("ok")),
+            "guidance_id": guidance.get("guidance_id"),
+            "family": guidance.get("family"),
+            "workspace_surface": dict(guidance.get("workspace_surface") or {}),
+        }
+        if painted and guidance.get("ok"):
+            painted[0] = project_guidance_onto_workspace_card_v1(painted[0], guidance)
+            projection["zone_b"] = painted
+    except Exception:  # noqa: BLE001
+        projection.setdefault(
+            "operational_guidance_v1", {"ok": False, "error": "attach_failed"}
+        )
+
     return projection
 
 

@@ -1,0 +1,312 @@
+{
+  "deployment_id": "4cfb6004-4689-4920-85ec-b952e7cdbc1d",
+  "deployed_sha": "90d919d850bef1c762bdb75ca80461b6b514c3d4",
+  "deploy": {
+    "id": "4cfb6004-4689-4920-85ec-b952e7cdbc1d",
+    "status": "SUCCESS",
+    "createdAt": "2026-09-02T18:33:56.264Z",
+    "staticUrl": "smartreplyai.net",
+    "meta": {
+      "plan": "hobby",
+      "repo": "majed3366/cartflow",
+      "branch": "main",
+      "logsV2": true,
+      "reason": "deploy",
+      "runtime": "V2",
+      "buildOnly": false,
+      "commitHash": "90d919d850bef1c762bdb75ca80461b6b514c3d4",
+      "configFile": "/railway.api.toml",
+      "imageDigest": "sha256:8207021d3b1114a6b72b670ae87bca1687356cfd11938b3581301a5ecc47fb16",
+      "commitAuthor": "majed3366",
+      "volumeMounts": [],
+      "commitMessage": "Clarify Recovery timing truth and CartFlow stage controls V6.\n\nAlign merchant timing labels to absolute-from-abandon stage delays, keep\nreason keys contract-blocked, replace stage-count select, unify recovery\ntypography, and remove merchant-visible internal/developer copy.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "rootDirectory": null,
+      "skipBuildCache": true,
+      "serviceManifest": {
+        "build": {
+          "builder": "DOCKERFILE",
+          "buildCommand": null,
+          "nixpacksPlan": null,
+          "watchPatterns": [],
+          "dockerfilePath": "Dockerfile",
+          "buildEnvironment": "V3",
+          "nixpacksConfigPath": null
+        },
+        "deploy": {
+          "region": null,
+          "runtime": "V2",
+          "numReplicas": 1,
+          "cronSchedule": null,
+          "startCommand": "sh -c 'exec python -m uvicorn cartflow_api:app --host 0.0.0.0 --port \"${PORT:-8000}\"'",
+          "limitOverride": null,
+          "overlapSeconds": null,
+          "drainingSeconds": null,
+          "healthcheckPath": null,
+          "preDeployCommand": null,
+          "sleepApplication": false,
+          "useLegacyStacker": false,
+          "ipv6EgressEnabled": false,
+          "multiRegionConfig": {
+            "europe-west4-drams3a": {
+              "numReplicas": 1
+            }
+          },
+          "requiredMountPath": null,
+          "restartPolicyType": "ON_FAILURE",
+          "healthcheckTimeout": null,
+          "registryCredentials": null,
+          "preDeployTimeoutSeconds": null,
+          "restartPolicyMaxRetries": 10
+        }
+      },
+      "nixpacksProviders": [],
+      "fileServiceManifest": {
+        "build": {
+          "builder": "DOCKERFILE",
+          "dockerfilePath": "Dockerfile"
+        },
+        "deploy": {
+          "startCommand": "sh -c 'exec python -m uvicorn cartflow_api:app --host 0.0.0.0 --port \"${PORT:-8000}\"'"
+        }
+      },
+      "ignoreWatchPatterns": true,
+      "propertyFileMapping": {
+        "build.builder": "$.build.builder",
+        "deploy.startCommand": "$.deploy.startCommand",
+        "build.dockerfilePath": "$.build.dockerfilePath"
+      }
+    }
+  },
+  "scheduler_id": "2b1e5665-ae6e-4e5b-9e8a-aa1b205fedf9",
+  "scheduler_sha": "f91e799d289c99f055ab7edb5cca2063dcd88c9e",
+  "autodeploy": {
+    "enabled": false
+  },
+  "live": {
+    "sha": "90d919d850bef1c762bdb75ca80461b6b514c3d4"
+  },
+  "health_status": 200,
+  "health": {
+    "ok": true,
+    "service": "cartflow",
+    "pool": {
+      "available": true,
+      "pool_impl": "QueuePool",
+      "size": 5,
+      "checked_out": 0,
+      "checked_in": 1,
+      "overflow": -4,
+      "max_connections": 10,
+      "available_slots": 10,
+      "peak_checked_out": 1,
+      "timeout_count": 0,
+      "configured_pool_size": 5,
+      "configured_max_overflow": 5
+    },
+    "holders": [],
+    "holder_count": 0,
+    "engine": {
+      "engine_count": 1,
+      "pool_count": 1,
+      "request_engine_id": 140413699182736,
+      "request_pool_id": 140413699095888,
+      "request_engine_type": "Engine",
+      "request_pool_type": "QueuePool",
+      "instrumented_engine_id": 140413699182736,
+      "same_object": true,
+      "create_engine_runtime_paths": [
+        "extensions.init_database"
+      ],
+      "note": "alembic/env.py create_engine is not imported by the API process"
+    },
+    "database": "ok",
+    "database_name": "cartflow_restore_20260827",
+    "database_host_class": "railway_private"
+  },
+  "ts": "2026-09-02T18:36:11Z",
+  "probes": {
+    "identity": {
+      "status": 200,
+      "headers": {
+        "sha": "90d919d850bef1c762bdb75ca80461b6b514c3d4",
+        "renderer": "merchant_ui_v2",
+        "template": "merchant_app_v2.html",
+        "semantic": "semantic-visual-model-v1"
+      },
+      "body": {
+        "ok": true,
+        "canonical": true,
+        "role": "canonical",
+        "git_sha": "90d919d850bef1c762bdb75ca80461b6b514c3d4",
+        "ui_version": "v2",
+        "template_id": "merchant_app_v2.html",
+        "renderer_id": "merchant_ui_v2",
+        "renderer_family": "merchant_ui_v2",
+        "shell_version": "utility-row+global-upbar+contextual-sidebar",
+        "shell_family": "cf2-shell-v1",
+        "home_renderer_version": "CartFlowUiV2Home",
+        "workspace_renderer_version": "CartFlowUiV2Workspace",
+        "home_asset": "merchant_ui_v2_home.js",
+        "workspace_asset": "merchant_ui_v2_workspace.js",
+        "data_home": "/api/dashboard/summary",
+        "data_workspace": "/api/cart-workspace/v1/projection",
+        "setup_build": "ui-setup-v8j-lifecycle-e2e-v1",
+        "selection_source": "default",
+        "route": "/dashboard",
+        "review_bind_route": "/dev/living-store-home-review",
+        "flag": "CARTFLOW_MERCHANT_UI_V2",
+        "cookie": "cf_ui_v2",
+        "query": "cf_ui",
+        "env_raw": null,
+        "visual_system_version": "merchant-visual-system-v1",
+        "figma_parity_contract": "visual-language-constitution-v1",
+        "visual_law_set": "constitution-v1+semantic-visual-model-v1",
+        "figma_identity_parity": "pass",
+        "visual_invariants": [
+          "VIS-INV-01",
+          "VIS-INV-02",
+          "VIS-INV-03",
+          "VIS-INV-04",
+          "VIS-INV-05",
+          "VIS-INV-06",
+          "VIS-INV-07",
+          "VIS-INV-08",
+          "VIS-INV-09",
+          "VIS-INV-10"
+        ],
+        "semantic_model_version": "semantic-visual-model-v1",
+        "merchant_ui_config_version": "merchant-ui-config-parity-v1",
+        "merchant_ui_config_invariant": "MERCHANT-UI-INV-CONFIG-01",
+        "merchant_ui_config_parity_gate": "MERCHANT_UI_PRODUCTION_CONFIG_PARITY_REGRESSION_GATE",
+        "merchant_ui_material_flags": {
+          "CARTFLOW_CART_WORKSPACE_V1": true,
+          "CARTFLOW_MERCHANT_UI_V2": true,
+          "CARTFLOW_CARTS_V2_UI": true
+        },
+        "merchant_ui_production_material_flags": {
+          "CARTFLOW_CART_WORKSPACE_V1": true,
+          "CARTFLOW_MERCHANT_UI_V2": true,
+          "CARTFLOW_CARTS_V2_UI": true
+        },
+        "merchant_ui_config_parity": "pass",
+        "merchant_ui_config_parity_ok": true
+      }
+    },
+    "desktop_home": {
+      "ui": "v2",
+      "summary": true
+    },
+    "desktop_workspace": {
+      "ui": "v2"
+    },
+    "desktop_carts": {
+      "ui": "v2"
+    },
+    "desktop_comms": {
+      "ui": "v2",
+      "mockVisible": false
+    },
+    "desktop_account": {
+      "store": "Cartflow",
+      "plan": "الباقة: Starter · نشطة",
+      "packagesBtn": true,
+      "v1": false
+    },
+    "desktop_packages": {
+      "compose": "v5",
+      "cards": 3,
+      "current": true,
+      "fakePay": false,
+      "ui": "v2"
+    },
+    "desktop_settings": {
+      "ui": "v2",
+      "vip": true,
+      "ataba": false,
+      "oldShellCopy": false,
+      "v2Jargon": false
+    },
+    "desktop_recovery": {
+      "continuum": true,
+      "stageOpts": 21,
+      "stageActive": true,
+      "nativeVisible": false,
+      "delayLabel": true,
+      "fallbackNote": true,
+      "oldFirstMsg": false,
+      "oldShellCopy": false,
+      "v2Jargon": false,
+      "reasonNote": true,
+      "enableCb": true,
+      "msgSurface": true,
+      "restore": true,
+      "save": true,
+      "picker": 7,
+      "font": "Tajawal, \"Segoe UI\", Tahoma, sans-serif",
+      "v1": false
+    },
+    "mobile_home": {
+      "ui": "v2",
+      "summary": false
+    },
+    "mobile_workspace": {
+      "ui": "v2"
+    },
+    "mobile_carts": {
+      "ui": "v2"
+    },
+    "mobile_comms": {
+      "ui": "v2",
+      "mockVisible": false
+    },
+    "mobile_account": {
+      "store": "Cartflow",
+      "plan": "الباقة: Starter · نشطة",
+      "packagesBtn": true,
+      "v1": false
+    },
+    "mobile_packages": {
+      "compose": "v5",
+      "cards": 3,
+      "current": true,
+      "fakePay": false,
+      "ui": "v2"
+    },
+    "mobile_settings": {
+      "ui": "v2",
+      "vip": true,
+      "ataba": false,
+      "oldShellCopy": false,
+      "v2Jargon": false
+    },
+    "mobile_recovery": {
+      "continuum": true,
+      "stageOpts": 21,
+      "stageActive": true,
+      "nativeVisible": false,
+      "delayLabel": true,
+      "fallbackNote": true,
+      "oldFirstMsg": false,
+      "oldShellCopy": false,
+      "v2Jargon": false,
+      "reasonNote": true,
+      "enableCb": true,
+      "msgSurface": true,
+      "restore": true,
+      "save": true,
+      "picker": 7,
+      "font": "Tajawal, \"Segoe UI\", Tahoma, sans-serif",
+      "v1": false
+    }
+  },
+  "verdict": {
+    "server_sha": true,
+    "renderer": true,
+    "template": true,
+    "semantic": true,
+    "parity": true,
+    "autodeploy_off": true,
+    "scheduler_unchanged": true,
+    "queuepool_ok": true
+  }
+}

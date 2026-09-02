@@ -1,0 +1,18 @@
+{
+  "ts": "2026-09-02T19:46:35Z",
+  "checks": {
+    "aaraf_alan_count": 0,
+    "home_ogl_markers": true,
+    "workspace_ogl": true,
+    "first_message_label_gone": true,
+    "fallback_primary_gone": true,
+    "advanced_present": true,
+    "internal_timing_copy": 0,
+    "reason_order_ui": true,
+    "widget_drag_touch": true,
+    "guidance_insufficient_ok": true,
+    "guidance_shipping_ok": true,
+    "screenshots": true
+  },
+  "pass": true
+}

@@ -29,15 +29,127 @@
     el.textContent = JSON.stringify(obj);
   }
 
+  var DEFAULT_REASON_ORDER = [
+    "price",
+    "quality",
+    "shipping",
+    "delivery",
+    "warranty",
+    "other",
+  ];
+  var REASON_LABELS = {
+    price: "السعر",
+    quality: "الجودة",
+    shipping: "الشحن",
+    delivery: "مدة التوصيل",
+    warranty: "الضمان",
+    other: "سبب آخر",
+  };
+
   function reasonOrderKeys() {
+    var list = byId("mw-reason-list");
+    if (list) {
+      var fromList = [];
+      list.querySelectorAll("[data-mw-reason-key]").forEach(function (el) {
+        var k = (el.getAttribute("data-mw-reason-key") || "").trim().toLowerCase();
+        if (k && fromList.indexOf(k) < 0) fromList.push(k);
+      });
+      if (fromList.length) return fromList;
+    }
     var tb = byId("mw-reason-tbody");
-    if (!tb) return [];
-    var out = [];
-    tb.querySelectorAll(".mw-reason-key").forEach(function (inp) {
-      var k = (inp.value || "").trim().toLowerCase();
-      if (k) out.push(k);
+    if (tb) {
+      var out = [];
+      tb.querySelectorAll(".mw-reason-key").forEach(function (inp) {
+        var k = (inp.value || "").trim().toLowerCase();
+        if (k) out.push(k);
+      });
+      if (out.length) return out;
+    }
+    /* Preserve persisted order when UI not painted yet. */
+    var b = readBootstrap() || {};
+    var t = (b.trigger && b.trigger.reason_display_order) || b.reason_display_order;
+    if (Array.isArray(t) && t.length) {
+      return t
+        .map(function (x) {
+          return String(x || "").trim().toLowerCase();
+        })
+        .filter(Boolean);
+    }
+    return DEFAULT_REASON_ORDER.slice();
+  }
+
+  function syncHiddenReasonTbody(order, enabledMap) {
+    var tb = byId("mw-reason-tbody");
+    if (!tb) return;
+    var keys = order && order.length ? order : DEFAULT_REASON_ORDER;
+    var html = "";
+    keys.forEach(function (key) {
+      var on = enabledMap && Object.prototype.hasOwnProperty.call(enabledMap, key)
+        ? !!enabledMap[key]
+        : true;
+      html +=
+        '<tr data-mw-reason-row>' +
+        '<td><input type="hidden" class="mw-reason-key" value="' +
+        key +
+        '">' +
+        '<span class="mw-reason-label-fixed">' +
+        (REASON_LABELS[key] || key) +
+        "</span></td>" +
+        '<td><input class="mw-reason-on" type="checkbox"' +
+        (on ? " checked" : "") +
+        "></td></tr>";
     });
-    return out;
+    tb.innerHTML = html;
+  }
+
+  function paintReasonOrderUi(b) {
+    var list = byId("mw-reason-list");
+    if (!list) return;
+    var trigger = (b && b.trigger) || {};
+    var order = Array.isArray(trigger.reason_display_order)
+      ? trigger.reason_display_order.slice()
+      : [];
+    var seen = {};
+    var keys = [];
+    order.forEach(function (x) {
+      var k = String(x || "").trim().toLowerCase();
+      if (DEFAULT_REASON_ORDER.indexOf(k) >= 0 && !seen[k]) {
+        seen[k] = true;
+        keys.push(k);
+      }
+    });
+    DEFAULT_REASON_ORDER.forEach(function (k) {
+      if (!seen[k]) keys.push(k);
+    });
+    var enabledMap = {};
+    var rows = (b && b.reason_rows) || [];
+    if (Array.isArray(rows)) {
+      rows.forEach(function (r) {
+        if (!r || !r.key) return;
+        enabledMap[String(r.key).toLowerCase()] = r.enabled !== false;
+      });
+    }
+    var html = "";
+    keys.forEach(function (key) {
+      var on = enabledMap[key] !== false;
+      html +=
+        '<li class="mw-reason-order__item" data-mw-reason-key="' +
+        key +
+        '" draggable="true" tabindex="0">' +
+        '<span class="mw-reason-order__handle" aria-hidden="true">⋮⋮</span>' +
+        '<label class="mw-reason-order__lab">' +
+        '<input type="checkbox" class="mw-reason-on mw-reason-order__on"' +
+        (on ? " checked" : "") +
+        "> " +
+        (REASON_LABELS[key] || key) +
+        "</label>" +
+        '<span class="mw-reason-order__btns">' +
+        '<button type="button" class="ma-fw-mini" data-mw-reason-up title="تحريك لأعلى">↑</button>' +
+        '<button type="button" class="ma-fw-mini" data-mw-reason-down title="تحريك لأسفل">↓</button>' +
+        "</span></li>";
+    });
+    list.innerHTML = html;
+    syncHiddenReasonTbody(keys, enabledMap);
   }
 
   function collectReasonTemplates() {
@@ -242,23 +354,109 @@
   }
 
   function bindReasonReorder() {
+    var list = byId("mw-reason-list");
     var tb = byId("mw-reason-tbody");
-    if (!tb || tb.getAttribute("data-mw-bound") === "1") return;
-    tb.setAttribute("data-mw-bound", "1");
-    tb.addEventListener("click", function (ev) {
-      var btn = ev.target.closest("[data-mw-reason-up],[data-mw-reason-down]");
-      if (!btn || !tb.contains(btn)) return;
-      var tr = btn.closest("tr[data-mw-reason-row]");
-      if (!tr) return;
-      if (btn.hasAttribute("data-mw-reason-up")) {
-        var prev = tr.previousElementSibling;
-        if (prev) tb.insertBefore(tr, prev);
-      } else {
-        var next = tr.nextElementSibling;
-        if (next) tb.insertBefore(next, tr);
-      }
+    var root = list || tb;
+    if (!root || root.getAttribute("data-mw-bound") === "1") return;
+    root.setAttribute("data-mw-bound", "1");
+
+    function syncFromList() {
+      if (!list) return;
+      var order = [];
+      var enabledMap = {};
+      list.querySelectorAll("[data-mw-reason-key]").forEach(function (li) {
+        var k = (li.getAttribute("data-mw-reason-key") || "").trim().toLowerCase();
+        if (!k) return;
+        order.push(k);
+        var on = li.querySelector(".mw-reason-order__on");
+        enabledMap[k] = on ? !!on.checked : true;
+      });
+      syncHiddenReasonTbody(order, enabledMap);
       refreshPreview();
+    }
+
+    root.addEventListener("click", function (ev) {
+      var btn = ev.target.closest("[data-mw-reason-up],[data-mw-reason-down]");
+      if (!btn || !root.contains(btn)) return;
+      var item = btn.closest("[data-mw-reason-key],tr[data-mw-reason-row]");
+      if (!item) return;
+      var parent = item.parentNode;
+      if (btn.hasAttribute("data-mw-reason-up")) {
+        var prev = item.previousElementSibling;
+        if (prev) parent.insertBefore(item, prev);
+      } else {
+        var next = item.nextElementSibling;
+        if (next) parent.insertBefore(next, item);
+      }
+      syncFromList();
+      if (!list) refreshPreview();
     });
+
+    if (list) {
+      list.addEventListener("change", function (ev) {
+        if (ev.target && ev.target.classList.contains("mw-reason-order__on")) {
+          syncFromList();
+        }
+      });
+      var dragEl = null;
+      list.addEventListener("dragstart", function (ev) {
+        dragEl = ev.target.closest("[data-mw-reason-key]");
+        if (!dragEl) return;
+        dragEl.classList.add("is-dragging");
+        try {
+          ev.dataTransfer.setData("text/plain", dragEl.getAttribute("data-mw-reason-key") || "");
+          ev.dataTransfer.effectAllowed = "move";
+        } catch (e) {}
+      });
+      list.addEventListener("dragend", function () {
+        if (dragEl) dragEl.classList.remove("is-dragging");
+        dragEl = null;
+        syncFromList();
+      });
+      list.addEventListener("dragover", function (ev) {
+        ev.preventDefault();
+        var over = ev.target.closest("[data-mw-reason-key]");
+        if (!dragEl || !over || over === dragEl) return;
+        var rect = over.getBoundingClientRect();
+        var before = ev.clientY < rect.top + rect.height / 2;
+        if (before) list.insertBefore(dragEl, over);
+        else list.insertBefore(dragEl, over.nextElementSibling);
+      });
+      /* Touch-safe reorder: long-press move via pointer events */
+      var touchItem = null;
+      var touchY = 0;
+      list.addEventListener(
+        "touchstart",
+        function (ev) {
+          var handle = ev.target.closest(".mw-reason-order__handle,[data-mw-reason-key]");
+          if (!handle) return;
+          touchItem = handle.closest("[data-mw-reason-key]");
+          touchY = ev.touches[0].clientY;
+        },
+        { passive: true }
+      );
+      list.addEventListener(
+        "touchmove",
+        function (ev) {
+          if (!touchItem) return;
+          var y = ev.touches[0].clientY;
+          var dy = y - touchY;
+          if (Math.abs(dy) < 18) return;
+          var sibling =
+            dy < 0 ? touchItem.previousElementSibling : touchItem.nextElementSibling;
+          if (!sibling) return;
+          if (dy < 0) list.insertBefore(touchItem, sibling);
+          else list.insertBefore(sibling, touchItem);
+          touchY = y;
+          ev.preventDefault();
+        },
+        { passive: false }
+      );
+      list.addEventListener("touchend", function () {
+        if (touchItem) syncFromList();
+        touchItem = null;
+      });
+    }
   }
 
   function showSaveMsg(text, ok) {
@@ -382,10 +580,12 @@
     if (hc && tg.hesitation_condition) hc.value = tg.hesitation_condition;
     var sc = byId("mw-scope");
     if (sc && tg.visibility_page_scope) sc.value = tg.visibility_page_scope;
+    paintReasonOrderUi(b);
   }
 
   function init() {
     if (!byId("page-widget") && !byId("mw-widget-name")) return;
+    paintReasonOrderUi(readBootstrap() || {});
     bindReasonReorder();
     wireReasonSimpleSync();
     wireLive();
@@ -399,10 +599,11 @@
   window.cartflowMerchantWidgetPanelRefresh = refreshPreview;
 
   window.cartflowMerchantWidgetPanelRebindReasons = function () {
+    var list = byId("mw-reason-list");
     var tb = byId("mw-reason-tbody");
-    if (tb) {
-      tb.removeAttribute("data-mw-bound");
-    }
+    if (list) list.removeAttribute("data-mw-bound");
+    if (tb) tb.removeAttribute("data-mw-bound");
+    paintReasonOrderUi(readBootstrap() || {});
     bindReasonReorder();
     wireReasonSimpleSync();
     syncSimpleFromTable();

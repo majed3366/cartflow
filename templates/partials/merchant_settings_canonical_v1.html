@@ -149,28 +149,24 @@
           </header>
           <div class="cf2-rec-summary__stats" id="ma-recovery-policy-summary" aria-live="polite">
             <div class="cf2-rec-stat">
-              <span class="cf2-rec-stat__label">موعد أول رسالة</span>
+              <span class="cf2-rec-stat__label">أقرب إرسال من القوالب</span>
               <span class="cf2-rec-stat__value" id="ma-rec-sum-delay">—</span>
-            </div>
-            <div class="cf2-rec-stat">
-              <span class="cf2-rec-stat__label">المحاولات الاحتياطية</span>
-              <span class="cf2-rec-stat__value" id="ma-rec-sum-attempts">—</span>
             </div>
             <div class="cf2-rec-stat">
               <span class="cf2-rec-stat__label">أسباب مفعّلة</span>
               <span class="cf2-rec-stat__value" id="ma-rec-sum-reasons">—</span>
             </div>
           </div>
-          <details class="cf2-rec-summary__edit">
-            <summary>إعدادات احتياطية للمسارات بدون قالب سبب</summary>
-            <p class="cf2-rec-summary__edit-note">هذه القيم لا تغيّر مواعيد المراحل داخل قوالب الأسباب. مواعيد الإرسال الفعلية تُضبط أسفل كل سبب.</p>
+          <details class="cf2-rec-summary__edit cf2-rec-advanced" data-cf2-rec-advanced="1">
+            <summary>إعدادات متقدمة</summary>
+            <p class="cf2-rec-summary__edit-note">يُستخدم فقط عندما لا يوجد قالب سبب قابل للتطبيق. لا يغيّر مواعيد المراحل داخل قوالب الأسباب.</p>
             <form id="ma-recovery-policy-form" class="ma-fw-form cf2-rec-policy-form" autocomplete="off">
               <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
-                <label class="ma-fw-label" for="ma-recovery-delay">حد الانتظار الاحتياطي</label>
+                <label class="ma-fw-label" for="ma-recovery-delay">مدة الانتظار العامة</label>
                 <input class="ma-fw-input" id="ma-recovery-delay" name="recovery_delay" type="number" min="1" step="1" dir="ltr">
               </div>
               <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
-                <label class="ma-fw-label" for="ma-recovery-delay-unit">وحدة حد الانتظار الاحتياطي</label>
+                <label class="ma-fw-label" for="ma-recovery-delay-unit">وحدة المدة</label>
                 <select class="ma-fw-input" id="ma-recovery-delay-unit" name="recovery_delay_unit">
                   <option value="minutes">دقائق</option>
                   <option value="hours">ساعة</option>
@@ -178,16 +174,17 @@
                 </select>
               </div>
               <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
-                <span class="ma-fw-label">عدد محاولات الاسترجاع الاحتياطية</span>
+                <span class="ma-fw-label">عدد محاولات الاسترجاع عند غياب قالب السبب</span>
                 <div class="ma-recovery-attempts" role="group" aria-label="عدد المحاولات">
                   <label class="ma-fw-check"><input type="radio" name="ma_recovery_attempts_pick" value="1"> 1</label>
                   <label class="ma-fw-check"><input type="radio" name="ma_recovery_attempts_pick" value="2"> 2</label>
                   <label class="ma-fw-check"><input type="radio" name="ma_recovery_attempts_pick" value="3"> 3</label>
                 </div>
                 <input type="hidden" id="ma-recovery-attempts" name="recovery_attempts" value="1">
+                <span class="cf2-rec-stat__value" id="ma-rec-sum-attempts" hidden>—</span>
               </div>
               <div class="ma-fw-actions">
-                <button type="submit" class="ma-fw-save" id="ma-recovery-policy-save">حفظ التوقيت العام</button>
+                <button type="submit" class="ma-fw-save" id="ma-recovery-policy-save">حفظ الإعدادات المتقدمة</button>
               </div>
             </form>
           </details>
@@ -297,6 +294,16 @@
                   </select>
                 </div>
               </details>
+            </div>
+            <div class="setting-card ma-fw-card">
+              <div class="setting-title">ترتيب أسباب التردد في الودجيت</div>
+              <div class="setting-desc">اسحب أو استخدم الأسهم لترتيب ما يراه العميل. المفاتيح ثابتة — لا حذف ولا إعادة تسمية.</div>
+              <ul id="mw-reason-list" class="mw-reason-order" data-cf2-reason-order="1" aria-label="ترتيب أسباب التردد">
+                <!-- rows filled by merchant_widget_panel.js -->
+              </ul>
+              <table class="ma-fw-table" hidden aria-hidden="true">
+                <tbody id="mw-reason-tbody"></tbody>
+              </table>
             </div>
             <div class="ma-fw-actions">
               <button type="button" class="ma-fw-save" id="mw-save-btn">حفظ إعدادات الودجيت</button>

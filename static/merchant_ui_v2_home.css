@@ -704,3 +704,23 @@ body[data-cf-ui="v2"] .cf2-home__item-body {
     grid-template-columns: 1fr;
   }
 }
+
+/* Operational Guidance Layer V1 */
+body[data-cf-ui="v2"] .cf2-home__ogl {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 4px;
+}
+body[data-cf-ui="v2"] .cf2-home__ogl-row {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: var(--cf2-ink, #1a2332);
+}
+body[data-cf-ui="v2"] .cf2-home__ogl-k {
+  display: inline-block;
+  font-weight: 700;
+  margin-inline-end: 6px;
+  color: var(--cf2-muted, #5a6577);
+  font-size: 0.82rem;
+}

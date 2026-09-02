@@ -131,10 +131,14 @@
   /** Momentum is NOT_CURRENTLY_SUPPORTED — never emit a semantic journey. */
   /** Page-specific composition: no shared CO clause / attention glyph as page badge. */
 
-  function tierLabel(tier) {
-    if (tier === "know") return "اعرف الآن";
-    if (tier === "watch") return "راقب";
-    return "ما زال يتعلّم";
+  function roleLabelForSection(sec) {
+    var id = String((sec && sec.id) || "");
+    if (id === "health") return "الحالة";
+    if (id === "decisions") return "ما يحتاج انتباهًا";
+    if (id === "situations" || id === "observations") return "الأثر";
+    if (id === "carts") return "ما تغيّر";
+    if (id === "communication") return "الخطوة التالية";
+    return "ما تغيّر";
   }
 
   function satelliteDistance(tier) {
@@ -156,7 +160,7 @@
       esc(satelliteDistance(tier)) +
       '">';
     html +=
-      '<p class="cf2-home__tier">' + esc(tierLabel(tier)) + "</p>";
+      '<p class="cf2-home__tier">' + esc(roleLabelForSection(sec)) + "</p>";
     html +=
       '<h3 class="cf2-home__monitor-title">' +
       esc(sec.title_ar || "") +
@@ -178,7 +182,7 @@
       esc(tier) +
       '">';
     html +=
-      '<p class="cf2-home__tier">' + esc(tierLabel(tier)) + "</p>";
+      '<p class="cf2-home__tier">' + esc(roleLabelForSection(sec)) + "</p>";
     html +=
       '<h3 class="cf2-home__item-title">' + esc(sec.title_ar || "") + "</h3>";
     if (diagnosis) {
@@ -258,6 +262,22 @@
     return html;
   }
 
+  function guidanceHomeSurface(pkg) {
+    var g =
+      pkg && pkg.operational_guidance_v1 && typeof pkg.operational_guidance_v1 === "object"
+        ? pkg.operational_guidance_v1
+        : null;
+    if (!g || !g.ok) return null;
+    var hs = g.home_surface && typeof g.home_surface === "object" ? g.home_surface : null;
+    if (!hs) return null;
+    var see = String(hs.what_we_see_ar || "").trim();
+    var means = String(hs.what_it_means_ar || "").trim();
+    var doNow = String(hs.what_to_do_now_ar || "").trim();
+    var recheck = String(hs.when_to_recheck_ar || "").trim();
+    if (!see && !means && !doNow) return null;
+    return { see: see, means: means, doNow: doNow, recheck: recheck };
+  }
+
   function render(pkg) {
     var sections = Array.isArray(pkg.sections) ? pkg.sections : [];
     if (!sections.length) {
@@ -272,8 +292,9 @@
     }
     var parts = split(sections);
     var lang = L();
+    var guide = guidanceHomeSurface(pkg);
     var html =
-      '<section class="cf2-home" data-cf2="home-stage-closure-v1" data-cf2-grammar="attention-gravity" data-cf2-model="semantic-visual-model-v1" data-cf2-organism="gravity-well" data-cf2-composition="page-specific-v1">';
+      '<section class="cf2-home" data-cf2="home-stage-closure-v1" data-cf2-grammar="attention-gravity" data-cf2-model="semantic-visual-model-v1" data-cf2-organism="gravity-well" data-cf2-composition="page-specific-v1" data-cf2-ogl="v1">';
     html += sceneSpine();
 
     if (!parts.primary) {
@@ -342,50 +363,82 @@
     html += '<div class="cf2-home__lead">';
     html += '<div class="cf2-home__lead-text">';
     html += '<p class="cf2-home__lane">مركز الجاذبية</p>';
-    html += '<p class="cf2-home__eyebrow">الأهم الآن</p>';
+    html += '<p class="cf2-home__eyebrow">ما الذي أحتاج فعله الآن؟</p>';
     html +=
       '<h2 class="cf2-home__title">' + esc(p.title_ar || "") + "</h2>";
     html += "</div></div>";
 
-    if (why) {
-      html += '<p class="cf2-home__why">' + esc(why) + "</p>";
+    if (guide) {
+      html +=
+        '<div class="cf2-home__ogl" data-cf2-ogl-home="1">';
+      if (guide.see) {
+        html +=
+          '<p class="cf2-home__ogl-row"><span class="cf2-home__ogl-k">ما نراه</span> ' +
+          esc(guide.see) +
+          "</p>";
+      }
+      if (guide.means) {
+        html +=
+          '<p class="cf2-home__ogl-row"><span class="cf2-home__ogl-k">ماذا يعني</span> ' +
+          esc(guide.means) +
+          "</p>";
+      }
+      if (guide.doNow) {
+        html +=
+          '<p class="cf2-home__ogl-row"><span class="cf2-home__ogl-k">ماذا تفعل الآن</span> ' +
+          esc(guide.doNow) +
+          "</p>";
+      }
+      if (guide.recheck) {
+        html +=
+          '<p class="cf2-home__ogl-row"><span class="cf2-home__ogl-k">متى تعيد الفحص</span> ' +
+          esc(guide.recheck) +
+          "</p>";
+      }
+      html += "</div>";
+    } else {
+      if (why) {
+        html += '<p class="cf2-home__why">' + esc(why) + "</p>";
+      }
+
+      html +=
+        '<div class="cf2-home__evidence" data-cf2-density="' +
+        esc(String(density || "NEUTRAL").toLowerCase()) +
+        '">';
+      if (confidence) {
+        html +=
+          '<p class="cf2-home__confidence">' + esc(confidence) + "</p>";
+      }
+      if (
+        silence !== "QUIET" &&
+        lang &&
+        lang.evidenceFieldFromSufficiency &&
+        density !== "NEUTRAL"
+      ) {
+        html +=
+          '<div class="cf2-home__field" aria-hidden="true">' +
+          lang.evidenceFieldFromSufficiency(density) +
+          "</div>";
+      }
+      html += "</div>";
+
+      html +=
+        '<div class="cf2-home__stance cf2-terminus" data-cf2-wait="' +
+        esc(sem ? String(sem.wait_kind || "UNKNOWN").toLowerCase() : "unknown") +
+        '">';
+      html +=
+        '<p class="cf2-home__stance-label">' +
+        esc(
+          sem && sem.evidence_sufficiency === "INSUFFICIENT"
+            ? "الوضع الآن"
+            : "ماذا تفعل؟"
+        ) +
+        "</p>";
+      html +=
+        '<p class="cf2-home__stance-body">' + esc(action) + "</p>";
+      html += "</div>";
     }
 
-    html +=
-      '<div class="cf2-home__evidence" data-cf2-density="' +
-      esc(String(density || "NEUTRAL").toLowerCase()) +
-      '">';
-    if (confidence) {
-      html +=
-        '<p class="cf2-home__confidence">' + esc(confidence) + "</p>";
-    }
-    if (
-      silence !== "QUIET" &&
-      lang &&
-      lang.evidenceFieldFromSufficiency &&
-      density !== "NEUTRAL"
-    ) {
-      html +=
-        '<div class="cf2-home__field" aria-hidden="true">' +
-        lang.evidenceFieldFromSufficiency(density) +
-        "</div>";
-    }
-    html += "</div>";
-
-    html +=
-      '<div class="cf2-home__stance cf2-terminus" data-cf2-wait="' +
-      esc(sem ? String(sem.wait_kind || "UNKNOWN").toLowerCase() : "unknown") +
-      '">';
-    html +=
-      '<p class="cf2-home__stance-label">' +
-      esc(
-        sem && sem.evidence_sufficiency === "INSUFFICIENT"
-          ? "الوضع الآن"
-          : "ماذا تفعل؟"
-      ) +
-      "</p>";
-    html +=
-      '<p class="cf2-home__stance-body">' + esc(action) + "</p>";
     if (href) {
       var btnClass =
         sem && sem.evidence_sufficiency === "INSUFFICIENT"
@@ -404,7 +457,6 @@
         esc(btnLabel) +
         "</a></div>";
     }
-    html += "</div>";
     html += "</div>";
 
     /* ——— Monitoring: embedded continuation, not a sidebar column ——— */
@@ -467,6 +519,21 @@
       root.innerHTML =
         '<p class="cf2-empty">تعذّر تحميل معرفة المتجر.</p>';
       return false;
+    }
+    /* Prefer top-level guidance when HES nested copy is slim. */
+    if (
+      summary &&
+      summary.operational_guidance_v1 &&
+      summary.operational_guidance_v1.ok &&
+      (!pkg.operational_guidance_v1 || !pkg.operational_guidance_v1.ok)
+    ) {
+      pkg = Object.assign({}, pkg, {
+        operational_guidance_v1: {
+          ok: true,
+          home_surface:
+            (summary.operational_guidance_v1.home_surface) || {},
+        },
+      });
     }
     root.innerHTML = render(pkg);
     return true;

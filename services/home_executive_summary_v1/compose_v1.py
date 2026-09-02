@@ -825,6 +825,20 @@ def attach_home_executive_summary_to_summary_v1(
             )
         pkg = build_home_executive_summary_v1(summary, environ=environ)
         summary["home_executive_summary_v1"] = pkg
+        try:
+            from services.operational_guidance_v1 import (  # noqa: PLC0415
+                attach_operational_guidance_to_summary_v1,
+            )
+
+            attach_operational_guidance_to_summary_v1(
+                summary,
+                store_slug=str(summary.get("store_slug") or ""),
+            )
+        except Exception:  # noqa: BLE001
+            summary.setdefault(
+                "operational_guidance_v1",
+                {"ok": False, "error": "attach_failed"},
+            )
     except Exception:  # noqa: BLE001
         summary["home_executive_summary_v1"] = {
             "ok": False,

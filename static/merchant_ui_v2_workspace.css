@@ -914,3 +914,17 @@ body[data-cf-ui="v2"]
     font-size: 0.82rem;
   }
 }
+
+body[data-cf-ui="v2"] .cf2-beat__why,
+body[data-cf-ui="v2"] .cf2-ws__recheck {
+  margin: 8px 0 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+body[data-cf-ui="v2"] .cf2-beat__why-k,
+body[data-cf-ui="v2"] .cf2-ws__recheck-k {
+  font-weight: 700;
+  margin-inline-end: 6px;
+  color: #5a6577;
+  font-size: 0.8rem;
+}

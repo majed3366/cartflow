@@ -1,0 +1,38 @@
+{
+  "candidate_sha": "90d919d850bef1c762bdb75ca80461b6b514c3d4",
+  "probes": {
+    "desktop": {
+      "continuum": true,
+      "stageOpts": 21,
+      "delayLabel": true,
+      "oldAmbiguity": false,
+      "noOldShell": true,
+      "noV2Jargon": true,
+      "reasonNote": true,
+      "restore": true,
+      "msgSurface": true,
+      "font": "Tajawal, \"Segoe UI\", Tahoma, sans-serif"
+    },
+    "desktop_pkg": {
+      "compose": "v5",
+      "cards": 3
+    },
+    "mobile": {
+      "continuum": true,
+      "stageOpts": 21,
+      "delayLabel": true,
+      "oldAmbiguity": false,
+      "noOldShell": true,
+      "noV2Jargon": true,
+      "reasonNote": true,
+      "restore": true,
+      "msgSurface": true,
+      "font": "Tajawal, \"Segoe UI\", Tahoma, sans-serif"
+    },
+    "mobile_pkg": {
+      "compose": "v5",
+      "cards": 3
+    }
+  },
+  "ts": "2026-09-02T17:14:22Z"
+}
