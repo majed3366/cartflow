@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="/static/merchant_ui_v2_workspace.css?v={{ merchant_setup_render_build | default('unknown') }}-wscimfp1-langrest1-semvis1-psg1-rdfix1-pvfix1">
 <link rel="stylesheet" href="/static/merchant_ui_v2_carts.css?v={{ merchant_setup_render_build | default('unknown') }}-cartsempty1-assim1-resid1-psg1-rdfix1-pvfix1">
 <link rel="stylesheet" href="/static/merchant_ui_v2_comms.css?v={{ merchant_setup_render_build | default('unknown') }}-commshier1-assim1-resid1-psg1-rdfix1-pvfix1-mpcr1">
-<link rel="stylesheet" href="/static/merchant_ui_v2_settings.css?v={{ merchant_setup_render_build | default('unknown') }}-nvis1-assim1-resid1-psg1-rdfix1-pvfix1-setcomp2-iarec3">
+<link rel="stylesheet" href="/static/merchant_ui_v2_settings.css?v={{ merchant_setup_render_build | default('unknown') }}-nvis1-assim1-resid1-psg1-rdfix1-pvfix1-setcomp2-iarec3-recv4">
 </head>
 <body data-cf-ui="v2" data-cf-merchant-app="1">
 <div class="cf2-root">
@@ -107,6 +107,11 @@
             {% include "partials/merchant_settings_canonical_v1.html" %}
           </div>
         </section>
+        <section class="cf2-page" data-cf2-page="packages" hidden aria-label="الباقات">
+          <div id="cf2-packages-root" aria-live="polite">
+            <p class="cf2-loading">جاري تحميل الباقات…</p>
+          </div>
+        </section>
       </div>
     </main>
   </div>
@@ -130,7 +135,7 @@
   <div class="cf2-drawer__section">
     <p class="cf2-drawer__label">الحساب</p>
     <button type="button" class="cf2-drawer__item" data-cf2-util="settings-store">الملف</button>
-    <button type="button" class="cf2-drawer__item" data-cf2-util="settings-plan">الباقة</button>
+    <button type="button" class="cf2-drawer__item" data-cf2-util="packages">الباقات</button>
     <a class="cf2-drawer__item" href="/logout">تسجيل الخروج</a>
   </div>
 </aside>
@@ -150,10 +155,11 @@
 <script defer src="/static/merchant_whatsapp_connect.js?v={{ merchant_setup_render_build | default('unknown') }}-setcomp1"></script>
 <script defer src="/static/merchant_vip_settings.js?v={{ merchant_setup_render_build | default('unknown') }}-setcomp1-iarec3"></script>
 <script defer src="/static/merchant_general_settings.js?v={{ merchant_setup_render_build | default('unknown') }}-setcomp1"></script>
-<script defer src="/static/merchant_recovery_policy_settings.js?v={{ merchant_setup_render_build | default('unknown') }}-setcomp1"></script>
-<script defer src="/static/merchant_trigger_templates.js?v={{ merchant_setup_render_build | default('unknown') }}-setcomp2"></script>
+<script defer src="/static/merchant_recovery_policy_settings.js?v={{ merchant_setup_render_build | default('unknown') }}-setcomp1-recv4"></script>
+<script defer src="/static/merchant_trigger_templates.js?v={{ merchant_setup_render_build | default('unknown') }}-setcomp2-recv4"></script>
 <script defer src="/static/merchant_widget_panel.js?v={{ merchant_setup_render_build | default('unknown') }}-setcomp2"></script>
-<script defer src="/static/merchant_ui_v2_settings.js?v={{ merchant_setup_render_build | default('unknown') }}-qpool1-psg1-rdfix1-pvfix1-mpcr1-setcomp2-iarec3"></script>
-<script defer src="/static/merchant_ui_v2_app.js?v={{ merchant_setup_render_build | default('unknown') }}-nvis1-fanout1-mpcr1-setcomp2-iarec3"></script>
+<script defer src="/static/merchant_ui_v2_packages.js?v={{ merchant_setup_render_build | default('unknown') }}-pkgv4"></script>
+<script defer src="/static/merchant_ui_v2_settings.js?v={{ merchant_setup_render_build | default('unknown') }}-qpool1-psg1-rdfix1-pvfix1-mpcr1-setcomp2-iarec3-recv4"></script>
+<script defer src="/static/merchant_ui_v2_app.js?v={{ merchant_setup_render_build | default('unknown') }}-nvis1-fanout1-mpcr1-setcomp2-iarec3-pkgv4"></script>
 </body>
 </html>

@@ -38,6 +38,26 @@
     setBoxVisible(byId("ma-recovery-policy-ok"), false);
   }
 
+  function paintSummary(d) {
+    var delayEl = byId("ma-rec-sum-delay");
+    var attEl = byId("ma-rec-sum-attempts");
+    if (!d) return;
+    if (delayEl) {
+      var n = d.recovery_delay != null ? String(d.recovery_delay) : "—";
+      var u = d.recovery_delay_unit || "minutes";
+      var uAr =
+        u === "hours" ? "ساعة" : u === "days" ? "يوم" : "دقيقة";
+      delayEl.textContent = n === "—" ? "—" : n + " " + uAr;
+    }
+    if (attEl) {
+      var a = parseInt(d.recovery_attempts, 10);
+      attEl.textContent = isFinite(a) ? String(a) : "—";
+    }
+    if (typeof window.maUpdateRecoveryReasonsSummary === "function") {
+      window.maUpdateRecoveryReasonsSummary();
+    }
+  }
+
   function fillForm(d) {
     if (!d) return;
     var delay = byId("ma-recovery-delay");
@@ -53,6 +73,7 @@
       'input[name="ma_recovery_attempts_pick"][value="' + attempts + '"]'
     );
     if (pick) pick.checked = true;
+    paintSummary(d);
   }
 
   function collectBody() {
@@ -153,7 +174,7 @@
         saving = false;
         if (btn) {
           btn.disabled = false;
-          btn.textContent = "حفظ سياسة الاسترجاع";
+          btn.textContent = "حفظ التوقيت العام";
         }
       });
   }

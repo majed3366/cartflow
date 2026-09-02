@@ -76,11 +76,19 @@ class DashboardTriggerTemplatesApiTests(unittest.TestCase):
         p = r.json()
         self.assertTrue(p.get("ok"), msg=p)
         rows = p.get("reason_rows") or []
-        self.assertEqual(len(rows), 6)
+        self.assertEqual(len(rows), 7)
         keys = [x.get("key") for x in rows]
         self.assertEqual(
             keys,
-            ["price", "quality", "shipping", "delivery", "warranty", "other"],
+            [
+                "price",
+                "shipping",
+                "warranty",
+                "thinking",
+                "quality",
+                "delivery",
+                "other",
+            ],
         )
         self.assertEqual(
             (p.get("section_title_ar") or "").strip(), "قوالب حسب سبب التردد"
@@ -332,7 +340,7 @@ class TriggerTemplatesDashboardServiceTests(unittest.TestCase):
             reason_templates_json = None
 
         p = build_trigger_templates_get_payload(_Mini())
-        self.assertEqual(len(p["reason_rows"]), 6)
+        self.assertEqual(len(p["reason_rows"]), 7)
         sample = {r["key"]: r["message_count"] for r in p["reason_rows"]}
         self.assertEqual(sample["price"], 1)
 
@@ -354,7 +362,7 @@ class TriggerTemplatesDashboardServiceTests(unittest.TestCase):
             )
 
         p = build_trigger_templates_get_payload(_Mini())
-        self.assertEqual(len(p["reason_rows"]), 6)
+        self.assertEqual(len(p["reason_rows"]), 7)
         price = next(r for r in p["reason_rows"] if r["key"] == "price")
         self.assertEqual(price["message_count"], 2)
         self.assertIsInstance(price.get("messages"), list)
@@ -366,11 +374,11 @@ class TriggerTemplatesDashboardServiceTests(unittest.TestCase):
         )
 
         fb = build_fallback_trigger_templates_payload()
-        self.assertEqual(len(fb["reason_rows"]), 6)
+        self.assertEqual(len(fb["reason_rows"]), 7)
         self.assertTrue(fb.get("display_fallback"))
 
         none_p = build_trigger_templates_get_payload(None)
-        self.assertEqual(len(none_p["reason_rows"]), 6)
+        self.assertEqual(len(none_p["reason_rows"]), 7)
 
     def test_enrich_roundtrip_keeps_custom_five_minute_price_stage1(self) -> None:
         from services.trigger_template_ui_defaults import DASHBOARD_STAGE_TEXTS

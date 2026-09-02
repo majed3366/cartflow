@@ -53,19 +53,21 @@
   /** ترتيب ثابت يطابق الخادم عند الحاجة لبطاقات احتياطية. */
   var TRIGGER_KEYS_ORDER = [
     "price",
-    "quality",
     "shipping",
-    "delivery",
     "warranty",
+    "thinking",
+    "quality",
+    "delivery",
     "other",
   ];
 
   var LABEL_BY_KEY = {
     price: "السعر",
-    quality: "الجودة",
     shipping: "الشحن",
-    delivery: "مدة التوصيل",
     warranty: "الضمان",
+    thinking: "التفكير قبل الشراء",
+    quality: "الجودة",
+    delivery: "مدة التوصيل",
     other: "سبب آخر",
   };
 
@@ -162,6 +164,23 @@
         text: "إذا تحتاج خيار استبدال أو إرجاع، نوضّح لك الخطوات ببساطة بدون إرباك.",
       },
     ],
+    thinking: [
+      {
+        type: "reassurance",
+        label: "طمأنة",
+        text: "خذ راحتك 👍 إذا تحب نمشي معك خطوة بسيطة عشان تكمل الطلب نقدر.",
+      },
+      {
+        type: "offer",
+        label: "مساعدة على القرار",
+        text: "التردد طبيعي — نقدر نساعدك تقرر براحة بدون ضغط.",
+      },
+      {
+        type: "alternative",
+        label: "تذكير لطيف",
+        text: "طلبك لسه موجود 👍 أي سؤال نرحّب فيه.",
+      },
+    ],
     other: [
       {
         type: "reassurance",
@@ -207,6 +226,11 @@
       { value: 2, unit: "hour" },
       { value: 12, unit: "hour" },
       { value: 5, unit: "day" },
+    ],
+    thinking: [
+      { value: 2, unit: "hour" },
+      { value: 1, unit: "day" },
+      { value: 3, unit: "day" },
     ],
     other: [
       { value: 3, unit: "hour" },
@@ -459,7 +483,16 @@
     return Math.max(1, Math.min(3, n));
   }
 
+  function isV2RecoveryCompose() {
+    var root = byId("ma-tpl-root");
+    if (root && root.getAttribute("data-cf2-rec-compose") === "v4") return true;
+    return document.body && document.body.getAttribute("data-cf-ui") === "v2";
+  }
+
   function buildStageCountHelpHtml(rowKey) {
+    if (isV2RecoveryCompose()) {
+      return '<p class="ma-tpl-stage-help ma-tpl-stage-help--compact">عدد المراحل التي يستلمها العميل لهذا السبب.</p>';
+    }
     var list = PRESET_SUGGESTIONS_BY_REASON[rowKey] || [];
     if (!list.length) {
       return (
@@ -484,6 +517,7 @@
   }
 
   function customerExperienceSummaryHtml(rowKey, enabledCount) {
+    if (isV2RecoveryCompose()) return "";
     var list = PRESET_SUGGESTIONS_BY_REASON[rowKey] || [];
     if (!list.length) return "";
     var n = Math.max(1, Math.min(3, enabledCount || 1));
@@ -507,6 +541,7 @@
     var list = PRESET_SUGGESTIONS_BY_REASON[rowKey] || [];
     if (!list.length) return "";
     var n = Math.max(1, Math.min(3, enabledCount || 1));
+    var v2 = isV2RecoveryCompose();
     var rows = [];
     var i;
     for (i = 0; i < list.length; i++) {
@@ -516,19 +551,22 @@
       rows.push(
         '<button type="button" class="ma-tpl-stage-row' +
         (en ? "" : " ma-tpl-stage-row--route-disabled") +
+        (v2 ? " cf2-rec-stage" : "") +
         '" data-ma-tpl-stage-select data-ma-tpl-reason="' +
         esc(rowKey) +
         '" data-ma-tpl-preset-i="' +
         i +
         '" data-ma-tpl-stage-route-enabled="' +
         (en ? "1" : "0") +
+        '" aria-disabled="' +
+        (en ? "false" : "true") +
         '">' +
         '<span class="ma-tpl-stage-status" data-ma-tpl-stage-status aria-hidden="true">' +
-        sym +
+        (v2 ? String(i + 1) : sym) +
         "</span>" +
         '<span class="ma-tpl-stage-body">' +
         '<span class="ma-tpl-stage-title">' +
-        esc(stageRowTitle(list[i], i)) +
+        esc(v2 ? "المرحلة " + (i + 1) : stageRowTitle(list[i], i)) +
         "</span>" +
         '<span class="ma-tpl-stage-timing">(' +
         esc(timing) +
@@ -536,18 +574,34 @@
         "</span></button>"
       );
       if (i < list.length - 1) {
-        rows.push('<span class="ma-tpl-stage-connector" aria-hidden="true">↓</span>');
+        rows.push(
+          '<span class="ma-tpl-stage-connector' +
+            (v2 ? " cf2-rec-stage-wait" : "") +
+            '" aria-hidden="true">' +
+            (v2 ? "انتظار" : "↓") +
+            "</span>"
+        );
       }
     }
     return (
-      '<div class="ma-tpl-stage-workflow" data-ma-tpl-stage-workflow dir="rtl" aria-label="مسار المراحل بالترتيب">' +
-      '<p class="ma-tpl-stage-workflow-title">مسار الإرسال (بالترتيب)</p>' +
+      '<div class="ma-tpl-stage-workflow' +
+      (v2 ? " cf2-rec-flow" : "") +
+      '" data-ma-tpl-stage-workflow dir="rtl" aria-label="مسار المراحل بالترتيب">' +
+      (v2
+        ? '<p class="ma-tpl-stage-workflow-title">مسار الاسترجاع</p>'
+        : '<p class="ma-tpl-stage-workflow-title">مسار الإرسال (بالترتيب)</p>') +
+      '<div class="' +
+      (v2 ? "cf2-rec-flow__track" : "ma-tpl-stage-workflow-body") +
+      '">' +
       rows.join("") +
-      "</div>"
+      "</div></div>"
     );
   }
 
   function sectionIntroHtml() {
+    if (isV2RecoveryCompose()) {
+      return '<div id="ma-tpl-meta-policy-banner" class="ma-tpl-meta-policy" hidden dir="rtl"></div>';
+    }
     return (
       '<div class="ma-tpl-ownership-banner" dir="rtl">' +
       '<p class="ma-tpl-ownership-title">محتوى الاسترجاع</p>' +
@@ -564,9 +618,82 @@
     );
   }
 
+  function reasonPickerHtml(rows, selectedKey) {
+    var chips = (rows || [])
+      .map(function (row) {
+        var key = String(row.key || "");
+        var lbl = row.label_ar || LABEL_BY_KEY[key] || key;
+        var on = key === selectedKey;
+        var en = row.enabled !== false;
+        return (
+          '<button type="button" class="cf2-rec-reason' +
+          (on ? " is-active" : "") +
+          (en ? "" : " is-off") +
+          '" data-cf2-rec-pick="' +
+          esc(key) +
+          '" aria-pressed="' +
+          (on ? "true" : "false") +
+          '">' +
+          '<span class="cf2-rec-reason__label">' +
+          esc(lbl) +
+          "</span>" +
+          '<span class="cf2-rec-reason__meta">' +
+          (en ? "مفعّل" : "متوقف") +
+          " · " +
+          Math.max(1, Math.min(3, parseInt(row.message_count, 10) || 1)) +
+          " مرحلة</span></button>"
+        );
+      })
+      .join("");
+    return (
+      '<div class="cf2-rec-picker" role="tablist" aria-label="أسباب التردد" dir="rtl">' +
+      chips +
+      "</div>"
+    );
+  }
+
+  function selectReasonCard(key) {
+    var root = byId("ma-tpl-root");
+    if (!root) return;
+    var cards = root.querySelectorAll(".ma-tpl-card[data-ma-tpl-key]");
+    var i;
+    for (i = 0; i < cards.length; i++) {
+      var k = cards[i].getAttribute("data-ma-tpl-key");
+      var show = k === key;
+      cards[i].hidden = !show;
+      cards[i].classList.toggle("is-selected-reason", show);
+    }
+    var picks = root.querySelectorAll("[data-cf2-rec-pick]");
+    for (i = 0; i < picks.length; i++) {
+      var on = picks[i].getAttribute("data-cf2-rec-pick") === key;
+      picks[i].classList.toggle("is-active", on);
+      picks[i].setAttribute("aria-pressed", on ? "true" : "false");
+    }
+    root.setAttribute("data-cf2-rec-selected", key || "");
+    updateRecoveryReasonsSummary();
+  }
+
+  function updateRecoveryReasonsSummary() {
+    var el = byId("ma-rec-sum-reasons");
+    if (!el || !lastPayload || !lastPayload.reason_rows) return;
+    var n = 0;
+    var i;
+    for (i = 0; i < lastPayload.reason_rows.length; i++) {
+      if (lastPayload.reason_rows[i].enabled !== false) n++;
+    }
+    el.textContent = String(n) + " / " + String(lastPayload.reason_rows.length);
+  }
+
+  window.maUpdateRecoveryReasonsSummary = updateRecoveryReasonsSummary;
+
   function applyMetaPolicyBanner(payload) {
     var el = byId("ma-tpl-meta-policy-banner");
     if (!el) return;
+    if (isV2RecoveryCompose()) {
+      el.hidden = true;
+      el.innerHTML = "";
+      return;
+    }
     var mp = payload && payload.meta_policy_guidance;
     var lines =
       mp && Array.isArray(mp.guidance_lines_ar) ? mp.guidance_lines_ar : [];
@@ -877,23 +1004,34 @@
 
   function buildTimingPolicyPanelHtml(reasonKey, stageIndex) {
     var f = timingPanelFieldsForStage(reasonKey, stageIndex);
-    return (
-      '<div class="ma-tpl-timing-policy" data-ma-tpl-timing-policy dir="rtl" aria-label="سياسة التوقيت للمرحلة">' +
+    var body =
       '<div class="ma-tpl-timing-row ma-tpl-timing-rec">' +
-      '<span class="ma-tpl-timing-k">التوقيت المقترح:</span> ' +
+      '<span class="ma-tpl-timing-k">' + 'التوقيت المقترح:' + '</span> ' +
       '<span class="ma-tpl-timing-v" data-ma-tpl-timing-rec>' +
       esc(f.recommended_timing_ar) +
-      "</span></div>" +
+      '</span></div>' +
       '<div class="ma-tpl-timing-row ma-tpl-timing-min">' +
-      '<span class="ma-tpl-timing-k">الحد الأدنى:</span> ' +
+      '<span class="ma-tpl-timing-k">' + 'الحد الأدنى:' + '</span> ' +
       '<span class="ma-tpl-timing-v" data-ma-tpl-timing-min>' +
       esc(f.minimum_allowed_timing_ar) +
-      "</span></div>" +
+      '</span></div>' +
       '<div class="ma-tpl-timing-row ma-tpl-timing-current">' +
-      '<span class="ma-tpl-timing-k">التوقيت الحالي:</span> ' +
+      '<span class="ma-tpl-timing-k">' + 'التوقيت الحالي:' + '</span> ' +
       '<span class="ma-tpl-timing-v" data-ma-tpl-timing-current>' +
       esc(f.current_saved_timing_ar) +
-      "</span></div></div>"
+      '</span></div>';
+    if (isV2RecoveryCompose()) {
+      return (
+        '<details class="ma-tpl-timing-policy cf2-rec-timing" data-ma-tpl-timing-policy dir="rtl">' +
+        '<summary>' + 'تفاصيل التوقيت' + '</summary>' +
+        body +
+        '</details>'
+      );
+    }
+    return (
+      '<div class="ma-tpl-timing-policy" data-ma-tpl-timing-policy dir="rtl" aria-label="timing">' +
+      body +
+      '</div>'
     );
   }
 
@@ -1229,6 +1367,13 @@
     var root = byId("ma-tpl-root");
     if (!root) return;
     var tg = ev.target;
+    var pick =
+      tg && tg.closest ? tg.closest("[data-cf2-rec-pick]") : null;
+    if (pick && root.contains(pick)) {
+      ev.preventDefault();
+      selectReasonCard(pick.getAttribute("data-cf2-rec-pick") || "");
+      return;
+    }
     var stageBtn =
       tg && tg.closest ? tg.closest("[data-ma-tpl-stage-select]") : null;
     if (stageBtn && root.contains(stageBtn)) {
@@ -1404,7 +1549,11 @@
       '<p class="ma-tpl-editor-inactive-banner" data-ma-tpl-inactive-banner hidden dir="rtl">' +
       "هذه المرحلة غير مفعّلة في المسار — العميل لن يستلمها. المعاينة للاطلاع فقط." +
       "</p>" +
-      '<p class="ma-tpl-editor-hint" dir="rtl">تحرير نص المرحلة المحددة (✓ = تُرسل · ○ = لاحقاً في المسار · — = غير مفعّلة)</p>' +
+      '<p class="ma-tpl-editor-hint" dir="rtl">' +
+      (isV2RecoveryCompose()
+        ? "نص وتأخير المرحلة المحددة فقط."
+        : "تحرير نص المرحلة المحددة (✓ = تُرسل · ○ = لاحقاً في المسار · — = غير مفعّلة)") +
+      "</p>" +
       '<label class="ma-tpl-lbl" data-ma-tpl-msg-label for="ma-tpl-msg-' +
       k +
       '">' +
@@ -1446,7 +1595,11 @@
       '<button type="button" class="ma-tpl-restore-timing" data-ma-tpl-restore-timing title="استعادة التوقيت المقترح لهذه المرحلة فقط (بدون حفظ تلقائي)">↺ استعادة المقترح</button>' +
       "</p>" +
       buildTimingPolicyPanelHtml(k, 0) +
-      '<p class="ma-tpl-hint">المراحل تُرسل بالترتيب فقط عند عدم عودة العميل أو إتمام الشراء.</p>' +
+      '<p class="ma-tpl-hint">' +
+      (isV2RecoveryCompose()
+        ? "احفظ هذا السبب فقط. سجل التواصل المرسل لا يتغيّر."
+        : "المراحل تُرسل بالترتيب فقط عند عدم عودة العميل أو إتمام الشراء.") +
+      "</p>" +
       '<div class="ma-tpl-actions">' +
       '<button type="button" class="ma-fw-save" data-ma-tpl-save>حفظ</button>' +
       '<span class="ma-tpl-status" data-ma-tpl-status aria-live="polite"></span>' +
@@ -1499,9 +1652,25 @@
     if (err) err.hidden = true;
 
     try {
+      var v2 = isV2RecoveryCompose();
+      var selectedKey =
+        (payload.reason_rows[0] && payload.reason_rows[0].key) ||
+        TRIGGER_KEYS_ORDER[0];
+      var prevSel = root.getAttribute("data-cf2-rec-selected");
+      if (prevSel) {
+        for (var si = 0; si < payload.reason_rows.length; si++) {
+          if (String(payload.reason_rows[si].key) === prevSel) {
+            selectedKey = prevSel;
+            break;
+          }
+        }
+      }
       root.innerHTML =
         sectionIntroHtml() +
-        '<div class="ma-tpl-grid">' +
+        (v2 ? reasonPickerHtml(payload.reason_rows, selectedKey) : "") +
+        '<div class="ma-tpl-grid' +
+        (v2 ? " cf2-rec-grid" : "") +
+        '">' +
         payload.reason_rows.map(cardHtml).join("") +
         "</div>";
     } catch (renderErr) {
@@ -1534,6 +1703,19 @@
         }
       })(cards[ci]);
     }
+    if (isV2RecoveryCompose()) {
+      selectReasonCard(
+        root.getAttribute("data-cf2-rec-selected") ||
+          (payload.reason_rows[0] && payload.reason_rows[0].key) ||
+          TRIGGER_KEYS_ORDER[0]
+      );
+      /* Collapse long timing theory panels in V2 */
+      var panels = root.querySelectorAll("[data-ma-tpl-timing-policy]");
+      for (ci = 0; ci < panels.length; ci++) {
+        panels[ci].classList.add("cf2-rec-timing-collapsed");
+      }
+    }
+    updateRecoveryReasonsSummary();
     refreshMaTplDebugCounters();
   }
 

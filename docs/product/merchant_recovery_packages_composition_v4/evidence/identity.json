@@ -1,0 +1,90 @@
+{
+  "base": "http://127.0.0.1:8798",
+  "probes": {
+    "desktop_account": {
+      "store": "Living Store Review",
+      "plan": "الباقة: Starter · نشطة",
+      "packagesBtn": true,
+      "v1": false,
+      "ui": "v2"
+    },
+    "desktop_packages": {
+      "page": true,
+      "cards": 3,
+      "current": true,
+      "blocked": true,
+      "ui": "v2",
+      "v1": false
+    },
+    "desktop_recovery": {
+      "ui": "v2",
+      "picker": 7,
+      "visibleCards": 1,
+      "theory": false,
+      "flow": true,
+      "v1": false,
+      "ataba": false
+    },
+    "desktop_price": {
+      "selected": "price",
+      "visible": [
+        "price"
+      ]
+    },
+    "desktop_stages_1": {
+      "enabled": 1,
+      "disabled": 2
+    },
+    "desktop_stages_2": {
+      "enabled": 2,
+      "disabled": 1
+    },
+    "desktop_stages_3": {
+      "enabled": 3,
+      "disabled": 0
+    },
+    "mobile_account": {
+      "store": "Living Store Review",
+      "plan": "الباقة: Starter · نشطة",
+      "packagesBtn": true,
+      "v1": false,
+      "ui": "v2"
+    },
+    "mobile_packages": {
+      "page": true,
+      "cards": 3,
+      "current": true,
+      "blocked": true,
+      "ui": "v2",
+      "v1": false
+    },
+    "mobile_recovery": {
+      "ui": "v2",
+      "picker": 7,
+      "visibleCards": 1,
+      "theory": false,
+      "flow": true,
+      "v1": false,
+      "ataba": false
+    },
+    "mobile_price": {
+      "selected": "price",
+      "visible": [
+        "price"
+      ]
+    },
+    "mobile_stages_1": {
+      "enabled": 1,
+      "disabled": 2
+    },
+    "mobile_stages_2": {
+      "enabled": 2,
+      "disabled": 1
+    },
+    "mobile_stages_3": {
+      "enabled": 3,
+      "disabled": 0
+    }
+  },
+  "ts": "2026-09-02T11:32:21Z"
+}

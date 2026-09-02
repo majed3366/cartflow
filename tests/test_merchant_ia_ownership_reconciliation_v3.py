@@ -52,7 +52,7 @@ class AccountContext(unittest.TestCase):
         self.assertIn("/api/merchant/session-identity", APP_JS)
         self.assertIn("/api/merchant/subscription", APP_JS)
         self.assertIn('data-cf2-util="settings-store"', V2_HTML)
-        self.assertIn('data-cf2-util="settings-plan"', V2_HTML)
+        self.assertIn('data-cf2-util="packages"', V2_HTML)
         self.assertNotIn("الملف والباقة", V2_HTML)
 
 

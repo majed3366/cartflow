@@ -31,6 +31,7 @@
         items: [{ id: "attention", label: "ما يحتاج قرارك" }],
       },
       products: null,
+      packages: null,
       carts: {
         title: "السلال",
         items: [
@@ -70,6 +71,7 @@
     carts: false,
     comms: false,
     settings: false,
+    packages: false,
   };
 
   function $(sel, root) {
@@ -87,13 +89,13 @@
     widget: "settings",
     "trigger-templates": "settings",
     templates: "settings",
-    plans: "settings",
   };
 
   function currentHash() {
     var h = (location.hash || "#home").replace(/^#/, "").split("?")[0];
     if (!h) return "home";
     if (h === "communication" || h === "messages") return "comms";
+    if (h === "packages" || h === "plans" || h === "billing") return "packages";
     if (SETTINGS_HASH_ALIASES[h]) return "settings";
     return h;
   }
@@ -539,6 +541,11 @@
         window.CartFlowUiV2Settings.loadAndPaint(settingsRoot);
         started = true;
       }
+    } else if (section === "packages") {
+      if (window.CartFlowUiV2Packages && typeof window.CartFlowUiV2Packages.show === "function") {
+        window.CartFlowUiV2Packages.show();
+        started = true;
+      }
     }
     if (started) {
       SURFACE_PRODUCT_INIT[section] = true;
@@ -604,7 +611,13 @@
     var utilPlan = $('[data-cf2-util="settings-plan"]');
     if (utilPlan) {
       utilPlan.addEventListener("click", function () {
-        openSettingsArea("store");
+        go("packages");
+      });
+    }
+    var utilPackages = $('[data-cf2-util="packages"]');
+    if (utilPackages) {
+      utilPackages.addEventListener("click", function () {
+        go("packages");
       });
     }
 

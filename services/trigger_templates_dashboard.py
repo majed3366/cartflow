@@ -29,19 +29,21 @@ _GUIDED_DEFAULTS_SLICE: Optional[Dict[str, Dict[str, str]]] = None
 
 TRIGGER_TEMPLATE_PAGE_KEYS: tuple[str, ...] = (
     "price",
-    "quality",
     "shipping",
-    "delivery",
     "warranty",
+    "thinking",
+    "quality",
+    "delivery",
     "other",
 )
 
 _LABEL_AR: Dict[str, str] = {
     "price": "السعر",
-    "quality": "الجودة",
     "shipping": "الشحن",
-    "delivery": "مدة التوصيل",
     "warranty": "الضمان",
+    "thinking": "التفكير قبل الشراء",
+    "quality": "الجودة",
+    "delivery": "مدة التوصيل",
     "other": "سبب آخر",
 }
 

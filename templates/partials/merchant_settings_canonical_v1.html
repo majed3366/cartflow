@@ -139,45 +139,68 @@
         </form>
       </div>
 
-      <div class="cf2-settings__panel" data-cf2-settings-panel="recovery" hidden>
+      <div class="cf2-settings__panel cf2-recovery-v4" data-cf2-settings-panel="recovery" hidden>
         <div id="ma-recovery-policy-err" class="ma-settings-banner" style="display:none;"></div>
         <div id="ma-recovery-policy-ok" class="ma-settings-banner" style="display:none;">تم حفظ سياسة الاسترجاع</div>
-        <div class="setting-card ma-fw-card">
-          <div class="setting-title">سياسة الاسترجاع</div>
-          <div class="setting-desc">متى تُرسل أول رسالة، وكم محاولة — لا يغيّر جدولة التنفيذ من هنا.</div>
-          <form id="ma-recovery-policy-form" class="ma-fw-form" autocomplete="off">
-            <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
-              <label class="ma-fw-label" for="ma-recovery-delay">مدة الانتظار قبل أول رسالة</label>
-              <input class="ma-fw-input" id="ma-recovery-delay" name="recovery_delay" type="number" min="1" step="1" dir="ltr">
+
+        <section class="cf2-rec-summary" aria-label="ملخص السياسة">
+          <header class="cf2-rec-summary__head">
+            <h2 class="cf2-rec-summary__title">سياسة الاسترجاع</h2>
+            <p class="cf2-rec-summary__lede">توقيت أول رسالة ومحاولاتها، ثم محتوى كل سبب تردد.</p>
+          </header>
+          <div class="cf2-rec-summary__stats" id="ma-recovery-policy-summary" aria-live="polite">
+            <div class="cf2-rec-stat">
+              <span class="cf2-rec-stat__label">أول رسالة بعد</span>
+              <span class="cf2-rec-stat__value" id="ma-rec-sum-delay">—</span>
             </div>
-            <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
-              <label class="ma-fw-label" for="ma-recovery-delay-unit">وحدة الوقت</label>
-              <select class="ma-fw-input" id="ma-recovery-delay-unit" name="recovery_delay_unit">
-                <option value="minutes">دقائق</option>
-                <option value="hours">ساعة</option>
-                <option value="days">يوم</option>
-              </select>
+            <div class="cf2-rec-stat">
+              <span class="cf2-rec-stat__label">المحاولات</span>
+              <span class="cf2-rec-stat__value" id="ma-rec-sum-attempts">—</span>
             </div>
-            <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
-              <span class="ma-fw-label">عدد محاولات الاسترجاع</span>
-              <div class="ma-recovery-attempts" role="group" aria-label="عدد المحاولات">
-                <label class="ma-fw-check"><input type="radio" name="ma_recovery_attempts_pick" value="1"> 1</label>
-                <label class="ma-fw-check"><input type="radio" name="ma_recovery_attempts_pick" value="2"> 2</label>
-                <label class="ma-fw-check"><input type="radio" name="ma_recovery_attempts_pick" value="3"> 3</label>
+            <div class="cf2-rec-stat">
+              <span class="cf2-rec-stat__label">أسباب مفعّلة</span>
+              <span class="cf2-rec-stat__value" id="ma-rec-sum-reasons">—</span>
+            </div>
+          </div>
+          <details class="cf2-rec-summary__edit">
+            <summary>تعديل التوقيت العام</summary>
+            <form id="ma-recovery-policy-form" class="ma-fw-form cf2-rec-policy-form" autocomplete="off">
+              <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+                <label class="ma-fw-label" for="ma-recovery-delay">مدة الانتظار قبل أول رسالة</label>
+                <input class="ma-fw-input" id="ma-recovery-delay" name="recovery_delay" type="number" min="1" step="1" dir="ltr">
               </div>
-              <input type="hidden" id="ma-recovery-attempts" name="recovery_attempts" value="1">
-            </div>
-            <div class="ma-fw-actions">
-              <button type="submit" class="ma-fw-save" id="ma-recovery-policy-save">حفظ سياسة الاسترجاع</button>
-            </div>
-          </form>
-        </div>
-        <div class="setting-card ma-fw-card ma-recovery-templates-card">
-          <div class="setting-title">قوالب الرسائل حسب سبب التردد</div>
-          <div class="setting-desc">رسالة الاسترجاع لكل سبب تردد مدعوم — لا يغيّر سجل التواصل المرسل.</div>
+              <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+                <label class="ma-fw-label" for="ma-recovery-delay-unit">وحدة الوقت</label>
+                <select class="ma-fw-input" id="ma-recovery-delay-unit" name="recovery_delay_unit">
+                  <option value="minutes">دقائق</option>
+                  <option value="hours">ساعة</option>
+                  <option value="days">يوم</option>
+                </select>
+              </div>
+              <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+                <span class="ma-fw-label">عدد محاولات الاسترجاع</span>
+                <div class="ma-recovery-attempts" role="group" aria-label="عدد المحاولات">
+                  <label class="ma-fw-check"><input type="radio" name="ma_recovery_attempts_pick" value="1"> 1</label>
+                  <label class="ma-fw-check"><input type="radio" name="ma_recovery_attempts_pick" value="2"> 2</label>
+                  <label class="ma-fw-check"><input type="radio" name="ma_recovery_attempts_pick" value="3"> 3</label>
+                </div>
+                <input type="hidden" id="ma-recovery-attempts" name="recovery_attempts" value="1">
+              </div>
+              <div class="ma-fw-actions">
+                <button type="submit" class="ma-fw-save" id="ma-recovery-policy-save">حفظ التوقيت العام</button>
+              </div>
+            </form>
+          </details>
+        </section>
+
+        <section class="cf2-rec-reasons" aria-label="أسباب التردد">
+          <header class="cf2-rec-reasons__head">
+            <h3 class="cf2-rec-reasons__title">أسباب التردد</h3>
+            <p class="cf2-rec-reasons__hint">اختر سبباً واحداً لضبط مساره ورسائله.</p>
+          </header>
           <p class="ma-tpl-banner" id="ma-tpl-load-err" hidden>تعذر تحميل القوالب من الخادم.</p>
-          <div id="ma-tpl-root" class="ma-tpl-root-wrap"></div>
-        </div>
+          <div id="ma-tpl-root" class="ma-tpl-root-wrap cf2-rec-tpl-root" data-cf2-rec-compose="v4"></div>
+        </section>
       </div>
 
       <div class="cf2-settings__panel" data-cf2-settings-panel="policy" hidden>
