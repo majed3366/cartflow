@@ -90,19 +90,30 @@
       var priceHtml = priceBits.length
         ? '<p class="cf2-plan-card__price">' +
           esc(priceBits.join(" · ")) +
-          '<br><span style="font-size:0.75rem">مصدر السعر: كتالوج CartFlow للقراءة فقط</span></p>'
+          '<span class="cf2-plan-card__price-note">مصدر السعر: كتالوج CartFlow للقراءة فقط</span></p>'
         : '<p class="cf2-plan-card__price">السعر غير معروض كفاتورة شراء</p>';
       var actionHtml = isCurrent
         ? '<p class="cf2-plan-card__action">باقتك الحالية</p>'
         : upgradeOk && billingOk
           ? '<p class="cf2-plan-card__action">الترقية متاحة عبر مسار الفوترة</p>'
           : '<p class="cf2-plan-card__action cf2-packages__blocked-cta">الترقية غير متاحة من هذه الشاشة</p>';
+      var mass = isCurrent
+        ? "primary"
+        : p.most_popular
+          ? "secondary"
+          : "quiet";
+      var rank = i + 1;
       cards +=
         '<article class="cf2-plan-card' +
         (isCurrent ? " is-current" : "") +
         '" data-cf2-plan="' +
         esc(id) +
+        '" data-cf2-plan-mass="' +
+        mass +
+        '" data-cf2-plan-rank="' +
+        rank +
         '">' +
+        '<span class="cf2-plan-card__joint" aria-hidden="true"></span>' +
         (isCurrent
           ? '<span class="cf2-plan-card__badge">الحالية</span>'
           : p.most_popular
@@ -120,7 +131,7 @@
     }
 
     root.innerHTML =
-      '<div class="cf2-packages" dir="rtl">' +
+      '<div class="cf2-packages" data-cf2-packages-compose="v5" dir="rtl">' +
       '<h1 class="cf2-packages__title">الباقات</h1>' +
       '<p class="cf2-packages__lede">باقتك الحالية ومقارنة الباقات من المصدر المعتمد — بدون دفع من هنا.</p>' +
       '<div class="cf2-packages__current">' +
@@ -136,7 +147,9 @@
         : "") +
       "</p>" +
       (cards
-        ? '<div class="cf2-packages__grid">' + cards + "</div>"
+        ? '<div class="cf2-packages__board"><div class="cf2-packages__grid">' +
+          cards +
+          "</div></div>"
         : '<p class="cf2-packages__ready">لا تتوفر بطاقات باقات معتمدة للعرض الآن.</p>') +
       "</div>";
   }

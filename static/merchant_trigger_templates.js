@@ -467,6 +467,11 @@
   }
 
   function stageTimingHintAr(index, enabledInRoute) {
+    if (isV2RecoveryCompose()) {
+      if (!enabledInRoute) return "غير مفعّلة";
+      if (index === 0) return "تُرسل أولاً";
+      return "متابعة";
+    }
     if (!enabledInRoute) {
       return "غير مفعلة — لن يستلمها العميل";
     }
@@ -548,50 +553,93 @@
       var en = i < n;
       var timing = stageTimingHintAr(i, en);
       var sym = en ? "✓" : "—";
-      rows.push(
-        '<button type="button" class="ma-tpl-stage-row' +
-        (en ? "" : " ma-tpl-stage-row--route-disabled") +
-        (v2 ? " cf2-rec-stage" : "") +
-        '" data-ma-tpl-stage-select data-ma-tpl-reason="' +
-        esc(rowKey) +
-        '" data-ma-tpl-preset-i="' +
-        i +
-        '" data-ma-tpl-stage-route-enabled="' +
-        (en ? "1" : "0") +
-        '" aria-disabled="' +
-        (en ? "false" : "true") +
-        '">' +
-        '<span class="ma-tpl-stage-status" data-ma-tpl-stage-status aria-hidden="true">' +
-        (v2 ? String(i + 1) : sym) +
-        "</span>" +
-        '<span class="ma-tpl-stage-body">' +
-        '<span class="ma-tpl-stage-title">' +
-        esc(v2 ? "المرحلة " + (i + 1) : stageRowTitle(list[i], i)) +
-        "</span>" +
-        '<span class="ma-tpl-stage-timing">(' +
-        esc(timing) +
-        ")</span>" +
-        "</span></button>"
-      );
-      if (i < list.length - 1) {
+      var coKind = !en
+        ? "cf2-co--insufficient"
+        : i === 0
+          ? "cf2-co--recovery"
+          : "cf2-co--waiting";
+      var stageState = !en ? "inactive" : i === 0 ? "active" : "quiet";
+      if (v2) {
         rows.push(
-          '<span class="ma-tpl-stage-connector' +
-            (v2 ? " cf2-rec-stage-wait" : "") +
-            '" aria-hidden="true">' +
-            (v2 ? "انتظار" : "↓") +
-            "</span>"
+          '<button type="button" class="ma-tpl-stage-row cf2-rec-stage' +
+            (en ? "" : " ma-tpl-stage-row--route-disabled") +
+            '" data-ma-tpl-stage-select data-ma-tpl-reason="' +
+            esc(rowKey) +
+            '" data-ma-tpl-preset-i="' +
+            i +
+            '" data-ma-tpl-stage-route-enabled="' +
+            (en ? "1" : "0") +
+            '" data-cf2-stage-state="' +
+            stageState +
+            '" aria-disabled="' +
+            (en ? "false" : "true") +
+            '">' +
+            '<span class="cf2-rec-stage__mark" aria-hidden="true">' +
+            '<span class="cf2-co ' +
+            coKind +
+            '"><span class="cf2-co__glyph"></span></span>' +
+            '<span class="ma-tpl-stage-status" data-ma-tpl-stage-status>' +
+            String(i + 1) +
+            "</span></span>" +
+            '<span class="ma-tpl-stage-body">' +
+            '<span class="ma-tpl-stage-title">' +
+            esc("المرحلة " + (i + 1)) +
+            "</span>" +
+            '<span class="ma-tpl-stage-timing" data-ma-tpl-stage-timing>' +
+            esc(timing) +
+            "</span>" +
+            "</span></button>"
         );
+        if (i < list.length - 1) {
+          rows.push(
+            '<span class="cf2-rec-stage-link" data-cf2-link="' +
+              (en && i + 1 < n ? "live" : "muted") +
+              '" aria-hidden="true"></span>'
+          );
+        }
+      } else {
+        rows.push(
+          '<button type="button" class="ma-tpl-stage-row' +
+            (en ? "" : " ma-tpl-stage-row--route-disabled") +
+            '" data-ma-tpl-stage-select data-ma-tpl-reason="' +
+            esc(rowKey) +
+            '" data-ma-tpl-preset-i="' +
+            i +
+            '" data-ma-tpl-stage-route-enabled="' +
+            (en ? "1" : "0") +
+            '" aria-disabled="' +
+            (en ? "false" : "true") +
+            '">' +
+            '<span class="ma-tpl-stage-status" data-ma-tpl-stage-status aria-hidden="true">' +
+            sym +
+            "</span>" +
+            '<span class="ma-tpl-stage-body">' +
+            '<span class="ma-tpl-stage-title">' +
+            esc(stageRowTitle(list[i], i)) +
+            "</span>" +
+            '<span class="ma-tpl-stage-timing">(' +
+            esc(timing) +
+            ")</span>" +
+            "</span></button>"
+        );
+        if (i < list.length - 1) {
+          rows.push(
+            '<span class="ma-tpl-stage-connector" aria-hidden="true">↓</span>'
+          );
+        }
       }
     }
     return (
       '<div class="ma-tpl-stage-workflow' +
       (v2 ? " cf2-rec-flow" : "") +
-      '" data-ma-tpl-stage-workflow dir="rtl" aria-label="مسار المراحل بالترتيب">' +
+      '" data-ma-tpl-stage-workflow' +
+      (v2 ? ' data-cf2-tension="' + (n < list.length ? "waiting" : "open") + '"' : "") +
+      ' dir="rtl" aria-label="مسار المراحل بالترتيب">' +
       (v2
         ? '<p class="ma-tpl-stage-workflow-title">مسار الاسترجاع</p>'
         : '<p class="ma-tpl-stage-workflow-title">مسار الإرسال (بالترتيب)</p>') +
       '<div class="' +
-      (v2 ? "cf2-rec-flow__track" : "ma-tpl-stage-workflow-body") +
+      (v2 ? "cf2-rec-flow__track cf2-rec-continuum" : "ma-tpl-stage-workflow-body") +
       '">' +
       rows.join("") +
       "</div></div>"
@@ -718,23 +766,59 @@
     var rk = cardEl.getAttribute("data-ma-tpl-key") || "";
     var editIx = parseInt(cardEl.getAttribute("data-ma-tpl-active-stage") || "0", 10);
     if (!(editIx >= 0)) editIx = 0;
+    var v2 = isV2RecoveryCompose();
 
     var rows = cardEl.querySelectorAll("[data-ma-tpl-stage-select]");
     var i;
     for (i = 0; i < rows.length; i++) {
       var ix = parseInt(rows[i].getAttribute("data-ma-tpl-preset-i"), 10);
       var en = ix < n;
+      var editing = ix === editIx;
       rows[i].setAttribute("data-ma-tpl-stage-route-enabled", en ? "1" : "0");
       rows[i].classList.toggle("ma-tpl-stage-row--route-disabled", !en);
       rows[i].classList.toggle("ma-tpl-stage-row--route-active", en);
-      rows[i].classList.toggle("ma-tpl-stage-row--editing", ix === editIx);
+      rows[i].classList.toggle("ma-tpl-stage-row--editing", editing);
+      if (v2) {
+        var state = !en ? "inactive" : editing ? "active" : "quiet";
+        rows[i].setAttribute("data-cf2-stage-state", state);
+        var co = rows[i].querySelector(".cf2-co");
+        if (co) {
+          co.className =
+            "cf2-co " +
+            (!en
+              ? "cf2-co--insufficient"
+              : editing
+                ? "cf2-co--recovery"
+                : "cf2-co--waiting");
+          if (!co.querySelector(".cf2-co__glyph")) {
+            co.innerHTML = '<span class="cf2-co__glyph"></span>';
+          }
+        }
+      }
       var st = rows[i].querySelector("[data-ma-tpl-stage-status]");
       if (st) {
-        st.textContent = en ? (ix === editIx ? "✓" : "○") : "—";
+        st.textContent = v2
+          ? String(ix + 1)
+          : en
+            ? editing
+              ? "✓"
+              : "○"
+            : "—";
       }
       var timingEl = rows[i].querySelector(".ma-tpl-stage-timing");
       if (timingEl) {
-        timingEl.textContent = "(" + stageTimingHintAr(ix, en) + ")";
+        var hint = stageTimingHintAr(ix, en);
+        timingEl.textContent = v2 ? hint : "(" + hint + ")";
+      }
+    }
+    if (v2) {
+      var links = cardEl.querySelectorAll(".cf2-rec-stage-link");
+      for (i = 0; i < links.length; i++) {
+        links[i].setAttribute("data-cf2-link", i + 1 < n ? "live" : "muted");
+      }
+      var flow = cardEl.querySelector("[data-ma-tpl-stage-workflow]");
+      if (flow) {
+        flow.setAttribute("data-cf2-tension", n < rows.length ? "waiting" : "open");
       }
     }
 
@@ -1513,12 +1597,122 @@
       ? esc(stageLabelForIndex(presets0, 0))
       : "الرسالة 1 — نص المرحلة الأولى";
 
+    var v2 = isV2RecoveryCompose();
     var mcOpts = [1, 2, 3]
       .map(function (n) {
         var sel = n === mc ? " selected" : "";
         return '<option value="' + n + '"' + sel + ">" + n + "</option>";
       })
       .join("");
+
+    var editorBlock;
+    var delayBlock;
+    var actionsBlock;
+    if (v2) {
+      editorBlock =
+        '<div class="ma-tpl-editor-panel cf2-rec-msg" data-ma-tpl-editor-panel>' +
+        '<p class="ma-tpl-editor-inactive-banner" data-ma-tpl-inactive-banner hidden dir="rtl">' +
+        "هذه المرحلة غير مفعّلة في المسار — العميل لن يستلمها. المعاينة للاطلاع فقط." +
+        "</p>" +
+        '<div class="cf2-rec-msg__surface">' +
+        '<span class="cf2-rec-msg__edge" aria-hidden="true"></span>' +
+        '<div class="cf2-rec-msg__body">' +
+        '<p class="cf2-rec-msg__kicker" dir="rtl">محتوى رسالة الاسترجاع</p>' +
+        '<label class="ma-tpl-lbl cf2-rec-msg__label" data-ma-tpl-msg-label for="ma-tpl-msg-' +
+        k +
+        '">' +
+        msg1Lbl +
+        "</label>" +
+        '<textarea class="ma-tpl-input ma-tpl-ta cf2-rec-msg__ta" id="ma-tpl-msg-' +
+        k +
+        '" rows="5" maxlength="65535" data-ma-tpl-msg dir="rtl" placeholder="النص الموجّه للعميل عبر مسار الاسترجاع…">' +
+        msg +
+        "</textarea>" +
+        "</div></div></div>";
+      delayBlock =
+        '<div class="cf2-rec-delay" role="group" aria-label="توقيت الإرسال قبل هذه المرحلة">' +
+        '<span class="cf2-rec-delay__label">التأخير قبل الإرسال</span>' +
+        '<div class="cf2-rec-delay__ctl">' +
+        '<input class="ma-tpl-input cf2-rec-delay__value" type="number" id="ma-tpl-dv-' +
+        k +
+        '" min="0.1" step="any" data-ma-tpl-delay value="' +
+        esc(String(dv)) +
+        '" aria-label="قيمة التأخير" />' +
+        '<select class="ma-tpl-input cf2-rec-delay__unit" id="ma-tpl-du-' +
+        k +
+        '" data-ma-tpl-unit aria-label="وحدة التأخير">' +
+        '<option value="minute"' +
+        minSel +
+        ">دقائق</option>" +
+        '<option value="hour"' +
+        hourSel +
+        ">ساعات</option>" +
+        '<option value="day"' +
+        daySel +
+        ">أيام</option>" +
+        "</select></div></div>";
+      actionsBlock =
+        '<div class="cf2-rec-actions">' +
+        '<button type="button" class="ma-fw-save" data-ma-tpl-save>حفظ</button>' +
+        '<button type="button" class="cf2-rec-restore" data-ma-tpl-restore-timing title="استعادة التوقيت المقترح لهذه المرحلة فقط (بدون حفظ تلقائي)">استعادة مقترح المرحلة</button>' +
+        '<span class="ma-tpl-status" data-ma-tpl-status aria-live="polite"></span>' +
+        "</div>";
+    } else {
+      editorBlock =
+        '<div class="ma-tpl-editor-panel" data-ma-tpl-editor-panel>' +
+        '<p class="ma-tpl-editor-inactive-banner" data-ma-tpl-inactive-banner hidden dir="rtl">' +
+        "هذه المرحلة غير مفعّلة في المسار — العميل لن يستلمها. المعاينة للاطلاع فقط." +
+        "</p>" +
+        '<p class="ma-tpl-editor-hint" dir="rtl">' +
+        "تحرير نص المرحلة المحددة (✓ = تُرسل · ○ = لاحقاً في المسار · — = غير مفعّلة)" +
+        "</p>" +
+        '<label class="ma-tpl-lbl" data-ma-tpl-msg-label for="ma-tpl-msg-' +
+        k +
+        '">' +
+        msg1Lbl +
+        "</label>" +
+        '<textarea class="ma-tpl-input ma-tpl-ta" id="ma-tpl-msg-' +
+        k +
+        '" rows="5" maxlength="65535" data-ma-tpl-msg dir="rtl" placeholder="النص الموجّه للعميل عبر مسار الاسترجاع…">' +
+        msg +
+        "</textarea>" +
+        "</div>";
+      delayBlock =
+        '<div class="ma-tpl-row2">' +
+        '<div><label class="ma-tpl-lbl" for="ma-tpl-dv-' +
+        k +
+        '">تأخير قبل الإرسال (قيمة)</label>' +
+        '<input class="ma-tpl-input" type="number" id="ma-tpl-dv-' +
+        k +
+        '" min="0.1" step="any" data-ma-tpl-delay value="' +
+        esc(String(dv)) +
+        '" /></div>' +
+        '<div><label class="ma-tpl-lbl" for="ma-tpl-du-' +
+        k +
+        '">الوحدة</label>' +
+        '<select class="ma-tpl-input" id="ma-tpl-du-' +
+        k +
+        '" data-ma-tpl-unit>' +
+        '<option value="minute"' +
+        minSel +
+        ">دقائق</option>" +
+        '<option value="hour"' +
+        hourSel +
+        ">ساعات</option>" +
+        '<option value="day"' +
+        daySel +
+        ">أيام</option>" +
+        "</select></div>" +
+        "</div>" +
+        '<p class="ma-tpl-delay-restore-wrap" dir="rtl">' +
+        '<button type="button" class="ma-tpl-restore-timing" data-ma-tpl-restore-timing title="استعادة التوقيت المقترح لهذه المرحلة فقط (بدون حفظ تلقائي)">↺ استعادة المقترح</button>' +
+        "</p>";
+      actionsBlock =
+        '<div class="ma-tpl-actions">' +
+        '<button type="button" class="ma-fw-save" data-ma-tpl-save>حفظ</button>' +
+        '<span class="ma-tpl-status" data-ma-tpl-status aria-live="polite"></span>' +
+        "</div>";
+    }
 
     return (
       '<div class="ma-tpl-card" data-ma-tpl-key="' +
@@ -1545,65 +1739,15 @@
       "</div>" +
       customerPath +
       workflow +
-      '<div class="ma-tpl-editor-panel" data-ma-tpl-editor-panel>' +
-      '<p class="ma-tpl-editor-inactive-banner" data-ma-tpl-inactive-banner hidden dir="rtl">' +
-      "هذه المرحلة غير مفعّلة في المسار — العميل لن يستلمها. المعاينة للاطلاع فقط." +
-      "</p>" +
-      '<p class="ma-tpl-editor-hint" dir="rtl">' +
-      (isV2RecoveryCompose()
-        ? "نص وتأخير المرحلة المحددة فقط."
-        : "تحرير نص المرحلة المحددة (✓ = تُرسل · ○ = لاحقاً في المسار · — = غير مفعّلة)") +
-      "</p>" +
-      '<label class="ma-tpl-lbl" data-ma-tpl-msg-label for="ma-tpl-msg-' +
-      k +
-      '">' +
-      msg1Lbl +
-      "</label>" +
-      '<textarea class="ma-tpl-input ma-tpl-ta" id="ma-tpl-msg-' +
-      k +
-      '" rows="5" maxlength="65535" data-ma-tpl-msg dir="rtl" placeholder="النص الموجّه للعميل عبر مسار الاسترجاع…">' +
-      msg +
-      "</textarea>" +
-      "</div>" +
-      '<div class="ma-tpl-row2">' +
-      '<div><label class="ma-tpl-lbl" for="ma-tpl-dv-' +
-      k +
-      '">تأخير قبل الإرسال (قيمة)</label>' +
-      '<input class="ma-tpl-input" type="number" id="ma-tpl-dv-' +
-      k +
-      '" min="0.1" step="any" data-ma-tpl-delay value="' +
-      esc(String(dv)) +
-      '" /></div>' +
-      '<div><label class="ma-tpl-lbl" for="ma-tpl-du-' +
-      k +
-      '">الوحدة</label>' +
-      '<select class="ma-tpl-input" id="ma-tpl-du-' +
-      k +
-      '" data-ma-tpl-unit>' +
-      '<option value="minute"' +
-      minSel +
-      ">دقائق</option>" +
-      '<option value="hour"' +
-      hourSel +
-      ">ساعات</option>" +
-      '<option value="day"' +
-      daySel +
-      ">أيام</option>" +
-      "</select></div>" +
-      "</div>" +
-      '<p class="ma-tpl-delay-restore-wrap" dir="rtl">' +
-      '<button type="button" class="ma-tpl-restore-timing" data-ma-tpl-restore-timing title="استعادة التوقيت المقترح لهذه المرحلة فقط (بدون حفظ تلقائي)">↺ استعادة المقترح</button>' +
-      "</p>" +
+      editorBlock +
+      delayBlock +
       buildTimingPolicyPanelHtml(k, 0) +
       '<p class="ma-tpl-hint">' +
-      (isV2RecoveryCompose()
+      (v2
         ? "احفظ هذا السبب فقط. سجل التواصل المرسل لا يتغيّر."
         : "المراحل تُرسل بالترتيب فقط عند عدم عودة العميل أو إتمام الشراء.") +
       "</p>" +
-      '<div class="ma-tpl-actions">' +
-      '<button type="button" class="ma-fw-save" data-ma-tpl-save>حفظ</button>' +
-      '<span class="ma-tpl-status" data-ma-tpl-status aria-live="polite"></span>' +
-      "</div>" +
+      actionsBlock +
       "</div>"
     );
   }

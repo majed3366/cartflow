@@ -451,7 +451,7 @@
 }
 
 
-/* Recovery Policy Composition V4 */
+/* Recovery Policy Composition V4 + Visual Identity Assimilation V5 */
 [data-cf-ui="v2"] .cf2-recovery-v4 {
   display: flex;
   flex-direction: column;
@@ -557,36 +557,274 @@
   padding: 0.9rem 0.85rem 1rem;
   background: #fff;
 }
-[data-cf-ui="v2"] .cf2-rec-flow__track {
+
+/* Stage continuum — CartFlow route/recovery grammar (not SaaS stepper) */
+[data-cf-ui="v2"] .cf2-rec-flow {
+  margin: 0.65rem 0 0.85rem;
+  padding: 0.55rem 0.15rem 0.15rem;
+}
+[data-cf-ui="v2"] .cf2-rec-flow .ma-tpl-stage-workflow-title {
+  margin: 0 0 0.55rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: rgba(8, 32, 72, 0.72);
+}
+[data-cf-ui="v2"] .cf2-rec-continuum {
+  position: relative;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: row;
+  flex-wrap: nowrap;
   align-items: stretch;
-  gap: 0.35rem;
+  gap: 0;
+  padding-block: 0.15rem 0.35rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+[data-cf-ui="v2"] .cf2-rec-continuum::before {
+  content: "";
+  position: absolute;
+  inset-inline: 1.1rem 1.1rem;
+  top: 1.15rem;
+  height: var(--cf2-lang-edge, 4px);
+  background: linear-gradient(
+    270deg,
+    rgba(24, 176, 168, 0.15) 0%,
+    rgba(8, 32, 72, 0.35) 42%,
+    rgba(24, 176, 168, 0.55) 100%
+  );
+  clip-path: polygon(0 20%, 100% 0, 100% 100%, 0 80%);
+  pointer-events: none;
+  z-index: 0;
+}
+[data-cf-ui="v2"] .cf2-rec-flow[data-cf2-tension="waiting"] .cf2-rec-continuum::before {
+  background: linear-gradient(
+    270deg,
+    rgba(8, 32, 72, 0.08) 0%,
+    rgba(8, 32, 72, 0.28) 45%,
+    rgba(24, 176, 168, 0.45) 100%
+  );
 }
 [data-cf-ui="v2"] .cf2-rec-flow .cf2-rec-stage {
-  flex: 1 1 5.5rem;
-  min-width: 5.2rem;
+  position: relative;
+  z-index: 1;
+  flex: 1 1 0;
+  min-width: 5.6rem;
+  max-width: 9.5rem;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.55rem 0.5rem;
-  border-radius: 10px;
-  border: 1px solid rgba(8, 32, 72, 0.12);
-  background: rgba(8, 32, 72, 0.03);
+  align-items: stretch;
+  gap: 0.35rem;
+  padding: 0.2rem 0.35rem 0.45rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   text-align: start;
+  cursor: pointer;
+  color: #082048;
 }
-[data-cf-ui="v2"] .cf2-rec-flow .ma-tpl-stage-row--editing {
-  border-color: rgba(8, 32, 72, 0.4);
-  background: rgba(8, 32, 72, 0.07);
+[data-cf-ui="v2"] .cf2-rec-stage__mark {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
 }
+[data-cf-ui="v2"] .cf2-rec-stage__mark .cf2-co {
+  width: var(--cf2-co-size, 28px);
+  height: var(--cf2-co-size, 28px);
+  flex: 0 0 auto;
+}
+[data-cf-ui="v2"] .cf2-rec-stage__mark .ma-tpl-stage-status {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: rgba(8, 32, 72, 0.55);
+  min-width: 0.9rem;
+}
+[data-cf-ui="v2"] .cf2-rec-flow .cf2-rec-stage .ma-tpl-stage-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+[data-cf-ui="v2"] .cf2-rec-flow .cf2-rec-stage .ma-tpl-stage-timing {
+  display: block;
+  margin-top: 0.12rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: rgba(8, 32, 72, 0.52);
+}
+[data-cf-ui="v2"] .cf2-rec-flow .cf2-rec-stage[data-cf2-stage-state="active"] {
+  flex: 1.35 1 0;
+  max-width: 11rem;
+}
+[data-cf-ui="v2"] .cf2-rec-flow .cf2-rec-stage[data-cf2-stage-state="active"] .ma-tpl-stage-title {
+  color: #082048;
+}
+[data-cf-ui="v2"] .cf2-rec-flow .cf2-rec-stage[data-cf2-stage-state="active"] .ma-tpl-stage-timing {
+  color: rgba(8, 32, 72, 0.72);
+}
+[data-cf-ui="v2"] .cf2-rec-flow .cf2-rec-stage[data-cf2-stage-state="quiet"] {
+  opacity: 0.78;
+}
+[data-cf-ui="v2"] .cf2-rec-flow .cf2-rec-stage[data-cf2-stage-state="inactive"],
 [data-cf-ui="v2"] .cf2-rec-flow .ma-tpl-stage-row--route-disabled {
-  opacity: 0.45;
+  opacity: 0.42;
+}
+[data-cf-ui="v2"] .cf2-rec-flow .ma-tpl-stage-row--editing .cf2-rec-stage__mark .ma-tpl-stage-status {
+  color: #082048;
+}
+[data-cf-ui="v2"] .cf2-rec-stage-link {
+  flex: 0 0 0.85rem;
+  align-self: flex-start;
+  margin-top: 1.05rem;
+  height: var(--cf2-lang-edge, 4px);
+  background: rgba(24, 176, 168, 0.55);
+  clip-path: polygon(0 30%, 100% 0, 100% 100%, 0 70%);
+  z-index: 1;
+}
+[data-cf-ui="v2"] .cf2-rec-stage-link[data-cf2-link="muted"] {
+  background: rgba(8, 32, 72, 0.14);
+  opacity: 0.55;
 }
 [data-cf-ui="v2"] .cf2-rec-stage-wait {
-  align-self: center;
-  font-size: 0.68rem;
-  color: rgba(8, 32, 72, 0.5);
-  padding: 0 0.15rem;
+  display: none !important;
+}
+
+/* Message surface — recovery communication identity (native textarea retained) */
+[data-cf-ui="v2"] .cf2-rec-msg {
+  margin: 0.35rem 0 0.75rem;
+}
+[data-cf-ui="v2"] .cf2-rec-msg__surface {
+  position: relative;
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  gap: 0;
+  border: 1px solid rgba(8, 32, 72, 0.12);
+  border-radius: 2px 12px 12px 2px;
+  background:
+    linear-gradient(180deg, rgba(24, 176, 168, 0.06), transparent 42%),
+    #fff;
+  overflow: hidden;
+}
+[data-cf-ui="v2"] .cf2-rec-msg__edge {
+  display: block;
+  background: linear-gradient(
+    180deg,
+    var(--cf2-teal, #18b0a8) 0%,
+    var(--cf2-navy, #082048) 58%,
+    rgba(8, 32, 72, 0.35) 100%
+  );
+  clip-path: polygon(0 0, 100% 4%, 100% 96%, 0 100%);
+}
+[data-cf-ui="v2"] .cf2-rec-msg__body {
+  padding: 0.65rem 0.75rem 0.75rem;
+}
+[data-cf-ui="v2"] .cf2-rec-msg__kicker {
+  margin: 0 0 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: rgba(8, 32, 72, 0.55);
+}
+[data-cf-ui="v2"] .cf2-rec-msg__label {
+  margin-bottom: 0.35rem;
+}
+[data-cf-ui="v2"] .cf2-rec-msg__ta {
+  width: 100%;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0.15rem 0 0 !important;
+  min-height: 6.5rem;
+  resize: vertical;
+  font: inherit;
+  color: #082048;
+  line-height: 1.55;
+}
+[data-cf-ui="v2"] .cf2-rec-msg__ta:focus {
+  outline: none;
+}
+[data-cf-ui="v2"] .cf2-rec-msg__surface:focus-within {
+  border-color: rgba(8, 32, 72, 0.35);
+  box-shadow: 0 0 0 3px rgba(24, 176, 168, 0.12);
+}
+[data-cf-ui="v2"] .ma-tpl-editor-panel--inactive-stage .cf2-rec-msg__surface {
+  opacity: 0.72;
+  background: rgba(8, 32, 72, 0.03);
+}
+
+/* Bound timing control */
+[data-cf-ui="v2"] .cf2-rec-delay {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0 0 0.75rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid rgba(8, 32, 72, 0.1);
+  border-radius: 10px;
+  background: rgba(8, 32, 72, 0.025);
+}
+[data-cf-ui="v2"] .cf2-rec-delay__label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgba(8, 32, 72, 0.7);
+}
+[data-cf-ui="v2"] .cf2-rec-delay__ctl {
+  display: grid;
+  grid-template-columns: minmax(4.5rem, 1fr) minmax(5.5rem, 1.1fr);
+  gap: 0;
+  border: 1px solid rgba(8, 32, 72, 0.16);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+[data-cf-ui="v2"] .cf2-rec-delay__value,
+[data-cf-ui="v2"] .cf2-rec-delay__unit {
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+  min-height: 2.4rem;
+}
+[data-cf-ui="v2"] .cf2-rec-delay__value {
+  border-inline-end: 1px solid rgba(8, 32, 72, 0.12) !important;
+  font-weight: 700;
+}
+[data-cf-ui="v2"] .cf2-rec-delay__ctl:focus-within {
+  border-color: rgba(8, 32, 72, 0.4);
+  box-shadow: 0 0 0 3px rgba(24, 176, 168, 0.1);
+}
+
+/* Actions: Save dominant, restore contextual secondary */
+[data-cf-ui="v2"] .cf2-rec-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 0.75rem;
+  margin-top: 0.35rem;
+}
+[data-cf-ui="v2"] .cf2-rec-actions .ma-fw-save {
+  order: 0;
+}
+[data-cf-ui="v2"] .cf2-rec-restore {
+  order: 1;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: rgba(8, 32, 72, 0.62);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.25rem 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  text-decoration-color: rgba(24, 176, 168, 0.55);
+}
+[data-cf-ui="v2"] .cf2-rec-restore:hover {
+  color: #082048;
+  text-decoration-color: var(--cf2-teal, #18b0a8);
+}
+[data-cf-ui="v2"] .cf2-rec-actions .ma-tpl-status {
+  order: 2;
+  flex: 1 1 auto;
 }
 [data-cf-ui="v2"] .cf2-rec-timing > summary {
   cursor: pointer;
@@ -608,19 +846,29 @@
   [data-cf-ui="v2"] .cf2-rec-summary__stats {
     grid-template-columns: 1fr;
   }
-  [data-cf-ui="v2"] .cf2-rec-flow__track {
-    flex-direction: column;
+  [data-cf-ui="v2"] .cf2-rec-flow .cf2-rec-stage {
+    min-width: 4.8rem;
+    max-width: none;
+    padding-inline: 0.2rem;
   }
-  [data-cf-ui="v2"] .cf2-rec-stage-wait {
-    transform: rotate(90deg);
-    align-self: flex-start;
-    margin-inline-start: 1.1rem;
+  [data-cf-ui="v2"] .cf2-rec-flow .cf2-rec-stage[data-cf2-stage-state="active"] {
+    flex: 1.25 1 0;
+  }
+  [data-cf-ui="v2"] .cf2-rec-stage-link {
+    flex-basis: 0.55rem;
+  }
+  [data-cf-ui="v2"] .cf2-rec-msg__surface {
+    grid-template-columns: 7px minmax(0, 1fr);
+  }
+  [data-cf-ui="v2"] .cf2-rec-delay__ctl {
+    grid-template-columns: minmax(3.8rem, 0.9fr) minmax(5rem, 1.2fr);
   }
 }
 
-/* Packages Experience V4 */
+/* Packages Experience V4 + Visual Identity Assimilation V5 */
 [data-cf-ui="v2"] .cf2-packages {
-  max-width: 48rem;
+  width: 100%;
+  max-width: none;
   padding: 0.25rem 0 1.5rem;
 }
 [data-cf-ui="v2"] .cf2-packages__title {
@@ -630,23 +878,32 @@
   color: #082048;
 }
 [data-cf-ui="v2"] .cf2-packages__lede {
-  margin: 0 0 1rem;
+  margin: 0 0 0.85rem;
   font-size: 0.9rem;
+  line-height: 1.45;
   color: rgba(8, 32, 72, 0.62);
+  max-width: 40rem;
 }
 [data-cf-ui="v2"] .cf2-packages__current {
-  padding: 0.85rem 0.9rem;
-  border-radius: 12px;
-  border: 1px solid rgba(8, 32, 72, 0.14);
-  background: rgba(8, 32, 72, 0.04);
-  margin-bottom: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.75rem;
+  margin-bottom: 0.65rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid rgba(8, 32, 72, 0.12);
+  border-radius: 2px 12px 12px 2px;
+  background:
+    linear-gradient(90deg, rgba(24, 176, 168, 0.1), transparent 28%),
+    rgba(8, 32, 72, 0.03);
 }
 [data-cf-ui="v2"] .cf2-packages__current-label {
   font-size: 0.75rem;
+  font-weight: 700;
   color: rgba(8, 32, 72, 0.55);
 }
 [data-cf-ui="v2"] .cf2-packages__current-name {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 700;
   color: #082048;
 }
@@ -659,58 +916,132 @@
   font-size: 0.85rem;
   color: #5a3a10;
 }
+[data-cf-ui="v2"] .cf2-packages__board {
+  position: relative;
+  width: 100%;
+  padding: 0.15rem 0 0.25rem;
+}
+[data-cf-ui="v2"] .cf2-packages__board::before {
+  content: "";
+  display: none;
+}
 [data-cf-ui="v2"] .cf2-packages__grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.75rem;
+  width: 100%;
 }
 @media (min-width: 900px) {
+  [data-cf-ui="v2"] .cf2-packages__board::before {
+    display: block;
+    position: absolute;
+    inset-inline: 8% 8%;
+    top: 1.35rem;
+    height: var(--cf2-lang-edge, 4px);
+    background: linear-gradient(
+      270deg,
+      rgba(8, 32, 72, 0.08),
+      rgba(24, 176, 168, 0.35),
+      rgba(8, 32, 72, 0.22)
+    );
+    clip-path: polygon(0 25%, 100% 0, 100% 100%, 0 75%);
+    pointer-events: none;
+    z-index: 0;
+  }
   [data-cf-ui="v2"] .cf2-packages__grid {
+    position: relative;
+    z-index: 1;
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.85rem;
+    align-items: stretch;
   }
 }
 [data-cf-ui="v2"] .cf2-plan-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
   border: 1px solid rgba(8, 32, 72, 0.12);
-  border-radius: 14px;
-  padding: 0.9rem;
+  border-radius: 2px 14px 14px 2px;
+  padding: 0.95rem 0.9rem 1rem;
   background: #fff;
+  min-height: 100%;
+}
+[data-cf-ui="v2"] .cf2-plan-card__joint {
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block: 0.85rem 0.85rem;
+  width: 4px;
+  background: rgba(8, 32, 72, 0.14);
+  clip-path: polygon(0 0, 100% 8%, 100% 92%, 0 100%);
+}
+[data-cf-ui="v2"] .cf2-plan-card[data-cf2-plan-mass="primary"] .cf2-plan-card__joint,
+[data-cf-ui="v2"] .cf2-plan-card.is-current .cf2-plan-card__joint {
+  background: linear-gradient(180deg, var(--cf2-teal, #18b0a8), var(--cf2-navy, #082048));
+  box-shadow: 0 0 0 3px rgba(24, 176, 168, 0.12);
+}
+[data-cf-ui="v2"] .cf2-plan-card[data-cf2-plan-mass="secondary"] .cf2-plan-card__joint {
+  background: rgba(8, 32, 72, 0.28);
 }
 [data-cf-ui="v2"] .cf2-plan-card.is-current {
-  border-color: rgba(8, 32, 72, 0.4);
-  box-shadow: inset 0 0 0 1px rgba(8, 32, 72, 0.2);
+  border-color: rgba(8, 32, 72, 0.28);
+  background:
+    linear-gradient(180deg, rgba(24, 176, 168, 0.07), transparent 36%),
+    #fff;
+  box-shadow: inset 0 0 0 1px rgba(8, 32, 72, 0.08);
 }
 [data-cf-ui="v2"] .cf2-plan-card__name {
-  margin: 0 0 0.25rem;
+  margin: 0.15rem 0 0;
   font-size: 1.05rem;
   font-weight: 700;
+  color: #082048;
+  padding-inline-start: 0.35rem;
 }
 [data-cf-ui="v2"] .cf2-plan-card__badge {
-  display: inline-block;
-  font-size: 0.72rem;
-  font-weight: 700;
+  align-self: flex-start;
+  margin-inline-start: 0.35rem;
   padding: 0.15rem 0.45rem;
   border-radius: 999px;
-  background: rgba(8, 32, 72, 0.1);
-  margin-bottom: 0.45rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #082048;
+  background: rgba(24, 176, 168, 0.16);
 }
 [data-cf-ui="v2"] .cf2-plan-card__price {
-  font-size: 0.85rem;
-  color: rgba(8, 32, 72, 0.7);
-  margin-bottom: 0.55rem;
+  margin: 0;
+  padding-inline-start: 0.35rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: rgba(8, 32, 72, 0.78);
+  line-height: 1.45;
+}
+[data-cf-ui="v2"] .cf2-plan-card__price-note {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: rgba(8, 32, 72, 0.5);
 }
 [data-cf-ui="v2"] .cf2-plan-card__features {
-  margin: 0;
-  padding-inline-start: 1.1rem;
+  margin: 0.25rem 0 0;
+  padding: 0.35rem 0 0.15rem 0;
+  padding-inline-start: 1.15rem;
+  list-style: disc;
+  flex: 1 1 auto;
   font-size: 0.82rem;
   line-height: 1.45;
-  color: rgba(8, 32, 72, 0.75);
+  color: rgba(8, 32, 72, 0.78);
 }
 [data-cf-ui="v2"] .cf2-plan-card__action {
-  margin-top: 0.75rem;
-  font-size: 0.82rem;
-  color: rgba(8, 32, 72, 0.55);
+  margin: 0.55rem 0 0;
+  padding: 0.45rem 0.35rem 0;
+  border-top: 1px solid rgba(8, 32, 72, 0.08);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(8, 32, 72, 0.62);
 }
 [data-cf-ui="v2"] .cf2-plan-card__action[disabled],
 [data-cf-ui="v2"] .cf2-packages__blocked-cta {
   opacity: 0.85;
+  color: rgba(8, 32, 72, 0.55);
 }
