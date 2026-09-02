@@ -39,16 +39,9 @@
   }
 
   function paintSummary(d) {
-    var delayEl = byId("ma-rec-sum-delay");
     var attEl = byId("ma-rec-sum-attempts");
     if (!d) return;
-    if (delayEl) {
-      var n = d.recovery_delay != null ? String(d.recovery_delay) : "—";
-      var u = d.recovery_delay_unit || "minutes";
-      var uAr =
-        u === "hours" ? "ساعة" : u === "days" ? "يوم" : "دقيقة";
-      delayEl.textContent = n === "—" ? "—" : n + " " + uAr;
-    }
+    /* First-message summary is owned by trigger templates (absolute stage-0 delays). */
     if (attEl) {
       var a = parseInt(d.recovery_attempts, 10);
       attEl.textContent = isFinite(a) ? String(a) : "—";

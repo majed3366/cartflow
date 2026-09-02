@@ -1045,3 +1045,87 @@
   opacity: 0.85;
   color: rgba(8, 32, 72, 0.55);
 }
+
+/* Recovery Semantics & Configurability V6 */
+[data-cf-ui="v2"] .cf2-recovery-v4,
+[data-cf-ui="v2"] .cf2-recovery-v4 * {
+  font-family: var(--cf2-font, "Tajawal", "Segoe UI", Tahoma, sans-serif);
+}
+[data-cf-ui="v2"] .cf2-rec-summary__title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+[data-cf-ui="v2"] .cf2-rec-summary__lede,
+[data-cf-ui="v2"] .cf2-rec-reasons__hint,
+[data-cf-ui="v2"] .cf2-rec-summary__edit-note,
+[data-cf-ui="v2"] .cf2-rec-delay__hint {
+  font-size: 0.84rem;
+  font-weight: 500;
+  line-height: 1.5;
+  color: rgba(8, 32, 72, 0.62);
+}
+[data-cf-ui="v2"] .cf2-rec-summary__edit-note {
+  margin: 0.35rem 0 0.75rem;
+}
+[data-cf-ui="v2"] .cf2-rec-stat__label,
+[data-cf-ui="v2"] .cf2-rec-delay__label,
+[data-cf-ui="v2"] .cf2-recovery-v4 .ma-tpl-lbl,
+[data-cf-ui="v2"] .cf2-recovery-v4 .ma-fw-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: rgba(8, 32, 72, 0.72);
+}
+[data-cf-ui="v2"] .cf2-rec-stat__value,
+[data-cf-ui="v2"] .cf2-rec-reason__label {
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+[data-cf-ui="v2"] .cf2-rec-delay__hint {
+  margin: 0 0 0.45rem;
+}
+[data-cf-ui="v2"] .cf2-rec-stage-count {
+  margin: 0.55rem 0 0.75rem;
+}
+[data-cf-ui="v2"] .cf2-rec-stage-count__ctl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+  max-width: 16rem;
+}
+[data-cf-ui="v2"] .cf2-rec-stage-count__opt {
+  appearance: none;
+  min-height: 2.55rem;
+  border: 1px solid rgba(8, 32, 72, 0.14);
+  border-radius: 2px 10px 10px 2px;
+  background: rgba(8, 32, 72, 0.03);
+  color: #082048;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+[data-cf-ui="v2"] .cf2-rec-stage-count__opt.is-active {
+  border-color: rgba(8, 32, 72, 0.4);
+  background:
+    linear-gradient(180deg, rgba(24, 176, 168, 0.14), transparent 70%),
+    #fff;
+  box-shadow: inset 3px 0 0 var(--cf2-teal, #18b0a8);
+}
+[data-cf-ui="v2"] .cf2-rec-stage-count__native {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+[data-cf-ui="v2"] .cf2-settings__handoff-note {
+  display: none !important;
+}

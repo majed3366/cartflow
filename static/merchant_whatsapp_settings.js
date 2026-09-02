@@ -477,7 +477,7 @@
       scrollToWaSettings();
       showCtaGuidance(
         (behavior.placeholder_ar || "").trim() ||
-          "ربط واتساب المتجر قيد التجهيز. حالياً يمكنك استخدام CartFlow Managed للتشغيل التجريبي."
+          "ربط واتساب المتجر قيد التجهيز. يمكنك المتابعة بإعدادات الاسترجاع المتاحة الآن."
       );
       return;
     }

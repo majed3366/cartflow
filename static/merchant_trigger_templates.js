@@ -469,8 +469,8 @@
   function stageTimingHintAr(index, enabledInRoute) {
     if (isV2RecoveryCompose()) {
       if (!enabledInRoute) return "غير مفعّلة";
-      if (index === 0) return "تُرسل أولاً";
-      return "متابعة";
+      /* Runtime: absolute delay from abandon — not wait-after-previous. */
+      return "من ترك السلة";
     }
     if (!enabledInRoute) {
       return "غير مفعلة — لن يستلمها العميل";
@@ -730,6 +730,52 @@
       if (lastPayload.reason_rows[i].enabled !== false) n++;
     }
     el.textContent = String(n) + " / " + String(lastPayload.reason_rows.length);
+    paintFirstMessageTimingSummary();
+  }
+
+  function paintFirstMessageTimingSummary() {
+    var delayEl = byId("ma-rec-sum-delay");
+    if (!delayEl || !lastPayload || !lastPayload.reason_rows) return;
+    var secs = [];
+    var i;
+    for (i = 0; i < lastPayload.reason_rows.length; i++) {
+      var row = lastPayload.reason_rows[i];
+      if (row.enabled === false) continue;
+      var msgs = Array.isArray(row.messages) ? row.messages : [];
+      var m0 = msgs[0] || null;
+      var val =
+        m0 && m0.delay != null
+          ? parseFloat(m0.delay)
+          : row.delay_value != null
+            ? parseFloat(row.delay_value)
+            : NaN;
+      var unit = normalizeApiDelayUnit(
+        (m0 && m0.unit) || row.delay_unit || "minute"
+      );
+      if (!isFinite(val) || val < 0) continue;
+      var mult =
+        unit === "day" ? 86400 : unit === "hour" ? 3600 : 60;
+      secs.push(val * mult);
+    }
+    if (!secs.length) {
+      delayEl.textContent = "حسب كل سبب";
+      return;
+    }
+    secs.sort(function (a, b) {
+      return a - b;
+    });
+    function fmt(s) {
+      if (s % 86400 === 0) return String(s / 86400) + " يوم";
+      if (s % 3600 === 0) return String(s / 3600) + " ساعة";
+      if (s % 60 === 0) return String(s / 60) + " دقيقة";
+      return String(Math.round(s / 60)) + " دقيقة";
+    }
+    if (secs[0] === secs[secs.length - 1]) {
+      delayEl.textContent = fmt(secs[0]) + " من ترك السلة";
+    } else {
+      delayEl.textContent =
+        fmt(secs[0]) + "–" + fmt(secs[secs.length - 1]) + " من ترك السلة";
+    }
   }
 
   window.maUpdateRecoveryReasonsSummary = updateRecoveryReasonsSummary;
@@ -1458,6 +1504,27 @@
       selectReasonCard(pick.getAttribute("data-cf2-rec-pick") || "");
       return;
     }
+    var countBtn =
+      tg && tg.closest ? tg.closest("[data-cf2-stage-count]") : null;
+    if (countBtn && root.contains(countBtn)) {
+      ev.preventDefault();
+      var cardC = countBtn.closest("[data-ma-tpl-key]");
+      var nC = parseInt(countBtn.getAttribute("data-cf2-stage-count"), 10);
+      if (!cardC || !(nC >= 1 && nC <= 3)) return;
+      var selC = cardC.querySelector("[data-ma-tpl-msg-count]");
+      if (selC) {
+        selC.value = String(nC);
+        selC.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      var opts = cardC.querySelectorAll("[data-cf2-stage-count]");
+      var oi;
+      for (oi = 0; oi < opts.length; oi++) {
+        var on = parseInt(opts[oi].getAttribute("data-cf2-stage-count"), 10) === nC;
+        opts[oi].classList.toggle("is-active", on);
+        opts[oi].setAttribute("aria-checked", on ? "true" : "false");
+      }
+      return;
+    }
     var stageBtn =
       tg && tg.closest ? tg.closest("[data-ma-tpl-stage-select]") : null;
     if (stageBtn && root.contains(stageBtn)) {
@@ -1512,6 +1579,14 @@
     if (!cardEl) return;
     var rk = cardEl.getAttribute("data-ma-tpl-key");
     var n = getCardEnabledStageCount(cardEl);
+    var opts = cardEl.querySelectorAll("[data-cf2-stage-count]");
+    var oi;
+    for (oi = 0; oi < opts.length; oi++) {
+      var on =
+        parseInt(opts[oi].getAttribute("data-cf2-stage-count"), 10) === n;
+      opts[oi].classList.toggle("is-active", on);
+      opts[oi].setAttribute("aria-checked", on ? "true" : "false");
+    }
     var editIx = parseInt(
       cardEl.getAttribute("data-ma-tpl-active-stage") || "0",
       10
@@ -1521,6 +1596,7 @@
     } else {
       syncCardStageWorkflow(cardEl);
     }
+    paintFirstMessageTimingSummary();
   }
 
   /** ربط مرة واحدة — لا إعادة ربط عند كل render. */
@@ -1598,12 +1674,77 @@
       : "الرسالة 1 — نص المرحلة الأولى";
 
     var v2 = isV2RecoveryCompose();
-    var mcOpts = [1, 2, 3]
-      .map(function (n) {
-        var sel = n === mc ? " selected" : "";
-        return '<option value="' + n + '"' + sel + ">" + n + "</option>";
-      })
-      .join("");
+    var stageCountBlock;
+    if (v2) {
+      stageCountBlock =
+        '<div class="ma-tpl-stage-config cf2-rec-stage-count">' +
+        '<span class="ma-tpl-lbl" id="ma-tpl-mc-lbl-' +
+        k +
+        '">كم مرحلة تريد تفعيلها؟</span>' +
+        '<div class="cf2-rec-stage-count__ctl" role="radiogroup" aria-labelledby="ma-tpl-mc-lbl-' +
+        k +
+        '">' +
+        [1, 2, 3]
+          .map(function (n) {
+            return (
+              '<button type="button" class="cf2-rec-stage-count__opt' +
+              (n === mc ? " is-active" : "") +
+              '" role="radio" aria-checked="' +
+              (n === mc ? "true" : "false") +
+              '" data-cf2-stage-count="' +
+              n +
+              '">' +
+              n +
+              "</button>"
+            );
+          })
+          .join("") +
+        "</div>" +
+        '<select class="ma-tpl-input cf2-rec-stage-count__native" id="ma-tpl-mc-' +
+        k +
+        '" data-ma-tpl-msg-count aria-hidden="true" tabindex="-1">' +
+        [1, 2, 3]
+          .map(function (n) {
+            return (
+              '<option value="' +
+              n +
+              '"' +
+              (n === mc ? " selected" : "") +
+              ">" +
+              n +
+              "</option>"
+            );
+          })
+          .join("") +
+        "</select>" +
+        stageHelp +
+        "</div>";
+    } else {
+      stageCountBlock =
+        '<div class="ma-tpl-stage-config">' +
+        '<label class="ma-tpl-lbl" for="ma-tpl-mc-' +
+        k +
+        '">كم مرحلة تريد تفعيلها؟</label>' +
+        '<select class="ma-tpl-input" id="ma-tpl-mc-' +
+        k +
+        '" data-ma-tpl-msg-count>' +
+        [1, 2, 3]
+          .map(function (n) {
+            return (
+              '<option value="' +
+              n +
+              '"' +
+              (n === mc ? " selected" : "") +
+              ">" +
+              n +
+              "</option>"
+            );
+          })
+          .join("") +
+        "</select>" +
+        stageHelp +
+        "</div>";
+    }
 
     var editorBlock;
     var delayBlock;
@@ -1630,17 +1771,18 @@
         "</textarea>" +
         "</div></div></div>";
       delayBlock =
-        '<div class="cf2-rec-delay" role="group" aria-label="توقيت الإرسال قبل هذه المرحلة">' +
-        '<span class="cf2-rec-delay__label">التأخير قبل الإرسال</span>' +
+        '<div class="cf2-rec-delay" role="group" aria-label="موعد إرسال هذه المرحلة بعد ترك السلة">' +
+        '<span class="cf2-rec-delay__label">موعد الإرسال بعد ترك السلة</span>' +
+        '<p class="cf2-rec-delay__hint">يُحسب من لحظة ترك السلة لهذه المرحلة — وليس انتظاراً بعد المرحلة السابقة.</p>' +
         '<div class="cf2-rec-delay__ctl">' +
         '<input class="ma-tpl-input cf2-rec-delay__value" type="number" id="ma-tpl-dv-' +
         k +
         '" min="0.1" step="any" data-ma-tpl-delay value="' +
         esc(String(dv)) +
-        '" aria-label="قيمة التأخير" />' +
+        '" aria-label="قيمة الموعد بعد ترك السلة" />' +
         '<select class="ma-tpl-input cf2-rec-delay__unit" id="ma-tpl-du-' +
         k +
-        '" data-ma-tpl-unit aria-label="وحدة التأخير">' +
+        '" data-ma-tpl-unit aria-label="وحدة الموعد">' +
         '<option value="minute"' +
         minSel +
         ">دقائق</option>" +
@@ -1726,17 +1868,7 @@
       '<label class="ma-tpl-check"><input type="checkbox" data-ma-tpl-enabled' +
       en +
       "> تفعيل قالب الاسترجاع لهذا السبب</label>" +
-      '<div class="ma-tpl-stage-config">' +
-      '<label class="ma-tpl-lbl" for="ma-tpl-mc-' +
-      k +
-      '">كم مرحلة تريد تفعيلها؟</label>' +
-      '<select class="ma-tpl-input" id="ma-tpl-mc-' +
-      k +
-      '" data-ma-tpl-msg-count>' +
-      mcOpts +
-      "</select>" +
-      stageHelp +
-      "</div>" +
+      stageCountBlock +
       customerPath +
       workflow +
       editorBlock +
