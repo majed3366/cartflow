@@ -246,6 +246,12 @@
   color: var(--cf2-navy);
   text-decoration: underline;
   text-underline-offset: 2px;
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
 }
 [data-cf-ui="v2"] .cf2-settings .setting-card,
 [data-cf-ui="v2"] .cf2-settings .ma-fw-card {

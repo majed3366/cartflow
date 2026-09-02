@@ -43,7 +43,7 @@
     {
       id: "policy",
       title: "سياسة السلال المهمة",
-      line: "عتبة VIP والتفعيل",
+      line: "الحد الأدنى لقيمة السلة والتفعيل",
     },
     {
       id: "experience",
@@ -144,9 +144,9 @@
     var enabled = vip.vip_enabled !== false;
     var thr = vip.vip_cart_threshold;
     if (enabled && (thr == null || thr === "")) {
-      return { state: "PARTIAL", line: "التفعيل بدون عتبة" };
+      return { state: "PARTIAL", line: "التفعيل بدون حد أدنى لقيمة السلة" };
     }
-    if (enabled) return { state: "READY", line: "عتبة السلال المهمة مضبوطة" };
+    if (enabled) return { state: "READY", line: "الحد الأدنى لقيمة السلة مضبوط" };
     return { state: "READY", line: "متابعة VIP غير مفعّلة" };
   }
 
@@ -323,6 +323,12 @@
         showPanel(btn.getAttribute("data-cf2-settings-area"));
       });
     }
+    root.addEventListener("click", function (e) {
+      var openBtn = e.target.closest("[data-cf2-open-settings]");
+      if (!openBtn || !root.contains(openBtn)) return;
+      e.preventDefault();
+      showPanel(openBtn.getAttribute("data-cf2-open-settings") || "");
+    });
     var back = $("#cf2-settings-back", root);
     if (back) {
       back.addEventListener("click", function () {

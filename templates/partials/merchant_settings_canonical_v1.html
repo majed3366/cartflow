@@ -102,10 +102,10 @@
         </div>
 
         <div class="setting-card ma-fw-card" id="cf2-settings-templates">
-          <div class="setting-title">قوالب المتابعة</div>
-          <div class="setting-desc">قوالب موجودة في CartFlow — لا تُعاد كتابتها هنا.</div>
-          <p class="cf2-settings__handoff-note">فتح صفحة القوالب الحالية للضبط.</p>
-          <a class="cf2-settings__handoff" href="/dashboard?cf_ui=v1#trigger-templates">فتح القوالب</a>
+          <div class="setting-title">قوالب رسائل الاسترجاع</div>
+          <div class="setting-desc">الملكية هنا لسجل واتساب فقط — محتوى الرسائل حسب سبب التردد يُضبط في سياسة الاسترجاع.</div>
+          <p class="cf2-settings__handoff-note">لا تفتح واجهة قديمة. الوجهة الوحيدة داخل Merchant UI V2:</p>
+          <button type="button" class="cf2-settings__handoff" data-cf2-open-settings="recovery">فتح سياسة الاسترجاع</button>
         </div>
 
         <div id="ma-general-settings-err" class="ma-settings-banner" style="display:none;"></div>
@@ -185,14 +185,14 @@
         <div id="ma-vip-settings-ok" class="ma-settings-banner" style="display:none;">تم حفظ إعدادات السلال المهمة</div>
         <div class="setting-card ma-fw-card ma-vip-simple-card">
           <div class="setting-title">VIP — سياسة السلال المهمة</div>
-          <div class="setting-desc">العتبة والتفعيل هنا. قائمة السلال المهمة تبقى في السلال.</div>
+          <div class="setting-desc">الحد الأدنى لقيمة السلة والتفعيل هنا. قائمة السلال المهمة تبقى في السلال.</div>
           <form id="ma-vip-settings-form" class="ma-fw-form" autocomplete="off">
             <div class="setting-row" style="align-items:flex-start;justify-content:space-between;gap:12px;">
               <label class="ma-fw-label" for="ma-vip-enabled" style="margin:0;">تفعيل متابعة السلال المهمة</label>
               <label class="ma-fw-check"><input type="checkbox" id="ma-vip-enabled" name="vip_enabled" value="1"></label>
             </div>
             <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
-              <label class="ma-fw-label" for="ma-vip-threshold">الحد الأدنى (SR)</label>
+              <label class="ma-fw-label" for="ma-vip-threshold">الحد الأدنى لقيمة السلة (ر.س)</label>
               <input class="ma-fw-input" id="ma-vip-threshold" name="vip_cart_threshold" type="number" min="1" step="1" dir="ltr" placeholder="500">
             </div>
             <details class="ma-advanced-block">
@@ -207,7 +207,7 @@
                   <textarea class="ma-fw-input" id="ma-vip-note" name="vip_note" rows="2" maxlength="2000" dir="rtl"></textarea>
                 </div>
                 <div class="setting-row"><span class="setting-label">حالة VIP</span><span class="setting-value" id="ma-vip-status-display">—</span></div>
-                <div class="setting-row"><span class="setting-label">العتبة الحالية</span><span class="setting-value" id="ma-vip-threshold-display">—</span></div>
+                <div class="setting-row"><span class="setting-label">الحد الأدنى الحالي لقيمة السلة</span><span class="setting-value" id="ma-vip-threshold-display">—</span></div>
               </div>
             </details>
             <div class="ma-fw-actions">

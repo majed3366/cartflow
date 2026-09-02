@@ -1,0 +1,72 @@
+{
+  "base": "http://127.0.0.1:8796",
+  "probes": {
+    "desktop_account": {
+      "store": "Living Store Review",
+      "meta": "Living Store · جلسة مراجعة نشطة",
+      "plan": "الباقة: Starter · نشطة",
+      "hasV1Link": false,
+      "labels": [
+        "الملف",
+        "الباقة",
+        "تسجيل الخروج"
+      ]
+    },
+    "desktop_recovery": {
+      "hash": "#trigger-templates",
+      "tpl": 6,
+      "v1": false,
+      "ui": "v2",
+      "ataba": false
+    },
+    "desktop_template_nav": {
+      "panel": true,
+      "tpl": 6,
+      "v1": false,
+      "ui": "v2"
+    },
+    "desktop_vip": {
+      "ataba": false,
+      "minLabel": true,
+      "ui": "v2"
+    },
+    "desktop_package": {
+      "hasPlan": true,
+      "ui": "v2"
+    },
+    "mobile_account": {
+      "store": "Living Store Review",
+      "meta": "Living Store · جلسة مراجعة نشطة",
+      "plan": "الباقة: Starter · نشطة",
+      "hasV1Link": false,
+      "labels": [
+        "الملف",
+        "الباقة",
+        "تسجيل الخروج"
+      ]
+    },
+    "mobile_recovery": {
+      "hash": "#trigger-templates",
+      "tpl": 6,
+      "v1": false,
+      "ui": "v2",
+      "ataba": false
+    },
+    "mobile_template_nav": {
+      "panel": true,
+      "tpl": 6,
+      "v1": false,
+      "ui": "v2"
+    },
+    "mobile_vip": {
+      "ataba": false,
+      "minLabel": true,
+      "ui": "v2"
+    },
+    "mobile_package": {
+      "hasPlan": true,
+      "ui": "v2"
+    }
+  },
+  "ts": "2026-09-02T08:55:04Z"
+}

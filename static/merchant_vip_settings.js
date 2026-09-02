@@ -41,7 +41,7 @@
 
   function parseThresholdInput() {
     var el = byId("ma-vip-threshold");
-    if (!el) return { ok: false, error: "حقل العتبة غير متوفر" };
+    if (!el) return { ok: false, error: "حقل الحد الأدنى لقيمة السلة غير متوفر" };
     var raw = String(el.value == null ? "" : el.value).trim();
     if (!raw) {
       return { ok: false, error: "أدخل قيمة السلة المهمة (رقم موجب)" };

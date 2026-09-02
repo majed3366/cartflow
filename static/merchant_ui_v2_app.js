@@ -359,6 +359,84 @@
     unlockScrollIfIdle();
   }
 
+  function paintAccountDrawer(identity, subscription) {
+    var nameEl = $("#cf2-account-store-name");
+    var metaEl = $("#cf2-account-store-meta");
+    var planEl = $("#cf2-account-plan");
+    if (!nameEl) return;
+    var storeName = (identity && identity.store_name) || "";
+    if (!String(storeName).trim()) {
+      var utilName = $(".cf2-utility__identity-name");
+      if (utilName) storeName = utilName.textContent || "";
+    }
+    nameEl.textContent = String(storeName || "متجرك").trim() || "متجرك";
+    if (metaEl) {
+      var bits = [];
+      if (identity && identity.commerce_provider && identity.commerce_provider !== "—") {
+        bits.push(String(identity.commerce_provider));
+      }
+      if (identity && identity.connection_status) {
+        bits.push(String(identity.connection_status));
+      }
+      metaEl.textContent = bits.join(" · ");
+      metaEl.hidden = !bits.length;
+    }
+    if (planEl) {
+      var sub = subscription && (subscription.subscription || subscription);
+      var planLabel =
+        (sub &&
+          (sub.current_plan_label_ar ||
+            sub.plan_label_ar ||
+            sub.plan_name_ar ||
+            sub.current_plan)) ||
+        "";
+      var statusLabel =
+        (sub &&
+          (sub.plan_status_label_ar ||
+            sub.status_label_ar ||
+            sub.subscription_health_ar)) ||
+        "";
+      var line = String(planLabel || "").trim();
+      if (statusLabel) line = line ? line + " · " + statusLabel : statusLabel;
+      planEl.textContent = line ? "الباقة: " + line : "الباقة: غير متاحة";
+    }
+  }
+
+  function refreshAccountDrawer() {
+    var nameEl = $("#cf2-account-store-name");
+    if (nameEl && (!nameEl.textContent || nameEl.textContent.indexOf("جاري") === 0)) {
+      nameEl.textContent = "جاري التحميل…";
+    }
+    Promise.all([
+      fetch("/api/merchant/session-identity", {
+        credentials: "same-origin",
+        cache: "no-store",
+      })
+        .then(function (r) {
+          return r.json().catch(function () {
+            return {};
+          });
+        })
+        .catch(function () {
+          return {};
+        }),
+      fetch("/api/merchant/subscription", {
+        credentials: "same-origin",
+        cache: "no-store",
+      })
+        .then(function (r) {
+          return r.json().catch(function () {
+            return {};
+          });
+        })
+        .catch(function () {
+          return {};
+        }),
+    ]).then(function (pair) {
+      paintAccountDrawer(pair[0] || {}, pair[1] || {});
+    });
+  }
+
   function openDrawer() {
     closeCtxDrawer();
     var d = $(".cf2-drawer");
@@ -368,6 +446,17 @@
     document.body.classList.add("is-drawer-open");
     document.body.style.overflow = "hidden";
     setMenuExpanded(true);
+    refreshAccountDrawer();
+  }
+
+  function openSettingsArea(areaId) {
+    closeDrawer();
+    go("settings");
+    window.setTimeout(function () {
+      if (window.CartFlowUiV2Settings && CartFlowUiV2Settings.showPanel) {
+        CartFlowUiV2Settings.showPanel(areaId || "store");
+      }
+    }, 80);
   }
 
   function toggleDrawer() {
@@ -503,7 +592,19 @@
     var utilSettings = $('[data-cf2-util="settings"]');
     if (utilSettings) {
       utilSettings.addEventListener("click", function () {
-        go("settings");
+        openSettingsArea("store");
+      });
+    }
+    var utilStore = $('[data-cf2-util="settings-store"]');
+    if (utilStore) {
+      utilStore.addEventListener("click", function () {
+        openSettingsArea("store");
+      });
+    }
+    var utilPlan = $('[data-cf2-util="settings-plan"]');
+    if (utilPlan) {
+      utilPlan.addEventListener("click", function () {
+        openSettingsArea("store");
       });
     }
 

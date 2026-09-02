@@ -455,6 +455,30 @@ body[data-cf-ui="v2"] .cf2-drawer__item:hover {
   background: rgba(8, 32, 72, 0.05);
 }
 
+body[data-cf-ui="v2"] .cf2-drawer__identity {
+  margin: 0 0 4px;
+  padding: 10px 10px 12px;
+  border-radius: 10px;
+  background: rgba(8, 32, 72, 0.04);
+}
+
+body[data-cf-ui="v2"] .cf2-drawer__store-name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--cf2-ink);
+  line-height: 1.35;
+}
+
+body[data-cf-ui="v2"] .cf2-drawer__meta,
+body[data-cf-ui="v2"] .cf2-drawer__plan {
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cf2-mute);
+  line-height: 1.4;
+}
+
 body[data-cf-ui="v2"] .cf2-drawer__divider {
   height: 1px;
   margin: 8px 0 14px;
