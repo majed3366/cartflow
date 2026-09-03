@@ -1,0 +1,41 @@
+{
+  "pack": "revenue_reality_validation_v1",
+  "base_sha": "0a940f6876b95ab3bafdda8fc158a2122d291f8f",
+  "simulation_sha": "uncommitted",
+  "branch": "candidate/revenue-reality-validation-v1",
+  "worktree": "DIRTY",
+  "production_data_touched": false,
+  "simulation_isolated": true,
+  "store_slug": "rrv_sim_store_v1",
+  "products_simulated": 10,
+  "days_simulated": 30,
+  "revenue_scenarios": 8,
+  "scenarios_validated": 8,
+  "revenue_missions_generated": 11,
+  "laws": {
+    "NO_RECOMMENDATION_WITHOUT_EVIDENCE": "PASS",
+    "NO_REVENUE_CLAIM_WITHOUT_MEASUREMENT": "PASS"
+  },
+  "capabilities": {
+    "Product Intelligence": "PARTIAL",
+    "Acquisition Intelligence": "DATA GAP",
+    "Merchandising Intelligence": "DATA GAP",
+    "Conversion Intelligence": "PARTIAL",
+    "Pricing Intelligence": "PARTIAL",
+    "Retention Intelligence": "DATA GAP",
+    "Recovery Intelligence": "PARTIAL",
+    "Comparative Market Pricing": "NEEDS_EXTERNAL_DATA / UNSAFE",
+    "Margin Intelligence": "DATA GAP"
+  },
+  "ui_gates": {
+    "HOME_REVENUE_MISSION": "PASS",
+    "WORKSPACE_COMMERCIAL_GUIDANCE": "PASS",
+    "PRODUCT_INTELLIGENCE_CONCEPT": "PASS",
+    "REVENUE_MISSIONS_CONCEPT": "PASS",
+    "INSUFFICIENT_EVIDENCE_BEHAVIOR": "PASS",
+    "FOUNDER_REALITY_REVIEW_READY": "YES"
+  },
+  "production_implementation_authorized": false,
+  "deployment_performed": false,
+  "review_path": "/dev/revenue-reality-validation"
+}

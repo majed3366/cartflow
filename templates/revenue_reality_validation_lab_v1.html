@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Revenue Intelligence Model — مراجعة فقط</title>
+  <style>
+    :root {
+      --ink: #12231f;
+      --muted: #5a6e67;
+      --line: #d5e1dc;
+      --paper: #eef3f1;
+      --card: #ffffff;
+      --accent: #1a5c4a;
+      --accent-soft: #e4f2ed;
+      --warn: #8a5a12;
+      --danger: #8b2e2e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, "Noto Sans Arabic", sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      line-height: 1.55;
+    }
+    .wrap { max-width: 920px; margin: 0 auto; padding: 18px 14px 64px; }
+    .banner {
+      background: #fff6e6; border: 1px solid #efd79a; border-radius: 10px;
+      padding: 10px 12px; margin-bottom: 14px; color: var(--warn); font-size: 0.88rem;
+    }
+    h1 { font-size: 1.28rem; margin: 0 0 4px; }
+    .lead { color: var(--muted); margin: 0 0 12px; font-size: 0.92rem; }
+    .tabs {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px;
+      position: sticky; top: 0; z-index: 4; background: var(--paper); padding: 6px 0;
+    }
+    .tab {
+      border: 1px solid var(--line); background: #fff; border-radius: 999px;
+      padding: 7px 12px; cursor: pointer; font-size: 0.86rem;
+    }
+    .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .card {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 14px; padding: 14px 14px 12px; margin-bottom: 10px;
+    }
+    .card.secondary { padding: 12px; background: #f7faf8; }
+    .card h2, .card h3 { margin: 0 0 8px; font-size: 1.05rem; line-height: 1.35; }
+    .label {
+      display: block; font-size: 0.75rem; font-weight: 700;
+      color: var(--accent); margin: 8px 0 2px;
+    }
+    .line { margin: 0; font-size: 0.95rem; }
+    .pill {
+      display: inline-block; border-radius: 999px; padding: 2px 9px;
+      font-size: 0.75rem; background: var(--accent-soft); color: var(--accent); margin-left: 4px;
+    }
+    .pill.warn { background: #fff1d6; color: var(--warn); }
+    .pill.danger { background: #fde8e8; color: var(--danger); }
+    .not-do {
+      background: #fdf2f2; border: 1px solid #f0c9c9; border-radius: 8px;
+      padding: 8px 10px; color: var(--danger); font-size: 0.9rem; margin-top: 8px;
+    }
+    .muted { color: var(--muted); font-size: 0.88rem; }
+    details.ev { margin-top: 8px; font-size: 0.88rem; color: var(--muted); }
+    details.ev summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+    ul.ev { margin: 4px 0 0; padding-inline-start: 18px; }
+    .score {
+      background: var(--accent); color: #f4fbf8; border-radius: 12px;
+      padding: 10px 12px; margin-bottom: 12px; font-size: 0.85rem;
+    }
+    .q { font-size: 1.12rem; font-weight: 700; margin: 0 0 10px; }
+    .prod-grid { display: grid; gap: 10px; grid-template-columns: 1fr; }
+    @media (min-width: 900px) { .prod-grid { grid-template-columns: 1fr 1fr; } }
+    .state-row { display: flex; justify-content: space-between; gap: 8px; font-size: 0.9rem; border-bottom: 1px solid var(--line); padding: 4px 0; }
+    .state-row:last-child { border-bottom: 0; }
+    .bucket { font-size: 0.92rem; font-weight: 700; color: var(--accent); margin: 14px 0 6px; }
+    .mini { font-size: 0.88rem; margin: 2px 0; }
+  </style>
+</head>
+<body>
+{% set home = payload.home %}
+{% set primary = home.primary_mission %}
+{% set secondary = home.secondary_opportunities or [] %}
+{% set ws = payload.workspace %}
+{% set groups = payload.missions.groups %}
+{% set laws = payload.laws %}
+<div class="wrap">
+  <div class="banner">
+    <strong>DEV / REVIEW ONLY</strong> — Revenue Intelligence Model V1 على محاكاة
+    <code>{{ payload.store_slug }}</code> · لا إنتاج · لا نشر
+  </div>
+  <h1>CartFlow — ذكاء الإيراد</h1>
+  <p class="lead">اكتشف → شخّص → تخيّل → نفّذ → قِس → تعلّم</p>
+  <div class="score">
+    بلا توصية بدون دليل: <strong>{{ laws.NO_RECOMMENDATION_WITHOUT_EVIDENCE }}</strong>
+    · بلا ادّعاء إيراد بدون قياس: <strong>{{ laws.NO_REVENUE_CLAIM_WITHOUT_MEASUREMENT }}</strong>
+  </div>
+
+  <div class="tabs">
+    <button type="button" class="tab active" data-panel="home">الرئيسية</button>
+    <button type="button" class="tab" data-panel="workspace">مساحة القرار</button>
+    <button type="button" class="tab" data-panel="product">ذكاء المنتج</button>
+    <button type="button" class="tab" data-panel="missions">مهام الإيراد</button>
+  </div>
+
+  <!-- HOME -->
+  <section id="panel-home" class="panel active">
+    <div class="card" id="surface-home">
+      <p class="q">{{ home.question_ar }}</p>
+      {% if primary %}
+      <span class="pill">{{ primary.priority_tier_ar }}</span>
+      {% if primary.commercial_objective_ar %}<span class="pill">{{ primary.commercial_objective_ar }}</span>{% endif %}
+      <p class="label" style="margin-top:10px;">أهم فرصة الآن</p>
+      <h2>{{ primary.mission_ar }}</h2>
+      <p class="label">لماذا تهم؟</p>
+      <p class="line">{{ primary.home_why_ar }}</p>
+      <p class="label">الحركة المقترحة</p>
+      <p class="line">{{ primary.home_action_ar }}</p>
+      <p class="label">سنقيس</p>
+      <p class="line">{{ primary.home_measure_ar }}</p>
+      <p class="label">نعيد التقييم</p>
+      <p class="line">{{ primary.home_recheck_ar }}</p>
+      <p class="label">لماذا هذه أولوية الآن؟</p>
+      <p class="line" id="surface-priority-explanation">{{ primary.why_prioritized_ar }}</p>
+      {% else %}
+      <p class="muted">لا مهمة أولوية.</p>
+      {% endif %}
+      {% if home.priority_economics_ar %}
+      <p class="muted" style="margin-top:10px;">{{ home.priority_economics_ar }}</p>
+      {% endif %}
+    </div>
+    {% for s in secondary %}
+    <div class="card secondary" id="surface-home-secondary-{{ loop.index }}">
+      <span class="pill">{{ s.priority_tier_ar }}</span>
+      <h3>{{ s.mission_ar }}</h3>
+      <p class="mini"><strong>لماذا الآن:</strong> {{ s.home_why_ar or s.why_now_short_ar }}</p>
+      <p class="mini"><strong>الحركة:</strong> {{ s.home_action_ar or s.commercial_idea_ar }}</p>
+      <p class="mini"><strong>القياس:</strong> {{ s.home_measure_ar or s.measure_ar }}</p>
+    </div>
+    {% endfor %}
+  </section>
+
+  <!-- WORKSPACE -->
+  <section id="panel-workspace" class="panel">
+    <p class="muted">{{ ws.note_ar }}</p>
+    {% for m in ws.cdi_missions or [] %}
+    <div class="card" id="surface-workspace-{{ m.scenario_id }}">
+      <span class="pill">{{ m.priority_tier_ar }}</span>
+      {% if m.commercial_objective_ar %}<span class="pill">{{ m.commercial_objective_ar }}</span>{% endif %}
+      <h2>{{ m.mission_ar }}</h2>
+      {% if m.decision_contract_ar %}
+        {% for k, v in m.decision_contract_ar.items() %}
+        <p class="label">{{ k }}</p>
+        <p class="line">{{ v }}</p>
+        {% endfor %}
+      {% endif %}
+      {% if m.lens_conflict_ar %}
+      <p class="label">تعارض يجب معرفته</p>
+      <p class="line">{{ m.lens_conflict_ar }}</p>
+      {% endif %}
+      <details class="ev">
+        <summary>الدليل</summary>
+        <ul class="ev">{% for e in m.evidence_ar %}<li>{{ e }}</li>{% endfor %}</ul>
+      </details>
+    </div>
+    {% else %}
+    {% set m = ws.selected_mission %}
+    <div class="card" id="surface-workspace">
+      {% if m %}
+      <h2>{{ m.mission_ar }}</h2>
+      <p class="line">{{ m.commercial_idea_ar }}</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+    {% set insuf_list = groups.get('الدليل غير كافٍ') or [] %}
+    {% if insuf_list %}
+    {% set insuf = insuf_list[0] %}
+    <div class="card" id="surface-insufficient">
+      <span class="pill danger">{{ insuf.priority_tier_ar }}</span>
+      <h3>{{ insuf.mission_ar }}</h3>
+      <p class="label">ما ينقص</p>
+      <p class="line">{{ insuf.diagnosis_short_ar }}</p>
+      <p class="label">ما يلزم</p>
+      <p class="line">{{ insuf.measure_ar }}</p>
+      <p class="label">متى نعيد النظر</p>
+      <p class="line">{{ insuf.recheck_ar }}</p>
+      <div class="not-do">{{ insuf.action_ar }}</div>
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- PRODUCT -->
+  <section id="panel-product" class="panel">
+    <div id="surface-product">
+      <p class="q">{{ payload.product_intelligence.question_ar }}</p>
+      <p class="muted">حالة تجارية موجزة — التفاصيل الداعمة مطوية.</p>
+      <div class="prod-grid">
+        {% for p in payload.product_intelligence.states %}
+        <div class="card" {% if p.name_ar and 'أرغان' in p.name_ar %}id="surface-product-argan"{% endif %}>
+          <h3>{{ p.name_ar }}</h3>
+          <p class="muted">{{ p.category }}</p>
+          {% for k, v in p.states.items() %}
+          <div class="state-row"><span>{{ k }}</span><strong>{{ v }}</strong></div>
+          {% endfor %}
+          <details class="ev">
+            <summary>دليل داعم</summary>
+            <ul class="ev">
+              {% for k, v in p.supporting_evidence.items() %}
+              <li>{{ k }}: {{ v }}</li>
+              {% endfor %}
+            </ul>
+          </details>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <!-- MISSIONS -->
+  <section id="panel-missions" class="panel">
+    <div id="surface-missions">
+      {% for gname, items in groups.items() %}
+      <p class="bucket">{{ gname }}</p>
+      {% if not items %}<p class="muted">لا شيء</p>{% endif %}
+      {% for m in items %}
+      <div class="card"
+           {% if m.scenario_id == 'F_channel_quality' and m.status == 'proposed' %}id="surface-channel-mission"{% endif %}
+           {% if m.scenario_id == 'E_bundle_cross_sell' %}id="surface-cross-sell-mission"{% endif %}
+           {% if m.status == 'won' %}id="surface-measurement-won"{% endif %}>
+        <span class="pill">{{ m.priority_tier_ar }}</span>
+        {% if m.commercial_objective_ar %}<span class="pill">{{ m.commercial_objective_ar }}</span>{% endif %}
+        <h3>{{ m.mission_ar }}</h3>
+        <p class="mini"><strong>الفرصة:</strong> {{ m.commercial_opportunity_ar }}</p>
+        <p class="mini"><strong>لماذا الآن:</strong> {{ m.why_now_short_ar }}</p>
+        <p class="mini"><strong>الحالة:</strong> {{ m.status }}</p>
+      </div>
+      {% endfor %}
+      {% endfor %}
+    </div>
+  </section>
+</div>
+<script>
+  document.querySelectorAll(".tab").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      document.querySelectorAll(".tab").forEach(function (b) { b.classList.remove("active"); });
+      document.querySelectorAll(".panel").forEach(function (p) { p.classList.remove("active"); });
+      btn.classList.add("active");
+      document.getElementById("panel-" + btn.getAttribute("data-panel")).classList.add("active");
+    });
+  });
+</script>
+</body>
+</html>

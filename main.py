@@ -292,6 +292,9 @@ from routes.product_excellence_preview_v2 import (  # noqa: E402
 from routes.executive_knowledge_preview_v1 import (  # noqa: E402
     router as executive_knowledge_preview_router,
 )
+from routes.commercial_intelligence_preview_v1 import (  # noqa: E402
+    router as commercial_intelligence_preview_router,
+)
 from routes.dev_diagnostics import router as dev_diagnostics_router  # noqa: E402
 from routes.cart_workspace_v1 import router as cart_workspace_v1_router  # noqa: E402
 from routes.whatsapp_delivery_webhook import (  # noqa: E402
@@ -307,6 +310,7 @@ app.include_router(merchant_pages_router)
 app.include_router(product_excellence_preview_router)
 app.include_router(product_excellence_preview_v2_router)
 app.include_router(executive_knowledge_preview_router)
+app.include_router(commercial_intelligence_preview_router)
 app.include_router(dev_diagnostics_router)
 app.include_router(cart_workspace_v1_router)
 app.include_router(whatsapp_delivery_webhook_router)
@@ -1077,6 +1081,7 @@ _DEV_ROUTES_ALLOWED_WHEN_NOT_DEVELOPMENT = frozenset(
         "/dev/dashboard-snapshot-archive",
         "/dev/business-findings-review",
         "/dev/business-reasoning-review",
+        "/dev/revenue-reality-validation",
         "/dev/adaptive-cognition-lab",
         "/dev/adaptive-cognition-lab/start",
         "/dev/adaptive-cognition-lab/view-tick",
@@ -1396,6 +1401,26 @@ def dev_business_findings_review(
     return templates.TemplateResponse(
         request,
         "business_findings_review_lab_v1.html",
+        {"request": request, "payload": payload},
+    )
+
+
+@app.get("/dev/revenue-reality-validation", response_class=HTMLResponse)
+def dev_revenue_reality_validation(request: Request) -> Any:
+    """
+    Revenue Reality Validation Lab V1 — isolated simulation / founder review only.
+
+    Does NOT mutate production merchant truth or production Merchant UI routes.
+    Store slug is simulation-only (rrv_sim_store_v1).
+    """
+    from services.revenue_reality_validation_v1 import (  # noqa: PLC0415
+        build_review_lab_payload_v1,
+    )
+
+    payload = build_review_lab_payload_v1()
+    return templates.TemplateResponse(
+        request,
+        "revenue_reality_validation_lab_v1.html",
         {"request": request, "payload": payload},
     )
 

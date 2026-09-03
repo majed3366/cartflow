@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="cartflow-merchant-setup-build" content="{{ merchant_setup_render_build }}">
+<meta name="cartflow-ui" content="v2">
+<meta name="cartflow-preview" content="commercial-intelligence-v1">
+<meta name="cartflow-truth" content="SIMULATION_TRUTH">
+{% include "partials/merchant_runtime_identity_v1.html" %}
+<title>CartFlow — معاينة المستشار التجاري</title>
+<script>window.CARTFLOW_STORE_SLUG = "preview";</script>
+<script>window.CARTFLOW_UI_V2 = true;</script>
+<script>window.CARTFLOW_PREVIEW = "commercial-intelligence-v1";</script>
+<script>window.CARTFLOW_TRUTH_SOURCE = "SIMULATION_TRUTH";</script>
+<link rel="stylesheet" href="/static/merchant_ui_v2_ds.css?v={{ build }}">
+<link rel="stylesheet" href="/static/merchant_ui_v2_frame.css?v={{ build }}">
+<link rel="stylesheet" href="/static/merchant_ui_v2_language.css?v={{ build }}">
+<link rel="stylesheet" href="/static/merchant_ui_v2_home.css?v={{ build }}">
+<link rel="stylesheet" href="/static/merchant_ui_v2_workspace.css?v={{ build }}">
+<style>
+/* Commercial Intelligence Preview V1 — decision-first compressed workspace */
+.cip-banner {
+  background: #fff4e0;
+  border-bottom: 2px solid #f5a623;
+  padding: 9px 18px;
+  font-family: "Segoe UI", Tahoma, "Noto Sans Arabic", sans-serif;
+  font-size: 0.82rem;
+  color: #5c3d00;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.cip-banner strong { color: #3a2500; }
+.cip-main {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 22px 16px 80px;
+  font-family: "Segoe UI", Tahoma, "Noto Sans Arabic", sans-serif;
+}
+.cip-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+  position: sticky;
+  top: 42px;
+  background: #f4f7f5;
+  padding: 8px 0;
+  z-index: 10;
+}
+.cip-tab {
+  border: 1px solid #c8d9d3;
+  background: #fff;
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 0.87rem;
+  cursor: pointer;
+  color: #1a3a2a;
+  transition: background 0.15s;
+}
+.cip-tab.is-active { background: #082048; color: #fff; border-color: #082048; }
+.cip-panel { display: none; }
+.cip-panel.is-active { display: block; }
+
+/* Home */
+.cip-question { font-size: 1.18rem; font-weight: 700; margin: 0 0 14px; color: #082048; }
+.cip-priority-badge {
+  display: inline-block; border-radius: 999px;
+  background: #082048; color: #fff;
+  padding: 3px 12px; font-size: 0.77rem; margin-bottom: 10px;
+}
+.cip-mission-card {
+  background: #fff;
+  border: 1px solid #c8d9d3;
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 12px;
+  border-inline-start: 4px solid #082048;
+}
+.cip-mission-card.secondary {
+  border-inline-start-color: #18b0a8;
+  background: #f9fcfb;
+  padding: 13px 16px;
+}
+.cip-mission-title { font-size: 1.06rem; font-weight: 700; margin: 6px 0 10px; color: #082048; }
+.cip-label { display: block; font-size: 0.73rem; font-weight: 700; color: #1a5c40; margin: 8px 0 2px; letter-spacing: 0.03em; }
+.cip-body { margin: 0 0 6px; font-size: 0.93rem; line-height: 1.55; }
+.cip-not-do {
+  background: #fdf2f2;
+  border: 1px solid #f0caca;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.88rem;
+  color: #6b1a1a;
+  margin-top: 8px;
+}
+.cip-sim-note {
+  font-size: 0.75rem; color: #8a7540;
+  background: #fffbf0; border: 1px solid #f0dfa0;
+  border-radius: 6px; padding: 4px 10px; display: inline-block; margin-top: 6px;
+}
+.cip-priority-rationale { font-size: 0.84rem; color: #5a6e67; margin-top: 10px; font-style: italic; }
+details.cip-evidence { margin-top: 10px; font-size: 0.85rem; }
+details.cip-evidence summary { cursor: pointer; color: #1a5c40; font-weight: 600; }
+ul.cip-evidence-list { margin: 6px 0 0; padding-inline-start: 18px; color: #2a3e36; }
+ul.cip-evidence-list li { margin-bottom: 4px; }
+
+/* Workspace — decision-first compressed */
+.cip-decision-block {
+  background: #fff;
+  border: 1px solid #c8d9d3;
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 14px;
+  border-inline-start: 4px solid #082048;
+}
+.cip-contract-row { margin: 0 0 12px; }
+.cip-contract-q { font-size: 0.78rem; font-weight: 700; color: #1a5c40; margin: 0 0 3px; letter-spacing: 0.02em; }
+.cip-contract-a { margin: 0; font-size: 0.93rem; line-height: 1.55; }
+.cip-conflict { background: #fff8ed; border: 1px solid #f0d898; border-radius: 8px; padding: 8px 12px; font-size: 0.88rem; color: #6b4a00; margin: 8px 0; }
+
+/* Product */
+.cip-product-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media(min-width:800px){ .cip-product-grid { grid-template-columns: 1fr 1fr; } }
+.cip-product-card { background: #fff; border: 1px solid #c8d9d3; border-radius: 12px; padding: 14px; }
+.cip-product-name { font-weight: 700; font-size: 0.96rem; color: #082048; margin: 0 0 4px; }
+.cip-product-cat { font-size: 0.78rem; color: #5a6e67; margin: 0 0 8px; }
+.cip-state-row { display: flex; justify-content: space-between; border-bottom: 1px solid #e8efec; padding: 4px 0; font-size: 0.87rem; }
+.cip-state-row:last-child { border-bottom: 0; }
+
+/* Missions */
+.cip-bucket-title { font-size: 0.9rem; font-weight: 700; color: #082048; margin: 16px 0 6px; }
+.cip-mission-mini {
+  background: #fff;
+  border: 1px solid #c8d9d3;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+}
+.cip-mission-mini-title { font-weight: 700; font-size: 0.92rem; margin: 0 0 4px; }
+.cip-mission-mini-why { font-size: 0.84rem; color: #3a5040; margin: 0; }
+.cip-tier { display: inline-block; border-radius: 999px; padding: 2px 9px; font-size: 0.74rem; background: #e4f2ed; color: #1a5c40; margin-bottom: 4px; }
+.cip-tier.urgent { background: #082048; color: #fff; }
+</style>
+</head>
+<body data-cf-ui="v2" data-cf-merchant-app="1" data-cartflow-preview="commercial-intelligence-v1">
+
+<div class="cip-banner">
+  <strong>معاينة مؤسسية فقط</strong> —
+  البيانات بيانات محاكاة (SIMULATION_TRUTH) —
+  ليست بيانات إنتاج حقيقية —
+  لا يراها أي تاجر عام
+</div>
+
+{% set home = payload.home %}
+{% set primary = home.primary_mission %}
+{% set secondary = home.secondary_opportunities or [] %}
+{% set ws = payload.workspace %}
+{% set groups = payload.missions.groups %}
+
+<div class="cip-main">
+  <div class="cip-tabs" role="tablist">
+    <button class="cip-tab is-active" type="button" data-cip="home">الرئيسية</button>
+    <button class="cip-tab" type="button" data-cip="workspace">مساحة القرار</button>
+    <button class="cip-tab" type="button" data-cip="product">ذكاء المنتج</button>
+    <button class="cip-tab" type="button" data-cip="missions">مهام الإيراد</button>
+  </div>
+
+  <!-- ██ HOME ██ -->
+  <section class="cip-panel is-active" data-cip-panel="home" id="cip-home">
+    <p class="cip-question">{{ home.question_ar }}</p>
+    {% if primary %}
+    <div class="cip-mission-card" id="cip-home-primary">
+      <span class="cip-priority-badge">{{ primary.priority_tier_ar }}</span>
+      {% if primary.commercial_objective_ar %} <span class="cip-priority-badge" style="background:#18b0a8">{{ primary.commercial_objective_ar }}</span>{% endif %}
+      <p class="cip-mission-title">{{ primary.mission_ar }}</p>
+      <span class="cip-label">لماذا يهم؟</span>
+      <p class="cip-body">{{ primary.home_why_ar }}</p>
+      <span class="cip-label">الحركة المطلوبة</span>
+      <p class="cip-body">{{ primary.home_action_ar }}</p>
+      <span class="cip-label">سنقيس</span>
+      <p class="cip-body">{{ primary.home_measure_ar }}</p>
+      <span class="cip-label">نعيد التقييم</span>
+      <p class="cip-body">{{ primary.home_recheck_ar }}</p>
+      <details class="cip-evidence">
+        <summary>لماذا الأولوية؟</summary>
+        <p id="cip-priority-explanation" style="margin:6px 0 0; font-size:0.88rem; color:#2a3e36;">{{ primary.why_prioritized_ar }}</p>
+        {% if home.priority_economics_ar %}<p class="cip-priority-rationale">{{ home.priority_economics_ar }}</p>{% endif %}
+      </details>
+      <span class="cip-sim-note">🧪 SIMULATION_TRUTH — ليست بيانات متجر حقيقي</span>
+    </div>
+    {% for s in secondary %}
+    <div class="cip-mission-card secondary" id="cip-home-secondary-{{ loop.index }}">
+      <span class="cip-tier">{{ s.priority_tier_ar }}</span>
+      <p class="cip-mission-title">{{ s.mission_ar }}</p>
+      <p class="cip-body">{{ s.home_why_ar or s.commercial_opportunity_ar }}</p>
+      <span class="cip-label">الحركة</span>
+      <p class="cip-body">{{ s.home_action_ar }}</p>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p style="color:#5a6e67;">لا مهمة أولوية متاحة.</p>
+    {% endif %}
+  </section>
+
+  <!-- ██ WORKSPACE ██ -->
+  <section class="cip-panel" data-cip-panel="workspace" id="cip-workspace">
+    {% for m in ws.cdi_missions or [] %}
+    <div class="cip-decision-block" id="cip-ws-{{ m.scenario_id }}">
+      <span class="cip-tier {% if m.priority_tier_ar == 'تحتاج قرارك الآن' %}urgent{% endif %}">{{ m.priority_tier_ar }}</span>
+      {% if m.commercial_objective_ar %} <span class="cip-tier">{{ m.commercial_objective_ar }}</span>{% endif %}
+      <p class="cip-mission-title">{{ m.mission_ar }}</p>
+      {% if m.decision_contract_ar %}
+        {% for q, a in m.decision_contract_ar.items() %}
+        <div class="cip-contract-row">
+          <p class="cip-contract-q">{{ q }}</p>
+          <p class="cip-contract-a">{{ a }}</p>
+        </div>
+        {% endfor %}
+      {% endif %}
+      {% if m.lens_conflict_ar %}
+      <div class="cip-conflict"><strong>تعارض تحليلي:</strong> {{ m.lens_conflict_ar }}</div>
+      {% endif %}
+      <details class="cip-evidence">
+        <summary>الدليل الداعم</summary>
+        <ul class="cip-evidence-list">{% for e in m.evidence_ar %}<li>{{ e }}</li>{% endfor %}</ul>
+      </details>
+      <span class="cip-sim-note">🧪 SIMULATION_TRUTH</span>
+    </div>
+    {% else %}
+    {% if ws.selected_mission %}
+    <div class="cip-decision-block">
+      <p class="cip-mission-title">{{ ws.selected_mission.mission_ar }}</p>
+      <p class="cip-body">{{ ws.selected_mission.commercial_idea_ar }}</p>
+    </div>
+    {% endif %}
+    {% endfor %}
+
+    {% set insuf_missions = groups.get('الدليل غير كافٍ') or [] %}
+    {% if insuf_missions %}
+    {% set insuf = insuf_missions[0] %}
+    <div class="cip-decision-block" id="cip-insufficient" style="border-inline-start-color:#c05050;">
+      <span class="cip-tier">{{ insuf.priority_tier_ar }}</span>
+      <p class="cip-mission-title">{{ insuf.mission_ar }}</p>
+      <span class="cip-label">ما ينقص</span>
+      <p class="cip-body">{{ insuf.diagnosis_short_ar }}</p>
+      <span class="cip-label">ما يلزم قبل التوصية</span>
+      <p class="cip-body">{{ insuf.measure_ar }}</p>
+      <span class="cip-label">متى يُعاد النظر</span>
+      <p class="cip-body">{{ insuf.recheck_ar }}</p>
+      <div class="cip-not-do">{{ insuf.action_ar }}</div>
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- ██ PRODUCT ██ -->
+  <section class="cip-panel" data-cip-panel="product" id="cip-product">
+    <p class="cip-question">{{ payload.product_intelligence.question_ar }}</p>
+    <div class="cip-product-grid">
+      {% for s in payload.product_intelligence.states %}
+      <div class="cip-product-card">
+        <p class="cip-product-name">{{ s.name_ar }}</p>
+        <p class="cip-product-cat">{{ s.category }}</p>
+        {% for k, v in s.states.items() %}
+        <div class="cip-state-row"><span>{{ k }}</span><strong>{{ v }}</strong></div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- ██ MISSIONS ██ -->
+  <section class="cip-panel" data-cip-panel="missions" id="cip-missions">
+    {% for gname, items in groups.items() %}
+    <p class="cip-bucket-title">{{ gname }}</p>
+    {% if not items %}<p style="color:#5a6e67; font-size:0.85rem;">—</p>{% endif %}
+    {% for m in items %}
+    <div class="cip-mission-mini"
+         {% if m.status == 'won' %}id="cip-won"{% endif %}
+         {% if m.scenario_id == 'F_channel_quality' and m.status == 'proposed' %}id="cip-channel-mission"{% endif %}
+         {% if m.scenario_id == 'E_bundle_cross_sell' %}id="cip-cross-sell-mission"{% endif %}
+         {% if m.scenario_id == 'B_high_interest_low_conversion' and m.status == 'proposed' %}id="cip-shipping-mission"{% endif %}>
+      <span class="cip-tier {% if m.priority_tier_ar == 'تحتاج قرارك الآن' %}urgent{% endif %}">{{ m.priority_tier_ar }}</span>
+      {% if m.commercial_objective_ar %} <span class="cip-tier">{{ m.commercial_objective_ar }}</span>{% endif %}
+      <p class="cip-mission-mini-title">{{ m.mission_ar }}</p>
+      <p class="cip-mission-mini-why">{{ m.home_why_ar or m.commercial_opportunity_ar or '' }}</p>
+    </div>
+    {% endfor %}
+    {% endfor %}
+  </section>
+</div>
+
+<script>
+(function(){
+  var tabs = document.querySelectorAll(".cip-tab");
+  var panels = document.querySelectorAll(".cip-panel");
+  tabs.forEach(function(t){
+    t.addEventListener("click", function(){
+      tabs.forEach(function(b){b.classList.remove("is-active");});
+      panels.forEach(function(p){p.classList.remove("is-active");});
+      t.classList.add("is-active");
+      var key = t.getAttribute("data-cip");
+      var panel = document.querySelector('[data-cip-panel="'+key+'"]');
+      if(panel) panel.classList.add("is-active");
+    });
+  });
+})();
+</script>
+</body>
+</html>
