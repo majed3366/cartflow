@@ -21,6 +21,7 @@ from starlette.responses import Response
 
 from services.commercial_intelligence_preview_v1 import (
     FLAG,
+    founder_authorized,
     SIMULATION_TRUTH_LABEL,
     build_preview_payload_v1,
     commercial_intelligence_preview_enabled,
@@ -59,6 +60,24 @@ def _flag_off() -> JSONResponse:
     )
 
 
+def _unauthorized() -> JSONResponse:
+    """Founder authorization gate (server-side)."""
+    return JSONResponse(
+        {
+            "ok": False,
+            "reason": "founder_unauthorized",
+            "preview": True,
+            "simulation_only": True,
+            "production_home": False,
+        },
+        status_code=404,
+        headers={
+            "X-CartFlow-Preview": _PREVIEW_HEADER + "-unauthorized",
+            "Cache-Control": "no-store",
+        },
+    )
+
+
 @router.get("/preview/commercial-intelligence")
 @router.get("/preview/commercial-intelligence/")
 def commercial_intelligence_preview_page(request: Request) -> Response:
@@ -70,6 +89,8 @@ def commercial_intelligence_preview_page(request: Request) -> Response:
     """
     if not commercial_intelligence_preview_enabled():
         return _flag_off()
+    if not founder_authorized(request):
+        return _unauthorized()
     payload = build_preview_payload_v1()
     violations = verify_no_production_truth_leak(payload)
     if violations:
@@ -101,13 +122,15 @@ def commercial_intelligence_preview_page(request: Request) -> Response:
 
 
 @router.get("/preview/commercial-intelligence/api")
-def commercial_intelligence_preview_api() -> JSONResponse:
+def commercial_intelligence_preview_api(request: Request) -> JSONResponse:
     """
     JSON payload for founder inspection.
-    404 when flag OFF.
+    404 when flag OFF or founder not authorized.
     """
     if not commercial_intelligence_preview_enabled():
         return _flag_off()
+    if not founder_authorized(request):
+        return _unauthorized()
     payload = build_preview_payload_v1()
     violations = verify_no_production_truth_leak(payload)
     if violations:

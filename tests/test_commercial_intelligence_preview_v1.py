@@ -15,6 +15,15 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 
+from services.cartflow_admin_http_auth import (
+    admin_cookie_name,
+    issue_admin_session_cookie_value,
+)
+from services.merchant_auth_http import (
+    merchant_cookie_name,
+    issue_merchant_session_cookie_value,
+)
+
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -23,26 +32,61 @@ def _app():
     return app
 
 
-def _client_flag_off() -> TestClient:
+_PREV_ADMIN = os.environ.get("CARTFLOW_ADMIN_PASSWORD")
+_PREV_SECRET = os.environ.get("SECRET_KEY")
+
+
+def _client_flag_off(*, admin_cookie: bool) -> TestClient:
     """Client with preview flag explicitly OFF (default)."""
     os.environ.pop("CARTFLOW_COMMERCIAL_INTELLIGENCE_PREVIEW", None)
-    return TestClient(_app(), raise_server_exceptions=True)
+    if admin_cookie:
+        os.environ["CARTFLOW_ADMIN_PASSWORD"] = "preview-admin-pass"
+        os.environ["SECRET_KEY"] = "unit-test-secret-key-for-admin-cookie-hmac-"
+    client = TestClient(_app(), raise_server_exceptions=True)
+    if admin_cookie:
+        client.cookies.set(
+            admin_cookie_name(),
+            issue_admin_session_cookie_value(),
+        )
+    return client
 
 
-def _client_flag_on() -> TestClient:
-    """Client with preview flag ON."""
+def _client_flag_on(*, admin_cookie: bool, merchant_cookie: bool) -> TestClient:
+    """Client with preview flag ON and scenario cookies."""
     os.environ["CARTFLOW_COMMERCIAL_INTELLIGENCE_PREVIEW"] = "1"
-    return TestClient(_app(), raise_server_exceptions=True)
+    # Preview founder gate uses the existing signed admin cookie mechanism.
+    os.environ["CARTFLOW_ADMIN_PASSWORD"] = "preview-admin-pass"
+    os.environ["SECRET_KEY"] = "unit-test-secret-key-for-admin-cookie-hmac-"
+    client = TestClient(_app(), raise_server_exceptions=True)
+    if admin_cookie:
+        client.cookies.set(
+            admin_cookie_name(),
+            issue_admin_session_cookie_value(),
+        )
+    if merchant_cookie:
+        client.cookies.set(
+            merchant_cookie_name(),
+            issue_merchant_session_cookie_value(merchant_user_id=1),
+        )
+    return client
 
 
 def _teardown():
     os.environ.pop("CARTFLOW_COMMERCIAL_INTELLIGENCE_PREVIEW", None)
+    if _PREV_ADMIN is None:
+        os.environ.pop("CARTFLOW_ADMIN_PASSWORD", None)
+    else:
+        os.environ["CARTFLOW_ADMIN_PASSWORD"] = _PREV_ADMIN
+    if _PREV_SECRET is None:
+        os.environ.pop("SECRET_KEY", None)
+    else:
+        os.environ["SECRET_KEY"] = _PREV_SECRET
 
 
 # ── 1. flag absent → 404, production routes unaffected ───────────────────────
 
 def test_flag_absent_preview_returns_404():
-    client = _client_flag_off()
+    client = _client_flag_off(admin_cookie=True)
     r = client.get("/preview/commercial-intelligence")
     _teardown()
     assert r.status_code == 404
@@ -52,7 +96,7 @@ def test_flag_absent_preview_returns_404():
 
 
 def test_flag_absent_api_returns_404():
-    client = _client_flag_off()
+    client = _client_flag_off(admin_cookie=True)
     r = client.get("/preview/commercial-intelligence/api")
     _teardown()
     assert r.status_code == 404
@@ -60,7 +104,7 @@ def test_flag_absent_api_returns_404():
 
 def test_flag_absent_production_dashboard_unaffected():
     """Normal /dashboard must remain healthy regardless of preview state."""
-    client = _client_flag_off()
+    client = _client_flag_off(admin_cookie=False)
     r = client.get("/dashboard", follow_redirects=True)
     _teardown()
     assert r.status_code == 200
@@ -70,7 +114,7 @@ def test_flag_absent_production_dashboard_unaffected():
 
 
 def test_flag_absent_health_unaffected():
-    client = _client_flag_off()
+    client = _client_flag_off(admin_cookie=False)
     r = client.get("/health")
     _teardown()
     assert r.status_code == 200
@@ -78,10 +122,31 @@ def test_flag_absent_health_unaffected():
     assert data.get("ok") is True
 
 
+def test_flag_on_anonymous_preview_404():
+    client = _client_flag_on(admin_cookie=False, merchant_cookie=False)
+    r = client.get("/preview/commercial-intelligence")
+    _teardown()
+    assert r.status_code == 404
+
+
+def test_flag_on_unauthorized_merchant_preview_404():
+    client = _client_flag_on(admin_cookie=False, merchant_cookie=True)
+    r = client.get("/preview/commercial-intelligence")
+    _teardown()
+    assert r.status_code == 404
+
+
+def test_flag_on_dashboard_unaffected_anonymous():
+    client = _client_flag_on(admin_cookie=False, merchant_cookie=False)
+    r = client.get("/dashboard", follow_redirects=True)
+    _teardown()
+    assert r.status_code == 200
+
+
 # ── 2. flag ON → preview available ────────────────────────────────────────────
 
 def test_flag_on_preview_page_200():
-    client = _client_flag_on()
+    client = _client_flag_on(admin_cookie=True, merchant_cookie=False)
     r = client.get("/preview/commercial-intelligence")
     _teardown()
     assert r.status_code == 200
@@ -91,14 +156,14 @@ def test_flag_on_preview_page_200():
 
 
 def test_flag_on_preview_page_contains_simulation_banner():
-    client = _client_flag_on()
+    client = _client_flag_on(admin_cookie=True, merchant_cookie=False)
     r = client.get("/preview/commercial-intelligence")
     _teardown()
     assert "SIMULATION_TRUTH" in r.text
 
 
 def test_flag_on_api_200():
-    client = _client_flag_on()
+    client = _client_flag_on(admin_cookie=True, merchant_cookie=False)
     r = client.get("/preview/commercial-intelligence/api")
     _teardown()
     assert r.status_code == 200
@@ -204,7 +269,7 @@ def test_flag_falsy_values_denied(val: str):
 # ── 7. flag on → production routes still healthy ──────────────────────────────
 
 def test_flag_on_health_still_ok():
-    client = _client_flag_on()
+    client = _client_flag_on(admin_cookie=True, merchant_cookie=False)
     r = client.get("/health")
     _teardown()
     assert r.status_code == 200
@@ -212,7 +277,7 @@ def test_flag_on_health_still_ok():
 
 
 def test_flag_on_runtime_identity_still_ok():
-    client = _client_flag_on()
+    client = _client_flag_on(admin_cookie=True, merchant_cookie=False)
     r = client.get("/dev/merchant-runtime-identity")
     _teardown()
     assert r.status_code == 200

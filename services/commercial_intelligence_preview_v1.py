@@ -12,6 +12,14 @@ from __future__ import annotations
 import os
 from typing import Any, Mapping
 
+from starlette.requests import Request
+
+from services.cartflow_admin_http_auth import (
+    admin_cookie_name,
+    admin_password_configured,
+    admin_session_cookie_valid,
+)
+
 FLAG = "CARTFLOW_COMMERCIAL_INTELLIGENCE_PREVIEW"
 _TRUE = frozenset({"1", "true", "yes", "on"})
 
@@ -74,6 +82,19 @@ def verify_no_production_truth_leak(payload: dict[str, Any]) -> list[str]:
     return violations
 
 
+def founder_authorized(request: Request) -> bool:
+    """
+    Founder authorization (server-side).
+
+    Reuses existing signed admin cookie gate (HTML/admin surfaces auth),
+    so preview inherits the same governance mechanism.
+    """
+    if not admin_password_configured():
+        return False
+    cookie = request.cookies.get(admin_cookie_name())
+    return admin_session_cookie_valid(cookie)
+
+
 __all__ = [
     "FLAG",
     "PRODUCTION_TRUTH_LABEL",
@@ -81,4 +102,5 @@ __all__ = [
     "build_preview_payload_v1",
     "commercial_intelligence_preview_enabled",
     "verify_no_production_truth_leak",
+    "founder_authorized",
 ]
