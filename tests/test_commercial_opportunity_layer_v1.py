@@ -197,10 +197,19 @@ class StaticAssetTests(unittest.TestCase):
         text = open(path, encoding="utf-8").read()
         self.assertIn("commercial-opportunity-layer-v1", text)
         self.assertIn("أهم فرصة تجارية الآن", text)
-        self.assertIn("لماذا الآن؟", text)
-        self.assertIn("الحركة الآن", text)
-        self.assertIn("عرض الدليل", text)
         self.assertIn("data-cf2-col-refine", text)
+        self.assertIn("CartFlowCommercialDecisionArcV1", text)
+        cda = open(
+            os.path.join(
+                os.path.dirname(__file__),
+                "..",
+                "static",
+                "commercial_decision_arc_production_v1.js",
+            ),
+            encoding="utf-8",
+        ).read()
+        self.assertIn("عرض الدليل", cda)
+        self.assertIn("cf-cda", cda)
 
     def test_workspace_js_has_compressed_decision(self) -> None:
         path = os.path.join(

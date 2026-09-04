@@ -1,5 +1,5 @@
 /**
- * CartFlow Merchant UI V2 — Home desktop stage closure V1
+ * CartFlow Merchant UI V2 ? Home desktop stage closure V1
  * Preserves V1.3 board organism. Closes accidental stage void at 1440.
  */
 
@@ -8,7 +8,7 @@ body[data-cf-ui="v2"] .cf2-home {
   max-width: none;
 }
 
-/* Executive board — owns the authored stage surface */
+/* Executive board ? owns the authored stage surface */
 body[data-cf-ui="v2"] .cf2-home__board {
   display: flex;
   flex-direction: column;
@@ -44,7 +44,7 @@ body[data-cf-ui="v2"] .cf2-home__board[data-cf2-edge="attention"] {
   border-inline-start-color: var(--cf2-navy);
 }
 
-/* Gravity well — primary mass dominates; satellites orbit smaller (rdfix1) */
+/* Gravity well ? primary mass dominates; satellites orbit smaller (rdfix1) */
 body[data-cf-ui="v2"] .cf2-home[data-cf2-organism="gravity-well"] {
   display: flex;
   flex-direction: column;
@@ -93,7 +93,7 @@ body[data-cf-ui="v2"] .cf2-home[data-cf2-organism="gravity-well"] .cf2-home__boa
   border-inline-start-color: rgba(115, 133, 158, 0.35);
 }
 
-/* Relationship axis: well → satellites */
+/* Relationship axis: well ? satellites */
 body[data-cf-ui="v2"] .cf2-home[data-cf2-organism="gravity-well"] .cf2-home__orbit-axis {
   display: block;
   height: 18px;
@@ -220,7 +220,7 @@ body[data-cf-ui="v2"] .cf2-home .cf2-mtrace {
   max-width: 46rem;
 }
 
-/* ——— Primary reading path ——— */
+/* ??? Primary reading path ??? */
 body[data-cf-ui="v2"] .cf2-home__scene {
   padding: 18px 22px 8px 18px;
   display: flex;
@@ -240,7 +240,7 @@ body[data-cf-ui="v2"] .cf2-home__mark {
   flex: 0 0 auto;
   margin: 4px 0 0;
   opacity: 0.9;
-  /* Structural attach to decision lead — not a floating ornament */
+  /* Structural attach to decision lead ? not a floating ornament */
   padding-inline-end: 2px;
   border-inline-end: 2px solid rgba(24, 176, 168, 0.35);
 }
@@ -299,7 +299,7 @@ body[data-cf-ui="v2"] .cf2-home__why {
   max-width: 46rem;
 }
 
-/* Evidence qualifies understanding — same path, quieter */
+/* Evidence qualifies understanding ? same path, quieter */
 body[data-cf-ui="v2"] .cf2-home__evidence {
   display: flex;
   flex-wrap: wrap;
@@ -329,7 +329,7 @@ body[data-cf-ui="v2"] .cf2-home__field .cf2-evfield {
   margin: 0;
 }
 
-/* Stance = terminus of the organism — not a floating card */
+/* Stance = terminus of the organism ? not a floating card */
 body[data-cf-ui="v2"] .cf2-home__stance.cf2-terminus {
   margin: 0 0 4px;
   padding: 12px 14px 14px 12px;
@@ -368,7 +368,7 @@ body[data-cf-ui="v2"] .cf2-home__action {
   display: inline-flex;
 }
 
-/* ——— Satellites: asymmetric orbit — never equal card grid ——— */
+/* ??? Satellites: asymmetric orbit ? never equal card grid ??? */
 body[data-cf-ui="v2"] .cf2-home[data-cf2-organism="gravity-well"] .cf2-home__monitor {
   margin: 0;
   padding: 8px 22px 20px 18px;
@@ -447,7 +447,7 @@ body[data-cf-ui="v2"] .cf2-home__monitor-body {
   color: var(--cf2-ink-soft);
 }
 
-/* Recovery outcome — quiet summary under the decision board */
+/* Recovery outcome ? quiet summary under the decision board */
 body[data-cf-ui="v2"] .cf2-home__recovery {
   margin: 14px 0 0;
   padding: 10px 12px 12px;
@@ -479,7 +479,7 @@ body[data-cf-ui="v2"] .cf2-home__recovery-note {
   color: var(--cf2-mute, #73859e);
 }
 
-/* Independent الملخص destination */
+/* Independent ?????? destination */
 body[data-cf-ui="v2"] .cf2-home--summary .cf2-home__summary-head {
   margin-bottom: 12px;
 }
@@ -546,7 +546,7 @@ body[data-cf-ui="v2"] .cf2-home__item-body {
 }
 
 @media (min-width: 1024px) {
-  /* Authored Home stage — board owns the surface; outer silence is deliberate */
+  /* Authored Home stage ? board owns the surface; outer silence is deliberate */
   body[data-cf-ui="v2"] .cf2-shell:has(.cf2-page[data-cf2-page="home"].is-active) .cf2-stage {
     padding-block: 16px 32px;
     padding-inline-start: 22px;
@@ -586,7 +586,7 @@ body[data-cf-ui="v2"] .cf2-home__item-body {
     background: transparent;
   }
 
-  /* MOBILE: gravity edge balanced (not 8×611 spine dominance); satellites keep orbit offsets */
+  /* MOBILE: gravity edge balanced (not 8�611 spine dominance); satellites keep orbit offsets */
   body[data-cf-ui="v2"] .cf2-home[data-cf2-organism="gravity-well"] .cf2-home__board[data-cf2-gravity="primary"] {
     border-inline-start: 5px solid var(--cf2-navy);
     min-height: 10rem;
@@ -725,18 +725,19 @@ body[data-cf-ui="v2"] .cf2-home__ogl-k {
   font-size: 0.82rem;
 }
 
-/* Commercial Opportunity Layer V1 ? Composition Refinement V1 */
+/* Commercial Opportunity Layer V1 ? Composition Fit V1.1 */
 body[data-cf-ui="v2"] .cf2-col {
-  margin: 32px 0 4px;
-  padding-top: 22px;
+  margin: 28px 0 4px;
+  padding-top: 20px;
   border-top: 1px solid color-mix(in srgb, var(--cf2-ink, #1a2332) 14%, transparent);
 }
 body[data-cf-ui="v2"] .cf2-col__question {
-  margin: 0 0 10px;
-  font-size: 1rem;
+  margin: 0 0 12px;
+  font-size: 0.98rem;
   font-weight: 600;
   color: var(--cf2-ink, #1a2332);
   line-height: 1.35;
+  max-width: 36rem;
 }
 body[data-cf-ui="v2"] .cf2-col__empty {
   margin: 0;
@@ -747,9 +748,9 @@ body[data-cf-ui="v2"] .cf2-col__empty {
 body[data-cf-ui="v2"] .cf2-col__primary {
   display: grid;
   gap: 0;
-  padding: 4px 0 2px;
-  border-inline-start: 3px solid var(--cf2-ink, #1a2332);
-  padding-inline-start: 14px;
+  padding: 0;
+  border: 0;
+  max-width: 44rem;
 }
 body[data-cf-ui="v2"] .cf2-col__eyebrow {
   margin: 0 0 6px;
@@ -819,72 +820,84 @@ body[data-cf-ui="v2"] .cf2-col__evidence ul {
 body[data-cf-ui="v2"] .cf2-col__action {
   margin-top: 6px;
 }
+
+/* Secondary = compressed commercial signals (no CDA, no article cards) */
 body[data-cf-ui="v2"] .cf2-col__secondaries {
   display: grid;
-  gap: 10px;
-  margin-top: 20px;
-  padding-top: 14px;
+  gap: 0;
+  margin-top: 18px;
+  padding-top: 12px;
   border-top: 1px solid color-mix(in srgb, var(--cf2-ink, #1a2332) 8%, transparent);
-  opacity: 0.88;
+  max-width: 40rem;
+  opacity: 1;
 }
 body[data-cf-ui="v2"] .cf2-col__secondary {
   display: grid;
-  gap: 2px;
-  padding: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 12px;
+  align-items: baseline;
+  gap: 2px 12px;
+  padding: 8px 0;
   border: 0;
-  padding-inline-start: 10px;
-  border-inline-start: 2px solid color-mix(in srgb, var(--cf2-ink, #1a2332) 18%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--cf2-ink, #1a2332) 6%, transparent);
+  padding-inline-start: 0;
+  border-inline-start: 0;
 }
-body[data-cf-ui="v2"] .cf2-col__obj {
-  margin: 0;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--cf2-muted, #5a6577);
+body[data-cf-ui="v2"] .cf2-col__secondary:last-child {
+  border-bottom: 0;
 }
-body[data-cf-ui="v2"] .cf2-col__sec-title {
+body[data-cf-ui="v2"] .cf2-col__secondary--signal .cf2-col__sec-title {
+  grid-column: 1;
   margin: 0;
-  font-size: 0.95rem;
-  font-weight: 650;
+  font-size: 0.88rem;
+  font-weight: 600;
   line-height: 1.3;
-  color: color-mix(in srgb, var(--cf2-ink, #1a2332) 88%, transparent);
-}
-body[data-cf-ui="v2"] .cf2-col__sec-why,
-body[data-cf-ui="v2"] .cf2-col__sec-act {
-  margin: 0;
-  font-size: 0.84rem;
-  line-height: 1.35;
-  color: var(--cf2-muted, #5a6577);
+  color: color-mix(in srgb, var(--cf2-ink, #1a2332) 82%, transparent);
 }
 body[data-cf-ui="v2"] .cf2-col__sec-link {
-  margin-top: 2px;
-  font-size: 0.8rem;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  margin: 0;
+  font-size: 0.76rem;
   font-weight: 600;
   color: var(--cf2-muted, #5a6577);
   text-decoration: underline;
   text-underline-offset: 2px;
-  width: fit-content;
+  white-space: nowrap;
+}
+body[data-cf-ui="v2"] .cf2-col__sec-line {
+  grid-column: 1;
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--cf2-muted, #5a6577);
+}
+body[data-cf-ui="v2"] .cf2-col__obj,
+body[data-cf-ui="v2"] .cf2-col__sec-why,
+body[data-cf-ui="v2"] .cf2-col__sec-act {
+  display: none;
 }
 @media (max-width: 430px) {
   body[data-cf-ui="v2"] .cf2-col {
-    margin-top: 24px;
-    padding-top: 16px;
+    margin-top: 22px;
+    padding-top: 14px;
   }
-  body[data-cf-ui="v2"] .cf2-col__primary {
-    padding-inline-start: 12px;
-  }
-  body[data-cf-ui="v2"] .cf2-col__title {
-    font-size: 1.22rem;
-    margin-bottom: 12px;
-  }
-  body[data-cf-ui="v2"] .cf2-col__unit {
+  body[data-cf-ui="v2"] .cf2-col__question {
+    font-size: 0.92rem;
     margin-bottom: 10px;
   }
-  body[data-cf-ui="v2"] .cf2-col__unit[data-cf2-col-unit="measure"],
-  body[data-cf-ui="v2"] .cf2-col__unit[data-cf2-col-unit="recheck"] {
-    margin-bottom: 6px;
-  }
   body[data-cf-ui="v2"] .cf2-col__secondaries {
-    margin-top: 16px;
-    gap: 8px;
+    margin-top: 14px;
+  }
+  body[data-cf-ui="v2"] .cf2-col__secondary {
+    padding: 7px 0;
+    column-gap: 8px;
+  }
+  body[data-cf-ui="v2"] .cf2-col__secondary--signal .cf2-col__sec-title {
+    font-size: 0.84rem;
+  }
+  body[data-cf-ui="v2"] .cf2-col__sec-line {
+    font-size: 0.74rem;
   }
 }

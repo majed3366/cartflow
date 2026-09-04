@@ -1,0 +1,287 @@
+/* Commercial Decision Arc — production V1 + Composition Fit V1.1
+   Grammar frozen; layout/coupling/spacing only. */
+[data-cf-ui="v2"] .cf-cda {
+  margin: 0;
+  width: 100%;
+}
+
+/* One organism: spine anchors core; controlled content width (intentional silence beyond) */
+[data-cf-ui="v2"] .cf-cda__organism {
+  position: relative;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  column-gap: 2px;
+  align-items: stretch;
+  min-height: 168px;
+  max-width: 40rem;
+  margin-inline: 0;
+}
+
+[data-cf-ui="v2"] .cf-cda__spine {
+  position: relative;
+  width: 48px;
+  min-height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  /* Pull into core for coupling — not a detached rail */
+  margin-inline-end: -6px;
+}
+
+[data-cf-ui="v2"] .cf-cda__org-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+[data-cf-ui="v2"] .cf-cda__core {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 7px;
+  padding: 10px 4px 14px 4px;
+  min-width: 0;
+  /* Shared baseline with mass node */
+  padding-top: 14px;
+}
+
+[data-cf-ui="v2"] .cf-cda__eyebrow {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--cf2-muted, #5a6577);
+  letter-spacing: 0.01em;
+}
+
+[data-cf-ui="v2"] .cf-cda__decision {
+  margin: 0;
+  font-size: 1.28rem;
+  line-height: 1.28;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  max-width: 32em;
+}
+
+[data-cf-ui="v2"] .cf-cda[data-cavi-arc="under_measurement"] .cf-cda__decision {
+  font-size: 1.12rem;
+  font-weight: 700;
+}
+
+[data-cf-ui="v2"] .cf-cda[data-cavi-arc="insufficient_evidence"] .cf-cda__decision {
+  font-weight: 600;
+  color: var(--cf2-muted, #5a6577);
+}
+
+[data-cf-ui="v2"] .cf-cda[data-cavi-arc="insufficient_evidence"] .cf-cda__organism {
+  max-width: 32rem;
+  min-height: 140px;
+}
+
+[data-cf-ui="v2"] .cf-cda__chord {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  max-width: 36em;
+  color: color-mix(in srgb, var(--cf2-ink, #1a2332) 84%, transparent);
+}
+
+[data-cf-ui="v2"] .cf-cda__move {
+  margin: 2px 0 0;
+  font-size: 1.02rem;
+  font-weight: 700;
+  line-height: 1.35;
+  max-width: 34em;
+  border-inline-end: 3px solid color-mix(in srgb, var(--cf2-ink, #1a2332) 45%, transparent);
+  padding-inline-end: 10px;
+}
+
+[data-cf-ui="v2"] .cf-cda[data-cavi-arc="under_measurement"] .cf-cda__move {
+  font-weight: 600;
+  border-inline-end-color: color-mix(in srgb, var(--cf2-ink, #1a2332) 22%, transparent);
+}
+
+[data-cf-ui="v2"] .cf-cda__dont {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  max-width: 34em;
+  color: var(--cf2-muted, #5a6577);
+}
+
+[data-cf-ui="v2"] .cf-cda__dont-k,
+[data-cf-ui="v2"] .cf-cda__measure-k {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--cf2-muted, #5a6577);
+  margin-inline-end: 4px;
+}
+
+/* Measure / recheck subordinate to decision + move */
+[data-cf-ui="v2"] .cf-cda__measure {
+  margin: 4px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--cf2-ink, #1a2332) 10%, transparent);
+  font-size: 0.82rem;
+  line-height: 1.4;
+  max-width: 36em;
+  color: color-mix(in srgb, var(--cf2-ink, #1a2332) 72%, transparent);
+}
+
+[data-cf-ui="v2"] .cf-cda__measure--quiet,
+[data-cf-ui="v2"] .cf-cda__recheck-quiet {
+  font-size: 0.8rem;
+  color: color-mix(in srgb, var(--cf2-ink, #1a2332) 68%, transparent);
+  max-width: 36em;
+}
+
+[data-cf-ui="v2"] .cf-cda__hinge-pocket {
+  margin-top: 2px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--cf2-ink, #1a2332) 3.5%, transparent);
+  border-inline-start: 2px solid var(--cf2-ink, #1a2332);
+  border-radius: 0 0 0 10px;
+  max-width: 34em;
+}
+
+[data-cf-ui="v2"] .cf-cda__hinge-k {
+  margin: 0 0 2px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--cf2-muted, #5a6577);
+}
+
+[data-cf-ui="v2"] .cf-cda__hinge-v {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+[data-cf-ui="v2"] .cf-cda__void {
+  margin: 2px 0 0;
+  padding-top: 8px;
+  border-top: 1px dashed color-mix(in srgb, var(--cf2-ink, #1a2332) 14%, transparent);
+  color: var(--cf2-muted, #5a6577);
+  font-size: 0.9rem;
+  line-height: 1.45;
+  max-width: 34em;
+}
+
+[data-cf-ui="v2"] .cf-cda__evidence {
+  margin-top: 2px;
+  font-size: 0.8rem;
+  color: var(--cf2-muted, #5a6577);
+}
+
+[data-cf-ui="v2"] .cf-cda__evidence summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+[data-cf-ui="v2"] .cf-cda__action {
+  margin-top: 10px;
+}
+
+[data-cf-ui="v2"] .cf-cda__action .cf2-btn {
+  font-size: 0.88rem;
+  padding: 9px 14px;
+}
+
+[data-cf-ui="v2"] .cf-cda[data-cavi-arc="action_chosen"] .cf-cda__organism {
+  min-height: 188px;
+}
+
+[data-cf-ui="v2"] .cf-cda[data-cavi-arc="under_measurement"] .cf-cda__organism {
+  min-height: 198px;
+}
+
+[data-cf-ui="v2"] .cf-cda[data-cavi-arc="recheck_due"] .cf-cda__organism,
+[data-cf-ui="v2"] .cf-cda[data-cavi-surface="workspace"] .cf-cda__organism {
+  min-height: 230px;
+  max-width: 42rem;
+}
+
+[data-cf-ui="v2"] .cf2-col[data-cf2-cda="production-v1"] .cf2-col__primary {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+[data-cf-ui="v2"] .cf2-col-ws[data-cf2-cda="production-v1"] {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  max-width: 42rem;
+}
+
+[data-cf-ui="v2"] .cf2-col-ws[data-cf2-cda="production-v1"] .cf2-col-ws__lane {
+  margin: 0 0 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cf2-muted, #5a6577);
+}
+
+/* Desktop: intentional content mass — not lab object in a void */
+@media (min-width: 900px) {
+  [data-cf-ui="v2"] .cf-cda__organism {
+    grid-template-columns: 56px minmax(0, 1fr);
+    max-width: 44rem;
+    column-gap: 4px;
+  }
+  [data-cf-ui="v2"] .cf-cda__spine {
+    width: 56px;
+    margin-inline-end: -8px;
+  }
+  [data-cf-ui="v2"] .cf-cda__decision {
+    font-size: 1.38rem;
+  }
+  [data-cf-ui="v2"] .cf-cda__core {
+    gap: 8px;
+    padding-inline-end: 12px;
+  }
+  [data-cf-ui="v2"] .cf-cda[data-cavi-surface="workspace"] .cf-cda__organism {
+    max-width: 46rem;
+  }
+}
+
+@media (max-width: 430px) {
+  [data-cf-ui="v2"] .cf-cda__organism {
+    grid-template-columns: 38px minmax(0, 1fr);
+    max-width: none;
+    column-gap: 0;
+  }
+  [data-cf-ui="v2"] .cf-cda__spine {
+    width: 38px;
+    margin-inline-end: -4px;
+  }
+  [data-cf-ui="v2"] .cf-cda__decision {
+    font-size: 1.08rem;
+    line-height: 1.3;
+  }
+  [data-cf-ui="v2"] .cf-cda__move {
+    font-size: 0.94rem;
+  }
+  [data-cf-ui="v2"] .cf-cda__core {
+    padding: 10px 0 12px 2px;
+    gap: 6px;
+  }
+  [data-cf-ui="v2"] .cf-cda__chord {
+    font-size: 0.86rem;
+  }
+  [data-cf-ui="v2"] .cf-cda__measure,
+  [data-cf-ui="v2"] .cf-cda__measure--quiet,
+  [data-cf-ui="v2"] .cf-cda__recheck-quiet {
+    font-size: 0.78rem;
+  }
+  [data-cf-ui="v2"] .cf-cda__action {
+    margin-top: 8px;
+  }
+  [data-cf-ui="v2"] .cf-cda__hinge-pocket {
+    padding: 7px 8px;
+  }
+}

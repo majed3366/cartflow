@@ -929,16 +929,17 @@ body[data-cf-ui="v2"] .cf2-ws__recheck-k {
   font-size: 0.8rem;
 }
 
-/* Commercial Opportunity Layer V1 — Composition Refinement V1 (workspace) */
+/* Commercial Opportunity Layer — Composition Fit V1.1 (workspace) */
 body[data-cf-ui="v2"] .cf2-col-ws {
   display: grid;
   gap: 0;
-  margin: 0 0 22px;
-  padding-bottom: 18px;
+  margin: 0 0 20px;
+  padding-bottom: 16px;
   border-bottom: 1px solid color-mix(in srgb, var(--cf2-ink, #1a2332) 12%, transparent);
+  max-width: 46rem;
 }
 body[data-cf-ui="v2"] .cf2-col-ws__lane {
-  margin: 0 0 12px;
+  margin: 0 0 10px;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -967,7 +968,7 @@ body[data-cf-ui="v2"] .cf2-col-ws__unit[data-cf2-col-ws-unit="decision"] {
   margin-bottom: 16px;
 }
 body[data-cf-ui="v2"] .cf2-col-ws__unit[data-cf2-col-ws-unit="do"] .cf2-col-ws__v {
-  font-weight: 650;
+  font-weight: 600;
   font-size: 1.05rem;
 }
 body[data-cf-ui="v2"] .cf2-col-ws__unit[data-cf2-col-ws-unit="measure"] .cf2-col-ws__v,
@@ -1006,6 +1007,11 @@ body[data-cf-ui="v2"] .cf2-col-ws__evidence ul {
   font-size: 0.84rem;
 }
 @media (max-width: 430px) {
+  body[data-cf-ui="v2"] .cf2-col-ws {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    max-width: none;
+  }
   body[data-cf-ui="v2"] .cf2-col-ws__unit {
     margin-bottom: 12px;
     padding-bottom: 10px;

@@ -504,62 +504,80 @@
     );
   }
 
-  function renderColDecision(opp) {
+  function renderColDecision(opp, paintOpts) {
+    paintOpts = paintOpts || {};
     if (!opp) return "";
-    var dc =
-      opp.decision_contract_ar && typeof opp.decision_contract_ar === "object"
-        ? opp.decision_contract_ar
-        : {};
+    var CDA =
+      typeof global.CartFlowCommercialDecisionArcV1 !== "undefined"
+        ? global.CartFlowCommercialDecisionArcV1
+        : null;
+    var arc = paintOpts.workspaceArc || "recheck_due";
     var html =
-      '<section class="cf2-col-ws" data-cf2="commercial-opportunity-workspace-v1" data-cf2-col-ws="v1" data-cf2-col-refine="v1" aria-label="قرار الفرصة التجارية">';
+      '<section class="cf2-col-ws" data-cf2="commercial-opportunity-workspace-v1" data-cf2-col-ws="v1" data-cf2-col-refine="v1" data-cf2-cda="production-v1" aria-label="قرار الفرصة التجارية">';
     html += '<p class="cf2-col-ws__lane">قرار تجاري</p>';
-    html += colWsUnit(
-      "decision",
-      "القرار",
-      dc.decision_ar || opp.title_ar || "",
-      true
-    );
-    html += colWsUnit("why", "لماذا الآن؟", dc.why_now_ar || opp.why_ar || "");
-    html += colWsUnit(
-      "do",
-      "نفّذ هذا",
-      dc.do_this_ar || opp.action_ar || "",
-      true
-    );
-    if (dc.dont_ar) {
-      html += colWsUnit("dont", "لا تفعل هذا", dc.dont_ar);
-    }
-    html += colWsUnit(
-      "measure",
-      "سنقيس",
-      dc.measure_ar || opp.measure_ar || ""
-    );
-    html += colWsUnit(
-      "recheck",
-      "سنغير رأينا إذا...",
-      dc.recheck_ar || opp.recheck_ar || ""
-    );
-    var ev =
-      opp.evidence && Array.isArray(opp.evidence.lines_ar)
-        ? opp.evidence.lines_ar
-        : [];
-    if (ev.length) {
-      html +=
-        '<details class="cf2-col-ws__evidence"><summary>عرض الدليل</summary><ul>';
-      ev.forEach(function (line) {
-        html += "<li>" + esc(line) + "</li>";
+    if (CDA && CDA.renderOrganism) {
+      html += CDA.renderOrganism(opp, {
+        arc: arc,
+        surface: "workspace",
+        eyebrow: "القرار التجاري",
       });
-      html += "</ul></details>";
+    } else {
+      var dc =
+        opp.decision_contract_ar && typeof opp.decision_contract_ar === "object"
+          ? opp.decision_contract_ar
+          : {};
+      html += colWsUnit(
+        "decision",
+        "القرار",
+        dc.decision_ar || opp.title_ar || "",
+        true
+      );
+      html += colWsUnit(
+        "why",
+        "لماذا الآن؟",
+        dc.why_now_ar || opp.why_ar || ""
+      );
+      html += colWsUnit(
+        "do",
+        "نفّذ هذا",
+        dc.do_this_ar || opp.action_ar || "",
+        true
+      );
+      if (dc.dont_ar) {
+        html += colWsUnit("dont", "لا تفعل هذا", dc.dont_ar);
+      }
+      html += colWsUnit(
+        "measure",
+        "سنقيس",
+        dc.measure_ar || opp.measure_ar || ""
+      );
+      html += colWsUnit(
+        "recheck",
+        "سنغير رأينا إذا...",
+        dc.recheck_ar || opp.recheck_ar || ""
+      );
+      var ev =
+        opp.evidence && Array.isArray(opp.evidence.lines_ar)
+          ? opp.evidence.lines_ar
+          : [];
+      if (ev.length) {
+        html +=
+          '<details class="cf2-col-ws__evidence"><summary>عرض الدليل</summary><ul>';
+        ev.forEach(function (line) {
+          html += "<li>" + esc(line) + "</li>";
+        });
+        html += "</ul></details>";
+      }
     }
     html += "</section>";
     return html;
   }
 
-  function render(payload) {
+  function render(payload, paintOpts) {
     var projection = unwrapProjection(payload);
     var zoneB = Array.isArray(projection.zone_b) ? projection.zone_b : [];
     var split = splitPrimary(zoneB);
-    var colHtml = renderColDecision(readColFocus());
+    var colHtml = renderColDecision(readColFocus(), paintOpts || {});
     var html =
       '<div class="cf2-ws cf2-ws--lang cf2-ws--mobile-hierarchy-v1" data-cf2="workspace-composition-closure-v1" data-cf2-mobile-hierarchy="v1" data-cf2-model="semantic-visual-model-v1" data-cf2-composition="page-specific-v1">';
     if (colHtml) {

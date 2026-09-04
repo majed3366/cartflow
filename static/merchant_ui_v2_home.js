@@ -306,76 +306,92 @@
     );
   }
 
-  function renderColLayer(col) {
+  function renderColLayer(col, paintOpts) {
+    paintOpts = paintOpts || {};
     if (!col || col.enabled === false || !col.ok) return "";
+    var CDA =
+      typeof global.CartFlowCommercialDecisionArcV1 !== "undefined"
+        ? global.CartFlowCommercialDecisionArcV1
+        : null;
     var html =
-      '<section class="cf2-col" data-cf2="commercial-opportunity-layer-v1" data-cf2-col="v1" data-cf2-col-refine="v1" data-cf2-model="semantic-visual-model-v1" aria-label="الفرصة التجارية">';
+      '<section class="cf2-col" data-cf2="commercial-opportunity-layer-v1" data-cf2-col="v1" data-cf2-col-refine="v1" data-cf2-cda="production-v1" data-cf2-model="semantic-visual-model-v1" aria-label="الفرصة التجارية">';
+    html +=
+      '<p class="cf2-col__question">' +
+      esc(col.question_ar || "أين توجد أهم فرصة تجارية الآن؟") +
+      "</p>";
     if (col.empty || !col.primary) {
-      html +=
-        '<p class="cf2-col__question">' +
-        esc(col.question_ar || "أين توجد أهم فرصة تجارية الآن؟") +
-        "</p>";
-      html +=
-        '<p class="cf2-col__empty">' +
-        esc(col.empty_state_ar || "لا توجد فرصة تجارية جاهزة من أدلة متجرك الآن.") +
-        "</p>";
+      if (CDA && CDA.renderOrganism) {
+        html += CDA.renderOrganism(null, {
+          arc: "insufficient_evidence",
+          surface: "home",
+          emptyCopy:
+            col.empty_state_ar ||
+            "لا توجد فرصة تجارية جاهزة من أدلة متجرك الآن.",
+        });
+      } else {
+        html +=
+          '<p class="cf2-col__empty">' +
+          esc(
+            col.empty_state_ar ||
+              "لا توجد فرصة تجارية جاهزة من أدلة متجرك الآن."
+          ) +
+          "</p>";
+      }
       html += "</section>";
       return html;
     }
     var p = col.primary;
+    var arc = paintOpts.homeArc || "action_chosen";
     html +=
-      '<article class="cf2-col__primary" data-cf2-col-role="primary" data-cf2-col-mass="decision">';
-    html +=
-      '<p class="cf2-col__eyebrow">' +
-      esc(p.eyebrow_ar || "أهم فرصة تجارية الآن") +
-      "</p>";
-    html += '<h2 class="cf2-col__title">' + esc(p.title_ar || "") + "</h2>";
-    html += colUnit("why", "لماذا الآن؟", p.why_ar);
-    html += colUnit("move", "الحركة الآن", p.action_ar);
-    html += colUnit("measure", "سنقيس", p.measure_ar);
-    html += colUnit("recheck", "نعيد النظر", p.recheck_ar);
-    if (p.product_name_ar) {
-      html += colUnit(
-        "product",
-        "المنتج",
-        p.product_name_ar +
-          (p.commercial_state_ar ? " — " + p.commercial_state_ar : "")
-      );
-    }
-    var ev = p.evidence && Array.isArray(p.evidence.lines_ar) ? p.evidence.lines_ar : [];
-    if (ev.length) {
-      html +=
-        '<details class="cf2-col__evidence"><summary>عرض الدليل</summary><ul>';
-      ev.forEach(function (line) {
-        html += "<li>" + esc(line) + "</li>";
+      '<div class="cf2-col__primary" data-cf2-col-role="primary" data-cf2-col-mass="decision">';
+    if (CDA && CDA.renderOrganism) {
+      html += CDA.renderOrganism(p, {
+        arc: arc,
+        surface: "home",
+        eyebrow: p.eyebrow_ar || "أهم فرصة تجارية الآن",
+        openId: p.opportunity_id || "",
       });
-      html += "</ul></details>";
+    } else {
+      html +=
+        '<p class="cf2-col__eyebrow">' +
+        esc(p.eyebrow_ar || "أهم فرصة تجارية الآن") +
+        "</p>";
+      html += '<h2 class="cf2-col__title">' + esc(p.title_ar || "") + "</h2>";
+      html += colUnit("why", "لماذا الآن؟", p.why_ar);
+      html += colUnit("move", "الحركة الآن", p.action_ar);
+      html += colUnit("measure", "سنقيس", p.measure_ar);
+      html += colUnit("recheck", "نعيد النظر", p.recheck_ar);
+      html +=
+        '<div class="cf2-col__action"><a class="cf2-btn" href="#workspace" data-cf2-col-open="' +
+        escAttr(p.opportunity_id || "") +
+        '">افتح القرار</a></div>';
     }
-    html +=
-      '<div class="cf2-col__action"><a class="cf2-btn" href="#workspace" data-cf2-col-open="' +
-      escAttr(p.opportunity_id || "") +
-      '">افتح القرار</a></div>';
-    html += "</article>";
+    html += "</div>";
 
     var secs = Array.isArray(col.secondaries) ? col.secondaries.slice(0, 2) : [];
     if (secs.length) {
       html +=
-        '<div class="cf2-col__secondaries" data-cf2-col-tier="secondary" aria-label="فرص تالية">';
+        '<div class="cf2-col__secondaries" data-cf2-col-tier="secondary" data-cf2-col-compress="v1_1" aria-label="فرص تالية">';
       secs.forEach(function (s) {
-        var oneLine =
+        var why =
           String(s.priority_why_ar || "").trim() ||
           String(s.why_ar || "").trim();
-        html +=
-          '<article class="cf2-col__secondary" data-cf2-col-role="secondary">';
-        html +=
-          '<p class="cf2-col__obj">' + esc(s.objective_ar || "") + "</p>";
-        html +=
-          '<h3 class="cf2-col__sec-title">' + esc(s.title_ar || "") + "</h3>";
-        if (oneLine) {
-          html += '<p class="cf2-col__sec-why">' + esc(oneLine) + "</p>";
+        var act = String(s.action_ar || "").trim();
+        var line = why;
+        if (act) {
+          line = why ? why + " · " + act : act;
         }
+        /* One-line commercial signal — no article stack */
+        if (line.length > 110) line = line.slice(0, 107) + "…";
+        var title = String(s.title_ar || "").trim();
+        if (title.length > 72) title = title.slice(0, 69) + "…";
         html +=
-          '<p class="cf2-col__sec-act">' + esc(s.action_ar || "") + "</p>";
+          '<article class="cf2-col__secondary cf2-col__secondary--signal" data-cf2-col-role="secondary">';
+        html +=
+          '<h3 class="cf2-col__sec-title">' + esc(title) + "</h3>";
+        if (line) {
+          html += '<p class="cf2-col__sec-line">' + esc(line) + "</p>";
+        }
         html +=
           '<a class="cf2-col__sec-link" href="#workspace" data-cf2-col-open="' +
           escAttr(s.opportunity_id || "") +
@@ -403,14 +419,14 @@
     });
   }
 
-  function render(pkg, summary) {
+  function render(pkg, summary, paintOpts) {
     var col =
       summary &&
       summary.commercial_opportunity_layer_v1 &&
       typeof summary.commercial_opportunity_layer_v1 === "object"
         ? summary.commercial_opportunity_layer_v1
         : null;
-    var colHtml = renderColLayer(col);
+    var colHtml = renderColLayer(col, paintOpts);
     var sections = Array.isArray(pkg.sections) ? pkg.sections : [];
     if (!sections.length) {
       return (
@@ -634,7 +650,7 @@
     return html + colHtml;
   }
 
-  function paint(root, summary) {
+  function paint(root, summary, paintOpts) {
     if (!root) return false;
     lastSummaryPayload = summary;
     lastSummaryRoot = root;
@@ -668,7 +684,7 @@
         },
       });
     }
-    root.innerHTML = render(pkg, summary);
+    root.innerHTML = render(pkg, summary, paintOpts || {});
     bindColActions(
       root,
       summary && summary.commercial_opportunity_layer_v1
