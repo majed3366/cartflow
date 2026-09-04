@@ -20835,6 +20835,8 @@ def _api_json_dashboard_summary(
             "recovery_pct": 0.0,
             "recovered_revenue": 0.0,
         }
+    reason_counts_w: dict = {}
+    reason_counts_m: dict = {}
     try:
         with dashboard_summary_profile_span("_merchant_reason_counts_store_window_days7"):
             reason_counts_w = merchant_reason_counts_store_window(dash_store, days=7)
@@ -20851,6 +20853,7 @@ def _api_json_dashboard_summary(
         db.session.rollback()
         reason_rows, reason_insight = [], ""
         reason_rows_month, reason_insight_month = [], ""
+        reason_counts_w, reason_counts_m = {}, {}
     try:
         with dashboard_summary_profile_span("_normal_carts_dashboard_stats"):
             mstats = dict(_normal_carts_dashboard_stats(dash_store))
@@ -20989,6 +20992,8 @@ def _api_json_dashboard_summary(
         "merchant_kpi_recovered_pct_vs_abandoned": pct_recovered_vs_abandoned,
         "merchant_kpi_wa_sub_ar": "سجلات إرسال اليوم",
         "merchant_reason_rows_week": reason_rows,
+        "merchant_reason_counts_week": dict(reason_counts_w or {}),
+        "merchant_reason_counts_month": dict(reason_counts_m or {}),
         "merchant_reason_insight_ar": reason_insight,
         "merchant_reason_rows_month": reason_rows_month,
         "merchant_reason_recommendations_ar": merchant_reason_recommendations_ar,

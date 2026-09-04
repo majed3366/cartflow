@@ -474,17 +474,104 @@
     return { primary: primary, next: next.slice(0, 2) };
   }
 
+  function readColFocus() {
+    try {
+      if (typeof sessionStorage === "undefined") return null;
+      var raw = sessionStorage.getItem("cf2_col_focus_v1");
+      if (!raw) return null;
+      var opp = JSON.parse(raw);
+      return opp && typeof opp === "object" ? opp : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function colWsUnit(kind, label, body, mass) {
+    var t = String(body || "").trim();
+    if (!t) return "";
+    return (
+      '<div class="cf2-col-ws__unit' +
+      (mass ? " cf2-col-ws__unit--mass" : "") +
+      '" data-cf2-col-ws-unit="' +
+      esc(kind) +
+      '">' +
+      '<p class="cf2-col-ws__k">' +
+      esc(label) +
+      "</p>" +
+      '<p class="cf2-col-ws__v">' +
+      esc(t) +
+      "</p></div>"
+    );
+  }
+
+  function renderColDecision(opp) {
+    if (!opp) return "";
+    var dc =
+      opp.decision_contract_ar && typeof opp.decision_contract_ar === "object"
+        ? opp.decision_contract_ar
+        : {};
+    var html =
+      '<section class="cf2-col-ws" data-cf2="commercial-opportunity-workspace-v1" data-cf2-col-ws="v1" data-cf2-col-refine="v1" aria-label="قرار الفرصة التجارية">';
+    html += '<p class="cf2-col-ws__lane">قرار تجاري</p>';
+    html += colWsUnit(
+      "decision",
+      "القرار",
+      dc.decision_ar || opp.title_ar || "",
+      true
+    );
+    html += colWsUnit("why", "لماذا الآن؟", dc.why_now_ar || opp.why_ar || "");
+    html += colWsUnit(
+      "do",
+      "نفّذ هذا",
+      dc.do_this_ar || opp.action_ar || "",
+      true
+    );
+    if (dc.dont_ar) {
+      html += colWsUnit("dont", "لا تفعل هذا", dc.dont_ar);
+    }
+    html += colWsUnit(
+      "measure",
+      "سنقيس",
+      dc.measure_ar || opp.measure_ar || ""
+    );
+    html += colWsUnit(
+      "recheck",
+      "سنغير رأينا إذا...",
+      dc.recheck_ar || opp.recheck_ar || ""
+    );
+    var ev =
+      opp.evidence && Array.isArray(opp.evidence.lines_ar)
+        ? opp.evidence.lines_ar
+        : [];
+    if (ev.length) {
+      html +=
+        '<details class="cf2-col-ws__evidence"><summary>عرض الدليل</summary><ul>';
+      ev.forEach(function (line) {
+        html += "<li>" + esc(line) + "</li>";
+      });
+      html += "</ul></details>";
+    }
+    html += "</section>";
+    return html;
+  }
+
   function render(payload) {
     var projection = unwrapProjection(payload);
     var zoneB = Array.isArray(projection.zone_b) ? projection.zone_b : [];
     var split = splitPrimary(zoneB);
+    var colHtml = renderColDecision(readColFocus());
     var html =
       '<div class="cf2-ws cf2-ws--lang cf2-ws--mobile-hierarchy-v1" data-cf2="workspace-composition-closure-v1" data-cf2-mobile-hierarchy="v1" data-cf2-model="semantic-visual-model-v1" data-cf2-composition="page-specific-v1">';
+    if (colHtml) {
+      html += colHtml;
+    }
     if (!split.primary) {
-      html +=
-        '<section class="cf2-ws__primary" aria-label="هدوء القرار">' +
-        renderQuietEnvironment() +
-        "</section>";
+      if (!colHtml) {
+        html +=
+          '<section class="cf2-ws__primary" aria-label="هدوء القرار">' +
+          renderQuietEnvironment() +
+          "</section>";
+      }
       html += "</div>";
       return html;
     }

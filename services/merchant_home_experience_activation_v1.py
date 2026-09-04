@@ -390,6 +390,14 @@ def finalize_dashboard_summary_payload(
                 if isinstance(hes_ready, dict):
                     hes_ready["diagnostic_reasoning"] = "diagnostic_reasoning_v1"
                     hes_ready["diagnosis_language"] = "diagnostic_reasoning_v1"
+                try:
+                    from services.commercial_opportunity_layer_v1 import (  # noqa: PLC0415
+                        attach_commercial_opportunity_layer_to_summary_v1,
+                    )
+
+                    attach_commercial_opportunity_layer_to_summary_v1(body)
+                except Exception as col_exc:  # noqa: BLE001
+                    log.warning("col snapshot passthrough attach: %s", col_exc)
             strip_heavy_home_summary_payload_v1(body)
             return body
 

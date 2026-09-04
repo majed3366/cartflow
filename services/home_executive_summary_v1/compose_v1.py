@@ -839,6 +839,19 @@ def attach_home_executive_summary_to_summary_v1(
                 "operational_guidance_v1",
                 {"ok": False, "error": "attach_failed"},
             )
+        try:
+            from services.commercial_opportunity_layer_v1 import (  # noqa: PLC0415
+                attach_commercial_opportunity_layer_to_summary_v1,
+            )
+
+            attach_commercial_opportunity_layer_to_summary_v1(
+                summary, environ=environ
+            )
+        except Exception:  # noqa: BLE001 — COL must never break operational Home
+            summary.setdefault(
+                "commercial_opportunity_layer_v1",
+                {"ok": False, "enabled": True, "error": "attach_failed", "empty": True},
+            )
     except Exception:  # noqa: BLE001
         summary["home_executive_summary_v1"] = {
             "ok": False,

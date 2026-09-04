@@ -278,7 +278,139 @@
     return { see: see, means: means, doNow: doNow, recheck: recheck };
   }
 
-  function render(pkg) {
+  function escAttr(s) {
+    return esc(s).replace(/"/g, "&quot;");
+  }
+
+  function storeColFocus(opp) {
+    try {
+      if (opp && typeof sessionStorage !== "undefined") {
+        sessionStorage.setItem("cf2_col_focus_v1", JSON.stringify(opp));
+      }
+    } catch (e) {}
+  }
+
+  function colUnit(kind, label, body) {
+    var t = String(body || "").trim();
+    if (!t) return "";
+    return (
+      '<div class="cf2-col__unit" data-cf2-col-unit="' +
+      escAttr(kind) +
+      '">' +
+      '<p class="cf2-col__k">' +
+      esc(label) +
+      "</p>" +
+      '<p class="cf2-col__v">' +
+      esc(t) +
+      "</p></div>"
+    );
+  }
+
+  function renderColLayer(col) {
+    if (!col || col.enabled === false || !col.ok) return "";
+    var html =
+      '<section class="cf2-col" data-cf2="commercial-opportunity-layer-v1" data-cf2-col="v1" data-cf2-col-refine="v1" data-cf2-model="semantic-visual-model-v1" aria-label="الفرصة التجارية">';
+    if (col.empty || !col.primary) {
+      html +=
+        '<p class="cf2-col__question">' +
+        esc(col.question_ar || "أين توجد أهم فرصة تجارية الآن؟") +
+        "</p>";
+      html +=
+        '<p class="cf2-col__empty">' +
+        esc(col.empty_state_ar || "لا توجد فرصة تجارية جاهزة من أدلة متجرك الآن.") +
+        "</p>";
+      html += "</section>";
+      return html;
+    }
+    var p = col.primary;
+    html +=
+      '<article class="cf2-col__primary" data-cf2-col-role="primary" data-cf2-col-mass="decision">';
+    html +=
+      '<p class="cf2-col__eyebrow">' +
+      esc(p.eyebrow_ar || "أهم فرصة تجارية الآن") +
+      "</p>";
+    html += '<h2 class="cf2-col__title">' + esc(p.title_ar || "") + "</h2>";
+    html += colUnit("why", "لماذا الآن؟", p.why_ar);
+    html += colUnit("move", "الحركة الآن", p.action_ar);
+    html += colUnit("measure", "سنقيس", p.measure_ar);
+    html += colUnit("recheck", "نعيد النظر", p.recheck_ar);
+    if (p.product_name_ar) {
+      html += colUnit(
+        "product",
+        "المنتج",
+        p.product_name_ar +
+          (p.commercial_state_ar ? " — " + p.commercial_state_ar : "")
+      );
+    }
+    var ev = p.evidence && Array.isArray(p.evidence.lines_ar) ? p.evidence.lines_ar : [];
+    if (ev.length) {
+      html +=
+        '<details class="cf2-col__evidence"><summary>عرض الدليل</summary><ul>';
+      ev.forEach(function (line) {
+        html += "<li>" + esc(line) + "</li>";
+      });
+      html += "</ul></details>";
+    }
+    html +=
+      '<div class="cf2-col__action"><a class="cf2-btn" href="#workspace" data-cf2-col-open="' +
+      escAttr(p.opportunity_id || "") +
+      '">افتح القرار</a></div>';
+    html += "</article>";
+
+    var secs = Array.isArray(col.secondaries) ? col.secondaries.slice(0, 2) : [];
+    if (secs.length) {
+      html +=
+        '<div class="cf2-col__secondaries" data-cf2-col-tier="secondary" aria-label="فرص تالية">';
+      secs.forEach(function (s) {
+        var oneLine =
+          String(s.priority_why_ar || "").trim() ||
+          String(s.why_ar || "").trim();
+        html +=
+          '<article class="cf2-col__secondary" data-cf2-col-role="secondary">';
+        html +=
+          '<p class="cf2-col__obj">' + esc(s.objective_ar || "") + "</p>";
+        html +=
+          '<h3 class="cf2-col__sec-title">' + esc(s.title_ar || "") + "</h3>";
+        if (oneLine) {
+          html += '<p class="cf2-col__sec-why">' + esc(oneLine) + "</p>";
+        }
+        html +=
+          '<p class="cf2-col__sec-act">' + esc(s.action_ar || "") + "</p>";
+        html +=
+          '<a class="cf2-col__sec-link" href="#workspace" data-cf2-col-open="' +
+          escAttr(s.opportunity_id || "") +
+          '">افتح</a>';
+        html += "</article>";
+      });
+      html += "</div>";
+    }
+    html += "</section>";
+    return html;
+  }
+
+  function bindColActions(root, col) {
+    if (!root || !col) return;
+    var map = {};
+    if (col.primary) map[String(col.primary.opportunity_id || "")] = col.primary;
+    (col.secondaries || []).forEach(function (s) {
+      if (s) map[String(s.opportunity_id || "")] = s;
+    });
+    root.querySelectorAll("[data-cf2-col-open]").forEach(function (el) {
+      el.addEventListener("click", function () {
+        var id = el.getAttribute("data-cf2-col-open") || "";
+        if (map[id]) storeColFocus(map[id]);
+      });
+    });
+  }
+
+  function render(pkg, summary) {
+    var col =
+      summary &&
+      summary.commercial_opportunity_layer_v1 &&
+      typeof summary.commercial_opportunity_layer_v1 === "object"
+        ? summary.commercial_opportunity_layer_v1
+        : null;
+    var colHtml = renderColLayer(col);
     var sections = Array.isArray(pkg.sections) ? pkg.sections : [];
     if (!sections.length) {
       return (
@@ -287,7 +419,8 @@
         '<p class="cf2-empty">' +
         esc(pkg.lede_ar || "لا تتوفر معرفة كافية الآن.") +
         "</p>" +
-        '<hr class="cf2-taper" /></section>'
+        '<hr class="cf2-taper" /></section>' +
+        colHtml
       );
     }
     var parts = split(sections);
@@ -303,7 +436,7 @@
         esc(pkg.lede_ar || "لا تتوفر معرفة كافية الآن.") +
         "</p>" +
         '<hr class="cf2-taper" /></section>';
-      return html;
+      return html + colHtml;
     }
 
     var p = parts.primary;
@@ -498,7 +631,7 @@
 
     html += '<hr class="cf2-taper" />';
     html += "</section>";
-    return html;
+    return html + colHtml;
   }
 
   function paint(root, summary) {
@@ -535,7 +668,13 @@
         },
       });
     }
-    root.innerHTML = render(pkg);
+    root.innerHTML = render(pkg, summary);
+    bindColActions(
+      root,
+      summary && summary.commercial_opportunity_layer_v1
+        ? summary.commercial_opportunity_layer_v1
+        : null
+    );
     return true;
   }
 
