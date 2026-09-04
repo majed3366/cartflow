@@ -10,7 +10,7 @@
 | Field | Value |
 |--------|--------|
 | BASE LIVE SHA | `033cdd482960c6b66f5f22c1027ce3b9ba9f485e` |
-| CANDIDATE SHA | `b1867d2c9dadfc6580bf889648093ef90e9d38b3` |
+| CANDIDATE SHA | `ce68cd5fd4935cafc314ffb8efaf017f5419a336` |
 | Branch | `candidate/commercial-opportunity-layer-v1` (pushed) |
 | Project | `565c6a84-52db-4e8b-9709-c3801570297a` |
 | Environment | `1b684334-5b13-4d8e-9c3a-d5816d323850` (production) |
@@ -28,7 +28,7 @@ mutation DeployCartFlowApiExactSha {
   serviceInstanceDeployV2(
     serviceId: "f3731fa1-43c5-4f72-b8e6-b39b0d028f15"
     environmentId: "1b684334-5b13-4d8e-9c3a-d5816d323850"
-    commitSha: "b1867d2c9dadfc6580bf889648093ef90e9d38b3"
+    commitSha: "ce68cd5fd4935cafc314ffb8efaf017f5419a336"
   )
 }
 ```
