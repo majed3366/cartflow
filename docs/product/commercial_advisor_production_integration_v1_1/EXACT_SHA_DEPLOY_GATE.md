@@ -96,7 +96,7 @@ Frozen COL logic baseline: `b1867d2c9dadfc6580bf889648093ef90e9d38b3`
 | **RUNTIME CANDIDATE SHA** | `0f2ebc5a5730cc015988d47446501170ce0b815f` |
 | Verified base (COL + lineage) | `b1867d2c` (contains live `033cdd48` as ancestor) |
 | Live production SHA (re-observed) | `033cdd482960c6b66f5f22c1027ce3b9ba9f485e` |
-| Branch tip (docs after freeze) | `bc8f56503f78f8608969f57d5588179e8240d4f5` (+ optional later docs-only commits; **deploy runtime SHA only**) |
+| Branch tip (docs after freeze) | `a48d7d09040623bce59ae789c726d5b83ec93ac4` (docs-only after `0f2ebc5a`; **deploy runtime SHA only**) |
 
 Includes: COL V1 + composition refinement + `cf-cda` production integration + Composition Fit V1.1 + required tests/assets.  
 Excludes: visual-identity labs, unrelated closures, dirty `main.py` lab wiring.
