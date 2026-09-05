@@ -1,0 +1,42 @@
+{
+  "A_accepted": {
+    "commitment_id": "2bb1b972-c942-4c43-9023-70850c109738",
+    "store_slug": "cf_fe_v1_actionable",
+    "opportunity_key": "col:shipping_friction:shipping:cf_fe_v1_actionable",
+    "derived_state": "ACTION_CHOSEN",
+    "action_chosen_at": "2026-09-05T16:11:00.186360",
+    "measurement_started_at": null,
+    "closed_at": null
+  },
+  "B_under_measurement": {
+    "commitment_id": "2bb1b972-c942-4c43-9023-70850c109738",
+    "store_slug": "cf_fe_v1_actionable",
+    "opportunity_key": "col:shipping_friction:shipping:cf_fe_v1_actionable",
+    "derived_state": "UNDER_MEASUREMENT",
+    "measurement_started_at": "2026-09-05T16:11:00.218175",
+    "measurement_due_at": "2026-09-12T16:11:00.218175",
+    "authority": "merchant_execution_confirm"
+  },
+  "C_recheck_due": {
+    "commitment_id": "2bb1b972-c942-4c43-9023-70850c109738",
+    "store_slug": "cf_fe_v1_actionable",
+    "opportunity_key": "col:shipping_friction:shipping:cf_fe_v1_actionable",
+    "derived_state": "RECHECK_DUE",
+    "measurement_due_at": "2026-09-05T16:10:00.276143",
+    "closed_at": null
+  },
+  "D_closed_plus_new_active": {
+    "closed": {
+      "commitment_id": "2bb1b972-c942-4c43-9023-70850c109738",
+      "closed_at": "2026-09-05T16:11:00.304883",
+      "close_reason": "recheck_new_decision",
+      "derived_state": null
+    },
+    "new_active": {
+      "commitment_id": "607cdb4d-77c6-411d-aab3-34965560bde8",
+      "store_slug": "cf_fe_v1_actionable",
+      "opportunity_key": "col:shipping_friction:shipping:cf_fe_v1_actionable",
+      "derived_state": "ACTION_CHOSEN"
+    }
+  }
+}
