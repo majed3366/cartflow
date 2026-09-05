@@ -341,9 +341,31 @@
       return html;
     }
     var p = col.primary;
-    var arc = paintOpts.homeArc || "action_chosen";
+    var arc = paintOpts.homeArc || null;
+    if (!arc) {
+      var c =
+        p.commitment && typeof p.commitment === "object" ? p.commitment : null;
+      var cm = c && c.console_mode ? String(c.console_mode) : "";
+      var ph = c && c.phase ? String(c.phase) : "";
+      if (cm === "measuring" || ph === "UNDER_MEASUREMENT") {
+        arc = "under_measurement";
+      } else if (cm === "recheck" || ph === "RECHECK_DUE") {
+        arc = "recheck_due";
+      } else if (cm === "accepted" || ph === "ACTION_CHOSEN") {
+        arc = "action_chosen";
+      } else {
+        arc = "action_chosen";
+      }
+    }
     html +=
-      '<div class="cf2-col__primary" data-cf2-col-role="primary" data-cf2-col-mass="decision">';
+      '<div class="cf2-col__primary" data-cf2-col-role="primary" data-cf2-col-mass="decision"';
+    if (p.commitment && p.commitment.phase) {
+      html +=
+        ' data-cf2-commitment-phase="' +
+        escAttr(String(p.commitment.phase)) +
+        '"';
+    }
+    html += ">";
     if (CDA && CDA.renderOrganism) {
       html += CDA.renderOrganism(p, {
         arc: arc,

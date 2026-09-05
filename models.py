@@ -1969,3 +1969,58 @@ class LandingPageEventV1(Base):
         nullable=False,
         index=True,
     )
+
+
+class CommercialDecisionCommitment(Base):
+    """
+    Commercial Decision Commitment V1 — merchant accept + execution-gated measurement.
+
+    COL remains evidence truth. This row is decision/action lifecycle truth only.
+    Active uniqueness: one open row per (store_slug, opportunity_key) via
+    active_opportunity_key (= opportunity_key when open, NULL when closed).
+    """
+
+    __tablename__ = "commercial_decision_commitments"
+    __table_args__ = (
+        UniqueConstraint(
+            "store_slug",
+            "active_opportunity_key",
+            name="uq_cdc_active_store_opportunity",
+        ),
+        Index("ix_cdc_store_opportunity", "store_slug", "opportunity_key"),
+        Index("ix_cdc_store_closed_due", "store_slug", "closed_at", "measurement_due_at"),
+    )
+
+    id = Column(String(36), primary_key=True)
+    store_slug = Column(String(191), nullable=False, index=True)
+    opportunity_key = Column(String(255), nullable=False)
+    opportunity_family = Column(String(64), nullable=False)
+    opportunity_reason = Column(String(128), nullable=False)
+    # Portable active uniqueness (NULL when closed — multiple NULLs allowed)
+    active_opportunity_key = Column(String(255), nullable=True)
+    action_chosen_at = Column(DateTime, nullable=False)
+    action_summary = Column(String(512), nullable=False, default="")
+    decision_snapshot_json = Column(Text, nullable=False, default="{}")
+    measurement_started_at = Column(DateTime, nullable=True)
+    measurement_due_at = Column(DateTime, nullable=True)
+    measurement_start_authority = Column(String(64), nullable=True)
+    measurement_start_ref = Column(String(191), nullable=True)
+    baseline_snapshot_json = Column(Text, nullable=True)
+    metric_key = Column(String(128), nullable=True)
+    baseline_metric_value = Column(Float, nullable=True)
+    recheck_condition_frozen = Column(Text, nullable=True)
+    created_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    closed_at = Column(DateTime, nullable=True)
+    close_reason = Column(String(64), nullable=True)
+    close_note = Column(String(200), nullable=True)
+    superseded_by_id = Column(String(36), nullable=True)

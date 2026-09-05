@@ -511,9 +511,38 @@
       typeof global.CartFlowCommercialDecisionArcV1 !== "undefined"
         ? global.CartFlowCommercialDecisionArcV1
         : null;
-    var arc = paintOpts.workspaceArc || "recheck_due";
+    /* CDC V1: server-derived commitment.console_mode / phase → CDA arc.
+       Without commitment, keep live default arc (recheck_due). */
+    var arc = paintOpts.workspaceArc || null;
+    if (!arc) {
+      var c =
+        opp.commitment && typeof opp.commitment === "object"
+          ? opp.commitment
+          : null;
+      var cm = c && c.console_mode ? String(c.console_mode) : "";
+      var ph = c && c.phase ? String(c.phase) : "";
+      if (cm === "measuring" || ph === "UNDER_MEASUREMENT") {
+        arc = "under_measurement";
+      } else if (cm === "recheck" || ph === "RECHECK_DUE") {
+        arc = "recheck_due";
+      } else if (
+        cm === "accepted" ||
+        ph === "ACTION_CHOSEN"
+      ) {
+        arc = "action_chosen";
+      } else {
+        arc = "recheck_due";
+      }
+    }
     var html =
-      '<section class="cf2-col-ws" data-cf2="commercial-opportunity-workspace-v1" data-cf2-col-ws="v1" data-cf2-col-refine="v1" data-cf2-cda="production-v1" aria-label="قرار الفرصة التجارية">';
+      '<section class="cf2-col-ws" data-cf2="commercial-opportunity-workspace-v1" data-cf2-col-ws="v1" data-cf2-col-refine="v1" data-cf2-cda="production-v1"';
+    if (opp.commitment && opp.commitment.phase) {
+      html +=
+        ' data-cf2-commitment-phase="' +
+        esc(String(opp.commitment.phase)) +
+        '"';
+    }
+    html += ' aria-label="قرار الفرصة التجارية">';
     html += '<p class="cf2-col-ws__lane">قرار تجاري</p>';
     if (CDA && CDA.renderOrganism) {
       html += CDA.renderOrganism(opp, {

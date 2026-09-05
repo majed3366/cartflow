@@ -852,6 +852,25 @@ def attach_home_executive_summary_to_summary_v1(
                 "commercial_opportunity_layer_v1",
                 {"ok": False, "enabled": True, "error": "attach_failed", "empty": True},
             )
+        try:
+            from services.commercial_decision_commitment_v1 import (  # noqa: PLC0415
+                attach_commitment_truth,
+            )
+
+            attach_commitment_truth(
+                summary, store_slug=str(summary.get("store_slug") or "")
+            )
+        except Exception:  # noqa: BLE001 — commitment optional; COL-only remains valid
+            summary.setdefault(
+                "commercial_decision_commitment_v1",
+                {
+                    "ok": False,
+                    "error": "attach_failed",
+                    "by_opportunity_key": {},
+                    "open_count": 0,
+                    "query_delta": 0,
+                },
+            )
     except Exception:  # noqa: BLE001
         summary["home_executive_summary_v1"] = {
             "ok": False,

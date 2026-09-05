@@ -297,6 +297,9 @@ from routes.commercial_intelligence_preview_v1 import (  # noqa: E402
 )
 from routes.dev_diagnostics import router as dev_diagnostics_router  # noqa: E402
 from routes.cart_workspace_v1 import router as cart_workspace_v1_router  # noqa: E402
+from routes.commercial_decision_commitment_v1 import (  # noqa: E402
+    router as commercial_decision_commitment_v1_router,
+)
 from routes.whatsapp_delivery_webhook import (  # noqa: E402
     router as whatsapp_delivery_webhook_router,
 )
@@ -313,6 +316,7 @@ app.include_router(executive_knowledge_preview_router)
 app.include_router(commercial_intelligence_preview_router)
 app.include_router(dev_diagnostics_router)
 app.include_router(cart_workspace_v1_router)
+app.include_router(commercial_decision_commitment_v1_router)
 app.include_router(whatsapp_delivery_webhook_router)
 app.include_router(meta_whatsapp_webhook_router)
 app.include_router(admin_operations_router)

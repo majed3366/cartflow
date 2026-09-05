@@ -398,6 +398,16 @@ def finalize_dashboard_summary_payload(
                     attach_commercial_opportunity_layer_to_summary_v1(body)
                 except Exception as col_exc:  # noqa: BLE001
                     log.warning("col snapshot passthrough attach: %s", col_exc)
+                try:
+                    from services.commercial_decision_commitment_v1 import (  # noqa: PLC0415
+                        attach_commitment_truth,
+                    )
+
+                    attach_commitment_truth(
+                        body, store_slug=str(body.get("store_slug") or _slug or "")
+                    )
+                except Exception as cdc_exc:  # noqa: BLE001
+                    log.warning("cdc snapshot passthrough attach: %s", cdc_exc)
             strip_heavy_home_summary_payload_v1(body)
             return body
 
