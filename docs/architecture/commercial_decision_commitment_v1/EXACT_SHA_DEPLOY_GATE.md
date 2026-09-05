@@ -59,7 +59,7 @@ Owner: `services/commercial_decision_commitment_v1/service_v1.py`
 | | SHA |
 |--|-----|
 | **RUNTIME CANDIDATE SHA** | `926739b511d1089668fe5542ef5abb521cf1db54` |
-| BRANCH TIP (may advance with docs) | see after docs commit |
+| BRANCH TIP (docs) | `a0cca6e5c78453365544d24f6d5da9eeefccce23` |
 | Live ancestor of runtime | **YES** |
 
 Deploy target = **RUNTIME CANDIDATE SHA only**.
