@@ -44,8 +44,8 @@ Owner: `is_founder_production_evaluation_tenant` in `services/founder_production
 
 | | SHA |
 |--|-----|
-| **RUNTIME CANDIDATE SHA** | _(filled at commit)_ |
-| **BRANCH TIP** | _(may equal runtime or docs tip)_ |
+| **RUNTIME CANDIDATE SHA** | `f8192e662615456677b6b65528d4bdfcdc62c6f4` |
+| **BRANCH TIP** | _(docs tip commit after this file)_ |
 | **CURRENT LIVE SHA** | `926739b511d1089668fe5542ef5abb521cf1db54` |
 
 Deploy target = **RUNTIME CANDIDATE SHA only**.
@@ -82,7 +82,7 @@ mutation DeployCartFlowApiExactSha {
   serviceInstanceDeployV2(
     serviceId: "f3731fa1-43c5-4f72-b8e6-b39b0d028f15"
     environmentId: "1b684334-5b13-4d8e-9c3a-d5816d323850"
-    commitSha: "<RUNTIME_CANDIDATE_SHA>"
+    commitSha: "f8192e662615456677b6b65528d4bdfcdc62c6f4"
   )
 }
 ```

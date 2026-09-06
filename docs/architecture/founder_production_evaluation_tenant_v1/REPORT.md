@@ -50,10 +50,10 @@ CURRENT LIVE SHA:
 926739b511d1089668fe5542ef5abb521cf1db54
 
 RUNTIME CANDIDATE SHA:
-(pending commit)
+f8192e662615456677b6b65528d4bdfcdc62c6f4
 
 BRANCH TIP:
-(pending commit)
+(docs tip after gate fill)
 
 CANDIDATE CLEAN:
 YES
