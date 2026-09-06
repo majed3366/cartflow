@@ -329,21 +329,51 @@ def apply_lab_scenario_v1(
         applied_cdc = _apply_cdc_phase(phase=str(cdc_phase), col_package=stack["col"])
         stack = _compose_stack(store)
 
+    # Production Home serves enforced snapshots — rebuild so R7 is founder-visible
+    # on /dashboard (not only verify's live compose stack).
+    snapshot_rebuild: dict[str, Any] = {"ok": False, "skipped": True}
+    try:
+        from services.dashboard_snapshot_builder_v1 import (  # noqa: PLC0415
+            build_store_dashboard_snapshots,
+        )
+
+        snapshot_rebuild = build_store_dashboard_snapshots(
+            store_id=int(store.id),
+            store_slug=LAB_STORE_SLUG,
+        )
+    except Exception as snap_exc:  # noqa: BLE001
+        log.warning(
+            "live_reality_lab_snapshot_rebuild_failed store_slug=%s err=%s",
+            LAB_STORE_SLUG,
+            snap_exc,
+        )
+        snapshot_rebuild = {
+            "ok": False,
+            "error": type(snap_exc).__name__,
+            "detail": str(snap_exc)[:240],
+        }
+
     log.info(
         "live_reality_lab_apply store_slug=%s scenario_id=%s dataset_version=%s "
-        "reasons=%s carts=%s cdc=%s",
+        "reasons=%s carts=%s cdc=%s snapshot_ok=%s",
         LAB_STORE_SLUG,
         sid,
         DATASET_VERSION,
         seeded_reasons,
         seeded_carts,
         applied_cdc,
+        snapshot_rebuild.get("ok"),
     )
     return {
         "ok": True,
         "store_slug": LAB_STORE_SLUG,
         "scenario_id": sid,
         "dataset_version": DATASET_VERSION,
+        "snapshot_rebuild": {
+            "ok": bool(snapshot_rebuild.get("ok")),
+            "duration_ms": snapshot_rebuild.get("duration_ms"),
+            "error": snapshot_rebuild.get("error"),
+        },
         "seeded": {
             "reasons": seeded_reasons,
             "no_phone_carts": seeded_carts,
