@@ -169,6 +169,19 @@ def merchandising_families_allowed_for_store(
         environ=environ,
     ):
         return True
+    try:
+        from services.live_reality_lab_v1.gate_v1 import (  # noqa: PLC0415
+            is_live_reality_lab_tenant,
+        )
+
+        if is_live_reality_lab_tenant(
+            store_slug=store_slug,
+            integration_source=integration_source,
+            store=store,
+        ):
+            return True
+    except Exception:  # noqa: BLE001 — never unlock merchandising on import failure
+        pass
     if test_merchandising_slice_infrastructure_enabled(environ=environ):
         return True
     return False

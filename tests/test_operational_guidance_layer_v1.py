@@ -121,7 +121,8 @@ def test_reason_display_order_missing_uses_canonical():
 def test_home_js_no_aaraf_alan_duplication():
     home = (ROOT / "static" / "merchant_ui_v2_home.js").read_text(encoding="utf-8")
     assert home.count("اعرف الآن") == 0
-    assert "ما الذي أحتاج فعله الآن؟" in home
+    assert "إجراء تشغيلي مطلوب" in home
+    assert "ما يلزم تشغيلًا الآن" in home
     assert "what_to_do_now_ar" in home or "ماذا تفعل الآن" in home
 
 

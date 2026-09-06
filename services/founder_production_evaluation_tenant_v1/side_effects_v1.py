@@ -19,6 +19,9 @@ from services.founder_production_evaluation_tenant_v1.gate_v1 import (
     is_founder_evaluation_tenant,
     normalize_store_slug,
 )
+from services.live_reality_lab_v1.side_effects_v1 import (  # noqa: PLC0415
+    lab_blocks_external_side_effects,
+)
 
 
 def evaluation_tenant_blocks_external_side_effects(
@@ -30,8 +33,14 @@ def evaluation_tenant_blocks_external_side_effects(
     """
     True → callers must not enqueue/send WhatsApp, Meta ads, billing, etc.
 
-    Covers production founder tenant and local cf_fe_v1_* fixtures.
+    Covers production founder tenant, live reality lab, and local cf_fe_v1_* fixtures.
     """
+    if lab_blocks_external_side_effects(
+        store_slug=store_slug,
+        integration_source=integration_source,
+        store=store,
+    ):
+        return True
     if is_founder_evaluation_tenant(
         store_slug=store_slug,
         integration_source=integration_source,
@@ -64,6 +73,21 @@ def evaluation_side_effect_block_reason(
     integration_source: Any = None,
     store: Any = None,
 ) -> Optional[str]:
+    lab_reason = None
+    try:
+        from services.live_reality_lab_v1.side_effects_v1 import (  # noqa: PLC0415
+            lab_side_effect_block_reason,
+        )
+
+        lab_reason = lab_side_effect_block_reason(
+            store_slug=store_slug,
+            integration_source=integration_source,
+            store=store,
+        )
+    except Exception:  # noqa: BLE001
+        lab_reason = None
+    if lab_reason:
+        return lab_reason
     if evaluation_tenant_blocks_external_side_effects(
         store_slug=store_slug,
         integration_source=integration_source,

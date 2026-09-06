@@ -324,6 +324,36 @@ def extract_home_teaser_inputs_v1(summary: Mapping[str, Any] | None) -> dict[str
     if domain_teasers.get("store_health_attention") is True:
         needs_attention = True
 
+    # Live Reality Lab: AbandonedCart (lab-owned) → same health.no_phone field.
+    try:
+        from services.live_reality_lab_v1.contract_v1 import (  # noqa: PLC0415
+            LAB_STORE_SLUG,
+        )
+        from services.live_reality_lab_v1.gate_v1 import (  # noqa: PLC0415
+            is_live_reality_lab_tenant,
+        )
+        from services.live_reality_lab_v1.apply_v1 import (  # noqa: PLC0415
+            count_lab_no_phone_carts,
+        )
+        from extensions import db  # noqa: PLC0415
+        from models import Store  # noqa: PLC0415
+
+        slug = str(src.get("store_slug") or src.get("zid_store_id") or "").strip()
+        if slug == LAB_STORE_SLUG or is_live_reality_lab_tenant(store_slug=slug):
+            store = (
+                db.session.query(Store)
+                .filter(Store.zid_store_id == LAB_STORE_SLUG)
+                .first()
+            )
+            if store is not None and is_live_reality_lab_tenant(store=store):
+                lab_n = count_lab_no_phone_carts(store)
+                if lab_n > no_phone:
+                    no_phone = lab_n
+                    waiting = max(waiting, lab_n)
+                    needs_attention = True
+    except Exception:  # noqa: BLE001
+        pass
+
     # Merchant Understanding Repair V1 — canonical publication overrides local inference.
     pub = src.get("merchant_publication_v1")
     if not isinstance(pub, Mapping):

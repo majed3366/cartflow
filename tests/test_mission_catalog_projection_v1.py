@@ -18,7 +18,11 @@ class MissionCatalogProjectionV1Tests(unittest.TestCase):
         self.assertIn("resolveCommercialLayer", home)
         self.assertIn("data-cf2-mission-catalog", home)
         self.assertIn("Presence of primary wins", home)
-        self.assertIn("ما أهم مهمة تجارية الآن؟", home)
+        self.assertIn("المهمة التجارية الحالية", home)
+        self.assertIn("إجراء تشغيلي مطلوب", home)
+        self.assertIn("data-cf2-priority-contract", home)
+        self.assertNotIn("ما أهم مهمة تجارية الآن؟", home)
+        self.assertNotIn("مركز الجاذبية", home)
         self.assertIn("هناك فرص أخرى مؤجلة", home)
         # No frontend rerank of COL score
         self.assertNotIn("score_opportunity", home)
@@ -41,6 +45,7 @@ class MissionCatalogProjectionV1Tests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("mcp2", html)
+        self.assertIn("psc1", html)
         home = (ROOT / "static" / "merchant_ui_v2_home.js").read_text(encoding="utf-8")
         ws = (ROOT / "static" / "merchant_ui_v2_workspace.js").read_text(
             encoding="utf-8"

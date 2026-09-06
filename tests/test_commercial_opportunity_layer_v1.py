@@ -196,7 +196,8 @@ class StaticAssetTests(unittest.TestCase):
         )
         text = open(path, encoding="utf-8").read()
         self.assertIn("commercial-opportunity-layer-v1", text)
-        self.assertIn("أهم فرصة تجارية الآن", text)
+        self.assertIn("المهمة التجارية الحالية", text)
+        self.assertIn("data-cf2-priority-contract", text)
         self.assertIn("data-cf2-col-refine", text)
         self.assertIn("CartFlowCommercialDecisionArcV1", text)
         cda = open(

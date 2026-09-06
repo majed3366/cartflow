@@ -1,0 +1,134 @@
+{
+  "shots": [
+    "01_home_two_lane_mobile.png",
+    "02_home_commercial_only_mobile.png",
+    "03_home_operational_only_mobile.png",
+    "04_workspace_two_lane_mobile.png",
+    "05_home_two_lane_desktop.png",
+    "06_workspace_two_lane_desktop.png"
+  ],
+  "captures": [
+    {
+      "file": "01_home_two_lane_mobile.png",
+      "meta": {
+        "ops": true,
+        "commercial": true,
+        "banned": false
+      },
+      "email": "founder.eval.focus@cartflow.local"
+    },
+    {
+      "file": "02_home_commercial_only_mobile.png",
+      "meta": {
+        "ops": true,
+        "commercial": true,
+        "banned": false
+      },
+      "email": "founder.eval.quality@cartflow.local"
+    },
+    {
+      "file": "03_home_operational_only_mobile.png",
+      "meta": {
+        "ops": true,
+        "commercial": true,
+        "banned": false
+      },
+      "email": "founder.eval.insufficient@cartflow.local"
+    },
+    {
+      "file": "04_workspace_two_lane_mobile.png",
+      "meta": {
+        "ops": true,
+        "commercial": true,
+        "banned": false
+      },
+      "email": "founder.eval.focus@cartflow.local"
+    },
+    {
+      "file": "05_home_two_lane_desktop.png",
+      "meta": {
+        "ops": true,
+        "commercial": true,
+        "banned": false
+      },
+      "email": "founder.eval.focus@cartflow.local"
+    },
+    {
+      "file": "06_workspace_two_lane_desktop.png",
+      "meta": {
+        "ops": true,
+        "commercial": true,
+        "banned": false
+      },
+      "email": "founder.eval.focus@cartflow.local"
+    }
+  ],
+  "seed": {
+    "stores": {
+      "cf_fe_v1_actionable": {
+        "email": "founder.eval.actionable@cartflow.local",
+        "merchant_user_id": 1,
+        "store_id": 1,
+        "reason_rows": 20,
+        "reason_counts": {
+          "shipping": 12,
+          "price": 5,
+          "thinking": 3
+        }
+      },
+      "cf_fe_v1_measuring": {
+        "email": "founder.eval.measuring@cartflow.local",
+        "merchant_user_id": 2,
+        "store_id": 2,
+        "reason_rows": 5,
+        "reason_counts": {
+          "shipping": 3,
+          "price": 2
+        }
+      },
+      "cf_fe_v1_insufficient": {
+        "email": "founder.eval.insufficient@cartflow.local",
+        "merchant_user_id": 3,
+        "store_id": 3,
+        "reason_rows": 0,
+        "reason_counts": {}
+      },
+      "cf_fe_v1_price": {
+        "email": "founder.eval.price@cartflow.local",
+        "merchant_user_id": 4,
+        "store_id": 4,
+        "reason_rows": 23,
+        "reason_counts": {
+          "price": 12,
+          "quality": 8,
+          "shipping": 3
+        }
+      },
+      "cf_fe_v1_quality": {
+        "email": "founder.eval.quality@cartflow.local",
+        "merchant_user_id": 5,
+        "store_id": 5,
+        "reason_rows": 25,
+        "reason_counts": {
+          "quality": 20,
+          "shipping": 3,
+          "thinking": 2
+        }
+      },
+      "cf_fe_v1_focus": {
+        "email": "founder.eval.focus@cartflow.local",
+        "merchant_user_id": 6,
+        "store_id": 6,
+        "reason_rows": 19,
+        "reason_counts": {
+          "quality": 8,
+          "warranty": 8,
+          "shipping": 3
+        }
+      }
+    },
+    "production_slugs_touched": false
+  },
+  "desktop": "C:\\Users\\Toshiba\\Desktop\\CartFlow_Founder_Review\\Priority_Surface_Contract_V1",
+  "canonical": "C:\\Users\\Toshiba\\AppData\\Local\\Temp\\cf-psg-impl-v1\\docs\\product\\priority_surface_contract_v1\\founder_review_v1"
+}

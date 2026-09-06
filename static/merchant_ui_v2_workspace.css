@@ -946,6 +946,14 @@ body[data-cf-ui="v2"] .cf2-col-ws__lane {
   text-transform: uppercase;
   color: var(--cf2-muted, #5a6577);
 }
+/* Priority Surface Contract V1 — operational lane label on executive cards */
+body[data-cf-ui="v2"] .cf2-ws__lane {
+  margin: 0 0 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--cf2-teal-dark, #0d5c63);
+}
 body[data-cf-ui="v2"] .cf2-col-ws__why-now {
   margin: 0 0 12px;
   padding-bottom: 10px;

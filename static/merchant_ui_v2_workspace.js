@@ -2,11 +2,15 @@
  * CartFlow Merchant UI V2 — Decision Workspace
  * Composition Closure + Mobile Hierarchy Refinement V1
  * + Page-Specific Semantic Composition V1: formation body.
+ * + Priority Surface Contract V1: commercial Console ≠ operational cards.
  * Meaning lives in evidence → void → mass → terminus.
  * No three-icon semantic clause. READY = zero semantic icons.
  */
 (function (global) {
   "use strict";
+
+  var PSC_OPS_LANE_AR = "إجراء تشغيلي مطلوب";
+  var PSC_COMMERCIAL_LANE_AR = "المهمة التجارية الحالية";
 
   function L() {
     return global.CartFlowUiV2Lang || null;
@@ -66,6 +70,8 @@
       (cat.workspace && cat.workspace.active_mission) ||
       null;
     var opp = catalogCardToOpp(card);
+    /* Priority Surface Contract: only mission-ready may own commercial Console. */
+    if (!opp || !opp.mission_ready) return null;
     if (opp && cat.explain && cat.explain.why_this_one_now_ar) {
       opp.catalog_explain_ar = cat.explain.why_this_one_now_ar;
     }
@@ -269,7 +275,7 @@
     }
 
     var html =
-      '<article class="cf2-dobj cf2-dobj--primary" data-cf2-organism="formation" data-cf2-tension="' +
+      '<article class="cf2-dobj cf2-dobj--primary" data-cf2-organism="formation" data-cf2-priority-contract="v1" data-cf2-priority-lane="operational" data-cf2-tension="' +
       esc(tensionAttr) +
       '" data-cf2-mass="' +
       esc(String(mass || "OPEN").toLowerCase()) +
@@ -293,6 +299,10 @@
 
     html += '<header class="cf2-ws__head">';
     html += '<div class="cf2-ws__head-text">';
+    html +=
+      '<p class="cf2-ws__lane" data-cf2-priority-lane="operational">' +
+      esc(PSC_OPS_LANE_AR) +
+      "</p>";
     html += '<p class="cf2-ws__eyebrow">' + esc(eyebrow) + "</p>";
     html +=
       '<h2 class="cf2-ws__title">' + esc(decision) + "</h2>";
@@ -587,18 +597,21 @@
       }
     }
     var html =
-      '<section class="cf2-col-ws" data-cf2="commercial-opportunity-workspace-v1" data-cf2-col-ws="v1" data-cf2-col-refine="v1" data-cf2-cda="production-v1"';
+      '<section class="cf2-col-ws" data-cf2="commercial-opportunity-workspace-v1" data-cf2-col-ws="v1" data-cf2-col-refine="v1" data-cf2-cda="production-v1" data-cf2-priority-contract="v1" data-cf2-priority-lane="commercial"';
     if (opp.commitment && opp.commitment.phase) {
       html +=
         ' data-cf2-commitment-phase="' +
         esc(String(opp.commitment.phase)) +
-        '"';
+        '" data-cf2-commercial-continuity="open"';
     }
     html +=
       ' data-cf2-mission="v1" data-cf2-mission-family="' +
       esc(String(opp.family || "")) +
-      '" aria-label="قرار الفرصة التجارية">';
-    html += '<p class="cf2-col-ws__lane">قرار تجاري</p>';
+      '" aria-label="' +
+      esc(PSC_COMMERCIAL_LANE_AR) +
+      '">';
+    html +=
+      '<p class="cf2-col-ws__lane">' + esc(PSC_COMMERCIAL_LANE_AR) + "</p>";
     if (opp.catalog_explain_ar) {
       html +=
         '<div class="cf2-col-ws__why-now" data-cf2-catalog-explain="1">' +
@@ -611,7 +624,7 @@
       html += CDA.renderOrganism(opp, {
         arc: arc,
         surface: "workspace",
-        eyebrow: "القرار التجاري",
+        eyebrow: PSC_COMMERCIAL_LANE_AR,
       });
     } else {
       var dc =
@@ -768,11 +781,19 @@
     });
     if (!res.ok) return null;
     var sum = await res.json();
-    /* Catalog primary owns Workspace identity (Home ↔ Workspace match). */
+    /* Catalog primary owns commercial Console (Home ↔ Workspace match). */
     var primary = catalogPrimaryFromSummary(sum);
     if (!primary) {
       var col = sum && sum.commercial_opportunity_layer_v1;
-      primary = col && col.primary;
+      var legacy = col && col.primary;
+      var blocked = {
+        communication_followup: 1,
+        recovery_hesitation: 1,
+        cart_behavior: 1,
+      };
+      if (legacy && !blocked[String(legacy.family || "")]) {
+        primary = legacy;
+      }
     }
     if (primary && typeof primary === "object") {
       try {
@@ -850,12 +871,14 @@
       return html;
     }
     html +=
-      '<section class="cf2-ws__primary" aria-label="القرار الأساسي">' +
+      '<section class="cf2-ws__primary" aria-label="' +
+      esc(PSC_OPS_LANE_AR) +
+      '">' +
       renderDecisionObject(split.primary, true, projection) +
       "</section>";
     if (split.next.length) {
       html +=
-        '<section class="cf2-ws__next" aria-label="قرارات تالية"><p class="cf2-ws__next-label">بعده</p><div class="cf2-ws__next-list">';
+        '<section class="cf2-ws__next" aria-label="إجراءات تشغيلية تالية"><p class="cf2-ws__next-label">بعده</p><div class="cf2-ws__next-list">';
       split.next.forEach(function (c) {
         html += renderDecisionObject(c, false, projection);
       });

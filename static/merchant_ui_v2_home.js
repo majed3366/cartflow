@@ -1,11 +1,20 @@
 /**
  * CartFlow Merchant UI V2 — Home executive composition V1.3
  * + Page-Specific Semantic Composition V1: gravity well + satellites.
+ * + Priority Surface Contract V1: two explicit lanes (ops vs commercial).
  * Board gravity encodes attention. No repeated attention glyph / CO clause.
  * Current HES truth. semantic-visual-model-v1 drivers unchanged.
+ * No frontend ranking — Catalog / OGL / HES owners unchanged.
  */
 (function (global) {
   "use strict";
+
+  /* Priority Surface Contract V1 — merchant-facing lane labels (no internal jargon). */
+  var PSC_OPS_LANE_AR = "إجراء تشغيلي مطلوب";
+  var PSC_OPS_EYEBROW_AR = "ما يلزم تشغيلًا الآن";
+  var PSC_COMMERCIAL_QUESTION_AR = "المهمة التجارية الحالية";
+  var PSC_COMMERCIAL_EYEBROW_AR = "المهمة التجارية الحالية";
+  var PSC_COMMERCIAL_EMPTY_AR = "لا توجد مهمة تجارية جاهزة من أدلة متجرك الآن.";
 
   function L() {
     return global.CartFlowUiV2Lang || null;
@@ -32,6 +41,17 @@
     return "جاهزة للتنفيذ";
   }
 
+  function isCompetingMostImportantAr(t) {
+    var s = String(t || "").trim();
+    if (!s) return false;
+    /* Suppress legacy competing “most important” titles if upstream still emits them. */
+    if (/^أهم قرار اليوم$/.test(s)) return true;
+    if (/^ما أهم/.test(s)) return true;
+    if (/^أين توجد أهم/.test(s)) return true;
+    if (/^أهم (مهمة|فرصة) تجارية الآن$/.test(s)) return true;
+    return false;
+  }
+
   function catalogCardToOpp(card) {
     if (!card || typeof card !== "object") return null;
     var c =
@@ -55,7 +75,7 @@
       action_ar: card.action_ar,
       measure_ar: card.measure_ar,
       recheck_ar: card.recheck_ar,
-      eyebrow_ar: "أهم مهمة تجارية الآن",
+      eyebrow_ar: PSC_COMMERCIAL_EYEBROW_AR,
       commitment: c,
       cdc_phase: phase || null,
       workspace_href: card.workspace_href || "#workspace",
@@ -79,20 +99,26 @@
         ? cat.home.secondaries
         : [];
     var primary = catalogCardToOpp(primaryCard);
+    /* Priority Surface Contract: col_only must not masquerade as commercial mission. */
+    if (primary && !primary.mission_ready) {
+      primary = null;
+    }
     var secondaries = secs
-      .slice(0, 2)
       .map(catalogCardToOpp)
-      .filter(Boolean);
+      .filter(function (s) {
+        return s && s.mission_ready;
+      })
+      .slice(0, 2);
     /* Presence of primary wins — never paint insufficient when catalog selected one. */
     var isEmpty = !primary;
     return {
       ok: true,
       enabled: true,
       empty: isEmpty,
-      question_ar: "ما أهم مهمة تجارية الآن؟",
+      question_ar: PSC_COMMERCIAL_QUESTION_AR,
       empty_state_ar: isEmpty
         ? (cat.explain && cat.explain.why_this_one_now_ar) ||
-          "لا توجد مهمة تجارية جاهزة من أدلة متجرك الآن."
+          PSC_COMMERCIAL_EMPTY_AR
         : "",
       primary: primary,
       secondaries: isEmpty ? [] : secondaries,
@@ -111,11 +137,41 @@
         : null;
     var projected = missionCatalogToColLayer(cat);
     if (projected) return projected;
-    return summary &&
+    var legacy =
+      summary &&
       summary.commercial_opportunity_layer_v1 &&
       typeof summary.commercial_opportunity_layer_v1 === "object"
-      ? summary.commercial_opportunity_layer_v1
-      : null;
+        ? summary.commercial_opportunity_layer_v1
+        : null;
+    if (!legacy) return null;
+    /* Fallback COL paint — still enforce commercial-lane contract (no ops masquerade). */
+    var blocked = {
+      communication_followup: 1,
+      recovery_hesitation: 1,
+      cart_behavior: 1,
+    };
+    var primary = legacy.primary;
+    if (primary && blocked[String(primary.family || "")]) {
+      primary = null;
+    }
+    var secs = Array.isArray(legacy.secondaries) ? legacy.secondaries : [];
+    secs = secs.filter(function (s) {
+      return s && !blocked[String(s.family || "")];
+    });
+    return {
+      ok: legacy.ok !== false,
+      enabled: legacy.enabled !== false,
+      empty: !primary,
+      question_ar: PSC_COMMERCIAL_QUESTION_AR,
+      empty_state_ar: legacy.empty_state_ar || PSC_COMMERCIAL_EMPTY_AR,
+      primary: primary
+        ? Object.assign({}, primary, { eyebrow_ar: PSC_COMMERCIAL_EYEBROW_AR })
+        : null,
+      secondaries: primary ? secs.slice(0, 2) : [],
+      explain: legacy.explain || null,
+      suppressed_count: Number(legacy.suppressed_count || 0) || 0,
+      source: "commercial_opportunity_layer_v1",
+    };
   }
 
   var currentView = "overview";
@@ -410,36 +466,26 @@
         : null;
     var fromCatalog = col.source === "mission_catalog_v1";
     var html =
-      '<section class="cf2-col" data-cf2="commercial-opportunity-layer-v1" data-cf2-col="v1" data-cf2-col-refine="v1" data-cf2-cda="production-v1" data-cf2-model="semantic-visual-model-v1"';
+      '<section class="cf2-col" data-cf2="commercial-opportunity-layer-v1" data-cf2-col="v1" data-cf2-col-refine="v1" data-cf2-cda="production-v1" data-cf2-model="semantic-visual-model-v1" data-cf2-priority-contract="v1" data-cf2-priority-lane="commercial"';
     if (fromCatalog) {
       html += ' data-cf2-mission-catalog="v1"';
     }
-    html += ' aria-label="المهمة التجارية">';
+    html += ' aria-label="' + escAttr(PSC_COMMERCIAL_QUESTION_AR) + '">';
     html +=
       '<p class="cf2-col__question">' +
-      esc(
-        col.question_ar ||
-          (fromCatalog
-            ? "ما أهم مهمة تجارية الآن؟"
-            : "أين توجد أهم فرصة تجارية الآن؟")
-      ) +
+      esc(PSC_COMMERCIAL_QUESTION_AR) +
       "</p>";
     if (!col.primary) {
       if (CDA && CDA.renderOrganism) {
         html += CDA.renderOrganism(null, {
           arc: "insufficient_evidence",
           surface: "home",
-          emptyCopy:
-            col.empty_state_ar ||
-            "لا توجد مهمة تجارية جاهزة من أدلة متجرك الآن.",
+          emptyCopy: col.empty_state_ar || PSC_COMMERCIAL_EMPTY_AR,
         });
       } else {
         html +=
           '<p class="cf2-col__empty">' +
-          esc(
-            col.empty_state_ar ||
-              "لا توجد مهمة تجارية جاهزة من أدلة متجرك الآن."
-          ) +
+          esc(col.empty_state_ar || PSC_COMMERCIAL_EMPTY_AR) +
           "</p>";
       }
       html += "</section>";
@@ -468,7 +514,9 @@
       '<div class="cf2-col__primary" data-cf2-col-role="primary" data-cf2-col-mass="decision"';
     if (phase) {
       html +=
-        ' data-cf2-commitment-phase="' + escAttr(String(phase)) + '"';
+        ' data-cf2-commitment-phase="' +
+        escAttr(String(phase)) +
+        '" data-cf2-commercial-continuity="open"';
     }
     if (p.family) {
       html += ' data-cf2-mission-family="' + escAttr(String(p.family)) + '"';
@@ -482,13 +530,13 @@
       html += CDA.renderOrganism(p, {
         arc: arc,
         surface: "home",
-        eyebrow: p.eyebrow_ar || "أهم مهمة تجارية الآن",
+        eyebrow: PSC_COMMERCIAL_EYEBROW_AR,
         openId: p.opportunity_id || "",
       });
     } else {
       html +=
         '<p class="cf2-col__eyebrow">' +
-        esc(p.eyebrow_ar || "أهم مهمة تجارية الآن") +
+        esc(PSC_COMMERCIAL_EYEBROW_AR) +
         "</p>";
       html += '<h2 class="cf2-col__title">' + esc(p.title_ar || "") + "</h2>";
       html += colUnit("why", "لماذا الآن؟", p.why_ar);
@@ -564,13 +612,34 @@
     });
   }
 
+  function resolveOperationalLeadTitle(sec, guide) {
+    var candidates = [
+      sec && sec.summary_ar,
+      guide && guide.doNow,
+      guide && guide.see,
+      sec && sec.recommendation_ar,
+      sec && sec.diagnosis_ar,
+      sec && sec.title_ar,
+    ];
+    var i;
+    for (i = 0; i < candidates.length; i++) {
+      var t = String(candidates[i] || "")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (!t || isCompetingMostImportantAr(t)) continue;
+      if (t.length > 140) t = t.slice(0, 137) + "…";
+      return t;
+    }
+    return PSC_OPS_LANE_AR;
+  }
+
   function render(pkg, summary, paintOpts) {
     var col = resolveCommercialLayer(summary);
     var colHtml = renderColLayer(col, paintOpts);
     var sections = Array.isArray(pkg.sections) ? pkg.sections : [];
     if (!sections.length) {
       return (
-        '<section class="cf2-home" data-cf2="home-stage-closure-v1" data-cf2-grammar="attention-gravity" data-cf2-truth="empty" data-cf2-silence="quiet">' +
+        '<section class="cf2-home" data-cf2="home-stage-closure-v1" data-cf2-grammar="attention-gravity" data-cf2-truth="empty" data-cf2-silence="quiet" data-cf2-priority-contract="v1">' +
         sceneSpine() +
         '<p class="cf2-empty">' +
         esc(pkg.lede_ar || "لا تتوفر معرفة كافية الآن.") +
@@ -583,7 +652,7 @@
     var lang = L();
     var guide = guidanceHomeSurface(pkg);
     var html =
-      '<section class="cf2-home" data-cf2="home-stage-closure-v1" data-cf2-grammar="attention-gravity" data-cf2-model="semantic-visual-model-v1" data-cf2-organism="gravity-well" data-cf2-composition="page-specific-v1" data-cf2-ogl="v1">';
+      '<section class="cf2-home" data-cf2="home-stage-closure-v1" data-cf2-grammar="attention-gravity" data-cf2-model="semantic-visual-model-v1" data-cf2-organism="gravity-well" data-cf2-composition="page-specific-v1" data-cf2-ogl="v1" data-cf2-priority-contract="v1">';
     html += sceneSpine();
 
     if (!parts.primary) {
@@ -647,14 +716,21 @@
       (monitor.length ? "on" : "empty") +
       '">';
 
-    /* ——— Primary reading path (gravity well — no CO clause) ——— */
-    html += '<div class="cf2-home__scene">';
+    /* ——— Operational obligation lane (Priority Surface Contract V1) ——— */
+    html +=
+      '<div class="cf2-home__scene" data-cf2-priority-lane="operational" aria-label="' +
+      escAttr(PSC_OPS_LANE_AR) +
+      '">';
     html += '<div class="cf2-home__lead">';
     html += '<div class="cf2-home__lead-text">';
-    html += '<p class="cf2-home__lane">مركز الجاذبية</p>';
-    html += '<p class="cf2-home__eyebrow">ما الذي أحتاج فعله الآن؟</p>';
     html +=
-      '<h2 class="cf2-home__title">' + esc(p.title_ar || "") + "</h2>";
+      '<p class="cf2-home__lane">' + esc(PSC_OPS_LANE_AR) + "</p>";
+    html +=
+      '<p class="cf2-home__eyebrow">' + esc(PSC_OPS_EYEBROW_AR) + "</p>";
+    html +=
+      '<h2 class="cf2-home__title">' +
+      esc(resolveOperationalLeadTitle(p, guide)) +
+      "</h2>";
     html += "</div></div>";
 
     if (guide) {
