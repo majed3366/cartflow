@@ -395,7 +395,12 @@ def finalize_dashboard_summary_payload(
                         attach_commercial_opportunity_layer_to_summary_v1,
                     )
 
-                    attach_commercial_opportunity_layer_to_summary_v1(body)
+                    attach_commercial_opportunity_layer_to_summary_v1(
+                        body,
+                        authenticated_store_slug=str(
+                            body.get("store_slug") or _slug or ""
+                        ),
+                    )
                 except Exception as col_exc:  # noqa: BLE001
                     log.warning("col snapshot passthrough attach: %s", col_exc)
                 try:
@@ -408,6 +413,26 @@ def finalize_dashboard_summary_payload(
                     )
                 except Exception as cdc_exc:  # noqa: BLE001
                     log.warning("cdc snapshot passthrough attach: %s", cdc_exc)
+                try:
+                    from services.mission_catalog_v1 import (  # noqa: PLC0415
+                        attach_mission_catalog_to_summary_v1,
+                    )
+
+                    attach_mission_catalog_to_summary_v1(
+                        body, store_slug=str(body.get("store_slug") or _slug or "")
+                    )
+                except Exception as mc_exc:  # noqa: BLE001
+                    log.warning("mission catalog snapshot passthrough attach: %s", mc_exc)
+                try:
+                    from services.mission_portfolio_v1 import (  # noqa: PLC0415
+                        attach_mission_portfolio_to_summary_v1,
+                    )
+
+                    attach_mission_portfolio_to_summary_v1(
+                        body, store_slug=str(body.get("store_slug") or _slug or "")
+                    )
+                except Exception as mp_exc:  # noqa: BLE001
+                    log.warning("mission portfolio snapshot passthrough attach: %s", mp_exc)
             strip_heavy_home_summary_payload_v1(body)
             return body
 

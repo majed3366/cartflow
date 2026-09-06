@@ -8,6 +8,7 @@ from services.commercial_opportunity_layer_v1.contract_v1 import (
     FAMILY_COMMUNICATION_FOLLOWUP,
     FAMILY_PRICE_HESITATION,
     FAMILY_PRODUCT_CONFIDENCE,
+    FAMILY_PRODUCT_OPPORTUNITY_FOCUS,
     FAMILY_RECOVERY_HESITATION,
     FAMILY_SHIPPING_FRICTION,
     TRUTH_PRODUCTION_PARTIAL,
@@ -19,8 +20,9 @@ _FAMILY_WEIGHT = {
     FAMILY_SHIPPING_FRICTION: 90,
     FAMILY_PRICE_HESITATION: 85,
     FAMILY_COMMUNICATION_FOLLOWUP: 80,
+    FAMILY_PRODUCT_OPPORTUNITY_FOCUS: 78,
+    FAMILY_PRODUCT_CONFIDENCE: 76,
     FAMILY_RECOVERY_HESITATION: 70,
-    FAMILY_PRODUCT_CONFIDENCE: 75,
 }
 
 _TRUTH_WEIGHT = {
@@ -51,6 +53,8 @@ def priority_explanation_ar(opp: Mapping[str, Any]) -> str:
         core = "بلا تواصل صالح لا تُنفَّذ متابعة استرجاع."
     elif fam == FAMILY_PRODUCT_CONFIDENCE:
         core = "ضعف ثقة المنتج يظهر كتردّد متكرر."
+    elif fam == FAMILY_PRODUCT_OPPORTUNITY_FOCUS:
+        core = "تركّز أسباب ثقة المنتج يستحق انتباهًا تجاريًا الآن."
     elif fam == FAMILY_RECOVERY_HESITATION:
         core = "تردّد قبل الشراء — المتابعة قابلة للتحسين."
     else:

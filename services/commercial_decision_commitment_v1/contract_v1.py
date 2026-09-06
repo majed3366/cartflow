@@ -28,6 +28,7 @@ MERCHANT_CONFIRM_FAMILY_ALLOWLIST: FrozenSet[str] = frozenset(
         "shipping_friction",
         "price_hesitation",
         "product_confidence",
+        "product_opportunity_focus",
         "recovery_hesitation",
         "communication_followup",
         "cart_behavior",

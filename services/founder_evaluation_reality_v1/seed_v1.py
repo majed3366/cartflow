@@ -15,18 +15,31 @@ from models import CartRecoveryReason, MerchantUser, Store
 from services.founder_evaluation_reality_v1.constants_v1 import (
     ALL_EVAL_STORE_SLUGS,
     EMAIL_ACTIONABLE,
+    EMAIL_FOCUS,
     EMAIL_INSUFFICIENT,
     EMAIL_MEASURING,
+    EMAIL_PRICE,
+    EMAIL_QUALITY,
     EVAL_PASSWORD,
     NAME_ACTIONABLE,
+    NAME_FOCUS,
     NAME_INSUFFICIENT,
     NAME_MEASURING,
+    NAME_PRICE,
+    NAME_QUALITY,
     SEED_ACTIONABLE_REASONS,
+    SEED_FOCUS_PRIMARY_REASONS,
+    SEED_FOCUS_REASONS,
     SEED_INSUFFICIENT_REASONS,
     SEED_MEASURING_REASONS,
+    SEED_PRICE_QUALITY_REASONS,
+    SEED_QUALITY_REASONS,
     STORE_ACTIONABLE,
+    STORE_FOCUS,
     STORE_INSUFFICIENT,
     STORE_MEASURING,
+    STORE_PRICE,
+    STORE_QUALITY,
 )
 from services.merchant_auth_v1 import hash_password
 
@@ -157,7 +170,7 @@ def _seed_reasons(slug: str, counts: dict[str, int]) -> int:
 
 def seed_founder_evaluation_tenants_v1(*, reset: bool = True) -> dict[str, Any]:
     """
-    Idempotent seed of three isolated evaluation tenants.
+    Idempotent seed of isolated evaluation tenants (shipping + price READY).
     Returns proof dict for REPORT / capture.
     """
     if reset:
@@ -174,6 +187,9 @@ def seed_founder_evaluation_tenants_v1(*, reset: bool = True) -> dict[str, Any]:
             STORE_INSUFFICIENT,
             SEED_INSUFFICIENT_REASONS,
         ),
+        (EMAIL_PRICE, NAME_PRICE, STORE_PRICE, SEED_PRICE_QUALITY_REASONS),
+        (EMAIL_QUALITY, NAME_QUALITY, STORE_QUALITY, SEED_QUALITY_REASONS),
+        (EMAIL_FOCUS, NAME_FOCUS, STORE_FOCUS, SEED_FOCUS_PRIMARY_REASONS),
     )
     out: dict[str, Any] = {"stores": {}, "production_slugs_touched": False}
     for email, name, zid, reasons in plans:

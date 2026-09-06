@@ -20,6 +20,58 @@
     return L() ? L().esc(s) : String(s == null ? "" : s);
   }
 
+  /* Mission Catalog Product Projection V1 — Workspace binds to catalog primary. */
+  function catalogCardToOpp(card) {
+    if (!card || typeof card !== "object") return null;
+    var c =
+      card.commitment && typeof card.commitment === "object"
+        ? Object.assign({}, card.commitment)
+        : null;
+    var phase = String(card.cdc_phase || (c && c.phase) || "");
+    if (phase && c && !c.phase) c.phase = phase;
+    if (phase && !c) {
+      c = { phase: phase };
+      if (phase === "UNDER_MEASUREMENT") c.console_mode = "measuring";
+      else if (phase === "RECHECK_DUE") c.console_mode = "recheck";
+      else if (phase === "ACTION_CHOSEN") c.console_mode = "accepted";
+    }
+    return {
+      opportunity_id: card.opportunity_id,
+      family: card.family,
+      truth_class: card.truth_class,
+      title_ar: card.title_ar,
+      why_ar: card.why_ar,
+      action_ar: card.action_ar,
+      measure_ar: card.measure_ar,
+      recheck_ar: card.recheck_ar,
+      commitment: c,
+      cdc_phase: phase || null,
+      mission_ready: !!card.mission_ready,
+      catalog_explain_ar: null,
+      decision_contract_ar: {
+        decision_ar: card.title_ar || "",
+        why_now_ar: card.why_ar || "",
+        do_this_ar: card.action_ar || "",
+        measure_ar: card.measure_ar || "",
+        recheck_ar: card.recheck_ar || "",
+      },
+    };
+  }
+
+  function catalogPrimaryFromSummary(sum) {
+    var cat = sum && sum.mission_catalog_v1;
+    if (!cat || typeof cat !== "object" || cat.ok === false) return null;
+    var card =
+      cat.primary ||
+      (cat.workspace && cat.workspace.active_mission) ||
+      null;
+    var opp = catalogCardToOpp(card);
+    if (opp && cat.explain && cat.explain.why_this_one_now_ar) {
+      opp.catalog_explain_ar = cat.explain.why_this_one_now_ar;
+    }
+    return opp;
+  }
+
   function scrub(s) {
     return String(s || "")
       .replace(/\bcs:[A-Za-z0-9_\-:.]+/gi, "")
@@ -542,8 +594,19 @@
         esc(String(opp.commitment.phase)) +
         '"';
     }
-    html += ' aria-label="قرار الفرصة التجارية">';
+    html +=
+      ' data-cf2-mission="v1" data-cf2-mission-family="' +
+      esc(String(opp.family || "")) +
+      '" aria-label="قرار الفرصة التجارية">';
     html += '<p class="cf2-col-ws__lane">قرار تجاري</p>';
+    if (opp.catalog_explain_ar) {
+      html +=
+        '<div class="cf2-col-ws__why-now" data-cf2-catalog-explain="1">' +
+        '<p class="cf2-col-ws__k">لماذا هذه المهمة الآن؟</p>' +
+        '<p class="cf2-col-ws__v">' +
+        esc(opp.catalog_explain_ar) +
+        "</p></div>";
+    }
     if (CDA && CDA.renderOrganism) {
       html += CDA.renderOrganism(opp, {
         arc: arc,
@@ -598,8 +661,172 @@
         html += "</ul></details>";
       }
     }
+    html += renderMissionActions(opp);
     html += "</section>";
     return html;
+  }
+
+  /* Commercial Mission — CTAs on existing Console. Family copy maps only (B);
+     lifecycle phases are server-derived CDC. No new page / visual grammar. */
+  var CF2_MISSION_FAMILIES = {
+    shipping_friction: {
+      confirm:
+        "أكّد: فصلت تكلفة الشحن عن مدة التوصيل في الودجيت",
+      measuring: "تحت القياس — نافذة 7 أيام على حصة أسباب الشحن.",
+    },
+    price_hesitation: {
+      confirm: "أكّد: وضّحت العرض في صفحة المنتج بلا خصم عام",
+      measuring: "تحت القياس — نافذة 7 أيام على حصة سبب السعر.",
+    },
+    product_confidence: {
+      confirm: "أكّد: وضّحت إثباتات ثقة المنتج في الصفحة والودجيت بلا خصم",
+      measuring: "تحت القياس — نافذة 7 أيام على حصة أسباب ثقة المنتج.",
+    },
+    product_opportunity_focus: {
+      confirm:
+        "أكّد: ركّزت توضيح ثقة المنتج على مواضع التردد المسجّلة — بلا خصم/إعلان/موضع",
+      measuring: "تحت القياس — نافذة 7 أيام على حصة أسباب ثقة المنتج المجمّعة.",
+    },
+  };
+
+  function renderMissionActions(opp) {
+    var family = opp ? String(opp.family || "") : "";
+    var copy = CF2_MISSION_FAMILIES[family];
+    if (!opp || !copy) return "";
+    var c =
+      opp.commitment && typeof opp.commitment === "object" ? opp.commitment : null;
+    var phase = c && c.phase ? String(c.phase) : "";
+    var cid = c && c.commitment_id ? String(c.commitment_id) : "";
+    var oid = String(opp.opportunity_id || "");
+    var html =
+      '<div class="cf2-mission" data-cf2-mission-actions="v1" data-cf2-mission-family="' +
+      esc(family) +
+      '" data-opportunity-id="' +
+      esc(oid) +
+      '">';
+    if (!c || !phase) {
+      html +=
+        '<button type="button" class="cf2-mission__btn" data-cf2-mission-act="accept">اعتمد هذه المهمة</button>';
+      html +=
+        '<p class="cf2-mission__hint">القبول يسجّل القرار فقط — لا يبدأ القياس.</p>';
+    } else if (phase === "ACTION_CHOSEN") {
+      html +=
+        '<p class="cf2-mission__status">مسجّل: قرار معتمد — بانتظار إثبات التنفيذ.</p>';
+      html +=
+        '<button type="button" class="cf2-mission__btn" data-cf2-mission-act="confirm" data-commitment-id="' +
+        esc(cid) +
+        '">' +
+        esc(copy.confirm) +
+        "</button>";
+      html +=
+        '<p class="cf2-mission__hint">التأكيد = إثبات تنفيذ (ليس مجرد فتح الصفحة).</p>';
+    } else if (phase === "UNDER_MEASUREMENT") {
+      html +=
+        '<p class="cf2-mission__status">' + esc(copy.measuring) + "</p>";
+    } else if (phase === "RECHECK_DUE") {
+      html +=
+        '<p class="cf2-mission__status">حان وقت المراجعة — سنعيد قراءة أدلة الفرصة.</p>';
+      html +=
+        '<button type="button" class="cf2-mission__btn" data-cf2-mission-act="recheck" data-commitment-id="' +
+        esc(cid) +
+        '">أعد قراءة الأدلة الآن</button>';
+    }
+    if (c && cid && phase && phase !== "RECHECK_DUE") {
+      html +=
+        '<button type="button" class="cf2-mission__btn cf2-mission__btn--quiet" data-cf2-mission-act="abandon" data-commitment-id="' +
+        esc(cid) +
+        '">تراجع عن المهمة</button>';
+    }
+    html += "</div>";
+    return html;
+  }
+
+  async function missionPost(path, body) {
+    var res = await fetch("/api/commercial-mission/v1/" + path, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : "{}",
+      cache: "no-store",
+    });
+    var data = {};
+    try {
+      data = await res.json();
+    } catch (e) {
+      data = {};
+    }
+    if (!res.ok || data.ok === false) {
+      throw new Error((data && data.error) || "mission_http_" + res.status);
+    }
+    return data;
+  }
+
+  async function refreshColFocusFromSummary() {
+    var res = await fetch("/api/dashboard/summary", {
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    var sum = await res.json();
+    /* Catalog primary owns Workspace identity (Home ↔ Workspace match). */
+    var primary = catalogPrimaryFromSummary(sum);
+    if (!primary) {
+      var col = sum && sum.commercial_opportunity_layer_v1;
+      primary = col && col.primary;
+    }
+    if (primary && typeof primary === "object") {
+      try {
+        sessionStorage.setItem("cf2_col_focus_v1", JSON.stringify(primary));
+      } catch (e) {}
+      return primary;
+    }
+    return null;
+  }
+
+  function bindMissionActions(root) {
+    if (!root || root.getAttribute("data-cf2-mission-bound") === "1") return;
+    root.setAttribute("data-cf2-mission-bound", "1");
+    root.addEventListener("click", function (ev) {
+      var t = ev.target;
+      if (!t || !t.getAttribute) return;
+      var act = t.getAttribute("data-cf2-mission-act");
+      if (!act) return;
+      ev.preventDefault();
+      var cid = t.getAttribute("data-commitment-id") || "";
+      t.disabled = true;
+      var run = Promise.resolve();
+      if (act === "accept") {
+        run = missionPost("accept", {});
+      } else if (act === "confirm") {
+        run = missionPost("confirm-execution", { commitment_id: cid });
+      } else if (act === "recheck") {
+        run = missionPost("recheck", { commitment_id: cid });
+      } else if (act === "abandon") {
+        run = missionPost("abandon", { commitment_id: cid });
+      } else {
+        t.disabled = false;
+        return;
+      }
+      run
+        .then(function () {
+          return refreshColFocusFromSummary();
+        })
+        .then(function () {
+          return loadAndPaint(root);
+        })
+        .catch(function (err) {
+          t.disabled = false;
+          var msg =
+            (err && err.message) || "تعذّر إكمال خطوة المهمة.";
+          var box = root.querySelector("[data-cf2-mission-actions]");
+          if (box) {
+            var p = document.createElement("p");
+            p.className = "cf2-mission__err";
+            p.textContent = msg;
+            box.appendChild(p);
+          }
+        });
+    });
   }
 
   function render(payload, paintOpts) {
@@ -642,12 +869,14 @@
     if (!root) return;
     root.innerHTML = '<p class="cf2-loading">جاري تحميل بيئة القرار…</p>';
     try {
+      await refreshColFocusFromSummary();
       var res = await fetch("/api/cart-workspace/v1/projection", {
         credentials: "same-origin",
         cache: "no-store",
       });
       if (!res.ok) throw new Error("projection_http_" + res.status);
       root.innerHTML = render(await res.json());
+      bindMissionActions(root);
     } catch (e) {
       root.innerHTML =
         '<p class="cf2-error">تعذّر تحميل مساحة القرار. أعد المحاولة.</p>';
@@ -658,5 +887,8 @@
     loadAndPaint: loadAndPaint,
     render: render,
     unwrapProjection: unwrapProjection,
+    bindMissionActions: bindMissionActions,
+    refreshColFocusFromSummary: refreshColFocusFromSummary,
+    catalogPrimaryFromSummary: catalogPrimaryFromSummary,
   };
 })(typeof window !== "undefined" ? window : globalThis);

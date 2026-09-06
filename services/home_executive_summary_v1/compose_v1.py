@@ -845,7 +845,9 @@ def attach_home_executive_summary_to_summary_v1(
             )
 
             attach_commercial_opportunity_layer_to_summary_v1(
-                summary, environ=environ
+                summary,
+                environ=environ,
+                authenticated_store_slug=str(summary.get("store_slug") or ""),
             )
         except Exception:  # noqa: BLE001 — COL must never break operational Home
             summary.setdefault(
@@ -870,6 +872,32 @@ def attach_home_executive_summary_to_summary_v1(
                     "open_count": 0,
                     "query_delta": 0,
                 },
+            )
+        try:
+            from services.mission_catalog_v1 import (  # noqa: PLC0415
+                attach_mission_catalog_to_summary_v1,
+            )
+
+            attach_mission_catalog_to_summary_v1(
+                summary, store_slug=str(summary.get("store_slug") or "")
+            )
+        except Exception:  # noqa: BLE001 — catalog optional; COL/CDC remain valid
+            summary.setdefault(
+                "mission_catalog_v1",
+                {"ok": False, "error": "attach_failed", "empty": True, "query_delta": 0},
+            )
+        try:
+            from services.mission_portfolio_v1 import (  # noqa: PLC0415
+                attach_mission_portfolio_to_summary_v1,
+            )
+
+            attach_mission_portfolio_to_summary_v1(
+                summary, store_slug=str(summary.get("store_slug") or "")
+            )
+        except Exception:  # noqa: BLE001 — portfolio optional; catalog remains valid
+            summary.setdefault(
+                "mission_portfolio_v1",
+                {"ok": False, "error": "attach_failed", "empty": True, "query_delta": 0},
             )
     except Exception:  # noqa: BLE001
         summary["home_executive_summary_v1"] = {

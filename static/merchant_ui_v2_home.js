@@ -19,6 +19,105 @@
     return L() ? L().esc(s) : String(s == null ? "" : s);
   }
 
+  function escAttr(s) {
+    return esc(s).replace(/"/g, "&quot;");
+  }
+
+  /* Mission Catalog Product Projection V1 — consume server catalog only (no rerank). */
+  function phaseStatusAr(phase) {
+    var p = String(phase || "");
+    if (p === "ACTION_CHOSEN") return "قرار معتمد — بانتظار إثبات التنفيذ";
+    if (p === "UNDER_MEASUREMENT") return "تحت القياس";
+    if (p === "RECHECK_DUE") return "حان وقت المراجعة";
+    return "جاهزة للتنفيذ";
+  }
+
+  function catalogCardToOpp(card) {
+    if (!card || typeof card !== "object") return null;
+    var c =
+      card.commitment && typeof card.commitment === "object"
+        ? Object.assign({}, card.commitment)
+        : null;
+    var phase = String(card.cdc_phase || (c && c.phase) || "");
+    if (phase && c && !c.phase) c.phase = phase;
+    if (phase && !c) {
+      c = { phase: phase };
+      if (phase === "UNDER_MEASUREMENT") c.console_mode = "measuring";
+      else if (phase === "RECHECK_DUE") c.console_mode = "recheck";
+      else if (phase === "ACTION_CHOSEN") c.console_mode = "accepted";
+    }
+    return {
+      opportunity_id: card.opportunity_id,
+      family: card.family,
+      truth_class: card.truth_class,
+      title_ar: card.title_ar,
+      why_ar: card.why_ar,
+      action_ar: card.action_ar,
+      measure_ar: card.measure_ar,
+      recheck_ar: card.recheck_ar,
+      eyebrow_ar: "أهم مهمة تجارية الآن",
+      commitment: c,
+      cdc_phase: phase || null,
+      workspace_href: card.workspace_href || "#workspace",
+      mission_ready: !!card.mission_ready,
+      decision_contract_ar: {
+        decision_ar: card.title_ar || "",
+        why_now_ar: card.why_ar || "",
+        do_this_ar: card.action_ar || "",
+        measure_ar: card.measure_ar || "",
+        recheck_ar: card.recheck_ar || "",
+      },
+    };
+  }
+
+  function missionCatalogToColLayer(cat) {
+    if (!cat || typeof cat !== "object" || cat.ok === false) return null;
+    var primaryCard = cat.primary || (cat.home && cat.home.primary) || null;
+    var secs = Array.isArray(cat.secondaries)
+      ? cat.secondaries
+      : cat.home && Array.isArray(cat.home.secondaries)
+        ? cat.home.secondaries
+        : [];
+    var primary = catalogCardToOpp(primaryCard);
+    var secondaries = secs
+      .slice(0, 2)
+      .map(catalogCardToOpp)
+      .filter(Boolean);
+    /* Presence of primary wins — never paint insufficient when catalog selected one. */
+    var isEmpty = !primary;
+    return {
+      ok: true,
+      enabled: true,
+      empty: isEmpty,
+      question_ar: "ما أهم مهمة تجارية الآن؟",
+      empty_state_ar: isEmpty
+        ? (cat.explain && cat.explain.why_this_one_now_ar) ||
+          "لا توجد مهمة تجارية جاهزة من أدلة متجرك الآن."
+        : "",
+      primary: primary,
+      secondaries: isEmpty ? [] : secondaries,
+      explain: cat.explain || null,
+      suppressed_count: Number(cat.suppressed_count || 0) || 0,
+      source: "mission_catalog_v1",
+    };
+  }
+
+  function resolveCommercialLayer(summary) {
+    var cat =
+      summary &&
+      summary.mission_catalog_v1 &&
+      typeof summary.mission_catalog_v1 === "object"
+        ? summary.mission_catalog_v1
+        : null;
+    var projected = missionCatalogToColLayer(cat);
+    if (projected) return projected;
+    return summary &&
+      summary.commercial_opportunity_layer_v1 &&
+      typeof summary.commercial_opportunity_layer_v1 === "object"
+      ? summary.commercial_opportunity_layer_v1
+      : null;
+  }
+
   var currentView = "overview";
   var lastSummaryPayload = null;
   var lastSummaryRoot = null;
@@ -278,10 +377,6 @@
     return { see: see, means: means, doNow: doNow, recheck: recheck };
   }
 
-  function escAttr(s) {
-    return esc(s).replace(/"/g, "&quot;");
-  }
-
   function storeColFocus(opp) {
     try {
       if (opp && typeof sessionStorage !== "undefined") {
@@ -313,27 +408,37 @@
       typeof global.CartFlowCommercialDecisionArcV1 !== "undefined"
         ? global.CartFlowCommercialDecisionArcV1
         : null;
+    var fromCatalog = col.source === "mission_catalog_v1";
     var html =
-      '<section class="cf2-col" data-cf2="commercial-opportunity-layer-v1" data-cf2-col="v1" data-cf2-col-refine="v1" data-cf2-cda="production-v1" data-cf2-model="semantic-visual-model-v1" aria-label="الفرصة التجارية">';
+      '<section class="cf2-col" data-cf2="commercial-opportunity-layer-v1" data-cf2-col="v1" data-cf2-col-refine="v1" data-cf2-cda="production-v1" data-cf2-model="semantic-visual-model-v1"';
+    if (fromCatalog) {
+      html += ' data-cf2-mission-catalog="v1"';
+    }
+    html += ' aria-label="المهمة التجارية">';
     html +=
       '<p class="cf2-col__question">' +
-      esc(col.question_ar || "أين توجد أهم فرصة تجارية الآن؟") +
+      esc(
+        col.question_ar ||
+          (fromCatalog
+            ? "ما أهم مهمة تجارية الآن؟"
+            : "أين توجد أهم فرصة تجارية الآن؟")
+      ) +
       "</p>";
-    if (col.empty || !col.primary) {
+    if (!col.primary) {
       if (CDA && CDA.renderOrganism) {
         html += CDA.renderOrganism(null, {
           arc: "insufficient_evidence",
           surface: "home",
           emptyCopy:
             col.empty_state_ar ||
-            "لا توجد فرصة تجارية جاهزة من أدلة متجرك الآن.",
+            "لا توجد مهمة تجارية جاهزة من أدلة متجرك الآن.",
         });
       } else {
         html +=
           '<p class="cf2-col__empty">' +
           esc(
             col.empty_state_ar ||
-              "لا توجد فرصة تجارية جاهزة من أدلة متجرك الآن."
+              "لا توجد مهمة تجارية جاهزة من أدلة متجرك الآن."
           ) +
           "</p>";
       }
@@ -341,12 +446,14 @@
       return html;
     }
     var p = col.primary;
+    var phase =
+      (p.commitment && p.commitment.phase) || p.cdc_phase || "";
     var arc = paintOpts.homeArc || null;
     if (!arc) {
       var c =
         p.commitment && typeof p.commitment === "object" ? p.commitment : null;
       var cm = c && c.console_mode ? String(c.console_mode) : "";
-      var ph = c && c.phase ? String(c.phase) : "";
+      var ph = String(phase || "");
       if (cm === "measuring" || ph === "UNDER_MEASUREMENT") {
         arc = "under_measurement";
       } else if (cm === "recheck" || ph === "RECHECK_DUE") {
@@ -359,24 +466,29 @@
     }
     html +=
       '<div class="cf2-col__primary" data-cf2-col-role="primary" data-cf2-col-mass="decision"';
-    if (p.commitment && p.commitment.phase) {
+    if (phase) {
       html +=
-        ' data-cf2-commitment-phase="' +
-        escAttr(String(p.commitment.phase)) +
-        '"';
+        ' data-cf2-commitment-phase="' + escAttr(String(phase)) + '"';
+    }
+    if (p.family) {
+      html += ' data-cf2-mission-family="' + escAttr(String(p.family)) + '"';
     }
     html += ">";
+    html +=
+      '<p class="cf2-col__phase" data-cf2-mission-phase-label="1">' +
+      esc(phaseStatusAr(phase)) +
+      "</p>";
     if (CDA && CDA.renderOrganism) {
       html += CDA.renderOrganism(p, {
         arc: arc,
         surface: "home",
-        eyebrow: p.eyebrow_ar || "أهم فرصة تجارية الآن",
+        eyebrow: p.eyebrow_ar || "أهم مهمة تجارية الآن",
         openId: p.opportunity_id || "",
       });
     } else {
       html +=
         '<p class="cf2-col__eyebrow">' +
-        esc(p.eyebrow_ar || "أهم فرصة تجارية الآن") +
+        esc(p.eyebrow_ar || "أهم مهمة تجارية الآن") +
         "</p>";
       html += '<h2 class="cf2-col__title">' + esc(p.title_ar || "") + "</h2>";
       html += colUnit("why", "لماذا الآن؟", p.why_ar);
@@ -388,12 +500,20 @@
         escAttr(p.opportunity_id || "") +
         '">افتح القرار</a></div>';
     }
+    if (col.explain && col.explain.why_this_one_now_ar) {
+      html +=
+        '<div class="cf2-col__why-now" data-cf2-catalog-explain="1">' +
+        '<p class="cf2-col__k">لماذا هذه المهمة الآن؟</p>' +
+        '<p class="cf2-col__v">' +
+        esc(col.explain.why_this_one_now_ar) +
+        "</p></div>";
+    }
     html += "</div>";
 
     var secs = Array.isArray(col.secondaries) ? col.secondaries.slice(0, 2) : [];
     if (secs.length) {
       html +=
-        '<div class="cf2-col__secondaries" data-cf2-col-tier="secondary" data-cf2-col-compress="v1_1" aria-label="فرص تالية">';
+        '<div class="cf2-col__secondaries" data-cf2-col-tier="secondary" data-cf2-col-compress="v1_1" aria-label="مهام تالية">';
       secs.forEach(function (s) {
         var why =
           String(s.priority_why_ar || "").trim() ||
@@ -403,7 +523,6 @@
         if (act) {
           line = why ? why + " · " + act : act;
         }
-        /* One-line commercial signal — no article stack */
         if (line.length > 110) line = line.slice(0, 107) + "…";
         var title = String(s.title_ar || "").trim();
         if (title.length > 72) title = title.slice(0, 69) + "…";
@@ -414,13 +533,18 @@
         if (line) {
           html += '<p class="cf2-col__sec-line">' + esc(line) + "</p>";
         }
-        html +=
-          '<a class="cf2-col__sec-link" href="#workspace" data-cf2-col-open="' +
-          escAttr(s.opportunity_id || "") +
-          '">افتح</a>';
+        /* Secondaries stay lighter — no Decision Console handoff (primary owns Workspace). */
         html += "</article>";
       });
       html += "</div>";
+    }
+    if (fromCatalog && Number(col.suppressed_count || 0) > 0) {
+      html +=
+        '<p class="cf2-col__deferred" data-cf2-catalog-deferred="1">' +
+        esc(
+          "هناك فرص أخرى مؤجلة لأن مهمة أعلى أولوية جارية."
+        ) +
+        "</p>";
     }
     html += "</section>";
     return html;
@@ -429,25 +553,19 @@
   function bindColActions(root, col) {
     if (!root || !col) return;
     var map = {};
+    /* Workspace continuity: only primary may become focus. */
     if (col.primary) map[String(col.primary.opportunity_id || "")] = col.primary;
-    (col.secondaries || []).forEach(function (s) {
-      if (s) map[String(s.opportunity_id || "")] = s;
-    });
     root.querySelectorAll("[data-cf2-col-open]").forEach(function (el) {
       el.addEventListener("click", function () {
         var id = el.getAttribute("data-cf2-col-open") || "";
         if (map[id]) storeColFocus(map[id]);
+        else if (col.primary) storeColFocus(col.primary);
       });
     });
   }
 
   function render(pkg, summary, paintOpts) {
-    var col =
-      summary &&
-      summary.commercial_opportunity_layer_v1 &&
-      typeof summary.commercial_opportunity_layer_v1 === "object"
-        ? summary.commercial_opportunity_layer_v1
-        : null;
+    var col = resolveCommercialLayer(summary);
     var colHtml = renderColLayer(col, paintOpts);
     var sections = Array.isArray(pkg.sections) ? pkg.sections : [];
     if (!sections.length) {
@@ -707,12 +825,7 @@
       });
     }
     root.innerHTML = render(pkg, summary, paintOpts || {});
-    bindColActions(
-      root,
-      summary && summary.commercial_opportunity_layer_v1
-        ? summary.commercial_opportunity_layer_v1
-        : null
-    );
+    bindColActions(root, resolveCommercialLayer(summary));
     return true;
   }
 

@@ -17,17 +17,28 @@ def attach_commercial_opportunity_layer_to_summary_v1(
     summary: dict[str, Any],
     *,
     environ: Mapping[str, str] | None = None,
+    authenticated_store_slug: str | None = None,
 ) -> dict[str, Any]:
+    """
+    Attach COL using server-owned store identity.
+
+    ``authenticated_store_slug`` (when provided) is authoritative and overrides
+    any client-influenced ``summary["store_slug"]`` for compose/gate decisions.
+    """
     if not isinstance(summary, dict):
         return summary
     if not commercial_opportunity_layer_v1_enabled(environ=environ):
         # Do not leave a stale package when flag is OFF.
         summary.pop("commercial_opportunity_layer_v1", None)
         return summary
+    auth_slug = str(authenticated_store_slug or "").strip()
+    if auth_slug:
+        summary["store_slug"] = auth_slug
     try:
         pkg = compose_commercial_opportunity_layer_v1(
             summary,
             store_slug=str(summary.get("store_slug") or ""),
+            environ=environ,
         )
         summary["commercial_opportunity_layer_v1"] = pkg
     except Exception:  # noqa: BLE001 — fail closed: operational Home still renders

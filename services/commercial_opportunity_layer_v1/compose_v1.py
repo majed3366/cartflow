@@ -14,6 +14,7 @@ from services.commercial_opportunity_layer_v1.contract_v1 import (
     FAMILY_COMMUNICATION_FOLLOWUP,
     FAMILY_PRICE_HESITATION,
     FAMILY_PRODUCT_CONFIDENCE,
+    FAMILY_PRODUCT_OPPORTUNITY_FOCUS,
     FAMILY_RECOVERY_HESITATION,
     FAMILY_SHIPPING_FRICTION,
     LAYER_SCHEMA,
@@ -185,12 +186,19 @@ def _build_hesitation_opportunity(
         measure = f"حصة سبب السعر (الآن {share_pct}٪)."
         objective = "خفض تردد السعر دون حرق هامش"
     elif family == FAMILY_PRODUCT_CONFIDENCE:
-        title = f"{gap}تحسين ثقة المنتج الظاهرة"
-        why = f"«{label}» {count}/{total} ({share_pct}٪) كسبب تردد."
-        action = f"حدّث وصف {label} في المتجر والودجيت فقط."
-        dont = "لا تغيّر التسعير لهذا النمط."
-        measure = f"حصة سبب {label} بعد التحديث (أساس {share_pct}٪)."
-        objective = "رفع ثقة المنتج"
+        title = f"{gap}توضيح ثقة المنتج قبل أي خصم أو إعلان"
+        why = (
+            f"«{label}» {count}/{total} ({share_pct}٪) — تردّد مرتبط بثقة المنتج، "
+            "لا بإثبات ضعف موضع العرض."
+        )
+        action = (
+            "وضّح إثباتات المنتج (مواصفات/ضمان/ما يشمله العرض) في صفحة المنتج والودجيت — بلا خصم."
+        )
+        dont = (
+            "لا تخصم، لا تعلن المنتج، ولا تغيّر موضع العرض — لا دليل تعرّض/إعلان هنا."
+        )
+        measure = f"حصة أسباب ثقة المنتج ({label}) خلال 7 أيام (الآن {share_pct}٪)."
+        objective = "رفع وضوح ثقة المنتج دون حرق هامش"
     else:  # recovery hesitation / thinking
         title = f"{gap}متابعة من يترددون قبل الشراء"
         why = f"«{label}» {count}/{total} ({share_pct}٪) — متابعة استرجاع محدودة القياس."
@@ -303,6 +311,90 @@ def _build_communication_opportunity(
     }
 
 
+def _build_product_opportunity_focus(
+    *,
+    store_slug: str,
+    trust_count: int,
+    total: int,
+    truth_class: str,
+    generated_at: str,
+) -> Optional[dict[str, Any]]:
+    """
+    Store-level merchandising focus from combined quality+warranty counts.
+
+    No exposure / placement / ads / discount conclusions.
+    """
+    if truth_class in (TRUTH_INSUFFICIENT, TRUTH_SIMULATION_ONLY):
+        return None
+    if trust_count <= 0 or total <= 0:
+        return None
+    share = trust_count / max(total, 1)
+    share_pct = int(round(share * 100))
+    constrained = truth_class == TRUTH_PRODUCTION_PARTIAL
+    gap = PARTIAL_GAP_PREFIX_AR if constrained else ""
+    family = FAMILY_PRODUCT_OPPORTUNITY_FOCUS
+    title = f"{gap}تركيز الانتباه على ثقة المنتج"
+    why = (
+        f"أسباب الجودة/الضمان مجتمعة {trust_count}/{total} ({share_pct}٪) — "
+        "تركّز يستحق توضيح ثقة المنتج من الأدلة المسجّلة فقط."
+    )
+    action = (
+        "ركّز على توضيح ثقة المنتج حيث تتركّز أسباب الجودة/الضمان — "
+        "بلا خصم وبلا إعلان وبلا تغيير موضع عرض."
+    )
+    dont = (
+        "لا تستنتج ضعف الظهور أو موضع الصفحة أو قناة إعلان — لا تتوفر أدلة تعرّض."
+    )
+    measure = f"حصة أسباب ثقة المنتج المجمّعة خلال 7 أيام (الآن {share_pct}٪)."
+    recheck = (
+        f"بعد عيّنة ≥ 8، أو انخفاض واضح في حصة ثقة المنتج المجمّعة."
+        if not constrained
+        else "عندما تكتمل العيّنة وتبقى أسباب ثقة المنتج مرتفعة."
+    )
+    return {
+        "schema": OPPORTUNITY_SCHEMA,
+        "opportunity_id": f"col:{family}:product_trust:{store_slug or 'store'}",
+        "family": family,
+        "truth_class": truth_class,
+        "title_ar": _norm(title),
+        "why_ar": _norm(why),
+        "action_ar": _norm(action),
+        "measure_ar": _norm(measure),
+        "recheck_ar": _norm(recheck),
+        "objective_ar": _norm("تركيز تجاري على ثقة المنتج"),
+        "eyebrow_ar": PRIMARY_EYEBROW_AR,
+        "priority_why_ar": priority_explanation_ar(
+            {"family": family, "truth_class": truth_class}
+        ),
+        "evidence": {
+            "lines_ar": [
+                f"أسباب التردد (7 أيام): {total}",
+                f"ثقة المنتج (جودة+ضمان): {trust_count} ({share_pct}٪)",
+                "مصدر: سجل أسباب متجرك — بلا ادّعاء تعرّض.",
+            ],
+            "counts": {
+                "hesitation_total": total,
+                "top_reason": "product_trust",
+                "top_count": trust_count,
+                "top_share": round(share, 4),
+                "quality_warranty_pool": trust_count,
+            },
+        },
+        "decision_contract_ar": _decision_contract(
+            title=_norm(title),
+            why_now=_norm(why),
+            do_this=_norm(action),
+            dont=_norm(dont),
+            measure=_norm(measure),
+            recheck=_norm(recheck),
+        ),
+        "workspace_href": "#workspace",
+        "generated_at": generated_at,
+        "_urgency": min(20, trust_count),
+        "_evidence_strength": 19 if truth_class == TRUTH_PRODUCTION_READY else 8,
+    }
+
+
 def _finalize_opp(opp: dict[str, Any]) -> Optional[dict[str, Any]]:
     errors = validate_opportunity_v1(opp)
     if errors:
@@ -318,6 +410,7 @@ def compose_commercial_opportunity_layer_v1(
     *,
     store_slug: str = "",
     generated_at: str = "",
+    environ: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     src = summary if isinstance(summary, Mapping) else {}
     slug = str(store_slug or src.get("store_slug") or "").strip()
@@ -355,21 +448,30 @@ def compose_commercial_opportunity_layer_v1(
                 }
             )
         else:
-            opp = _build_hesitation_opportunity(
-                store_slug=slug,
-                reason=top_reason,
-                count=top_count,
-                total=total,
-                truth_class=tc,
-                generated_at=ts,
-            )
+            q_n = int(merged.get("quality") or 0)
+            w_n = int(merged.get("warranty") or 0)
+            both_trust = q_n >= 3 and w_n >= 3
+            trust_count = q_n + w_n
+            skip_trust_single = both_trust and top_reason in ("quality", "warranty")
+
+            opp = None
+            if not skip_trust_single:
+                opp = _build_hesitation_opportunity(
+                    store_slug=slug,
+                    reason=top_reason,
+                    count=top_count,
+                    total=total,
+                    truth_class=tc,
+                    generated_at=ts,
+                )
             if opp:
-                # Secondaries from next reasons with enough evidence
                 ranked_reasons = sorted(
                     merged.items(), key=lambda kv: kv[1], reverse=True
                 )
                 for reason, cnt in ranked_reasons:
                     if reason == top_reason:
+                        continue
+                    if both_trust and reason in ("quality", "warranty"):
                         continue
                     sh = cnt / max(total, 1)
                     tc2 = classify_hesitation_truth_v1(
@@ -377,7 +479,6 @@ def compose_commercial_opportunity_layer_v1(
                     )
                     if tc2 == TRUTH_INSUFFICIENT:
                         continue
-                    # Secondaries: allow PARTIAL only if count >= 3
                     if tc2 == TRUTH_PRODUCTION_PARTIAL and cnt < 3:
                         continue
                     o2 = _build_hesitation_opportunity(
@@ -391,6 +492,55 @@ def compose_commercial_opportunity_layer_v1(
                     if o2:
                         candidates.append(o2)
                 candidates.insert(0, opp)
+            elif skip_trust_single:
+                # Still surface non-trust secondaries (shipping/price/…)
+                ranked_reasons = sorted(
+                    merged.items(), key=lambda kv: kv[1], reverse=True
+                )
+                for reason, cnt in ranked_reasons:
+                    if reason in ("quality", "warranty"):
+                        continue
+                    sh = cnt / max(total, 1)
+                    tc2 = classify_hesitation_truth_v1(
+                        total=total, top_count=cnt, share=sh, simulation=sim
+                    )
+                    if tc2 == TRUTH_INSUFFICIENT:
+                        continue
+                    if tc2 == TRUTH_PRODUCTION_PARTIAL and cnt < 3:
+                        continue
+                    o2 = _build_hesitation_opportunity(
+                        store_slug=slug,
+                        reason=reason,
+                        count=cnt,
+                        total=total,
+                        truth_class=tc2,
+                        generated_at=ts,
+                    )
+                    if o2:
+                        candidates.append(o2)
+
+            # Merchandising focus only when BOTH quality and warranty are present
+            # (concentration). Single-reason trust stays product_confidence.
+            if both_trust and trust_count > 0:
+                t_share = trust_count / max(total, 1)
+                tc_focus = classify_hesitation_truth_v1(
+                    total=total,
+                    top_count=trust_count,
+                    share=t_share,
+                    simulation=sim,
+                )
+                if tc_focus != TRUTH_INSUFFICIENT and not (
+                    tc_focus == TRUTH_PRODUCTION_PARTIAL and trust_count < 3
+                ):
+                    focus = _build_product_opportunity_focus(
+                        store_slug=slug,
+                        trust_count=trust_count,
+                        total=total,
+                        truth_class=tc_focus,
+                        generated_at=ts,
+                    )
+                    if focus:
+                        candidates.append(focus)
 
     health = _teaser_health(src)
     no_phone = _as_int(health.get("no_phone"))
@@ -413,6 +563,39 @@ def compose_commercial_opportunity_layer_v1(
             )
             if c_opp:
                 candidates.append(c_opp)
+
+    # Founder evaluation tenant gate — merchandising families withheld from
+    # normal merchants until general release (projection only; truth unchanged).
+    try:
+        from services.founder_production_evaluation_tenant_v1 import (  # noqa: PLC0415
+            MERCHANDISING_EVAL_FAMILIES,
+            filter_merchandising_opportunities,
+            merchandising_families_allowed_for_store,
+        )
+
+        if not merchandising_families_allowed_for_store(
+            store_slug=slug, environ=environ
+        ):
+            kept: list[dict[str, Any]] = []
+            for c in candidates:
+                fam = str((c or {}).get("family") or "")
+                if fam in MERCHANDISING_EVAL_FAMILIES:
+                    suppressed.append(
+                        {
+                            "family": fam,
+                            "truth_class": str((c or {}).get("truth_class") or ""),
+                            "reason": "merchandising_eval_tenant_gate",
+                        }
+                    )
+                else:
+                    kept.append(c)
+            candidates = kept
+        else:
+            candidates = filter_merchandising_opportunities(
+                candidates, store_slug=slug, environ=environ
+            )
+    except Exception:  # noqa: BLE001 — never break COL
+        pass
 
     finalized: list[dict[str, Any]] = []
     for raw in candidates:

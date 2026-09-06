@@ -946,6 +946,23 @@ body[data-cf-ui="v2"] .cf2-col-ws__lane {
   text-transform: uppercase;
   color: var(--cf2-muted, #5a6577);
 }
+body[data-cf-ui="v2"] .cf2-col-ws__why-now {
+  margin: 0 0 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(20, 24, 28, 0.1);
+  max-width: 36rem;
+}
+body[data-cf-ui="v2"] .cf2-col-ws__why-now .cf2-col-ws__k {
+  margin: 0 0 4px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--cf2-muted, #5a6577);
+}
+body[data-cf-ui="v2"] .cf2-col-ws__why-now .cf2-col-ws__v {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
 body[data-cf-ui="v2"] .cf2-col-ws__unit {
   display: grid;
   gap: 3px;
@@ -1019,5 +1036,47 @@ body[data-cf-ui="v2"] .cf2-col-ws__evidence ul {
   body[data-cf-ui="v2"] .cf2-col-ws__unit--mass .cf2-col-ws__v {
     font-size: 1.05rem;
   }
+}
+
+/* Commercial Mission V1 — action strip on existing COL workspace (no redesign) */
+body[data-cf-ui="v2"] .cf2-mission {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(20, 24, 28, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+body[data-cf-ui="v2"] .cf2-mission__btn {
+  appearance: none;
+  border: 1px solid rgba(20, 24, 28, 0.28);
+  background: #14181c;
+  color: #f5f2eb;
+  font: inherit;
+  font-size: 0.92rem;
+  padding: 10px 14px;
+  text-align: start;
+  cursor: pointer;
+}
+body[data-cf-ui="v2"] .cf2-mission__btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+body[data-cf-ui="v2"] .cf2-mission__btn--quiet {
+  background: transparent;
+  color: #14181c;
+  border-color: rgba(20, 24, 28, 0.2);
+}
+body[data-cf-ui="v2"] .cf2-mission__hint,
+body[data-cf-ui="v2"] .cf2-mission__status {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: rgba(20, 24, 28, 0.72);
+}
+body[data-cf-ui="v2"] .cf2-mission__err {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #8b1e1e;
 }
 

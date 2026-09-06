@@ -436,6 +436,34 @@ def send_whatsapp(
         return blocked
 
     try:
+        from services.founder_production_evaluation_tenant_v1 import (  # noqa: PLC0415
+            evaluation_side_effect_block_reason,
+            evaluation_tenant_blocks_external_side_effects,
+        )
+
+        if evaluation_tenant_blocks_external_side_effects(
+            store_slug=wa_trace_store_slug
+        ):
+            return {
+                "ok": False,
+                "error": evaluation_side_effect_block_reason(
+                    store_slug=wa_trace_store_slug
+                )
+                or "founder_evaluation_tenant_side_effects_blocked",
+                "wa_send_allowed": False,
+                "founder_evaluation_tenant": True,
+            }
+    except Exception:  # noqa: BLE001 — fail closed on import/runtime if slug looks eval
+        slug = str(wa_trace_store_slug or "").strip()
+        if slug.startswith("cf_fe_v1_") or slug == "cf_founder_evaluation":
+            return {
+                "ok": False,
+                "error": "founder_evaluation_tenant_side_effects_blocked",
+                "wa_send_allowed": False,
+                "founder_evaluation_tenant": True,
+            }
+
+    try:
         from services.operational_control_v1 import operational_control_blocks_whatsapp_send_safe
 
         oc_blocked = operational_control_blocks_whatsapp_send_safe(

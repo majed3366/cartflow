@@ -36,14 +36,15 @@ def _json_safe_scalar(value: Any) -> Any:
         return f if math.isfinite(f) else 0.0
     if isinstance(value, (datetime, date)):
         return value.isoformat()
-    return value
+    return str(value)
 
 
 def sanitize_dashboard_summary_payload(payload: Any) -> Any:
-    """Recursively coerce dashboard summary payload to UTF-8 JSON-safe primitives."""
-    value = _json_safe_scalar(payload)
-    if value is not payload:
-        return value
+    """Recursively coerce dashboard summary payload to UTF-8 JSON-safe primitives.
+
+    Note: must not use ``value is not payload`` to detect coercion — bool/None/int
+    are singletons, so an unchanged False would fall through to ``str(False)``.
+    """
     if isinstance(payload, dict):
         return {
             str(k): sanitize_dashboard_summary_payload(v) for k, v in payload.items()
@@ -52,7 +53,7 @@ def sanitize_dashboard_summary_payload(payload: Any) -> Any:
         return [sanitize_dashboard_summary_payload(v) for v in payload]
     if isinstance(payload, (bytes, bytearray)):
         return payload.decode("utf-8", errors="replace")
-    return str(payload)
+    return _json_safe_scalar(payload)
 
 
 def preflight_utf8_json_payload(payload: Any) -> None:
