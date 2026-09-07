@@ -45,10 +45,11 @@ PROFILE_SHIPPING_FRICTION = MissionFamilyProfile(
     execution_confirm_note="widget_shipping_cost_vs_delivery_clarified",
     recheck_condition="shipping_share_material_change_or_sample_ge_8",
     action_summary_ar=(
-        "افصل في الودجيت بين تكلفة الشحن ومدة التوصيل — بلا خصم."
+        "اجعل أسباب التردد التي يختارها العميل عند الشحن تفرّق بوضوح بين "
+        "«تكلفة الشحن مرتفعة» و«مدة التوصيل طويلة» — بلا خصم."
     ),
     confirm_cta_ar=(
-        "أكّد: فصلت تكلفة الشحن عن مدة التوصيل في الودجيت"
+        "أكّد: جعلت أسباب تردد الشحن تفرّق بين التكلفة ومدة التوصيل"
     ),
     measuring_status_ar="تحت القياس — نافذة 7 أيام على حصة أسباب الشحن.",
 )
@@ -62,8 +63,10 @@ PROFILE_PRICE_HESITATION = MissionFamilyProfile(
     execution_confirm_note="product_page_offer_clarity_no_blanket_discount",
     recheck_condition="price_share_material_change_or_sample_ge_8",
     # COL/OGL: clarify value/offer — not discount / not price cut
-    action_summary_ar="وضّح العرض في صفحة المنتج — بلا خصم عام.",
-    confirm_cta_ar="أكّد: وضّحت العرض في صفحة المنتج بلا خصم عام",
+    action_summary_ar=(
+        "بيّن في صفحة المنتج ماذا يحصل عليه العميل مقابل السعر الحالي — بلا خصم عام."
+    ),
+    confirm_cta_ar="أكّد: بيّنت قيمة العرض في صفحة المنتج بلا خصم عام",
     measuring_status_ar="تحت القياس — نافذة 7 أيام على حصة سبب السعر.",
 )
 
@@ -76,9 +79,9 @@ PROFILE_PRODUCT_CONFIDENCE = MissionFamilyProfile(
     execution_confirm_note="product_page_confidence_proof_clarified_no_discount",
     recheck_condition="product_confidence_share_material_change_or_sample_ge_8",
     action_summary_ar=(
-        "وضّح إثباتات المنتج (مواصفات/ضمان/ما يشمله العرض) في صفحة المنتج والودجيت — بلا خصم."
+        "أظهر في صفحة المنتج ما يثبت الجودة أو الضمان مما هو قائم فعلاً — بلا تقييمات أو شهادات غير موجودة."
     ),
-    confirm_cta_ar="أكّد: وضّحت إثباتات ثقة المنتج في الصفحة والودجيت بلا خصم",
+    confirm_cta_ar="أكّد: أظهرت إثبات الجودة أو الضمان القائم في صفحة المنتج",
     measuring_status_ar="تحت القياس — نافذة 7 أيام على حصة أسباب ثقة المنتج.",
 )
 

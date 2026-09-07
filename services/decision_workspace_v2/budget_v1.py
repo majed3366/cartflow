@@ -287,6 +287,14 @@ def apply_decision_workspace_v2_budget(
                     dx_exc,
                 )
         guidance = compose_operational_guidance_v1(stub, store_slug=slug)
+        try:
+            from services.commercial_action_language_v1 import (  # noqa: PLC0415
+                project_guidance_action_language_v1,
+            )
+
+            project_guidance_action_language_v1(guidance)
+        except Exception as al_exc:  # noqa: BLE001
+            log.warning("workspace action language project: %s", al_exc)
         projection["operational_guidance_v1"] = {
             "ok": bool(guidance.get("ok")),
             "guidance_id": guidance.get("guidance_id"),

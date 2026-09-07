@@ -59,6 +59,14 @@ def _apply_contact_truth_reconciliation(body: dict[str, Any]) -> None:
         reconcile_publication_contact_truth_v1(body)
     except Exception as ct_exc:  # noqa: BLE001
         log.warning("publication contact reconcile: %s", ct_exc)
+    try:
+        from services.commercial_action_language_v1 import (  # noqa: PLC0415
+            project_commercial_action_language_v1,
+        )
+
+        project_commercial_action_language_v1(body)
+    except Exception as al_exc:  # noqa: BLE001
+        log.warning("commercial action language project: %s", al_exc)
 
 
 def summary_snapshot_contract_stale(payload: Mapping[str, Any]) -> bool:

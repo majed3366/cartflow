@@ -447,6 +447,15 @@ def _compose_stack(store: Store) -> dict[str, Any]:
         summary, store_slug=LAB_STORE_SLUG, environ=os.environ
     )
     summary["commercial_opportunity_layer_v1"] = col
+    try:
+        from services.commercial_action_language_v1 import (  # noqa: PLC0415
+            project_commercial_action_language_v1,
+        )
+
+        project_commercial_action_language_v1(summary)
+        col = summary.get("commercial_opportunity_layer_v1") or col
+    except Exception:  # noqa: BLE001
+        pass
     attach_commitment_truth(summary, store_slug=LAB_STORE_SLUG)
     by_key = (summary.get("commercial_decision_commitment_v1") or {}).get(
         "by_opportunity_key"
@@ -460,6 +469,14 @@ def _compose_stack(store: Store) -> dict[str, Any]:
         catalog_package=cat, store_slug=LAB_STORE_SLUG
     )
     ogl = compose_operational_guidance_v1(summary, store_slug=LAB_STORE_SLUG)
+    try:
+        from services.commercial_action_language_v1 import (  # noqa: PLC0415
+            project_guidance_action_language_v1,
+        )
+
+        project_guidance_action_language_v1(ogl)
+    except Exception:  # noqa: BLE001
+        pass
     return {
         "summary": summary,
         "col": col,
