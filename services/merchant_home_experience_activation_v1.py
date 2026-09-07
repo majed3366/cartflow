@@ -47,6 +47,20 @@ def summary_contract_schema_satisfied(body: Mapping[str, Any]) -> bool:
     return merchant_home_experience_attached(body)
 
 
+def _apply_contact_truth_reconciliation(body: dict[str, Any]) -> None:
+    """Stamp + reconcile contact truth after publication/HES exist (slim GET included)."""
+    try:
+        from services.decision_composition_engine_v1.merchant_publication_v1 import (  # noqa: PLC0415
+            reconcile_publication_contact_truth_v1,
+            stamp_contact_truth_v1,
+        )
+
+        stamp_contact_truth_v1(body)
+        reconcile_publication_contact_truth_v1(body)
+    except Exception as ct_exc:  # noqa: BLE001
+        log.warning("publication contact reconcile: %s", ct_exc)
+
+
 def summary_snapshot_contract_stale(payload: Mapping[str, Any]) -> bool:
     """True when a stored summary snapshot predates the M1 home contract."""
     if not isinstance(payload, Mapping):
@@ -360,12 +374,12 @@ def finalize_dashboard_summary_payload(
 
         try:
             from services.decision_composition_engine_v1.merchant_publication_v1 import (  # noqa: PLC0415
-                reconcile_publication_contact_truth_v1,
+                stamp_contact_truth_v1,
             )
 
-            reconcile_publication_contact_truth_v1(body)
+            stamp_contact_truth_v1(body)
         except Exception as ct_exc:  # noqa: BLE001
-            log.warning("publication contact reconcile: %s", ct_exc)
+            log.warning("publication contact stamp: %s", ct_exc)
 
         # Diagnostic Reasoning V1 — Home reads persisted snapshots only (no compose).
         try:
@@ -462,6 +476,7 @@ def finalize_dashboard_summary_payload(
                     )
                 except Exception as mp_exc:  # noqa: BLE001
                     log.warning("mission portfolio snapshot passthrough attach: %s", mp_exc)
+            _apply_contact_truth_reconciliation(body)
             strip_heavy_home_summary_payload_v1(body)
             return body
 
@@ -498,6 +513,7 @@ def finalize_dashboard_summary_payload(
                 if isinstance(hes2, dict):
                     hes2["diagnostic_reasoning"] = "diagnostic_reasoning_v1"
                     hes2["diagnosis_language"] = "diagnostic_reasoning_v1"
+            _apply_contact_truth_reconciliation(body)
             strip_heavy_home_summary_payload_v1(body)
             return body
 
@@ -533,6 +549,7 @@ def finalize_dashboard_summary_payload(
                     attach_home_executive_summary_to_summary_v1(body)
             except Exception as exc:  # noqa: BLE001
                 log.warning("home_executive_summary_v1 attach: %s", exc)
+            _apply_contact_truth_reconciliation(body)
             strip_heavy_home_summary_payload_v1(body)
             return body
 
@@ -624,6 +641,7 @@ def finalize_dashboard_summary_payload(
                 attach_home_executive_summary_to_summary_v1(body)
         except Exception as exc:  # noqa: BLE001
             log.warning("home_executive_summary_v1 attach: %s", exc)
+        _apply_contact_truth_reconciliation(body)
         strip_heavy_home_summary_payload_v1(body)
         return body
 
@@ -643,14 +661,14 @@ def finalize_dashboard_summary_payload(
         ensure_merchant_reason_counts_week(body, store_slug=_fat_slug)
     except Exception as rc_exc:  # noqa: BLE001
         log.warning("summary reason_counts ensure (fat): %s", rc_exc)
-    try:
-        from services.decision_composition_engine_v1.merchant_publication_v1 import (  # noqa: PLC0415
-            reconcile_publication_contact_truth_v1,
-        )
+        try:
+            from services.decision_composition_engine_v1.merchant_publication_v1 import (  # noqa: PLC0415
+                stamp_contact_truth_v1,
+            )
 
-        reconcile_publication_contact_truth_v1(body)
-    except Exception as ct_exc:  # noqa: BLE001
-        log.warning("publication contact reconcile (fat): %s", ct_exc)
+            stamp_contact_truth_v1(body)
+        except Exception as ct_exc:  # noqa: BLE001
+            log.warning("publication contact stamp (fat): %s", ct_exc)
 
     # Fat path (slim flag OFF) — legacy attach chain for rollback only.
     try:
@@ -745,6 +763,7 @@ def finalize_dashboard_summary_payload(
         log.warning("home_executive_summary_v1 attach: %s", exc)
     with dashboard_summary_profile_span("home_stage_commerce_pulse"):
         _attach_commerce_signals_then_pulse(body, store_slug=store_slug)
+    _apply_contact_truth_reconciliation(body)
     return body
 
 

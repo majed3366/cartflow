@@ -689,6 +689,21 @@ def strip_heavy_home_summary_payload_v1(summary: dict[str, Any]) -> dict[str, An
             "slim_transport": True,
             "version": home.get("version") or "slim_transport_v1",
         }
+    stamp = summary.get("contact_truth_v1")
+    if isinstance(stamp, Mapping) and "no_phone_total" in stamp:
+        summary["contact_truth_v1"] = {
+            "no_phone_total": stamp.get("no_phone_total"),
+            "source": stamp.get("source") or "merchant_store_cart_counts",
+            "key_present": True,
+        }
+        counts = summary.get("merchant_store_cart_counts")
+        if not isinstance(counts, dict) or "no_phone_total" not in counts:
+            try:
+                summary["merchant_store_cart_counts"] = {
+                    "no_phone_total": max(0, int(stamp.get("no_phone_total") or 0))
+                }
+            except (TypeError, ValueError):
+                pass
     summary["home_slim_transport_v1"] = True
     return summary
 

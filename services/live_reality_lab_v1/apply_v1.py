@@ -15,6 +15,7 @@ from models import (
     AbandonedCart,
     CartRecoveryReason,
     CommercialDecisionCommitment,
+    DashboardSnapshot,
     Store,
 )
 from services.live_reality_lab_v1.contract_v1 import (
@@ -111,6 +112,23 @@ def reset_lab_tenant_data_v1(
     cdc_n = cdc_q.count()
     cdc_q.delete(synchronize_session=False)
 
+    snap_q = db.session.query(DashboardSnapshot).filter(
+        DashboardSnapshot.store_slug == LAB_STORE_SLUG
+    )
+    snap_n = snap_q.count()
+    snap_q.delete(synchronize_session=False)
+
+    try:
+        from models import DiagnosticSnapshot  # noqa: PLC0415
+
+        dx_q = db.session.query(DiagnosticSnapshot).filter(
+            DiagnosticSnapshot.store_slug == LAB_STORE_SLUG
+        )
+        dx_n = dx_q.count()
+        dx_q.delete(synchronize_session=False)
+    except Exception:  # noqa: BLE001
+        dx_n = 0
+
     db.session.commit()
     log.info(
         "live_reality_lab_reset store_slug=%s reasons=%s carts=%s cdc=%s extra=%s",
@@ -124,6 +142,8 @@ def reset_lab_tenant_data_v1(
         "cart_recovery_reasons": int(reason_n),
         "abandoned_carts": int(cart_n),
         "commercial_decision_commitments": int(cdc_n),
+        "dashboard_snapshots": int(snap_n),
+        "diagnostic_snapshots": int(dx_n),
     }
     deleted.update(extra_deleted)
     return {
@@ -557,6 +577,8 @@ def apply_lab_scenario_v1(
             "ok": bool(snapshot_rebuild.get("ok")),
             "duration_ms": snapshot_rebuild.get("duration_ms"),
             "error": snapshot_rebuild.get("error"),
+            "types": snapshot_rebuild.get("types") or {},
+            "normal_carts_parity": snapshot_rebuild.get("normal_carts_parity"),
         },
         "seeded": seeded,
         "manifest": manifest,

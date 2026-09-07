@@ -94,17 +94,23 @@ def _teaser_counts(summary: Mapping[str, Any] | None) -> dict[str, int]:
 def _authoritative_no_phone(summary: Mapping[str, Any] | None) -> Optional[int]:
     src = summary if isinstance(summary, Mapping) else {}
     counts = src.get("merchant_store_cart_counts")
-    if not isinstance(counts, Mapping):
-        return None
-    if "no_phone_total" not in counts and "canonical_no_phone_total" not in counts:
-        return None
-    try:
-        return max(
-            0,
-            int(counts.get("no_phone_total") or counts.get("canonical_no_phone_total") or 0),
-        )
-    except (TypeError, ValueError):
-        return None
+    if isinstance(counts, Mapping) and (
+        "no_phone_total" in counts or "canonical_no_phone_total" in counts
+    ):
+        try:
+            return max(
+                0,
+                int(counts.get("no_phone_total") or counts.get("canonical_no_phone_total") or 0),
+            )
+        except (TypeError, ValueError):
+            return None
+    stamp = src.get("contact_truth_v1")
+    if isinstance(stamp, Mapping) and "no_phone_total" in stamp:
+        try:
+            return max(0, int(stamp.get("no_phone_total") or 0))
+        except (TypeError, ValueError):
+            return None
+    return None
 
 
 def _contact_blocked_evidence(
@@ -385,6 +391,32 @@ def _apply_persisted_diagnostics_v1(
                 _norm(contact.get("recommendation_ar")),
             )
             sec["diagnosis_language"] = "diagnostic_reasoning_v1"
+        elif authoritative_no_phone == 0 and sid in {
+            "health",
+            "communication",
+            "carts",
+        } and any(
+            m in _norm(sec.get("diagnosis_ar") or sec.get("summary_ar"))
+            for m in (
+                "معلومات التواصل غير متاحة",
+                "نقص معلومات التواصل",
+                "رقم الهاتف غير متاح",
+                "مقيدة بسبب نقص معلومات",
+            )
+        ):
+            if sid == "communication":
+                d, r = _communication_diagnosis(
+                    sec, no_phone=0, waiting=0, schedules=0, authoritative_no_phone=0
+                )
+            elif sid == "carts":
+                d, r = _carts_diagnosis(
+                    sec, no_phone=0, waiting=0, authoritative_no_phone=0
+                )
+            else:
+                d, r = _health_diagnosis(
+                    sec, no_phone=0, store_ok=None, authoritative_no_phone=0
+                )
+            _stamp(sec, d, r)
         out.append(sec)
     return out
 

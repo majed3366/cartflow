@@ -263,7 +263,23 @@ def evaluate_normal_carts_snapshot_write(
     parity["previous_valid"] = prev_valid
     parity["previous_row_count"] = len(prev_sigs)
 
+    cand_has_rows = bool(cand_sigs)
+    ser_ok = bool(ser["parse_ok"]) and not ser["dropped_identities"] and not ser["truncated"]
+    first_usable = (not prev_valid) and cand_has_rows and ser_ok and not degraded
+
     if not parity["equivalent"]:
+        if first_usable:
+            clean = storage_payload
+            return NormalCartsSnapshotWriteDecision(
+                allow_write=True,
+                drop_stage="included",
+                reason="first_usable_snapshot",
+                payload_for_storage=clean,
+                storage_json=ser["storage_json"],
+                parity=parity,
+                keep_previous=False,
+                status=STATUS_ACTIVE,
+            )
         return NormalCartsSnapshotWriteDecision(
             allow_write=False,
             drop_stage="row_build",
@@ -293,7 +309,7 @@ def evaluate_normal_carts_snapshot_write(
             status=STATUS_FAILED,
         )
 
-    if parity["sent_log_missing"]:
+    if parity["sent_log_missing"] and not first_usable:
         return NormalCartsSnapshotWriteDecision(
             allow_write=False,
             drop_stage="row_build",
@@ -378,15 +394,19 @@ def build_and_guard_normal_carts_snapshot_write(
     store_slug: str,
     dash_store: Any,
 ) -> NormalCartsSnapshotWriteDecision:
-    """Dual-build parity check then evaluate write guard."""
-    live_payload, _prof_a, perf_a = build_canonical_normal_carts_payload(dash_store)
-    candidate_payload, _prof_b, perf_b = build_canonical_normal_carts_payload(dash_store)
-    perf = perf_b if perf_b.rows_built >= perf_a.rows_built else perf_a
-    if perf_a.partial or perf_a.degraded:
-        perf = perf_a
+    """Single canonical build, then evaluate write guard (no dual-build tax)."""
+    try:
+        from services.dashboard_normal_carts_guard_v1 import (  # noqa: PLC0415
+            dashboard_nc_guard_clear,
+        )
+
+        dashboard_nc_guard_clear()
+    except Exception:  # noqa: BLE001
+        pass
+    candidate_payload, _prof, perf = build_canonical_normal_carts_payload(dash_store)
     return evaluate_normal_carts_snapshot_write(
         store_slug=store_slug,
-        live_payload=live_payload,
+        live_payload=candidate_payload,
         candidate_payload=candidate_payload,
         perf=perf,
     )

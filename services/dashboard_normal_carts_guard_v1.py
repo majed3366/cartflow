@@ -36,6 +36,14 @@ def dashboard_normal_carts_wall_budget_s() -> float:
     return float(_WALL_BUDGET_S)
 
 
+def dashboard_nc_guard_clear() -> None:
+    """Drop inherited GET deadline so snapshot builder is not marked partial."""
+    _request_t0.set(0.0)
+    _deadline_mono.set(None)
+    _partial.set(False)
+    _timeout_stage.set("")
+
+
 def dashboard_nc_guard_begin() -> float:
     """Start request guard; returns monotonic t0."""
     t0 = time.perf_counter()
@@ -136,6 +144,7 @@ def dashboard_nc_guard_payload() -> dict[str, Any]:
 __all__ = [
     "dashboard_nc_deadline_exceeded",
     "dashboard_nc_guard_begin",
+    "dashboard_nc_guard_clear",
     "dashboard_nc_guard_payload",
     "dashboard_nc_guard_request_t0",
     "dashboard_nc_log_stage",

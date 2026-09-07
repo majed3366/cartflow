@@ -138,6 +138,7 @@ def snapshot_ttl_seconds(snapshot_type: str) -> int:
 
 
 _DEFAULT_SNAPSHOT_JSON_CAP = 65_000
+_SUMMARY_SNAPSHOT_JSON_CAP = 256_000
 _NORMAL_CARTS_SNAPSHOT_JSON_CAP = 512_000
 _DECISION_WORKSPACE_SNAPSHOT_JSON_CAP = 256_000
 
@@ -145,6 +146,14 @@ _DECISION_WORKSPACE_SNAPSHOT_JSON_CAP = 256_000
 def snapshot_payload_json_cap(snapshot_type: str) -> int:
     """Max JSON bytes for persisted snapshot payloads (Text column; type-specific caps)."""
     stype = (snapshot_type or "").strip()
+    if stype == SNAPSHOT_TYPE_SUMMARY:
+        raw = (os.environ.get("CARTFLOW_SUMMARY_SNAPSHOT_JSON_CAP") or "").strip()
+        if raw:
+            try:
+                return max(_DEFAULT_SNAPSHOT_JSON_CAP, min(2_000_000, int(raw)))
+            except (TypeError, ValueError):
+                pass
+        return _SUMMARY_SNAPSHOT_JSON_CAP
     if stype == SNAPSHOT_TYPE_NORMAL_CARTS:
         raw = (os.environ.get("CARTFLOW_NORMAL_CARTS_SNAPSHOT_JSON_CAP") or "").strip()
         if raw:
@@ -178,7 +187,15 @@ def encode_snapshot_payload_json(
     snapshot_type: str,
 ) -> str:
     cap = snapshot_payload_json_cap(snapshot_type)
-    return json.dumps(payload, ensure_ascii=False, default=str)[:cap]
+    raw = json.dumps(payload, ensure_ascii=False, default=str)
+    if len(raw.encode("utf-8")) <= cap:
+        return raw
+    sliced = raw[:cap]
+    try:
+        json.loads(sliced)
+        return sliced
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return "{}"
 
 
 def snapshot_builder_failsafe_seconds() -> int:

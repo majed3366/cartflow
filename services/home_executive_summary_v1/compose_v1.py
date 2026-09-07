@@ -628,15 +628,25 @@ def _communication_section(summary: Mapping[str, Any]) -> dict[str, Any]:
     wa_state = str(comm.get("wa_state_key") or "").strip().lower()
 
     if cc:
-        summary_ar = str(cc.get("summary_ar") or "").strip()
-        status_ar = str(cc.get("status_ar") or "").strip() or (
-            STATUS_ATTENTION_AR
-            if cc.get("constrained") or cc.get("normal_forbidden")
-            else STATUS_NO_TASKS_AR
+        from services.decision_composition_engine_v1.merchant_publication_v1 import (  # noqa: PLC0415
+            authoritative_no_phone_total_v1,
         )
-        empty = not bool(cc.get("constrained") or cc.get("normal_forbidden"))
+
+        auth_n = authoritative_no_phone_total_v1(summary)
+        constrained = bool(cc.get("constrained") or cc.get("normal_forbidden"))
+        if auth_n == 0:
+            constrained = False
+        summary_ar = str(cc.get("summary_ar") or "").strip()
+        if auth_n == 0 and (
+            "نقص معلومات التواصل" in summary_ar or "معلومات التواصل غير متاحة" in summary_ar
+        ):
+            summary_ar = "تواصل العملاء يسير بشكل طبيعي."
+        status_ar = str(cc.get("status_ar") or "").strip() or (
+            STATUS_ATTENTION_AR if constrained else STATUS_NO_TASKS_AR
+        )
+        empty = not constrained
         # Never publish "normal" when constrained.
-        if cc.get("normal_forbidden") and "بشكل طبيعي" in summary_ar:
+        if constrained and cc.get("normal_forbidden") and "بشكل طبيعي" in summary_ar:
             summary_ar = "متابعة بعض العملاء مقيدة بسبب نقص معلومات التواصل."
             status_ar = STATUS_ATTENTION_AR
             empty = False

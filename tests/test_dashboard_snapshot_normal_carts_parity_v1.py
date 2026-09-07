@@ -151,7 +151,7 @@ class DashboardSnapshotNormalCartsParityTests(unittest.TestCase):
         )
         self.assertTrue(decision.allow_write)
         self.assertEqual(decision.drop_stage, "included")
-        self.assertEqual(mock_build.call_count, 2)
+        self.assertEqual(mock_build.call_count, 1)
 
     @patch(
         "services.dashboard_snapshot_normal_carts_parity_v1._missing_sent_log_identities",
@@ -162,6 +162,12 @@ class DashboardSnapshotNormalCartsParityTests(unittest.TestCase):
         _mock_missing: unittest.mock.Mock,
     ) -> None:
         payload = _payload(_row(rk=f"{self.store_slug}:cf_cart_y", cart_id="cf_cart_y", aid=4))
+        upsert_dashboard_snapshot(
+            store_slug=self.store_slug,
+            store_id=None,
+            snapshot_type=SNAPSHOT_TYPE_NORMAL_CARTS,
+            payload=payload,
+        )
         decision = evaluate_normal_carts_snapshot_write(
             store_slug=self.store_slug,
             live_payload=payload,
@@ -170,6 +176,23 @@ class DashboardSnapshotNormalCartsParityTests(unittest.TestCase):
         self.assertFalse(decision.allow_write)
         self.assertEqual(decision.drop_stage, "row_build")
         self.assertEqual(decision.reason, "sent_log_rows_missing")
+
+    @patch(
+        "services.dashboard_snapshot_normal_carts_parity_v1._missing_sent_log_identities",
+        return_value=["lab:mock_sent_unmatched"],
+    )
+    def test_first_usable_snapshot_writes_when_no_previous(
+        self,
+        _mock_missing: unittest.mock.Mock,
+    ) -> None:
+        payload = _payload(_row(rk=f"{self.store_slug}:cf_cart_z", cart_id="cf_cart_z", aid=5))
+        decision = evaluate_normal_carts_snapshot_write(
+            store_slug=self.store_slug,
+            live_payload=payload,
+            candidate_payload=payload,
+        )
+        self.assertTrue(decision.allow_write)
+        self.assertIn(decision.reason, ("ok", "first_usable_snapshot"))
 
     def test_store_identity_resolution_matches_canonical_slug(self) -> None:
         user = MerchantUser(email="parity-reg@example.com", password_hash="x", merchant_name="P")

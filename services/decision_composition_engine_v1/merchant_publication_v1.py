@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from typing import Any, Mapping
+from typing import Any, Mapping, Optional
 
 from services.decision_composition_engine_v1.contract_v1 import BAND_NEEDS_ACTION
 from services.decision_composition_engine_v1.merchant_understanding_v1 import (
@@ -19,6 +19,14 @@ from services.decision_composition_engine_v1.merchant_understanding_v1 import (
 
 MERCHANT_PUBLICATION_VERSION_V1 = "merchant_publication_v1_executive_control"
 PUBLICATION_SCHEMA_V1 = "merchant_publication_v1"
+CONTACT_TRUTH_KEY_V1 = "contact_truth_v1"
+
+_FALSE_CONTACT_MARKERS_AR = (
+    "معلومات التواصل غير متاحة",
+    "نقص معلومات التواصل",
+    "مقيدة بسبب نقص معلومات",
+    "رقم الهاتف غير متاح",
+)
 
 # Store-condition status labels (merchant Arabic).
 STATUS_STABLE_AR = "مستقر"
@@ -237,6 +245,9 @@ def compose_merchant_publication_v1(
     waiting = _as_int(signals.get("waiting_total"))
     active = _as_int(signals.get("active_total"))
     available = bool(signals.get("available", True))
+    auth_no_phone = authoritative_no_phone_total_v1(summary)
+    if auth_no_phone is not None:
+        no_phone = auth_no_phone
     # Recoverability / WhatsApp-not-ready is not "contact information unavailable".
     missing_contact = no_phone > 0
 
@@ -730,31 +741,80 @@ def semantic_parity_fingerprint_v1(publication: Mapping[str, Any] | None) -> dic
     }
 
 
-def reconcile_publication_contact_truth_v1(summary: Mapping[str, Any] | None) -> Mapping[str, Any] | None:
-    """Clear false 'contact unavailable' when store cart counts prove no_phone=0.
+def _read_explicit_no_phone(blob: Mapping[str, Any] | None, *keys: str) -> Optional[int]:
+    if not isinstance(blob, Mapping):
+        return None
+    for key in keys:
+        if key not in blob:
+            continue
+        try:
+            return max(0, int(blob.get(key) or 0))
+        except (TypeError, ValueError):
+            return None
+    return None
 
-    Does not invent phones. Unknown store counts are left untouched.
+
+def authoritative_no_phone_total_v1(summary: Mapping[str, Any] | None) -> Optional[int]:
+    """Store-level no_phone total when the source key is explicitly present.
+
+    Unknown (missing key) stays None — never invent phones or availability.
     """
+    if not isinstance(summary, Mapping):
+        return None
+    from_counts = _read_explicit_no_phone(
+        summary.get("merchant_store_cart_counts")
+        if isinstance(summary.get("merchant_store_cart_counts"), Mapping)
+        else None,
+        "no_phone_total",
+        "canonical_no_phone_total",
+    )
+    if from_counts is not None:
+        return from_counts
+    stamp = summary.get(CONTACT_TRUTH_KEY_V1)
+    if isinstance(stamp, Mapping):
+        stamped = _read_explicit_no_phone(stamp, "no_phone_total")
+        if stamped is not None:
+            return stamped
+    return None
+
+
+def stamp_contact_truth_v1(summary: Mapping[str, Any] | None) -> Mapping[str, Any] | None:
+    """Persist a slim contact stamp so slim GET can reconcile after counts are stripped."""
     if not isinstance(summary, dict):
         return summary
     counts = summary.get("merchant_store_cart_counts")
-    if not isinstance(counts, Mapping):
+    auth = _read_explicit_no_phone(
+        counts if isinstance(counts, Mapping) else None,
+        "no_phone_total",
+        "canonical_no_phone_total",
+    )
+    if auth is None:
         return summary
-    if "no_phone_total" not in counts and "canonical_no_phone_total" not in counts:
-        return summary
-    try:
-        no_phone = max(
-            0,
-            int(counts.get("no_phone_total") or counts.get("canonical_no_phone_total") or 0),
-        )
-    except (TypeError, ValueError):
-        return summary
-    if no_phone > 0:
-        return summary
+    summary[CONTACT_TRUTH_KEY_V1] = {
+        "no_phone_total": auth,
+        "source": "merchant_store_cart_counts",
+        "key_present": True,
+    }
+    if not isinstance(counts, dict):
+        summary["merchant_store_cart_counts"] = {"no_phone_total": auth}
+    elif "no_phone_total" not in counts:
+        counts["no_phone_total"] = auth
+    return summary
+
+
+def _text_claims_contact_unavailable(text: Any) -> bool:
+    t = _norm(text)
+    return bool(t) and any(m in t for m in _FALSE_CONTACT_MARKERS_AR)
+
+
+def _scrub_false_contact_copy_v1(summary: dict[str, Any]) -> None:
+    """Remove leftover contact-unavailable paint when current truth is no_phone=0."""
     pub = summary.get("merchant_publication_v1")
     if isinstance(pub, dict):
         cc = pub.get("communication_condition")
-        if isinstance(cc, dict) and cc.get("constrained"):
+        if isinstance(cc, dict) and (
+            cc.get("constrained") or _text_claims_contact_unavailable(cc.get("summary_ar"))
+        ):
             pub["communication_condition"] = {
                 "status_ar": "يعمل بصورة طبيعية",
                 "summary_ar": PREFERRED_COMM_HEALTHY_AR,
@@ -762,18 +822,62 @@ def reconcile_publication_contact_truth_v1(summary: Mapping[str, Any] | None) ->
                 "normal_forbidden": False,
             }
             summary["merchant_publication_v1"] = pub
+        sc = pub.get("store_condition")
+        if isinstance(sc, dict) and _text_claims_contact_unavailable(sc.get("summary_ar")):
+            sc["summary_ar"] = "المتجر مستقر."
+            sc["status_ar"] = STATUS_STABLE_AR
+            sc["needs_attention"] = False
+            sc["calm_forbidden"] = False
+            sc["state_key"] = "stable"
     teasers = summary.get("home_teaser_inputs_v1")
     if isinstance(teasers, dict):
         for key in ("health", "carts", "communication"):
             blob = teasers.get(key)
-            if isinstance(blob, dict) and "no_phone" in blob:
+            if not isinstance(blob, dict):
+                continue
+            if "no_phone" in blob:
                 blob["no_phone"] = 0
+            if key == "communication":
+                blob["constrained"] = False
+            if _text_claims_contact_unavailable(blob.get("domain_summary_ar")):
+                blob["domain_summary_ar"] = (
+                    PREFERRED_COMM_HEALTHY_AR
+                    if key == "communication"
+                    else "المتجر مستقر."
+                )
+            if _text_claims_contact_unavailable(blob.get("status_ar")):
+                blob["status_ar"] = "يعمل بصورة طبيعية"
+    hes = summary.get("home_executive_summary_v1")
+    sections = hes.get("sections") if isinstance(hes, Mapping) else None
+    if isinstance(sections, list):
+        from services.home_executive_summary_v1.diagnosis_language_v1 import (  # noqa: PLC0415
+            apply_home_diagnosis_language_v1,
+        )
+
+        apply_home_diagnosis_language_v1(sections, summary=summary)
+
+
+def reconcile_publication_contact_truth_v1(summary: Mapping[str, Any] | None) -> Mapping[str, Any] | None:
+    """Current authoritative contact truth overrides stale publication/HES copy.
+
+    Does not invent phones. Unknown contact truth is left untouched.
+    """
+    if not isinstance(summary, dict):
+        return summary
+    stamp_contact_truth_v1(summary)
+    no_phone = authoritative_no_phone_total_v1(summary)
+    if no_phone is None:
+        return summary
+    if no_phone > 0:
+        return summary
+    _scrub_false_contact_copy_v1(summary)
     return summary
 
 
 __all__ = [
     "CART_NO_INDIVIDUAL_ACTION_AR",
     "COMM_CONTACT_CONSTRAINT_AR",
+    "CONTACT_TRUTH_KEY_V1",
     "MERCHANT_PUBLICATION_VERSION_V1",
     "STATUS_NEEDS_ATTENTION_AR",
     "STATUS_STABLE_AR",
@@ -781,8 +885,10 @@ __all__ = [
     "STATUS_URGENT_AR",
     "apply_publication_priority_to_decisions_v1",
     "attach_merchant_publication_to_summary_v1",
+    "authoritative_no_phone_total_v1",
     "compose_merchant_publication_v1",
     "normalize_action_key_v1",
     "reconcile_publication_contact_truth_v1",
     "semantic_parity_fingerprint_v1",
+    "stamp_contact_truth_v1",
 ]

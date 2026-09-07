@@ -323,6 +323,11 @@ def build_store_dashboard_snapshots(
             )
             _record_mode(nc_outcome.mode)
             results["types"][SNAPSHOT_TYPE_NORMAL_CARTS] = nc_outcome.mode
+            results["normal_carts_parity"] = {
+                "drop_stage": nc_write.drop_stage,
+                "reason": nc_write.reason,
+                "keep_previous": False,
+            }
         else:
             print(
                 f"[DASHBOARD SNAPSHOT PARITY BLOCK] store_slug={slug} "
@@ -377,7 +382,14 @@ def build_store_dashboard_snapshots(
         results["types"][SNAPSHOT_TYPE_STORE_CONNECTION] = conn_outcome.mode
 
         results["generation"] = dict(mode_counts)
-        results["ok"] = True
+        nc_mode = str(results["types"].get(SNAPSHOT_TYPE_NORMAL_CARTS) or "")
+        nc_landed = nc_mode in {"write", "touch", "skip"}
+        nc_kept = nc_mode.startswith("blocked:") and bool(
+            (results.get("normal_carts_parity") or {}).get("keep_previous")
+        )
+        results["ok"] = bool(nc_landed or nc_kept)
+        if not results["ok"]:
+            results["error"] = f"normal_carts_{nc_mode or 'missing'}"
     except Exception as exc:  # noqa: BLE001
         db.session.rollback()
         log.warning(
