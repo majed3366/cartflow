@@ -10,6 +10,8 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping, Optional
 
+from sqlalchemy import or_
+
 from extensions import db
 from models import (
     AbandonedCart,
@@ -96,10 +98,14 @@ def reset_lab_tenant_data_v1(
     reason_n = reason_q.count()
     reason_q.delete(synchronize_session=False)
 
-    # Store-scoped: leftover hyphenated / diagnostic IDs (lrl-quality-*,
-    # diag-cart-*) do not match lrl_% and must not survive reset.
+    # Store-scoped plus leftover diagnostic IDs that may have a wrong/null
+    # store_id but are bound to the lab via zid (diag-cart-*, lrl-*).
     cart_q = db.session.query(AbandonedCart).filter(
-        AbandonedCart.store_id == int(store.id),
+        or_(
+            AbandonedCart.store_id == int(store.id),
+            AbandonedCart.zid_cart_id.like("diag-cart-%"),
+            AbandonedCart.zid_cart_id.like("lrl-%"),
+        )
     )
     cart_n = cart_q.count()
     cart_q.delete(synchronize_session=False)

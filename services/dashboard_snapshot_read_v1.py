@@ -386,6 +386,22 @@ def build_summary_from_snapshot(
             return enforce_route_budget(body, wall0=wall0, endpoint="summary")
 
 
+def fresh_normal_carts_snapshot_ready(body: dict[str, Any]) -> bool:
+    """True when GET can serve the persisted snapshot without hot-slice fallback."""
+    if not isinstance(body, dict):
+        return False
+    snap = body.get("_snapshot") if isinstance(body.get("_snapshot"), dict) else {}
+    if int(snap.get("version") or 0) <= 0:
+        return False
+    status = str(snap.get("status") or "active").strip().lower()
+    if status not in ("active", "ok", "success"):
+        return False
+    if body.get("snapshot_stale") or body.get("snapshot_degraded"):
+        return False
+    rows = body.get("merchant_carts_page_rows")
+    return isinstance(rows, list) and len(rows) > 0
+
+
 def build_normal_carts_from_snapshot(
     *,
     store_slug: str,
@@ -402,18 +418,24 @@ def build_normal_carts_from_snapshot(
         )
         body = apply_normal_carts_snapshot_client_guards(body)
         slug = canonical_snapshot_store_slug(store_slug=store_slug)
-        try:
-            from services.dashboard_hot_slice_v1 import (  # noqa: PLC0415
-                apply_hot_slice_to_normal_carts_payload,
-            )
+        if fresh_normal_carts_snapshot_ready(body):
+            body.setdefault("data_freshness", "snapshot_only")
+            body["hot_slice_rows"] = 0
+            body["hot_slice_degraded"] = False
+            body["hot_slice_reason"] = None
+        else:
+            try:
+                from services.dashboard_hot_slice_v1 import (  # noqa: PLC0415
+                    apply_hot_slice_to_normal_carts_payload,
+                )
 
-            body = apply_hot_slice_to_normal_carts_payload(body, store_slug=slug)
-        except Exception as exc:  # noqa: BLE001
-            import logging
+                body = apply_hot_slice_to_normal_carts_payload(body, store_slug=slug)
+            except Exception as exc:  # noqa: BLE001
+                import logging
 
-            logging.getLogger("cartflow").warning(
-                "dashboard hot slice merge skipped: %s", exc
-            )
+                logging.getLogger("cartflow").warning(
+                    "dashboard hot slice merge skipped: %s", exc
+                )
         try:
             from services.merchant_cart_lifecycle_archive_v1 import (  # noqa: PLC0415
                 apply_merchant_archive_truth_to_normal_carts_payload,
@@ -583,6 +605,7 @@ __all__ = [
     "build_summary_from_snapshot",
     "build_widget_panel_from_snapshot",
     "enforce_route_budget",
+    "fresh_normal_carts_snapshot_ready",
     "read_dashboard_snapshot_payload",
     "resolve_merchant_store_slug_for_snapshot",
 ]

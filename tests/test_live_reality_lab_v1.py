@@ -227,6 +227,13 @@ class LiveRealityLabIntegrationTests(unittest.TestCase):
         self.db.session.add(
             AbandonedCart(
                 store_id=int(other.id),
+                zid_cart_id="diag-cart-4hz",
+                status="detected",
+            )
+        )
+        self.db.session.add(
+            AbandonedCart(
+                store_id=int(other.id),
                 zid_cart_id="founder-keep-reset-hygiene",
                 customer_phone="966500000001",
                 status="detected",
@@ -244,8 +251,14 @@ class LiveRealityLabIntegrationTests(unittest.TestCase):
             .filter(AbandonedCart.zid_cart_id == "founder-keep-reset-hygiene")
             .count()
         )
+        diag_left = (
+            self.db.session.query(AbandonedCart)
+            .filter(AbandonedCart.zid_cart_id == "diag-cart-4hz")
+            .count()
+        )
         self.assertEqual(lab_left, 0)
         self.assertEqual(foreign, 1)
+        self.assertEqual(diag_left, 0)
 
     def test_R7_coexistence_and_capacity(self) -> None:
         from services.live_reality_lab_v1 import (

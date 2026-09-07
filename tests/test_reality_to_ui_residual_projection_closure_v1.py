@@ -230,6 +230,21 @@ class CartsSnapshotLawTests(unittest.TestCase):
         encoded = encode_snapshot_payload_json(slim, snapshot_type=SNAPSHOT_TYPE_NORMAL_CARTS)
         self.assertEqual(encoded, raw)
 
+    def test_fresh_snapshot_does_not_use_hot_slice_fallback(self) -> None:
+        from services.dashboard_snapshot_read_v1 import fresh_normal_carts_snapshot_ready
+
+        ready = {
+            "_snapshot": {"version": 1, "status": "active"},
+            "merchant_carts_page_rows": [{"recovery_key": "rk:1"}],
+        }
+        self.assertTrue(fresh_normal_carts_snapshot_ready(ready))
+        miss = {
+            "_snapshot": {"version": 0, "status": "miss"},
+            "merchant_carts_page_rows": [],
+            "snapshot_degraded": True,
+        }
+        self.assertFalse(fresh_normal_carts_snapshot_ready(miss))
+
     def test_lab_reset_cart_delete_is_store_scoped_not_prefix(self) -> None:
         from pathlib import Path
 
