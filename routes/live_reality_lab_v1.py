@@ -26,6 +26,14 @@ def _auth_slug(request: Request) -> Optional[str]:
     return (slug or "").strip()[:191] or None
 
 
+def _assert_query_slug(request: Request, auth: str) -> Optional[Any]:
+    """Query store_slug is assertion-only. It never selects the tenant."""
+    claimed = (request.query_params.get("store_slug") or "").strip()
+    if claimed and claimed != auth:
+        return j({"ok": False, "error": "live_reality_lab_tenant_mismatch"}, 403)
+    return None
+
+
 class ScenarioBody(BaseModel):
     model_config = {"extra": "forbid"}
 
@@ -68,9 +76,9 @@ def api_lab_ensure(request: Request) -> Any:
 
 @router.get("/scenarios")
 def api_lab_scenarios(request: Request) -> Any:
-    from services.live_reality_lab_v1 import (  # noqa: PLC0415
-        LAB_STORE_SLUG,
-        scenario_manifests_v1,
+    from services.live_reality_lab_v1 import LAB_STORE_SLUG  # noqa: PLC0415
+    from services.live_reality_lab_v1.dataset_v1 import (  # noqa: PLC0415
+        all_scenario_manifests,
     )
 
     auth = _auth_slug(request)
@@ -78,7 +86,7 @@ def api_lab_scenarios(request: Request) -> Any:
         return j({"ok": False, "error": "unauthorized"}, 401)
     if auth != LAB_STORE_SLUG:
         return j({"ok": False, "error": "live_reality_lab_unauthorized_tenant"}, 403)
-    manifests = scenario_manifests_v1()
+    manifests = all_scenario_manifests()
     return j(
         {
             "ok": True,
@@ -96,6 +104,9 @@ def api_lab_reset(request: Request) -> Any:
     auth = _auth_slug(request)
     if not auth:
         return j({"ok": False, "error": "unauthorized"}, 401)
+    mismatch = _assert_query_slug(request, auth)
+    if mismatch is not None:
+        return mismatch
     try:
         return j(reset_lab_tenant_data_v1(authenticated_store_slug=auth))
     except ValueError as exc:
@@ -109,6 +120,9 @@ def api_lab_apply(request: Request, body: ScenarioBody) -> Any:
     auth = _auth_slug(request)
     if not auth:
         return j({"ok": False, "error": "unauthorized"}, 401)
+    mismatch = _assert_query_slug(request, auth)
+    if mismatch is not None:
+        return mismatch
     # Ignore any client-supplied store identity — auth slug only.
     try:
         return j(
@@ -130,6 +144,9 @@ def api_lab_verify(request: Request, body: ScenarioBody) -> Any:
     auth = _auth_slug(request)
     if not auth:
         return j({"ok": False, "error": "unauthorized"}, 401)
+    mismatch = _assert_query_slug(request, auth)
+    if mismatch is not None:
+        return mismatch
     try:
         out = verify_lab_scenario_v1(
             authenticated_store_slug=auth,

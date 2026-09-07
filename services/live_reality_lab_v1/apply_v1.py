@@ -20,10 +20,13 @@ from models import (
 from services.live_reality_lab_v1.contract_v1 import (
     DATASET_VERSION,
     LAB_CART_ID_PREFIX,
+    LAB_CART_ID_PREFIX_ANY,
     LAB_INTEGRATION_SOURCE,
     LAB_REASON_SOURCE,
     LAB_STORE_SLUG,
+    LAB_SYNTHETIC_VISIT_SOURCE,
     SCENARIO_ALLOWLIST,
+    SCENARIO_ALLOWLIST_V2,
 )
 from services.live_reality_lab_v1.dataset_v1 import get_scenario_manifest
 from services.live_reality_lab_v1.gate_v1 import (
@@ -55,7 +58,7 @@ def count_lab_no_phone_carts(store: Store) -> int:
     rows = (
         db.session.query(AbandonedCart)
         .filter(AbandonedCart.store_id == int(store.id))
-        .filter(AbandonedCart.zid_cart_id.like(LAB_CART_ID_PREFIX + "%"))
+        .filter(AbandonedCart.zid_cart_id.like(LAB_CART_ID_PREFIX_ANY + "%"))
         .all()
     )
     n = 0
@@ -80,9 +83,13 @@ def reset_lab_tenant_data_v1(
     Never touches demo / cf_founder_evaluation / cf_fe_v1_* / other merchants.
     """
     assert_lab_operation_allowed(authenticated_store_slug=authenticated_store_slug)
+    db.session.rollback()
     store = _lab_store()
     if str(store.zid_store_id) != LAB_STORE_SLUG:
         raise ValueError("live_reality_lab_cross_tenant_blocked")
+
+    # Inspect catalog tables before this session holds a write lock (SQLite).
+    extra_deleted = _reset_lab_extended_truth(store_id=int(store.id))
 
     reason_q = db.session.query(CartRecoveryReason).filter(
         CartRecoveryReason.store_slug == LAB_STORE_SLUG,
@@ -93,7 +100,7 @@ def reset_lab_tenant_data_v1(
 
     cart_q = db.session.query(AbandonedCart).filter(
         AbandonedCart.store_id == int(store.id),
-        AbandonedCart.zid_cart_id.like(LAB_CART_ID_PREFIX + "%"),
+        AbandonedCart.zid_cart_id.like(LAB_CART_ID_PREFIX_ANY + "%"),
     )
     cart_n = cart_q.count()
     cart_q.delete(synchronize_session=False)
@@ -106,22 +113,162 @@ def reset_lab_tenant_data_v1(
 
     db.session.commit()
     log.info(
-        "live_reality_lab_reset store_slug=%s reasons=%s carts=%s cdc=%s",
+        "live_reality_lab_reset store_slug=%s reasons=%s carts=%s cdc=%s extra=%s",
         LAB_STORE_SLUG,
         reason_n,
         cart_n,
         cdc_n,
+        extra_deleted,
     )
+    deleted = {
+        "cart_recovery_reasons": int(reason_n),
+        "abandoned_carts": int(cart_n),
+        "commercial_decision_commitments": int(cdc_n),
+    }
+    deleted.update(extra_deleted)
     return {
         "ok": True,
         "store_slug": LAB_STORE_SLUG,
         "dataset_version": DATASET_VERSION,
-        "deleted": {
-            "cart_recovery_reasons": int(reason_n),
-            "abandoned_carts": int(cart_n),
-            "commercial_decision_commitments": int(cdc_n),
-        },
+        "deleted": deleted,
     }
+
+
+def _reset_lab_extended_truth(*, store_id: int) -> dict[str, int]:
+    """Lab-scoped cleanup for Dataset V2 production tables. Never cross-tenant."""
+    from models import (  # noqa: PLC0415
+        CartLineSnapshot,
+        CartRecoveryLog,
+        MessageLog,
+        ProductCatalogEntry,
+        ProductHesitationMapping,
+        ProductMetricValue,
+        ProductPurchaseMapping,
+        ProductSignalEvent,
+        PurchaseTruthRecord,
+        RecoverySchedule,
+        RecoveryTruthTimelineEvent,
+        WhatsAppDeliveryTruth,
+    )
+
+    counts: dict[str, int] = {}
+    table_names = (
+        "message_logs",
+        "cart_recovery_logs",
+        "whatsapp_delivery_truth",
+        "recovery_truth_timeline_events",
+        "recovery_schedules",
+        "purchase_truth_records",
+        "product_hesitation_mappings",
+        "product_purchase_mappings",
+        "product_signal_events",
+        "product_metric_values",
+        "cart_line_snapshots",
+        "product_catalog_entries",
+    )
+    present: set[str] = set()
+    # Inspect on a short-lived connection so the Engine inspector cache cannot
+    # hold a second SQLite lock across the session deletes/writes that follow.
+    with db.engine.connect() as conn:
+        from sqlalchemy import inspect as sa_inspect  # noqa: PLC0415
+
+        insp = sa_inspect(conn)
+        for table in table_names:
+            if insp.has_table(table):
+                present.add(table)
+
+    def _wipe(name: str, table: str, query) -> None:
+        if table and table not in present:
+            counts[name] = 0
+            return
+        n = int(query.count() or 0)
+        if n:
+            query.delete(synchronize_session=False)
+        counts[name] = n
+
+    _wipe(
+        "message_logs",
+        "message_logs",
+        db.session.query(MessageLog).filter(MessageLog.store_id == store_id),
+    )
+    _wipe(
+        "cart_recovery_logs",
+        "cart_recovery_logs",
+        db.session.query(CartRecoveryLog).filter(
+            CartRecoveryLog.store_slug == LAB_STORE_SLUG
+        ),
+    )
+    _wipe(
+        "whatsapp_delivery_truth",
+        "whatsapp_delivery_truth",
+        db.session.query(WhatsAppDeliveryTruth).filter(
+            WhatsAppDeliveryTruth.store_slug == LAB_STORE_SLUG
+        ),
+    )
+    _wipe(
+        "recovery_truth_timeline_events",
+        "recovery_truth_timeline_events",
+        db.session.query(RecoveryTruthTimelineEvent).filter(
+            RecoveryTruthTimelineEvent.store_slug == LAB_STORE_SLUG
+        ),
+    )
+    _wipe(
+        "recovery_schedules",
+        "recovery_schedules",
+        db.session.query(RecoverySchedule).filter(
+            RecoverySchedule.store_slug == LAB_STORE_SLUG
+        ),
+    )
+    _wipe(
+        "purchase_truth_records",
+        "purchase_truth_records",
+        db.session.query(PurchaseTruthRecord).filter(
+            PurchaseTruthRecord.store_slug == LAB_STORE_SLUG
+        ),
+    )
+    _wipe(
+        "product_hesitation_mappings",
+        "product_hesitation_mappings",
+        db.session.query(ProductHesitationMapping).filter(
+            ProductHesitationMapping.store_slug == LAB_STORE_SLUG
+        ),
+    )
+    _wipe(
+        "product_purchase_mappings",
+        "product_purchase_mappings",
+        db.session.query(ProductPurchaseMapping).filter(
+            ProductPurchaseMapping.store_slug == LAB_STORE_SLUG
+        ),
+    )
+    _wipe(
+        "product_signal_events",
+        "product_signal_events",
+        db.session.query(ProductSignalEvent).filter(
+            ProductSignalEvent.store_slug == LAB_STORE_SLUG
+        ),
+    )
+    _wipe(
+        "product_metric_values",
+        "product_metric_values",
+        db.session.query(ProductMetricValue).filter(
+            ProductMetricValue.store_slug == LAB_STORE_SLUG
+        ),
+    )
+    _wipe(
+        "cart_line_snapshots",
+        "cart_line_snapshots",
+        db.session.query(CartLineSnapshot).filter(
+            CartLineSnapshot.store_slug == LAB_STORE_SLUG
+        ),
+    )
+    _wipe(
+        "product_catalog_entries",
+        "product_catalog_entries",
+        db.session.query(ProductCatalogEntry).filter(
+            ProductCatalogEntry.store_slug == LAB_STORE_SLUG
+        ),
+    )
+    return counts
 
 
 def _seed_reasons(counts: Mapping[str, int]) -> int:
@@ -318,67 +465,100 @@ def apply_lab_scenario_v1(
     reasons = truth.get("reason_counts") or {}
     no_phone = int(truth.get("no_phone_count") or 0)
     cdc_phase = truth.get("cdc_phase")
+    v2_seed: dict[str, Any] = {}
 
-    seeded_reasons = _seed_reasons(reasons)
-    seeded_carts = _seed_no_phone_carts(store, no_phone)
-    db.session.commit()
+    if sid in SCENARIO_ALLOWLIST_V2:
+        from services.live_reality_lab_v1.seed_v2 import seed_dataset_v2  # noqa: PLC0415
 
+        v2_seed = seed_dataset_v2(store=store, scenario_id=sid)
+        seeded_reasons = 0
+        seeded_carts = int(v2_seed.get("carts") or 0)
+    else:
+        seeded_reasons = _seed_reasons(reasons)
+        seeded_carts = _seed_no_phone_carts(store, no_phone)
+        db.session.commit()
+
+    store = _lab_store()
     stack = _compose_stack(store)
     applied_cdc = None
     if cdc_phase:
         applied_cdc = _apply_cdc_phase(phase=str(cdc_phase), col_package=stack["col"])
         stack = _compose_stack(store)
 
-    # Production Home serves enforced snapshots — rebuild so R7 is founder-visible
-    # on /dashboard (not only verify's live compose stack).
+    # Release this session before the snapshot builder opens an isolated connection.
+    db.session.commit()
+
+    # Production Home serves enforced snapshots on Postgres. SQLite lab tests
+    # cannot open the builder's isolated session without file locks.
     snapshot_rebuild: dict[str, Any] = {"ok": False, "skipped": True}
-    try:
-        from services.dashboard_snapshot_builder_v1 import (  # noqa: PLC0415
-            build_store_dashboard_snapshots,
-        )
-
-        snapshot_rebuild = build_store_dashboard_snapshots(
-            store_id=int(store.id),
-            store_slug=LAB_STORE_SLUG,
-        )
-    except Exception as snap_exc:  # noqa: BLE001
-        log.warning(
-            "live_reality_lab_snapshot_rebuild_failed store_slug=%s err=%s",
-            LAB_STORE_SLUG,
-            snap_exc,
-        )
+    dialect = str(getattr(db.engine.dialect, "name", "") or "")
+    if dialect == "sqlite":
         snapshot_rebuild = {
-            "ok": False,
-            "error": type(snap_exc).__name__,
-            "detail": str(snap_exc)[:240],
+            "ok": True,
+            "skipped": True,
+            "reason": "sqlite_isolated_builder_unsafe",
         }
+    else:
+        try:
+            from services.dashboard_snapshot_builder_v1 import (  # noqa: PLC0415
+                build_store_dashboard_snapshots,
+            )
 
+            snapshot_rebuild = build_store_dashboard_snapshots(
+                store_id=int(store.id),
+                store_slug=LAB_STORE_SLUG,
+            )
+        except Exception as snap_exc:  # noqa: BLE001
+            log.warning(
+                "live_reality_lab_snapshot_rebuild_failed store_slug=%s err=%s",
+                LAB_STORE_SLUG,
+                snap_exc,
+            )
+            snapshot_rebuild = {
+                "ok": False,
+                "error": type(snap_exc).__name__,
+                "detail": str(snap_exc)[:240],
+            }
+
+    dataset_version = str(manifest.get("dataset_version") or DATASET_VERSION)
     log.info(
         "live_reality_lab_apply store_slug=%s scenario_id=%s dataset_version=%s "
         "reasons=%s carts=%s cdc=%s snapshot_ok=%s",
         LAB_STORE_SLUG,
         sid,
-        DATASET_VERSION,
+        dataset_version,
         seeded_reasons,
         seeded_carts,
         applied_cdc,
         snapshot_rebuild.get("ok"),
     )
+    seeded: dict[str, Any] = {
+        "reasons": seeded_reasons,
+        "no_phone_carts": seeded_carts if sid not in SCENARIO_ALLOWLIST_V2 else 0,
+        "carts": seeded_carts,
+        "cdc_phase": applied_cdc,
+    }
+    if v2_seed:
+        seeded.update(
+            {
+                "named_products": v2_seed.get("named_products"),
+                "missing_name_fixture": v2_seed.get("missing_name_fixture"),
+                "synthetic_visits": v2_seed.get("synthetic_visits"),
+                "visit_truth_class": v2_seed.get("visit_truth_class"),
+                "store_display_name": v2_seed.get("store_display_name"),
+            }
+        )
     return {
         "ok": True,
         "store_slug": LAB_STORE_SLUG,
         "scenario_id": sid,
-        "dataset_version": DATASET_VERSION,
+        "dataset_version": dataset_version,
         "snapshot_rebuild": {
             "ok": bool(snapshot_rebuild.get("ok")),
             "duration_ms": snapshot_rebuild.get("duration_ms"),
             "error": snapshot_rebuild.get("error"),
         },
-        "seeded": {
-            "reasons": seeded_reasons,
-            "no_phone_carts": seeded_carts,
-            "cdc_phase": applied_cdc,
-        },
+        "seeded": seeded,
         "manifest": manifest,
         "observed": _observed_from_stack(stack),
     }
@@ -509,12 +689,52 @@ def verify_lab_scenario_v1(
         }
     )
 
+    if sid in SCENARIO_ALLOWLIST_V2:
+        from models import AbandonedCart, ProductCatalogEntry, ProductSignalEvent  # noqa: PLC0415
+
+        cart_n = (
+            db.session.query(AbandonedCart)
+            .filter(
+                AbandonedCart.store_id == int(store.id),
+                AbandonedCart.zid_cart_id.like(LAB_CART_ID_PREFIX_ANY + "%"),
+            )
+            .count()
+        )
+        catalog_n = (
+            db.session.query(ProductCatalogEntry)
+            .filter(ProductCatalogEntry.store_slug == LAB_STORE_SLUG)
+            .count()
+        )
+        visit_n = (
+            db.session.query(ProductSignalEvent)
+            .filter(
+                ProductSignalEvent.store_slug == LAB_STORE_SLUG,
+                ProductSignalEvent.source == LAB_SYNTHETIC_VISIT_SOURCE,
+            )
+            .count()
+        )
+        observed["cart_count"] = int(cart_n)
+        observed["catalog_count"] = int(catalog_n)
+        observed["synthetic_visit_count"] = int(visit_n)
+        _check("cart_count", manifest.get("expected_cart_count"), int(cart_n))
+        _check("catalog_count", 11, int(catalog_n))
+        expected_visits = int((manifest.get("truth") or {}).get("synthetic_visit_count") or 0)
+        checks.append(
+            {
+                "name": "synthetic_visit_count",
+                "ok": (int(visit_n) == 0 and expected_visits == 0)
+                or (expected_visits > 0 and int(visit_n) >= expected_visits),
+                "expected": expected_visits,
+                "actual": int(visit_n),
+            }
+        )
+
     all_ok = all(c.get("ok") for c in checks)
     return {
         "ok": all_ok,
         "store_slug": LAB_STORE_SLUG,
         "scenario_id": sid,
-        "dataset_version": DATASET_VERSION,
+        "dataset_version": str(manifest.get("dataset_version") or DATASET_VERSION),
         "manifest": manifest,
         "observed": observed,
         "checks": checks,

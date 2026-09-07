@@ -23,7 +23,7 @@ class LiveRealityLabStaticTests(unittest.TestCase):
         self.assertEqual(LAB_STORE_SLUG, "cf_live_reality_lab")
         self.assertEqual(LAB_EMAIL, "reality.lab@cartflow.local")
         self.assertEqual(LAB_INTEGRATION_SOURCE, "live_reality_lab_v1")
-        self.assertEqual(len(SCENARIO_ALLOWLIST), 12)
+        self.assertEqual(len(SCENARIO_ALLOWLIST), 24)
         self.assertIn(SCENARIO_R7, SCENARIO_ALLOWLIST)
 
     def test_not_confused_with_other_tenants(self) -> None:
@@ -52,8 +52,6 @@ class LiveRealityLabIntegrationTests(unittest.TestCase):
         db_path = os.path.join(
             tempfile.gettempdir(), "cartflow_pytest_live_reality_lab_v1.db"
         )
-        if os.path.exists(db_path):
-            os.remove(db_path)
         os.environ["DATABASE_URL"] = "sqlite:///" + db_path.replace("\\", "/")
         os.environ["CARTFLOW_COMMERCIAL_OPPORTUNITY_LAYER_V1"] = "1"
         os.environ["ENV"] = "development"
@@ -62,8 +60,15 @@ class LiveRealityLabIntegrationTests(unittest.TestCase):
         import sys
 
         sys.path.insert(0, str(ROOT))
-        from extensions import db, init_database
+        from extensions import db, init_database, remove_scoped_session
         import models  # noqa: F401
+        try:
+            remove_scoped_session()
+            db.engine.dispose()
+        except Exception:
+            pass
+        if os.path.exists(db_path):
+            os.remove(db_path)
         from schema_commercial_decision_commitment_v1 import (
             ensure_commercial_decision_commitment_schema,
             reset_commercial_decision_commitment_schema_guard_for_tests,

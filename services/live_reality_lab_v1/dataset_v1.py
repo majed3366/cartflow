@@ -248,14 +248,26 @@ def scenario_manifests_v1() -> Dict[str, dict[str, Any]]:
     }
 
 
+def all_scenario_manifests() -> Dict[str, dict[str, Any]]:
+    from services.live_reality_lab_v1.dataset_v2 import scenario_manifests_v2  # noqa: PLC0415
+
+    merged = dict(scenario_manifests_v1())
+    merged.update(scenario_manifests_v2())
+    return merged
+
+
 def get_scenario_manifest(scenario_id: str) -> dict[str, Any]:
     sid = str(scenario_id or "").strip()
     if sid not in SCENARIO_ALLOWLIST:
         raise ValueError("live_reality_lab_unknown_scenario")
-    return dict(scenario_manifests_v1()[sid])
+    manifests = all_scenario_manifests()
+    if sid not in manifests:
+        raise ValueError("live_reality_lab_unknown_scenario")
+    return dict(manifests[sid])
 
 
 __all__ = [
+    "all_scenario_manifests",
     "get_scenario_manifest",
     "scenario_manifests_v1",
 ]
