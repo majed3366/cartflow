@@ -237,11 +237,8 @@ def compose_merchant_publication_v1(
     waiting = _as_int(signals.get("waiting_total"))
     active = _as_int(signals.get("active_total"))
     available = bool(signals.get("available", True))
-    missing_contact = no_phone > 0 or any(
-        "missing_contact" in _norm(d.get("root_cause_key")).lower()
-        or _norm(d.get("decision_type")).lower() == "recoverability_gap"
-        for d in portfolio
-    )
+    # Recoverability / WhatsApp-not-ready is not "contact information unavailable".
+    missing_contact = no_phone > 0
 
     # --- Primary executive decision (exactly one) ---
     # Prefer a product commerce situation as the merchant-facing lead when present.
@@ -733,6 +730,47 @@ def semantic_parity_fingerprint_v1(publication: Mapping[str, Any] | None) -> dic
     }
 
 
+def reconcile_publication_contact_truth_v1(summary: Mapping[str, Any] | None) -> Mapping[str, Any] | None:
+    """Clear false 'contact unavailable' when store cart counts prove no_phone=0.
+
+    Does not invent phones. Unknown store counts are left untouched.
+    """
+    if not isinstance(summary, dict):
+        return summary
+    counts = summary.get("merchant_store_cart_counts")
+    if not isinstance(counts, Mapping):
+        return summary
+    if "no_phone_total" not in counts and "canonical_no_phone_total" not in counts:
+        return summary
+    try:
+        no_phone = max(
+            0,
+            int(counts.get("no_phone_total") or counts.get("canonical_no_phone_total") or 0),
+        )
+    except (TypeError, ValueError):
+        return summary
+    if no_phone > 0:
+        return summary
+    pub = summary.get("merchant_publication_v1")
+    if isinstance(pub, dict):
+        cc = pub.get("communication_condition")
+        if isinstance(cc, dict) and cc.get("constrained"):
+            pub["communication_condition"] = {
+                "status_ar": "يعمل بصورة طبيعية",
+                "summary_ar": PREFERRED_COMM_HEALTHY_AR,
+                "constrained": False,
+                "normal_forbidden": False,
+            }
+            summary["merchant_publication_v1"] = pub
+    teasers = summary.get("home_teaser_inputs_v1")
+    if isinstance(teasers, dict):
+        for key in ("health", "carts", "communication"):
+            blob = teasers.get(key)
+            if isinstance(blob, dict) and "no_phone" in blob:
+                blob["no_phone"] = 0
+    return summary
+
+
 __all__ = [
     "CART_NO_INDIVIDUAL_ACTION_AR",
     "COMM_CONTACT_CONSTRAINT_AR",
@@ -745,5 +783,6 @@ __all__ = [
     "attach_merchant_publication_to_summary_v1",
     "compose_merchant_publication_v1",
     "normalize_action_key_v1",
+    "reconcile_publication_contact_truth_v1",
     "semantic_parity_fingerprint_v1",
 ]

@@ -7,7 +7,10 @@ One Primary + ≤3 Next. Diagnostic Primary for Home continuity.
 """
 from __future__ import annotations
 
+import logging
 from typing import Any, Mapping
+
+log = logging.getLogger("cartflow")
 
 from services.decision_workspace_v2.flag_v1 import decision_workspace_v2_enabled
 from services.decision_workspace_v2.narrative_v1 import (
@@ -255,8 +258,20 @@ def apply_decision_workspace_v2_budget(
             project_guidance_onto_workspace_card_v1,
         )
 
-        stub = {"store_slug": slug}
+        stub: dict[str, Any] = {"store_slug": slug}
         if slug:
+            try:
+                from services.dashboard_kpi_time_v1 import (  # noqa: PLC0415
+                    ensure_merchant_reason_counts_week,
+                )
+
+                ensure_merchant_reason_counts_week(stub, store_slug=slug)
+            except Exception as rc_exc:  # noqa: BLE001
+                log.warning(
+                    "workspace reason_counts ensure failed store_slug=%s err=%s",
+                    slug[:64],
+                    rc_exc,
+                )
             try:
                 from services.diagnostic_reasoning_v1.snapshot_store_v1 import (  # noqa: PLC0415
                     read_primary_diagnostic_publication_v1,
@@ -265,8 +280,12 @@ def apply_decision_workspace_v2_budget(
                 pub = read_primary_diagnostic_publication_v1(slug)
                 if isinstance(pub, Mapping):
                     stub["diagnostic_publication_v1"] = pub
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as dx_exc:  # noqa: BLE001
+                log.warning(
+                    "workspace diagnostic publication read failed store_slug=%s err=%s",
+                    slug[:64],
+                    dx_exc,
+                )
         guidance = compose_operational_guidance_v1(stub, store_slug=slug)
         projection["operational_guidance_v1"] = {
             "ok": bool(guidance.get("ok")),

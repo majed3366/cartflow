@@ -223,16 +223,19 @@ def merchant_month_window_projection(
 
 
 def merchant_reason_counts_store_window(
-    dash_store: Optional[Any],
+    dash_store: Optional[Any] = None,
     *,
     days: int = 7,
     now: Optional[datetime] = None,
     context: Optional[QueryTimeContext] = None,
+    store_slug: Optional[str] = None,
 ) -> dict[str, int]:
-    """Hesitation reason counts — Time Authority ``last_n_days`` half-open window."""
-    if dash_store is None:
-        return {}
-    slug = (getattr(dash_store, "zid_store_id", None) or "").strip()
+    """Hesitation reason counts — Time Authority ``last_n_days`` half-open window.
+
+    ``store_slug`` is authoritative when provided. ``dash_store.zid_store_id``
+    is the same ownership key (not ``Store.id`` / a nonexistent ``store_id``).
+    """
+    slug = (store_slug or getattr(dash_store, "zid_store_id", None) or "").strip()
     if not slug:
         return {}
     tw = resolve_dashboard_rolling_windows(
@@ -262,11 +265,65 @@ def merchant_reason_counts_store_window(
     return counts
 
 
+def stamp_hesitation_evidence_from_reason_counts(
+    summary: dict[str, Any],
+    counts: Optional[dict[str, int]] = None,
+) -> dict[str, int]:
+    """Mirror COL-owned counts into the OGL hesitation blob (no extra query)."""
+    if not isinstance(summary, dict):
+        return {}
+    src = counts if isinstance(counts, dict) else summary.get("merchant_reason_counts_week")
+    dist: dict[str, int] = {}
+    if isinstance(src, dict):
+        for key, raw in src.items():
+            name = str(key or "").strip().lower()
+            if not name:
+                continue
+            try:
+                n = max(0, int(raw or 0))
+            except (TypeError, ValueError):
+                n = 0
+            if n:
+                dist[name] = n
+    summary["merchant_reason_counts_week"] = dict(dist)
+    summary["hesitation_evidence_v1"] = {
+        "hesitation_total": sum(dist.values()),
+        "hesitation_distribution": dict(dist),
+    }
+    return dict(dist)
+
+
+def ensure_merchant_reason_counts_week(
+    summary: dict[str, Any],
+    *,
+    dash_store: Optional[Any] = None,
+    store_slug: str = "",
+    days: int = 7,
+) -> dict[str, int]:
+    """Attach bounded reason counts if the summary already has them, else one group-by.
+
+    Does not invent taxonomy keys. Empty dict is an honest zero-sample.
+    """
+    if not isinstance(summary, dict):
+        return {}
+    existing = summary.get("merchant_reason_counts_week")
+    if isinstance(existing, dict):
+        # Key already materialized (including honest empty) — do not re-query.
+        return stamp_hesitation_evidence_from_reason_counts(summary, existing)
+    slug = (store_slug or str(summary.get("store_slug") or "")).strip()
+    queried = merchant_reason_counts_store_window(
+        dash_store, days=days, store_slug=slug or None
+    )
+    return stamp_hesitation_evidence_from_reason_counts(summary, queried)
+
+
 __all__ = [
+    "ensure_merchant_reason_counts_week",
     "merchant_kpi_today_projection",
     "merchant_month_window_projection",
     "merchant_reason_counts_store_window",
     "non_vip_scoped_base_query",
     "resolve_dashboard_rolling_windows",
     "resolve_dashboard_today_window",
+    "stamp_hesitation_evidence_from_reason_counts",
 ]

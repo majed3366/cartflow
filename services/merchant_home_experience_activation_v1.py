@@ -349,6 +349,24 @@ def finalize_dashboard_summary_payload(
             body["store_slug"] = str(store_slug).strip()
         _slug = str(body.get("store_slug") or store_slug or "").strip()
 
+        try:
+            from services.dashboard_kpi_time_v1 import (  # noqa: PLC0415
+                ensure_merchant_reason_counts_week,
+            )
+
+            ensure_merchant_reason_counts_week(body, store_slug=_slug)
+        except Exception as rc_exc:  # noqa: BLE001
+            log.warning("summary reason_counts ensure: %s", rc_exc)
+
+        try:
+            from services.decision_composition_engine_v1.merchant_publication_v1 import (  # noqa: PLC0415
+                reconcile_publication_contact_truth_v1,
+            )
+
+            reconcile_publication_contact_truth_v1(body)
+        except Exception as ct_exc:  # noqa: BLE001
+            log.warning("publication contact reconcile: %s", ct_exc)
+
         # Diagnostic Reasoning V1 — Home reads persisted snapshots only (no compose).
         try:
             from services.diagnostic_reasoning_v1 import (  # noqa: PLC0415
@@ -390,6 +408,17 @@ def finalize_dashboard_summary_payload(
                 if isinstance(hes_ready, dict):
                     hes_ready["diagnostic_reasoning"] = "diagnostic_reasoning_v1"
                     hes_ready["diagnosis_language"] = "diagnostic_reasoning_v1"
+                try:
+                    from services.operational_guidance_v1 import (  # noqa: PLC0415
+                        attach_operational_guidance_to_summary_v1,
+                    )
+
+                    attach_operational_guidance_to_summary_v1(
+                        body,
+                        store_slug=str(body.get("store_slug") or _slug or ""),
+                    )
+                except Exception as ogl_exc:  # noqa: BLE001
+                    log.warning("ogl snapshot passthrough attach: %s", ogl_exc)
                 try:
                     from services.commercial_opportunity_layer_v1 import (  # noqa: PLC0415
                         attach_commercial_opportunity_layer_to_summary_v1,
@@ -604,6 +633,24 @@ def finalize_dashboard_summary_payload(
         store_slug=store_slug,
         cache_hit=cache_hit,
     )
+
+    _fat_slug = str(body.get("store_slug") or store_slug or "").strip()
+    try:
+        from services.dashboard_kpi_time_v1 import (  # noqa: PLC0415
+            ensure_merchant_reason_counts_week,
+        )
+
+        ensure_merchant_reason_counts_week(body, store_slug=_fat_slug)
+    except Exception as rc_exc:  # noqa: BLE001
+        log.warning("summary reason_counts ensure (fat): %s", rc_exc)
+    try:
+        from services.decision_composition_engine_v1.merchant_publication_v1 import (  # noqa: PLC0415
+            reconcile_publication_contact_truth_v1,
+        )
+
+        reconcile_publication_contact_truth_v1(body)
+    except Exception as ct_exc:  # noqa: BLE001
+        log.warning("publication contact reconcile (fat): %s", ct_exc)
 
     # Fat path (slim flag OFF) — legacy attach chain for rollback only.
     try:

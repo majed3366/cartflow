@@ -6,9 +6,13 @@ Caps rows and window. Never join unbounded history on Home.
 """
 from __future__ import annotations
 
+import logging
 from collections import Counter
-from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping, Optional
+
+from sqlalchemy.exc import SQLAlchemyError
+
+log = logging.getLogger("cartflow")
 
 from services.diagnostic_reasoning_v1.cause_registry_v1 import (
     SIGNAL_DELIVERY,
@@ -228,14 +232,28 @@ def _bags_from_publication_v1(
             )
         )
 
-    cc = pub.get("communication_condition") if isinstance(pub.get("communication_condition"), Mapping) else {}
-    sc = pub.get("store_condition") if isinstance(pub.get("store_condition"), Mapping) else {}
-    if cc.get("constrained") or "تواصل" in str(sc.get("summary_ar") or ""):
+    counts = pub.get("merchant_store_cart_counts")
+    no_phone_n = 0
+    if isinstance(counts, Mapping) and (
+        "no_phone_total" in counts or "canonical_no_phone_total" in counts
+    ):
+        try:
+            no_phone_n = max(
+                0,
+                int(
+                    counts.get("no_phone_total")
+                    or counts.get("canonical_no_phone_total")
+                    or 0
+                ),
+            )
+        except (TypeError, ValueError):
+            no_phone_n = 0
+    if no_phone_n > 0:
         bags.extend(
             build_evidence_bags_from_reason_counts_v1(
                 store_slug=str(pub.get("store_slug") or ""),
                 reason_counts={},
-                no_phone=max(1, int(cc.get("no_phone") or 1)),
+                no_phone=no_phone_n,
             )
         )
     return bags[:MAX_BAGS]
@@ -249,9 +267,10 @@ def load_bounded_evidence_bags_v1(
     publication: Mapping[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     """
-    Load capped reason rows for a store. Off-path only.
+    Load bounded hesitation counts for a store. Off-path only.
 
-    Uses LIMIT MAX_REASON_ROWS — never unbounded history.
+    Reuses ``merchant_reason_counts_store_window`` (store_slug + window).
+    Failures are logged; they do not silently zero evidence behind ``except: pass``.
     """
     slug = (store_slug or "").strip()
     if not slug:
@@ -282,32 +301,48 @@ def load_bounded_evidence_bags_v1(
             shipping_stage = True
 
     try:
-        from extensions import db
-        from models import CartRecoveryReason
-
-        since = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(
-            days=max(1, int(window_days))
+        from services.dashboard_kpi_time_v1 import (  # noqa: PLC0415
+            merchant_reason_counts_store_window,
         )
-        # store_id column may hold slug or numeric — try slug match first.
-        q = (
-            db.session.query(CartRecoveryReason.reason)
-            .filter(CartRecoveryReason.store_id == slug)
-            .filter(CartRecoveryReason.created_at >= since)
-            .order_by(CartRecoveryReason.created_at.desc())
-            .limit(MAX_REASON_ROWS)
-        )
-        for (reason,) in q.all():
-            reason_counts[_normalize_reason(str(reason or ""))] += 1
-    except Exception:  # noqa: BLE001
-        pass
 
-    # no_phone from publication communication_condition / cart counts if present
-    cc = pub.get("communication_condition") if isinstance(pub, Mapping) else None
-    if isinstance(cc, Mapping) and cc.get("constrained"):
-        no_phone = max(no_phone, 1)
-    sc = pub.get("store_condition") if isinstance(pub, Mapping) else None
-    if isinstance(sc, Mapping) and "تواصل" in str(sc.get("summary_ar") or ""):
-        no_phone = max(no_phone, 1)
+        raw_counts = merchant_reason_counts_store_window(
+            dash_store,
+            days=max(1, int(window_days)),
+            store_slug=slug,
+        )
+        for key, raw in (raw_counts or {}).items():
+            nk = _normalize_reason(str(key or ""))
+            if not nk:
+                continue
+            try:
+                n = max(0, int(raw or 0))
+            except (TypeError, ValueError):
+                n = 0
+            if n:
+                reason_counts[nk] += n
+    except (SQLAlchemyError, OSError, TypeError, ValueError) as exc:
+        log.warning(
+            "diagnostic_evidence_bag reason_counts failed store_slug=%s err=%s",
+            slug[:64],
+            exc,
+        )
+
+    # Authoritative no-phone only — never infer from leftover Arabic / constrained copy.
+    scounts = pub.get("merchant_store_cart_counts") if isinstance(pub, Mapping) else None
+    if isinstance(scounts, Mapping) and (
+        "no_phone_total" in scounts or "canonical_no_phone_total" in scounts
+    ):
+        try:
+            no_phone = max(
+                0,
+                int(
+                    scounts.get("no_phone_total")
+                    or scounts.get("canonical_no_phone_total")
+                    or 0
+                ),
+            )
+        except (TypeError, ValueError):
+            no_phone = 0
 
     if not reason_counts and shipping_stage:
         # Stage observation without subtype rows — still emit bag for honest insufficiency.

@@ -21006,6 +21006,10 @@ def _api_json_dashboard_summary(
         "merchant_reason_rows_week": reason_rows,
         "merchant_reason_counts_week": dict(reason_counts_w or {}),
         "merchant_reason_counts_month": dict(reason_counts_m or {}),
+        "hesitation_evidence_v1": {
+            "hesitation_total": sum(int(v or 0) for v in (reason_counts_w or {}).values()),
+            "hesitation_distribution": dict(reason_counts_w or {}),
+        },
         "merchant_reason_insight_ar": reason_insight,
         "merchant_reason_rows_month": reason_rows_month,
         "merchant_reason_recommendations_ar": merchant_reason_recommendations_ar,

@@ -75,7 +75,18 @@ def _teasers(summary: Mapping[str, Any]) -> dict[str, Any]:
 def _hesitation_from_summary(
     summary: Mapping[str, Any],
 ) -> tuple[int, dict[str, int]]:
-    """Optional lightweight hesitation counts already on the summary."""
+    """Bounded hesitation already on the summary — same owner as COL."""
+    week = summary.get("merchant_reason_counts_week")
+    if isinstance(week, Mapping) and week:
+        dist = {
+            str(k).strip().lower(): _as_int(v)
+            for k, v in week.items()
+            if str(k).strip()
+        }
+        dist = {k: v for k, v in dist.items() if k and v > 0}
+        total = sum(dist.values())
+        if total or dist:
+            return total, dist
     for key in ("hesitation_evidence_v1", "operational_guidance_evidence_v1"):
         blob = summary.get(key)
         if not isinstance(blob, Mapping):

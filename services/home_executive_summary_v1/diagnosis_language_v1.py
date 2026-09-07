@@ -91,10 +91,30 @@ def _teaser_counts(summary: Mapping[str, Any] | None) -> dict[str, int]:
     return {"no_phone": no_phone, "waiting": waiting, "schedules": schedules}
 
 
-def _contact_blocked_evidence(text: str, *, no_phone: int) -> bool:
-    t = _norm(text)
-    if no_phone > 0:
+def _authoritative_no_phone(summary: Mapping[str, Any] | None) -> Optional[int]:
+    src = summary if isinstance(summary, Mapping) else {}
+    counts = src.get("merchant_store_cart_counts")
+    if not isinstance(counts, Mapping):
+        return None
+    if "no_phone_total" not in counts and "canonical_no_phone_total" not in counts:
+        return None
+    try:
+        return max(
+            0,
+            int(counts.get("no_phone_total") or counts.get("canonical_no_phone_total") or 0),
+        )
+    except (TypeError, ValueError):
+        return None
+
+
+def _contact_blocked_evidence(
+    text: str, *, no_phone: int, authoritative_no_phone: Optional[int] = None
+) -> bool:
+    if authoritative_no_phone == 0:
+        return False
+    if no_phone > 0 or (authoritative_no_phone or 0) > 0:
         return True
+    t = _norm(text)
     return any(
         k in t
         for k in (
@@ -109,7 +129,11 @@ def _contact_blocked_evidence(text: str, *, no_phone: int) -> bool:
 
 
 def _health_diagnosis(
-    sec: Mapping[str, Any], *, no_phone: int, store_ok: Any
+    sec: Mapping[str, Any],
+    *,
+    no_phone: int,
+    store_ok: Any,
+    authoritative_no_phone: Optional[int] = None,
 ) -> tuple[str, str]:
     text = _norm(sec.get("summary_ar"))
     status = _norm(sec.get("status_ar"))
@@ -118,8 +142,12 @@ def _health_diagnosis(
             f"{EVIDENCE_SUGGESTS_AR} أن جاهزية المتجر غير مكتملة لأن الربط غير مكتمل.",
             REC_SETTINGS_AR,
         )
-    if _contact_blocked_evidence(text, no_phone=no_phone) or (
-        no_phone > 0 and ("عاجل" in status or "متابعة" in status or "مقيدة" in text)
+    if _contact_blocked_evidence(
+        text, no_phone=no_phone, authoritative_no_phone=authoritative_no_phone
+    ) or (
+        authoritative_no_phone != 0
+        and no_phone > 0
+        and ("عاجل" in status or "متابعة" in status or "مقيدة" in text)
     ):
         return (
             "الأدلة تشير إلى أن متابعة العملاء مقيدة لأن كثيراً من السلال "
@@ -231,10 +259,17 @@ def _product_diagnosis(sec: Mapping[str, Any]) -> tuple[str, str]:
 
 
 def _communication_diagnosis(
-    sec: Mapping[str, Any], *, no_phone: int, waiting: int, schedules: int
+    sec: Mapping[str, Any],
+    *,
+    no_phone: int,
+    waiting: int,
+    schedules: int,
+    authoritative_no_phone: Optional[int] = None,
 ) -> tuple[str, str]:
     text = _norm(sec.get("summary_ar"))
-    if _contact_blocked_evidence(text, no_phone=no_phone) or no_phone > 0:
+    if _contact_blocked_evidence(
+        text, no_phone=no_phone, authoritative_no_phone=authoritative_no_phone
+    ) or (authoritative_no_phone != 0 and no_phone > 0):
         return (
             "لا يمكن التواصل مع بعض العملاء لأن رقم الهاتف غير متاح.",
             REC_COMMUNICATION_AR,
@@ -258,10 +293,17 @@ def _communication_diagnosis(
 
 
 def _carts_diagnosis(
-    sec: Mapping[str, Any], *, no_phone: int, waiting: int
+    sec: Mapping[str, Any],
+    *,
+    no_phone: int,
+    waiting: int,
+    authoritative_no_phone: Optional[int] = None,
 ) -> tuple[str, str]:
     text = _norm(sec.get("summary_ar"))
-    if no_phone > 0 or "مقيدة" in text:
+    contact_blocked = authoritative_no_phone != 0 and (
+        no_phone > 0 or (authoritative_no_phone is None and "مقيدة" in text)
+    )
+    if contact_blocked:
         return (
             f"{BELIEVES_AR} متابعة بعض السلال مقيدة لأن معلومات التواصل غير متاحة.",
             REC_COMMUNICATION_AR,
@@ -305,6 +347,7 @@ def _apply_persisted_diagnostics_v1(
     *,
     primary: Mapping[str, Any],
     all_pubs: list[Mapping[str, Any]],
+    authoritative_no_phone: Optional[int] = None,
 ) -> list[dict[str, Any]]:
     """Stamp Home cards from persisted publications by family (no inventing)."""
     by_family = {
@@ -315,6 +358,10 @@ def _apply_persisted_diagnostics_v1(
     checkout = by_family.get("checkout_abandonment_after_shipping") or primary
     interest = by_family.get("interest_without_purchase")
     contact = by_family.get("contact_followup_blocked")
+    if authoritative_no_phone == 0:
+        contact = None
+        if str(primary.get("diagnostic_family") or "") == "contact_followup_blocked":
+            checkout = by_family.get("checkout_abandonment_after_shipping") or {}
     product_dx = checkout if _norm(checkout.get("diagnosis_ar")) else interest
 
     out: list[dict[str, Any]] = []
@@ -357,9 +404,13 @@ def apply_home_diagnosis_language_v1(
         if isinstance(all_pubs, list)
         else ([dx] if isinstance(dx, Mapping) else [])
     )
+    auth_n = _authoritative_no_phone(src)
     if isinstance(dx, Mapping) and _norm(dx.get("diagnosis_ar")):
         return _apply_persisted_diagnostics_v1(
-            sections, primary=dx, all_pubs=pubs or [dx]
+            sections,
+            primary=dx,
+            all_pubs=pubs or [dx],
+            authoritative_no_phone=auth_n,
         )
 
     counts = _teaser_counts(summary)
@@ -377,7 +428,12 @@ def apply_home_diagnosis_language_v1(
             continue
         sid = str(sec.get("id") or "")
         if sid == "health":
-            d, r = _health_diagnosis(sec, no_phone=counts["no_phone"], store_ok=store_ok)
+            d, r = _health_diagnosis(
+                sec,
+                no_phone=counts["no_phone"],
+                store_ok=store_ok,
+                authoritative_no_phone=auth_n,
+            )
         elif sid == "decisions":
             d, r = _decisions_diagnosis(sec)
         elif sid in {"situations", "observations"}:
@@ -388,10 +444,14 @@ def apply_home_diagnosis_language_v1(
                 no_phone=counts["no_phone"],
                 waiting=counts["waiting"],
                 schedules=counts["schedules"],
+                authoritative_no_phone=auth_n,
             )
         elif sid == "carts":
             d, r = _carts_diagnosis(
-                sec, no_phone=counts["no_phone"], waiting=counts["waiting"]
+                sec,
+                no_phone=counts["no_phone"],
+                waiting=counts["waiting"],
+                authoritative_no_phone=auth_n,
             )
         else:
             out.append(sec)
