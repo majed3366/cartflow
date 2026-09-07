@@ -21,7 +21,6 @@ from models import (
 from services.live_reality_lab_v1.contract_v1 import (
     DATASET_VERSION,
     LAB_CART_ID_PREFIX,
-    LAB_CART_ID_PREFIX_ANY,
     LAB_INTEGRATION_SOURCE,
     LAB_REASON_SOURCE,
     LAB_STORE_SLUG,
@@ -59,7 +58,6 @@ def count_lab_no_phone_carts(store: Store) -> int:
     rows = (
         db.session.query(AbandonedCart)
         .filter(AbandonedCart.store_id == int(store.id))
-        .filter(AbandonedCart.zid_cart_id.like(LAB_CART_ID_PREFIX_ANY + "%"))
         .all()
     )
     n = 0
@@ -94,14 +92,14 @@ def reset_lab_tenant_data_v1(
 
     reason_q = db.session.query(CartRecoveryReason).filter(
         CartRecoveryReason.store_slug == LAB_STORE_SLUG,
-        CartRecoveryReason.source == LAB_REASON_SOURCE,
     )
     reason_n = reason_q.count()
     reason_q.delete(synchronize_session=False)
 
+    # Store-scoped: leftover hyphenated / diagnostic IDs (lrl-quality-*,
+    # diag-cart-*) do not match lrl_% and must not survive reset.
     cart_q = db.session.query(AbandonedCart).filter(
         AbandonedCart.store_id == int(store.id),
-        AbandonedCart.zid_cart_id.like(LAB_CART_ID_PREFIX_ANY + "%"),
     )
     cart_n = cart_q.count()
     cart_q.delete(synchronize_session=False)
@@ -716,10 +714,7 @@ def verify_lab_scenario_v1(
 
         cart_n = (
             db.session.query(AbandonedCart)
-            .filter(
-                AbandonedCart.store_id == int(store.id),
-                AbandonedCart.zid_cart_id.like(LAB_CART_ID_PREFIX_ANY + "%"),
-            )
+            .filter(AbandonedCart.store_id == int(store.id))
             .count()
         )
         catalog_n = (

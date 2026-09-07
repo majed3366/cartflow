@@ -193,6 +193,60 @@ class LiveRealityLabIntegrationTests(unittest.TestCase):
         )
         self.assertEqual(lab_left, 0)
 
+    def test_reset_deletes_hyphenated_and_diag_lab_store_carts(self) -> None:
+        from models import AbandonedCart, Store
+        from services.live_reality_lab_v1 import (
+            LAB_STORE_SLUG,
+            reset_lab_tenant_data_v1,
+        )
+
+        lab = (
+            self.db.session.query(Store)
+            .filter(Store.zid_store_id == LAB_STORE_SLUG)
+            .one()
+        )
+        other = (
+            self.db.session.query(Store)
+            .filter(Store.zid_store_id == "cf_founder_evaluation")
+            .one()
+        )
+        self.db.session.add(
+            AbandonedCart(
+                store_id=int(lab.id),
+                zid_cart_id="lrl-quality-10",
+                status="detected",
+            )
+        )
+        self.db.session.add(
+            AbandonedCart(
+                store_id=int(lab.id),
+                zid_cart_id="diag-cart-vip",
+                status="detected",
+            )
+        )
+        self.db.session.add(
+            AbandonedCart(
+                store_id=int(other.id),
+                zid_cart_id="founder-keep-reset-hygiene",
+                customer_phone="966500000001",
+                status="detected",
+            )
+        )
+        self.db.session.commit()
+        reset_lab_tenant_data_v1(authenticated_store_slug=LAB_STORE_SLUG)
+        lab_left = (
+            self.db.session.query(AbandonedCart)
+            .filter(AbandonedCart.store_id == int(lab.id))
+            .count()
+        )
+        foreign = (
+            self.db.session.query(AbandonedCart)
+            .filter(AbandonedCart.zid_cart_id == "founder-keep-reset-hygiene")
+            .count()
+        )
+        self.assertEqual(lab_left, 0)
+        self.assertEqual(foreign, 1)
+
     def test_R7_coexistence_and_capacity(self) -> None:
         from services.live_reality_lab_v1 import (
             LAB_STORE_SLUG,

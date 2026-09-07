@@ -187,6 +187,61 @@ class CartsSnapshotLawTests(unittest.TestCase):
         self.assertIn("DashboardSnapshot.store_slug == LAB_STORE_SLUG", src)
         self.assertIn("dashboard_snapshots", src)
 
+    def test_thirty_eight_production_shaped_rows_fit_default_cap(self) -> None:
+        import json
+
+        from services.dashboard_snapshot_normal_carts_slim_v1 import (
+            slim_normal_carts_payload_for_snapshot,
+        )
+        from services.dashboard_snapshot_v1 import (
+            SNAPSHOT_TYPE_NORMAL_CARTS,
+            encode_snapshot_payload_json,
+            snapshot_payload_json_cap,
+        )
+
+        fat = {
+            "recovery_key": "cf_live_reality_lab:lrl_v2_00",
+            "zid_cart_id": "lrl_v2_00",
+            "merchant_cart_bucket": "attention",
+            "cart_detail_projection_v1": {"lines": ["detail"] * 40, "note": "نص " * 80},
+            "merchant_intelligence_v1": {"blob": "i" * 800},
+            "merchant_proof_surface_v1": {"proof": "p" * 400},
+            "merchant_explanation_v1": {"what_happened_ar": "شرح " * 40},
+            "merchant_product_name": "عود ملكي مركز",
+            "merchant_cart_value": 189.0,
+            "merchant_time_relative_ar": "منذ 1 دقيقة",
+        }
+        rows = []
+        for i in range(38):
+            row = dict(fat)
+            row["recovery_key"] = f"cf_live_reality_lab:lrl_v2_{i:02d}"
+            row["zid_cart_id"] = f"lrl_v2_{i:02d}"
+            rows.append(row)
+        payload = {
+            "merchant_carts_page_rows": rows,
+            "merchant_archived_carts_page_rows": [],
+            "merchant_cart_filter_counts": {"all": 38, "attention": 38, "nophone": 0},
+        }
+        slim = slim_normal_carts_payload_for_snapshot(payload)
+        raw = json.dumps(slim, ensure_ascii=False, default=str)
+        cap = snapshot_payload_json_cap(SNAPSHOT_TYPE_NORMAL_CARTS)
+        self.assertGreaterEqual(cap, 1_200_000)
+        self.assertLessEqual(len(raw.encode("utf-8")), cap)
+        encoded = encode_snapshot_payload_json(slim, snapshot_type=SNAPSHOT_TYPE_NORMAL_CARTS)
+        self.assertEqual(encoded, raw)
+
+    def test_lab_reset_cart_delete_is_store_scoped_not_prefix(self) -> None:
+        from pathlib import Path
+
+        src = Path("services/live_reality_lab_v1/apply_v1.py").read_text(
+            encoding="utf-8"
+        )
+        reset_fn = src.split("def reset_lab_tenant_data_v1", 1)[1].split(
+            "def _reset_lab_extended_truth", 1
+        )[0]
+        self.assertIn("AbandonedCart.store_id == int(store.id)", reset_fn)
+        self.assertNotIn("LAB_CART_ID_PREFIX_ANY", reset_fn)
+
 
 if __name__ == "__main__":
     unittest.main()

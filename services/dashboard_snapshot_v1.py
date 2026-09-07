@@ -139,7 +139,8 @@ def snapshot_ttl_seconds(snapshot_type: str) -> int:
 
 _DEFAULT_SNAPSHOT_JSON_CAP = 65_000
 _SUMMARY_SNAPSHOT_JSON_CAP = 256_000
-_NORMAL_CARTS_SNAPSHOT_JSON_CAP = 512_000
+# 38 production-shaped slim rows measured ~860KB; 512KB rejected first-write.
+_NORMAL_CARTS_SNAPSHOT_JSON_CAP = 1_200_000
 _DECISION_WORKSPACE_SNAPSHOT_JSON_CAP = 256_000
 
 
