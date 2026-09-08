@@ -68,6 +68,7 @@
   var SURFACE_PRODUCT_INIT = {
     home: false,
     workspace: false,
+    products: false,
     carts: false,
     comms: false,
     settings: false,
@@ -567,6 +568,12 @@
       var wsRoot = $("#cf2-workspace-root");
       if (wsRoot && window.CartFlowUiV2Workspace) {
         window.CartFlowUiV2Workspace.loadAndPaint(wsRoot);
+        started = true;
+      }
+    } else if (section === "products") {
+      var productsRoot = $("#cf2-products-root");
+      if (productsRoot && window.CartFlowUiV2Products) {
+        window.CartFlowUiV2Products.loadAndPaint(productsRoot);
         started = true;
       }
     } else if (section === "carts") {

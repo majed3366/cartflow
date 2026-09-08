@@ -1,0 +1,12 @@
+{
+  "mobile_clipping": 0,
+  "shots": [
+    "01_products_first_view_mobile.png",
+    "02_product_strong_signal_mobile.png",
+    "03_product_numeric_evidence_mobile.png",
+    "04_product_unknown_exposure_mobile.png",
+    "05_product_missing_identity_mobile.png",
+    "06_products_full_flow_mobile.png"
+  ],
+  "deploy": "NO"
+}

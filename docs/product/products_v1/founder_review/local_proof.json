@@ -1,0 +1,12 @@
+{
+  "mobile_clipping": 0,
+  "shots": [
+    "01_products_first_view_mobile.png",
+    "02_product_attention_mobile.png",
+    "03_product_numeric_truth_mobile.png",
+    "04_product_purchase_vs_cart_mobile.png",
+    "05_product_exposure_truth_mobile.png",
+    "06_products_full_flow_mobile.png"
+  ],
+  "deploy": "NO"
+}

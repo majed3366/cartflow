@@ -1,0 +1,180 @@
+/* Products V1.2 — evidence density. Presentation only. No clip. */
+
+body[data-cf-ui="v2"] .cf2-prd {
+  display: block;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 0 0 1.5rem;
+  overflow-x: hidden;
+}
+
+body[data-cf-ui="v2"] .cf2-prd__intro {
+  margin: 0 0 0.7rem;
+}
+
+body[data-cf-ui="v2"] .cf2-prd__note {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--cf2-muted, #5a6577);
+  overflow-wrap: break-word;
+}
+
+body[data-cf-ui="v2"] .cf2-prd__cta {
+  margin: 0.28rem 0 0;
+}
+
+body[data-cf-ui="v2"] .cf2-prd__nav {
+  color: #0d6e69;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+body[data-cf-ui="v2"] .cf2-prd__name {
+  margin: 0 0 0.12rem;
+  color: #082048;
+  font-size: 1.12rem;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: break-word;
+}
+
+body[data-cf-ui="v2"] .cf2-prd__identity,
+body[data-cf-ui="v2"] .cf2-prd__group-label {
+  margin: 0 0 0.22rem;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: var(--cf2-muted, #5a6577);
+  overflow-wrap: break-word;
+}
+
+body[data-cf-ui="v2"] .cf2-prd__price {
+  margin: 0 0 0.35rem;
+  color: #082048;
+  font-size: 0.98rem;
+  font-weight: 700;
+}
+
+body[data-cf-ui="v2"] .cf2-prd__strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0;
+  margin: 0 0 0.42rem;
+  line-height: 1.35;
+}
+
+body[data-cf-ui="v2"] .cf2-prd__metric {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.22rem;
+}
+
+body[data-cf-ui="v2"] .cf2-prd__metric-n {
+  color: #082048;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+body[data-cf-ui="v2"] .cf2-prd__metric-l {
+  color: #5a6577;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+body[data-cf-ui="v2"] .cf2-prd__dot {
+  padding: 0 0.38rem;
+  color: #9aa3b2;
+  font-weight: 600;
+}
+
+body[data-cf-ui="v2"] .cf2-prd__signal {
+  margin: 0 0 0.38rem;
+  padding: 0.36rem 0.5rem;
+  border-radius: 10px;
+  background: rgba(8, 32, 72, 0.045);
+}
+
+body[data-cf-ui="v2"] .cf2-prd__signal-k {
+  margin: 0 0 0.1rem;
+  font-size: 0.7rem;
+  color: var(--cf2-muted, #5a6577);
+}
+
+body[data-cf-ui="v2"] .cf2-prd__signal-v {
+  margin: 0;
+  color: #082048;
+  font-size: 0.86rem;
+  line-height: 1.4;
+  overflow-wrap: break-word;
+}
+
+body[data-cf-ui="v2"] .cf2-prd__exposure {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.4rem;
+  margin: 0;
+  color: #7a8494;
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+body[data-cf-ui="v2"] .cf2-prd__exposure-line,
+body[data-cf-ui="v2"] .cf2-prd__exposure-n,
+body[data-cf-ui="v2"] .cf2-prd__empty {
+  margin: 0;
+  overflow-wrap: break-word;
+}
+
+body[data-cf-ui="v2"] .cf2-prd__empty {
+  color: #082048;
+  font-size: 0.86rem;
+}
+
+body[data-cf-ui="v2"] .cf2-prd__card {
+  display: block;
+  margin: 0 0 0.5rem;
+  padding: 0.68rem 0.8rem;
+  border: 1px solid rgba(8, 32, 72, 0.1);
+  border-radius: 14px;
+  background: #fff;
+  overflow-wrap: break-word;
+}
+
+body[data-cf-ui="v2"] .cf2-prd__card[data-cf2-product-truth-strength="rich"] {
+  border-inline-start: 3px solid #082048;
+}
+
+body[data-cf-ui="v2"] .cf2-prd__card[data-cf2-product-truth-strength="limited"] {
+  border-inline-start: 3px solid rgba(8, 32, 72, 0.14);
+}
+
+body[data-cf-ui="v2"] .cf2-prd__card[data-cf2-product-truth-strength="limited"] .cf2-prd__metric-l,
+body[data-cf-ui="v2"] .cf2-prd__card[data-cf2-product-truth-strength="limited"] .cf2-prd__signal-v {
+  color: #4a5565;
+}
+
+body[data-cf-ui="v2"] .cf2-prd__card[data-cf2-product-truth-strength="degraded"],
+body[data-cf-ui="v2"] .cf2-prd__card[data-cf2-prd-kind="insufficient"],
+body[data-cf-ui="v2"] .cf2-prd__card[data-cf2-prd-kind="degraded_identity"] {
+  background: #f7f8fa;
+  border-style: dashed;
+}
+
+body[data-cf-ui="v2"] .cf2-prd__card[data-cf2-product-truth-strength="degraded"] .cf2-prd__name {
+  font-weight: 600;
+  color: #3a4658;
+}
+
+body[data-cf-ui="v2"] .cf2-prd__group {
+  margin: 0.55rem 0 0;
+}
+
+@media (max-width: 430px) {
+  body[data-cf-ui="v2"] .cf2-prd {
+    padding-inline: 0;
+  }
+}

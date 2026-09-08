@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="/static/merchant_ui_v2_frame.css?v={{ merchant_setup_render_build | default('unknown') }}-shellint1-iarec3-cmexec1">
 <link rel="stylesheet" href="/static/merchant_ui_v2_language.css?v={{ merchant_setup_render_build | default('unknown') }}-shellint1-semvis1">
 <link rel="stylesheet" href="/static/merchant_ui_v2_home.css?v={{ merchant_setup_render_build | default('unknown') }}-shellint1-langrest1-semvis1-psg1-rdfix1-pvfix1-mpcr1-setcomp2-ogl1-col1r1-cda1-fit1-cdc1-cm1-cm2-mcp2-mms1-psc1-cmexec1-ldh1-fux13">
+<link rel="stylesheet" href="/static/merchant_ui_v2_products.css?v={{ merchant_setup_render_build | default('unknown') }}-prd20">
 <link rel="stylesheet" href="/static/merchant_ui_v2_workspace.css?v={{ merchant_setup_render_build | default('unknown') }}-wscimfp1-langrest1-semvis1-psg1-rdfix1-pvfix1-ogl1-col1r1-cda1-fit1-cdc1-cm1-cm2-mcp2-mms1-psc1-cmexec1-ldh1-fux13">
 <link rel="stylesheet" href="/static/commercial_decision_arc_production_v1.css?v={{ merchant_setup_render_build | default('unknown') }}-cda1-fit1-cmexec1">
 <link rel="stylesheet" href="/static/merchant_ui_v2_carts.css?v={{ merchant_setup_render_build | default('unknown') }}-cartsempty1-assim1-resid1-psg1-rdfix1-pvfix1">
@@ -88,8 +89,11 @@
           </div>
         </section>
 
-        <section class="cf2-page" data-cf2-page="products" hidden>
-          <p class="cf2-stub">قسم المنتجات غير متاح في هذه الشاشة حالياً.</p>
+        <section class="cf2-page" data-cf2-page="products" hidden aria-label="المنتجات">
+          <p class="cf2-page__question">أي المنتجات تستحق انتباهي، وماذا يحدث تجارياً لكل منتج؟</p>
+          <div id="cf2-products-root" aria-live="polite">
+            <p class="cf2-loading">جاري تحميل حقيقة المنتجات…</p>
+          </div>
         </section>
         <section class="cf2-page" data-cf2-page="carts" hidden aria-label="السلال">
           <p class="cf2-page__question">ما السلال التي تحتاج انتباهي الآن، وما الإجراء التشغيلي المطلوب لكل سلة؟</p>
@@ -149,6 +153,7 @@
 <script defer src="/static/commercial_decision_arc_production_v1.js?v={{ merchant_setup_render_build | default('unknown') }}-cda1-fit1-cmexec1"></script>
 <script defer src="/static/merchant_ui_v2_home.js?v={{ merchant_setup_render_build | default('unknown') }}-shellint1-langrest1-semvis1-psg1-rdfix1-pvfix1-mpcr1-setcomp2-ogl1-col1r1-cda1-fit1-cdc1-cm1-cm2-mcp2-mms1-psc1-cmexec1-ldh1-fux13"></script>
 <script defer src="/static/merchant_ui_v2_workspace.js?v={{ merchant_setup_render_build | default('unknown') }}-wsmobh1-langrest1-semvis1-psg1-rdfix1-pvfix1-ogl1-col1r1-cda1-fit1-cdc1-cm1-cm2-mcp2-mms1-psc1-cmexec1-ldh1-fux13"></script>
+<script defer src="/static/merchant_ui_v2_products.js?v={{ merchant_setup_render_build | default('unknown') }}-prd20"></script>
 <script defer src="/static/merchant_ui_v2_carts.js?v={{ merchant_setup_render_build | default('unknown') }}-cartsempty1-psg1-rdfix1-pvfix1-mpcr1-setcomp2"></script>
 <script defer src="/static/merchant_ui_v2_comms.js?v={{ merchant_setup_render_build | default('unknown') }}-commshier1-psg1-rdfix1-pvfix1-mpcr1-setcomp2"></script>
 <script defer src="/static/merchant_store_connection.js?v={{ merchant_setup_render_build | default('unknown') }}-setcomp1"></script>
@@ -162,6 +167,6 @@
 <script defer src="/static/merchant_widget_panel.js?v={{ merchant_setup_render_build | default('unknown') }}-setcomp2-ogl1"></script>
 <script defer src="/static/merchant_ui_v2_packages.js?v={{ merchant_setup_render_build | default('unknown') }}-pkgv4-pkgv5"></script>
 <script defer src="/static/merchant_ui_v2_settings.js?v={{ merchant_setup_render_build | default('unknown') }}-qpool1-psg1-rdfix1-pvfix1-mpcr1-setcomp2-iarec3-recv4-cmexec1"></script>
-<script defer src="/static/merchant_ui_v2_app.js?v={{ merchant_setup_render_build | default('unknown') }}-nvis1-fanout1-mpcr1-setcomp2-iarec3-pkgv4-pkgv5-ldh1-fux13"></script>
+<script defer src="/static/merchant_ui_v2_app.js?v={{ merchant_setup_render_build | default('unknown') }}-nvis1-fanout1-mpcr1-setcomp2-iarec3-pkgv4-pkgv5-ldh1-fux13-prd1"></script>
 </body>
 </html>
