@@ -1,0 +1,96 @@
+{
+  "deploy": "YES",
+  "sha": "8fa89dfa316a32d5b252eb554d6edb6b78d076b4",
+  "shots": [
+    "products_v1_2_live_top_mobile.png",
+    "products_v1_2_live_truth_rich_mobile.png",
+    "products_v1_2_live_truth_limited_mobile.png",
+    "products_v1_2_live_identity_degraded_mobile.png"
+  ],
+  "r17_apply": {
+    "status": 200,
+    "ok": true
+  },
+  "products": {
+    "http": 200,
+    "ok": true,
+    "store_slug": "cf_live_reality_lab",
+    "lab_tenant": true,
+    "counts": {
+      "products": 11,
+      "named": 10,
+      "missing_name": 1
+    },
+    "query_delta": 5,
+    "n_plus_one": 0,
+    "frontend_ranking": 0,
+    "unique_visitor_claim": 0,
+    "read_model_owner": "product_read_model_contract_v1",
+    "oud": {
+      "name": "عود ملكي مركز",
+      "signal": "السعر تكرر في 5 أسباب تردد مسجّلة لهذا المنتج.",
+      "exposure": {
+        "state": "LAB_SYNTHETIC",
+        "count": 5,
+        "heading_ar": "زيارات تجريبية",
+        "value_ar": "5",
+        "note_ar": "ليست زيارات متجر حقيقية.",
+        "label_ar": "زيارات تجريبية: 5. ليست زيارات متجر حقيقية.",
+        "lab_synthetic_visit_count": 5,
+        "truth_class": "LAB-SYNTHETIC PRODUCTION-SHAPED VISIT TRUTH"
+      }
+    },
+    "gift": {
+      "name": "طقم العناية الفاخر",
+      "signal": "توجد 4 سلال بقيمة 996 ر.س دون مشتريات مسجّلة.",
+      "exposure": {
+        "state": "NONE_RECORDED",
+        "count": null,
+        "heading_ar": "بيانات الزيارة",
+        "value_ar": "غير متاحة بعد",
+        "note_ar": null,
+        "label_ar": "غير متاحة بعد",
+        "truth_class": "LAB-SYNTHETIC PRODUCTION-SHAPED VISIT TRUTH"
+      }
+    },
+    "missing": {
+      "name": "منتج بدون اسم في الكتالوج",
+      "identity": "هوية الكتالوج غير مكتملة"
+    }
+  },
+  "home_has_products_key": false,
+  "summary_http": 200,
+  "truth_strength": {
+    "nf-oud-royal": "rich",
+    "nf-hair-serum": "rich",
+    "nf-amber-night": "rich",
+    "nf-musk-tahara": "rich",
+    "nf-rose-damascus": "rich",
+    "nf-gift-set": "limited",
+    "nf-body-butter": "limited",
+    "nf-face-cleanser": "limited",
+    "nf-hand-cream": "limited",
+    "nf-oud-spray": "limited",
+    "nf-missing-name": "degraded"
+  },
+  "paint": {
+    "short_signal": true,
+    "needs_attention_count": 0,
+    "lab_visit": true,
+    "unknown": true,
+    "missing_title": true,
+    "cta_separated": true,
+    "frontend_ranking": true
+  },
+  "mobile_clipping": 0,
+  "home_has_prd_marker": 1,
+  "workspace_has_prd_marker": 1,
+  "carts_has_prd_marker": 1,
+  "founder_eval": {
+    "http": 200,
+    "store_slug": "cf_founder_evaluation",
+    "lab_tenant": false,
+    "product_count": 0,
+    "has_lab_oud": false
+  }
+}
