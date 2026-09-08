@@ -1076,11 +1076,42 @@ body[data-cf-ui="v2"] .cf2-mission__btn--quiet {
   border-color: rgba(20, 24, 28, 0.2);
 }
 body[data-cf-ui="v2"] a.cf2-mission__btn--exec {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  min-height: 44px;
   text-decoration: none;
-  background: #fff;
-  color: #0d6e69;
-  border-color: #18b0a8;
-  box-shadow: inset 3px 0 0 #18b0a8;
+  background: rgba(24, 176, 168, 0.14);
+  color: #082048;
+  border: 1.5px solid #0d6e69;
+  border-radius: 8px;
+  box-shadow: none;
+  font-weight: 700;
+}
+body[data-cf-ui="v2"] a.cf2-mission__btn--exec:hover {
+  background: rgba(24, 176, 168, 0.22);
+}
+body[data-cf-ui="v2"] a.cf2-mission__btn--exec:active {
+  background: rgba(24, 176, 168, 0.3);
+}
+body[data-cf-ui="v2"] a.cf2-mission__btn--exec:focus-visible {
+  outline: 2px solid #0d6e69;
+  outline-offset: 2px;
+}
+body[data-cf-ui="v2"] .cf2-mission__btn-cue {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1em;
+  height: 1em;
+  flex: 0 0 auto;
+  color: currentColor;
+}
+body[data-cf-ui="v2"] .cf2-mission__btn-cue-svg {
+  display: block;
+  width: 0.95em;
+  height: 0.95em;
 }
 body[data-cf-ui="v2"] .cf2-mission__hint,
 body[data-cf-ui="v2"] .cf2-mission__status {

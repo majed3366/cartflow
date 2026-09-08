@@ -158,10 +158,9 @@ body[data-cf-ui="v2"] .cf2-home__satellite .cf2-home__monitor-body {
 }
 
 body[data-cf-ui="v2"] .cf2-home__satellite[data-cf2-distance="far"] .cf2-home__monitor-body {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 body[data-cf-ui="v2"] .cf2-home__spine {
@@ -288,7 +287,12 @@ body[data-cf-ui="v2"] .cf2-home__title {
   line-height: 1.2;
   letter-spacing: -0.03em;
   color: var(--cf2-navy);
-  max-width: 18ch;
+  max-width: 46rem;
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: manual;
 }
 
 body[data-cf-ui="v2"] .cf2-home__why {
@@ -889,6 +893,17 @@ body[data-cf-ui="v2"] .cf2-col__secondary--signal .cf2-col__sec-title {
   font-weight: 600;
   line-height: 1.3;
   color: color-mix(in srgb, var(--cf2-ink, #1a2332) 82%, transparent);
+  overflow-wrap: break-word;
+  white-space: normal;
+}
+body[data-cf-ui="v2"] .cf2-col__sec-line {
+  grid-column: 1;
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--cf2-muted, #5a6577);
+  overflow-wrap: break-word;
+  white-space: normal;
 }
 body[data-cf-ui="v2"] .cf2-col__sec-link {
   grid-column: 2;
@@ -901,13 +916,6 @@ body[data-cf-ui="v2"] .cf2-col__sec-link {
   text-decoration: underline;
   text-underline-offset: 2px;
   white-space: nowrap;
-}
-body[data-cf-ui="v2"] .cf2-col__sec-line {
-  grid-column: 1;
-  margin: 0;
-  font-size: 0.78rem;
-  line-height: 1.35;
-  color: var(--cf2-muted, #5a6577);
 }
 body[data-cf-ui="v2"] .cf2-col__obj,
 body[data-cf-ui="v2"] .cf2-col__sec-why,

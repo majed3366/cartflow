@@ -5,14 +5,14 @@
   width: 100%;
 }
 
-/* One organism: spine anchors core; controlled content width (intentional silence beyond) */
+/* One organism: thin state rail; content owns attention */
 [data-cf-ui="v2"] .cf-cda__organism {
   position: relative;
   display: grid;
-  grid-template-columns: 48px minmax(0, 1fr);
-  column-gap: 2px;
+  grid-template-columns: 16px minmax(0, 1fr);
+  column-gap: 10px;
   align-items: stretch;
-  min-height: 168px;
+  min-height: 0;
   max-width: 40rem;
   margin-inline: 0;
   overflow: visible;
@@ -20,12 +20,11 @@
 
 [data-cf-ui="v2"] .cf-cda__spine {
   position: relative;
-  width: 48px;
+  width: 16px;
   min-height: 100%;
   pointer-events: none;
   z-index: 0;
-  /* Pull into core for coupling — not a detached rail */
-  margin-inline-end: -6px;
+  margin-inline-end: 0;
 }
 
 [data-cf-ui="v2"] .cf-cda__org-svg {
@@ -112,6 +111,15 @@
   overflow-wrap: break-word;
   word-break: normal;
   hyphens: manual;
+}
+
+[data-cf-ui="v2"] .cf-cda__move-k {
+  display: block;
+  margin: 0 0 2px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--cf2-muted, #5a6577);
 }
 
 [data-cf-ui="v2"] .cf-cda[data-cavi-arc="under_measurement"] .cf-cda__move {
@@ -246,13 +254,13 @@
 /* Desktop: intentional content mass — not lab object in a void */
 @media (min-width: 900px) {
   [data-cf-ui="v2"] .cf-cda__organism {
-    grid-template-columns: 56px minmax(0, 1fr);
+    grid-template-columns: 18px minmax(0, 1fr);
     max-width: 44rem;
-    column-gap: 4px;
+    column-gap: 12px;
   }
   [data-cf-ui="v2"] .cf-cda__spine {
-    width: 56px;
-    margin-inline-end: -8px;
+    width: 18px;
+    margin-inline-end: 0;
   }
   [data-cf-ui="v2"] .cf-cda__decision {
     font-size: 1.38rem;
@@ -268,13 +276,13 @@
 
 @media (max-width: 430px) {
   [data-cf-ui="v2"] .cf-cda__organism {
-    grid-template-columns: 38px minmax(0, 1fr);
+    grid-template-columns: 14px minmax(0, 1fr);
     max-width: none;
-    column-gap: 0;
+    column-gap: 8px;
   }
   [data-cf-ui="v2"] .cf-cda__spine {
-    width: 38px;
-    margin-inline-end: -4px;
+    width: 14px;
+    margin-inline-end: 0;
   }
   [data-cf-ui="v2"] .cf-cda__decision {
     font-size: 1.08rem;

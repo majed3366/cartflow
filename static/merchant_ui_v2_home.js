@@ -15,6 +15,7 @@
   var PSC_COMMERCIAL_QUESTION_AR = "المهمة التجارية الحالية";
   var PSC_COMMERCIAL_EYEBROW_AR = "المهمة التجارية الحالية";
   var PSC_COMMERCIAL_EMPTY_AR = "لا توجد مهمة تجارية جاهزة من أدلة متجرك الآن.";
+  var ACCEPTED_STATE_AR = "هذه مهمتك الحالية حتى تُنفَّذ أو تتغير الأدلة.";
 
   function L() {
     return global.CartFlowUiV2Lang || null;
@@ -35,7 +36,7 @@
   /* Mission Catalog Product Projection V1 — consume server catalog only (no rerank). */
   function phaseStatusAr(phase) {
     var p = String(phase || "");
-    if (p === "ACTION_CHOSEN") return "قرار معتمد — بانتظار إثبات التنفيذ";
+    if (p === "ACTION_CHOSEN") return ACCEPTED_STATE_AR;
     if (p === "UNDER_MEASUREMENT") return "تحت القياس";
     if (p === "RECHECK_DUE") return "حان وقت المراجعة";
     return "جاهزة للتنفيذ";
@@ -78,14 +79,18 @@
       eyebrow_ar: PSC_COMMERCIAL_EYEBROW_AR,
       commitment: c,
       cdc_phase: phase || null,
+      mission_ar: card.mission_ar || "",
+      diagnosis_ar: card.diagnosis_ar || "",
       workspace_href: card.workspace_href || "#workspace",
       mission_ready: !!card.mission_ready,
       decision_contract_ar: {
         decision_ar: card.title_ar || "",
         why_now_ar: card.why_ar || "",
-        do_this_ar: card.action_ar || "",
+        do_this_ar: card.mission_ar || card.action_ar || "",
+        dont_ar: card.dont_ar || "",
         measure_ar: card.measure_ar || "",
         recheck_ar: card.recheck_ar || "",
+        diagnosis_ar: card.diagnosis_ar || "",
       },
     };
   }
@@ -417,20 +422,81 @@
     return html;
   }
 
-  function guidanceHomeSurface(pkg) {
+  function isStaleMerchantCopy(t) {
+    var s = String(t || "");
+    if (!s) return false;
+    if (s.indexOf("لا يستطيع CartFlow") >= 0) return true;
+    if (s.indexOf("واصل جمع الأدلة") >= 0) return true;
+    if (s.indexOf("راجع نصوص سبب") >= 0) return true;
+    if (s.indexOf("الودجت") >= 0 || s.indexOf("الودجيت") >= 0) return true;
+    if (s.indexOf("تحديد السبب التشغيلي") >= 0) return true;
+    if (s.indexOf("غير كافية لتحديد") >= 0) return true;
+    return false;
+  }
+
+  function sectionHasStaleMerchantCopy(sec) {
+    if (!sec) return false;
+    return (
+      isStaleMerchantCopy(sec.summary_ar) ||
+      isStaleMerchantCopy(sec.title_ar) ||
+      isStaleMerchantCopy(sec.diagnosis_ar) ||
+      isStaleMerchantCopy(sec.recommendation_ar)
+    );
+  }
+
+  function isReadyCommercialFamily(fam) {
+    var f = String(fam || "");
+    return (
+      f === "shipping_friction" ||
+      f === "price_hesitation" ||
+      f === "product_confidence"
+    );
+  }
+
+  function commercialContractGuide(col) {
+    var p = col && col.primary;
+    if (!p || !p.mission_ready || !isReadyCommercialFamily(p.family)) return null;
+    var dc = p.decision_contract_ar && typeof p.decision_contract_ar === "object"
+      ? p.decision_contract_ar
+      : {};
+    var see = String(dc.why_now_ar || p.why_ar || "").trim();
+    var means = String(dc.diagnosis_ar || p.diagnosis_ar || "").trim();
+    var doNow = String(p.action_ar || "").trim();
+    var recheck = String(dc.recheck_ar || p.recheck_ar || "").trim();
+    if (!see && !means && !doNow) return null;
+    return { see: see, means: means, doNow: doNow, recheck: recheck };
+  }
+
+  function guidanceHomeSurface(pkg, col) {
+    var contract = commercialContractGuide(col);
     var g =
       pkg && pkg.operational_guidance_v1 && typeof pkg.operational_guidance_v1 === "object"
         ? pkg.operational_guidance_v1
         : null;
-    if (!g || !g.ok) return null;
-    var hs = g.home_surface && typeof g.home_surface === "object" ? g.home_surface : null;
-    if (!hs) return null;
-    var see = String(hs.what_we_see_ar || "").trim();
-    var means = String(hs.what_it_means_ar || "").trim();
-    var doNow = String(hs.what_to_do_now_ar || "").trim();
-    var recheck = String(hs.when_to_recheck_ar || "").trim();
-    if (!see && !means && !doNow) return null;
-    return { see: see, means: means, doNow: doNow, recheck: recheck };
+    var hs = g && g.ok && g.home_surface && typeof g.home_surface === "object"
+      ? g.home_surface
+      : null;
+    var ogl = hs
+      ? {
+          see: String(hs.what_we_see_ar || "").trim(),
+          means: String(hs.what_it_means_ar || "").trim(),
+          doNow: String(hs.what_to_do_now_ar || "").trim(),
+          recheck: String(hs.when_to_recheck_ar || "").trim(),
+        }
+      : { see: "", means: "", doNow: "", recheck: "" };
+    if (isStaleMerchantCopy(ogl.see)) ogl.see = "";
+    if (isStaleMerchantCopy(ogl.means)) ogl.means = "";
+    if (isStaleMerchantCopy(ogl.doNow)) ogl.doNow = "";
+    if (contract) {
+      return {
+        see: contract.see || ogl.see,
+        means: contract.means || ogl.means,
+        doNow: contract.doNow || ogl.doNow,
+        recheck: contract.recheck || ogl.recheck,
+      };
+    }
+    if (!ogl.see && !ogl.means && !ogl.doNow) return null;
+    return ogl;
   }
 
   function storeColFocus(opp) {
@@ -571,9 +637,7 @@
         if (act) {
           line = why ? why + " · " + act : act;
         }
-        if (line.length > 110) line = line.slice(0, 107) + "…";
         var title = String(s.title_ar || "").trim();
-        if (title.length > 72) title = title.slice(0, 69) + "…";
         html +=
           '<article class="cf2-col__secondary cf2-col__secondary--signal" data-cf2-col-role="secondary">';
         html +=
@@ -612,7 +676,12 @@
     });
   }
 
-  function resolveOperationalLeadTitle(sec, guide) {
+  function resolveOperationalLeadTitle(sec, guide, col) {
+    var p = col && col.primary;
+    if (p && p.mission_ready && isReadyCommercialFamily(p.family)) {
+      var contractTitle = String(p.title_ar || "").replace(/\s+/g, " ").trim();
+      if (contractTitle && !isStaleMerchantCopy(contractTitle)) return contractTitle;
+    }
     var candidates = [
       sec && sec.summary_ar,
       guide && guide.doNow,
@@ -626,8 +695,7 @@
       var t = String(candidates[i] || "")
         .replace(/\s+/g, " ")
         .trim();
-      if (!t || isCompetingMostImportantAr(t)) continue;
-      if (t.length > 140) t = t.slice(0, 137) + "…";
+      if (!t || isCompetingMostImportantAr(t) || isStaleMerchantCopy(t)) continue;
       return t;
     }
     return PSC_OPS_LANE_AR;
@@ -650,7 +718,7 @@
     }
     var parts = split(sections);
     var lang = L();
-    var guide = guidanceHomeSurface(pkg);
+    var guide = guidanceHomeSurface(pkg, col);
     var html =
       '<section class="cf2-home" data-cf2="home-stage-closure-v1" data-cf2-grammar="attention-gravity" data-cf2-model="semantic-visual-model-v1" data-cf2-organism="gravity-well" data-cf2-composition="page-specific-v1" data-cf2-ogl="v1" data-cf2-priority-contract="v1">';
     html += sceneSpine();
@@ -687,15 +755,20 @@
           ? "primary"
           : "secondary";
 
+    var hideStaleMonitor = !!commercialContractGuide(col);
     var monitor = [];
+    function pushMonitor(sec, tier) {
+      if (hideStaleMonitor && sectionHasStaleMerchantCopy(sec)) return;
+      monitor.push({ sec: sec, tier: tier });
+    }
     parts.know.forEach(function (sec) {
-      monitor.push({ sec: sec, tier: "know" });
+      pushMonitor(sec, "know");
     });
     parts.watch.forEach(function (sec) {
-      monitor.push({ sec: sec, tier: "watch" });
+      pushMonitor(sec, "watch");
     });
     parts.learning.forEach(function (sec) {
-      monitor.push({ sec: sec, tier: "learning" });
+      pushMonitor(sec, "learning");
     });
     monitor = monitor.slice(0, 3);
     var monitorIds = {};
@@ -729,7 +802,7 @@
       '<p class="cf2-home__eyebrow">' + esc(PSC_OPS_EYEBROW_AR) + "</p>";
     html +=
       '<h2 class="cf2-home__title">' +
-      esc(resolveOperationalLeadTitle(p, guide)) +
+      esc(resolveOperationalLeadTitle(p, guide, col)) +
       "</h2>";
     html += "</div></div>";
 
@@ -843,9 +916,12 @@
     function notInMonitor(sec) {
       return !(sec && sec.id && monitorIds[sec.id]);
     }
-    var floorKnow = parts.know.filter(notInMonitor);
-    var floorWatch = parts.watch.filter(notInMonitor);
-    var floorLearn = parts.learning.filter(notInMonitor);
+    function floorKeep(sec) {
+      return notInMonitor(sec) && !(hideStaleMonitor && sectionHasStaleMerchantCopy(sec));
+    }
+    var floorKnow = parts.know.filter(floorKeep);
+    var floorWatch = parts.watch.filter(floorKeep);
+    var floorLearn = parts.learning.filter(floorKeep);
     if (floorKnow.length || floorWatch.length || floorLearn.length) {
       html +=
         '<div class="cf2-home__floor" aria-label="معرفة إضافية">';
@@ -885,19 +961,14 @@
         '<p class="cf2-empty">تعذّر تحميل معرفة المتجر.</p>';
       return false;
     }
-    /* Prefer top-level guidance when HES nested copy is slim. */
+    /* Prefer overlaid top-level OGL — HES nested home_surface is a pre-overlay snapshot. */
     if (
       summary &&
       summary.operational_guidance_v1 &&
-      summary.operational_guidance_v1.ok &&
-      (!pkg.operational_guidance_v1 || !pkg.operational_guidance_v1.ok)
+      summary.operational_guidance_v1.ok
     ) {
       pkg = Object.assign({}, pkg, {
-        operational_guidance_v1: {
-          ok: true,
-          home_surface:
-            (summary.operational_guidance_v1.home_surface) || {},
-        },
+        operational_guidance_v1: summary.operational_guidance_v1,
       });
     }
     root.innerHTML = render(pkg, summary, paintOpts || {});

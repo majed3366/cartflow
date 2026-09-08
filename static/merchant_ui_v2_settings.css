@@ -509,12 +509,10 @@
 }
 [data-cf-ui="v2"] .cf2-rec-picker {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 0.5rem;
-  overflow-x: auto;
+  overflow: visible;
   padding: 0.15rem 0 0.65rem;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
 }
 [data-cf-ui="v2"] .cf2-rec-reason {
   flex: 0 0 auto;

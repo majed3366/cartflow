@@ -563,7 +563,7 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
     padding-inline-start: 0;
   }
 
-  /* PageStage-edge contextual handle */
+  /* PageStage-edge contextual handle — muted brand teal, not a saturated slab */
   body[data-cf-ui="v2"] .cf2-ctx-handle {
     display: flex;
     align-items: center;
@@ -576,19 +576,18 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
     margin: 0;
     padding: 0;
     border: none;
-    border-inline-end: 1px solid var(--cf2-border);
+    border-inline-end: 1px solid #7aa8a4;
     border-start-end-radius: 10px;
     border-end-end-radius: 10px;
-    background: #18b0a8;
-    color: #fff;
+    background: #d7eeec;
+    color: #0d6e69;
     cursor: pointer;
     z-index: 20;
-    box-shadow: 2px 0 14px rgba(8, 32, 72, 0.22);
-    border-inline-end: 2px solid #0d6e69;
+    box-shadow: 1px 0 6px rgba(8, 32, 72, 0.08);
   }
 
   body[data-cf-ui="v2"] .cf2-ctx-handle:focus-visible {
-    outline: 2px solid #18b0a8;
+    outline: 2px solid #0d6e69;
     outline-offset: 2px;
   }
 
@@ -601,8 +600,8 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
     width: 3px;
     height: 18px;
     border-radius: 99px;
-    background: #fff;
-    box-shadow: 6px 0 0 rgba(255, 255, 255, 0.72);
+    background: #0d6e69;
+    box-shadow: 6px 0 0 #0d6e69;
   }
 
   body[data-cf-ui="v2"] .cf2-ctx {

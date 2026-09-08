@@ -667,7 +667,17 @@
   }
 
   function reasonPickerHtml(rows, selectedKey) {
+    var rank = { shipping: 0, delivery: 1 };
     var chips = (rows || [])
+      .slice()
+      .sort(function (a, b) {
+        var ra = rank[String(a.key || "")];
+        var rb = rank[String(b.key || "")];
+        if (ra == null && rb == null) return 0;
+        if (ra == null) return 1;
+        if (rb == null) return -1;
+        return ra - rb;
+      })
       .map(function (row) {
         var key = String(row.key || "");
         var lbl = row.label_ar || LABEL_BY_KEY[key] || key;
@@ -841,7 +851,6 @@
     if (banner) {
       banner.hidden = keys.length === 0;
     }
-    if (!root) return false;
     var picks = root.querySelectorAll("[data-cf2-rec-pick]");
     var i;
     for (i = 0; i < picks.length; i++) {
@@ -851,18 +860,31 @@
     }
     if (keys.length) {
       selectReasonCard(keys[0]);
+      var picker = root.querySelector(".cf2-rec-picker");
+      var reasons = document.querySelector("#cf2-rec-reasons");
+      if (picker && picker.scrollIntoView) {
+        try {
+          picker.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        } catch (err) {
+          picker.scrollIntoView();
+        }
+      } else if (reasons && reasons.scrollIntoView) {
+        try {
+          reasons.scrollIntoView({ block: "start", behavior: "smooth" });
+        } catch (err) {
+          reasons.scrollIntoView();
+        }
+      }
       var card = root.querySelector(
         '.ma-tpl-card[data-ma-tpl-key="' + keys[0] + '"]'
       );
       if (card) {
         card.classList.add("is-mission-focus");
-        if (card.scrollIntoView) {
-          card.scrollIntoView({ block: "nearest", behavior: "smooth" });
-        }
       }
       return true;
     }
-    return false;
+    /* Unknown focus is a UI hint miss — fail closed, do not hunt. */
+    return true;
   }
 
   window.maUpdateRecoveryReasonsSummary = updateRecoveryReasonsSummary;

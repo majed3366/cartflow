@@ -59,6 +59,19 @@
     templates: "communication",
     widget: "experience",
     plans: "store",
+    recovery: "recovery",
+    store: "store",
+    communication: "communication",
+    policy: "policy",
+    experience: "experience",
+  };
+
+  var AREA_IDS = {
+    store: true,
+    communication: true,
+    recovery: true,
+    policy: true,
+    experience: true,
   };
 
   var state = {
@@ -114,7 +127,8 @@
     var params = hashParams();
     var asked = (params.get("area") || "").trim();
     if (asked && HASH_AREA[asked]) return HASH_AREA[asked];
-    if (asked) return asked;
+    if (asked && AREA_IDS[asked]) return asked;
+    /* Unknown area is a UI-location miss — fail closed to overview. */
     if (HASH_AREA[name]) return HASH_AREA[name];
     return "";
   }
@@ -141,6 +155,15 @@
       window.setTimeout(function () {
         applyRecoveryFocusFromHash(n + 1);
       }, 50);
+    }
+  }
+
+  /* Hash area/focus are UI-location hints only — never tenant/security authority. */
+  function applyLocationHash() {
+    var area = areaFromHash();
+    if (area && AREA_IDS[area]) {
+      showPanel(area);
+      if (area === "recovery") applyRecoveryFocusFromHash();
     }
   }
 
@@ -327,9 +350,9 @@
   }
 
   function showPanel(id, opts) {
-    state.selected = id || "";
     var root = state.root;
     if (!root) return;
+    state.selected = id || "";
     root.classList.toggle("is-detail-open", !!id);
     var empty = $("#cf2-settings-detail-empty", root);
     var back = $("#cf2-settings-back", root);
@@ -454,7 +477,7 @@
       state.loaded = true;
       paintOverview();
       if (state.selected) initDetail(state.selected);
-      if (state.selected === "recovery") applyRecoveryFocusFromHash();
+      applyLocationHash();
       if (window.CartFlowUiV2 && window.CartFlowUiV2.refreshContextualSidebar) {
         window.CartFlowUiV2.refreshContextualSidebar();
       }
@@ -467,5 +490,8 @@
     loadMode: LOAD_MODE,
     showPanel: showPanel,
     ctxHint: ctxHint,
+    areaFromHash: areaFromHash,
+    focusFromHash: focusFromHash,
+    applyLocationHash: applyLocationHash,
   };
 })(window);

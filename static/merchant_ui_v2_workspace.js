@@ -11,6 +11,7 @@
 
   var PSC_OPS_LANE_AR = "إجراء تشغيلي مطلوب";
   var PSC_COMMERCIAL_LANE_AR = "المهمة التجارية الحالية";
+  var ACCEPTED_STATE_AR = "هذه مهمتك الحالية حتى تُنفَّذ أو تتغير الأدلة.";
 
   function L() {
     return global.CartFlowUiV2Lang || null;
@@ -51,13 +52,17 @@
       commitment: c,
       cdc_phase: phase || null,
       mission_ready: !!card.mission_ready,
+      mission_ar: card.mission_ar || "",
+      diagnosis_ar: card.diagnosis_ar || "",
       catalog_explain_ar: null,
       decision_contract_ar: {
         decision_ar: card.title_ar || "",
         why_now_ar: card.why_ar || "",
-        do_this_ar: card.action_ar || "",
+        do_this_ar: card.mission_ar || card.action_ar || "",
+        dont_ar: card.dont_ar || "",
         measure_ar: card.measure_ar || "",
         recheck_ar: card.recheck_ar || "",
+        diagnosis_ar: card.diagnosis_ar || "",
       },
     };
   }
@@ -681,31 +686,33 @@
 
   /* Commercial Mission — CTAs on existing Console. Family copy maps only (B);
      lifecycle phases are server-derived CDC. No new page / visual grammar. */
+  var CF2_MISSION_CONFIRM_AR = "أكد إتمام الضبط";
+  var CF2_MISSION_CONFIRM_HINT_AR =
+    "بعد التأكيد يبدأ CartFlow قياس أثر المهمة.";
+
   var CF2_MISSION_EXEC = {
     shipping_friction: {
       cta: "اضبط أسباب التردد",
       href: "#settings?area=recovery&focus=shipping-hesitation",
-      hint: "يفتح سياسة الاسترجاع عند سببي الشحن ومدة التوصيل. القبول لا يبدأ القياس.",
+      hint: "يفتح سياسة الاسترجاع عند سببي الشحن ومدة التوصيل. فتح الإعدادات لا يبدأ القياس.",
     },
   };
 
   var CF2_MISSION_FAMILIES = {
     shipping_friction: {
-      confirm:
-        "أكّد: جعلت أسباب تردد الشحن تفرّق بين التكلفة ومدة التوصيل",
+      confirm: CF2_MISSION_CONFIRM_AR,
       measuring: "تحت القياس — نافذة 7 أيام على حصة أسباب الشحن.",
     },
     price_hesitation: {
-      confirm: "أكّد: بيّنت قيمة العرض في صفحة المنتج بلا خصم عام",
+      confirm: CF2_MISSION_CONFIRM_AR,
       measuring: "تحت القياس — نافذة 7 أيام على حصة سبب السعر.",
     },
     product_confidence: {
-      confirm: "أكّد: أظهرت إثبات الجودة أو الضمان القائم في صفحة المنتج",
+      confirm: CF2_MISSION_CONFIRM_AR,
       measuring: "تحت القياس — نافذة 7 أيام على حصة أسباب ثقة المنتج.",
     },
     product_opportunity_focus: {
-      confirm:
-        "أكّد: ركّزت توضيح ثقة المنتج على مواضع التردد المسجّلة — بلا خصم/إعلان/موضع",
+      confirm: CF2_MISSION_CONFIRM_AR,
       measuring: "تحت القياس — نافذة 7 أيام على حصة أسباب ثقة المنتج المجمّعة.",
     },
   };
@@ -733,7 +740,10 @@
         esc(exec.href) +
         '" data-cf2-mission-exec="settings">' +
         esc(exec.cta) +
-        "</a>"
+        '<span class="cf2-mission__btn-cue" data-cf2-mission-cue="gear" aria-hidden="true">' +
+        '<svg class="cf2-mission__btn-cue-svg" viewBox="0 0 16 16" width="14" height="14" focusable="false">' +
+        '<path fill="currentColor" d="M6.6 1.35h2.8l.32 1.38c.4.11.78.28 1.12.5l1.22-.76 1.98 1.98-.76 1.22c.22.34.39.72.5 1.12l1.38.32v2.8l-1.38.32c-.11.4-.28.78-.5 1.12l.76 1.22-1.98 1.98-1.22-.76a5.2 5.2 0 0 1-1.12.5l-.32 1.38H6.6l-.32-1.38a5.2 5.2 0 0 1-1.12-.5l-1.22.76-1.98-1.98.76-1.22a5.2 5.2 0 0 1-.5-1.12L.85 9.4v-2.8l1.38-.32c.11-.4.28-.78.5-1.12l-.76-1.22L3.95 1.96l1.22.76c.34-.22.72-.39 1.12-.5L6.6 1.35zM8 5.55A2.45 2.45 0 1 0 8 10.45 2.45 2.45 0 0 0 8 5.55z"/>' +
+        "</svg></span></a>"
       );
     }
     if (!c || !phase) {
@@ -744,7 +754,9 @@
       html += execLinkHtml();
     } else if (phase === "ACTION_CHOSEN") {
       html +=
-        '<p class="cf2-mission__status">مسجّل: قرار معتمد — بانتظار إثبات التنفيذ.</p>';
+        '<p class="cf2-mission__status">' +
+        esc(ACCEPTED_STATE_AR) +
+        "</p>";
       html += execLinkHtml();
       if (exec && exec.hint) {
         html += '<p class="cf2-mission__hint">' + esc(exec.hint) + "</p>";
@@ -756,7 +768,9 @@
         esc(copy.confirm) +
         "</button>";
       html +=
-        '<p class="cf2-mission__hint">التأكيد = إثبات تنفيذ (ليس مجرد فتح الصفحة). فتح الإعدادات لا يبدأ القياس.</p>';
+        '<p class="cf2-mission__hint">' +
+        esc(CF2_MISSION_CONFIRM_HINT_AR) +
+        "</p>";
     } else if (phase === "UNDER_MEASUREMENT") {
       html +=
         '<p class="cf2-mission__status">' + esc(copy.measuring) + "</p>";

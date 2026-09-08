@@ -84,6 +84,7 @@ class CommercialActionLanguageContractTests(unittest.TestCase):
             "situation_ar",
             "evidence_ar",
             "diagnosis_ar",
+            "mission_ar",
             "action_ar",
             "dont_ar",
             "measure_ar",

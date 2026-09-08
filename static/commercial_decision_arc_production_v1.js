@@ -15,93 +15,30 @@
 
   function organismSvg(arc) {
     var open = arc === "insufficient_evidence";
-    var measuring = arc === "under_measurement" || arc === "recheck_due";
+    var measuring = arc === "under_measurement";
     var recheck = arc === "recheck_due";
     var active = arc === "action_chosen";
-    var stroke = open ? 0.4 : measuring ? 0.72 : 0.88;
-    var fill = open ? 0.02 : measuring ? 0.04 : 0.055;
-    var weight = open ? 1.8 : 2.4;
-    var dash = open ? "5 7" : "0";
-    var mFill =
-      arc === "under_measurement"
-        ? 0.55
-        : arc === "recheck_due"
-          ? 0.72
-          : active
-            ? 0.12
-            : 0;
-
-    var scoop = open
-      ? "M 78 22 C 94 22, 104 36, 104 56 L 104 210 C 104 250, 88 275, 58 278 C 32 280, 18 260, 18 235 L 18 56 C 18 34, 34 22, 54 22"
-      : "M 78 18 C 92 18, 102 28, 102 48 L 102 200 C 102 248, 92 268, 70 278 C 48 288, 28 278, 22 255 L 22 48 C 22 28, 36 18, 54 18";
-
+    var stroke = open ? 0.28 : measuring ? 0.42 : 0.5;
+    var dash = open ? "4 5" : "0";
     var html =
-      '<svg class="cf-cda__org-svg" viewBox="0 0 120 300" preserveAspectRatio="none" aria-hidden="true">';
+      '<svg class="cf-cda__org-svg" viewBox="0 0 24 200" preserveAspectRatio="none" aria-hidden="true">';
     html +=
-      '<path class="cf-cda__scoop" d="' +
-      scoop +
-      '" fill="rgba(26,35,50,' +
-      fill +
-      ')" stroke="rgba(26,35,50,' +
+      '<line class="cf-cda__rail" x1="12" y1="10" x2="12" y2="190" stroke="rgba(8,32,72,' +
       stroke +
-      ')" stroke-width="' +
-      weight +
-      '" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="' +
+      ')" stroke-width="2" stroke-linecap="round" stroke-dasharray="' +
       dash +
       '"/>';
-
     if (!open) {
-      var mop = arc === "under_measurement" ? 0.7 : 0.95;
-      var mr = arc === "under_measurement" ? 7 : 9;
+      var fill = active ? 0.72 : measuring || recheck ? 0.45 : 0.28;
       html +=
-        '<circle class="cf-cda__mass" cx="62" cy="52" r="' +
-        mr +
-        '" fill="rgba(26,35,50,' +
-        mop +
-        ')"/>';
-    } else {
-      html +=
-        '<path d="M 40 70 C 55 55, 80 55, 95 70" fill="none" stroke="rgba(26,35,50,0.28)" stroke-width="1.4" stroke-dasharray="3 5"/>';
-    }
-
-    if (active || measuring || recheck) {
-      var top = active ? 0.85 : measuring ? 0.45 : 0.35;
-      html +=
-        '<path class="cf-cda__taper" d="M 8 78 L 42 68 L 42 88 Z" fill="rgba(26,35,50,' +
-        top +
+        '<circle class="cf-cda__mass" cx="12" cy="16" r="4" fill="rgba(8,32,72,' +
+        fill +
         ')"/>';
     }
-
-    html +=
-      '<path class="cf-cda__measure-track" d="M 102 120 C 108 150, 108 200, 98 240" fill="none" stroke="rgba(26,35,50,0.16)" stroke-width="2.6" stroke-linecap="round"/>';
-    if (mFill > 0.08) {
-      var len = Math.round(120 * mFill);
-      html +=
-        '<path class="cf-cda__measure-flow" d="M 102 120 C 108 150, 108 200, 98 240" fill="none" stroke="rgba(26,35,50,0.78)" stroke-width="2.8" stroke-linecap="round" stroke-dasharray="' +
-        len +
-        ' 160"/>';
-      var n = Math.max(1, Math.round(mFill * 4));
-      for (var i = 0; i < n; i++) {
-        var y = 130 + i * 28;
-        html +=
-          '<path d="M 92 ' +
-          y +
-          " L 112 " +
-          (y + 8) +
-          '" stroke="rgba(26,35,50,0.5)" stroke-width="1.5" stroke-linecap="round"/>';
-      }
-    }
-
     if (recheck) {
       html +=
-        '<path class="cf-cda__hinge-arm" d="M 98 240 C 110 252, 112 268, 96 278 L 70 278" fill="none" stroke="rgba(26,35,50,0.92)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>';
-      html +=
-        '<circle cx="96" cy="268" r="3.2" fill="rgba(26,35,50,0.9)"/>';
-    } else if (active || measuring) {
-      html +=
-        '<path class="cf-cda__hinge-arm" d="M 100 250 C 106 258, 106 266, 100 272" fill="none" stroke="rgba(26,35,50,0.22)" stroke-width="1.5" stroke-linecap="round"/>';
+        '<circle class="cf-cda__recheck-node" cx="12" cy="184" r="3.5" fill="none" stroke="rgba(8,32,72,0.55)" stroke-width="1.6"/>';
     }
-
     html += "</svg>";
     return html;
   }
@@ -188,7 +125,10 @@
       html += '<p class="cf-cda__chord">' + esc(f.why) + "</p>";
     }
     if (f.action) {
-      html += '<p class="cf-cda__move">' + esc(f.action) + "</p>";
+      html +=
+        '<p class="cf-cda__move"><span class="cf-cda__move-k">القرار</span> ' +
+        esc(f.action) +
+        "</p>";
     }
     if (surface === "workspace" && f.dont) {
       html +=

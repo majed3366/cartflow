@@ -314,7 +314,20 @@
 
     shell.setAttribute("data-cf2-ctx", "on");
     ctx.hidden = false;
-    activeCtxItem = conf.items[0].id;
+    var hashArea = "";
+    if (
+      section === "settings" &&
+      window.CartFlowUiV2Settings &&
+      typeof window.CartFlowUiV2Settings.areaFromHash === "function"
+    ) {
+      hashArea = window.CartFlowUiV2Settings.areaFromHash() || "";
+    }
+    var allowed = {};
+    (conf.items || []).forEach(function (item) {
+      allowed[item.id] = true;
+    });
+    activeCtxItem =
+      hashArea && allowed[hashArea] ? hashArea : conf.items[0].id;
     ctx.innerHTML = paintCtxMarkup(conf, activeCtxItem, section);
     bindCtxClose();
     bindCtxItems();
@@ -570,6 +583,13 @@
     closeDrawer();
     closeCtxDrawer();
     initSurfaceProductData(section, opts);
+    if (
+      section === "settings" &&
+      window.CartFlowUiV2Settings &&
+      typeof window.CartFlowUiV2Settings.applyLocationHash === "function"
+    ) {
+      window.CartFlowUiV2Settings.applyLocationHash();
+    }
   }
 
   function go(section) {
