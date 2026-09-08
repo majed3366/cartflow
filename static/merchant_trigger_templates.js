@@ -733,6 +733,70 @@
     paintFirstMessageTimingSummary();
   }
 
+  function formatDelaySecondsAr(s) {
+    if (s % 86400 === 0) {
+      var d = s / 86400;
+      return d === 1 ? "يوم" : String(d) + " يوم";
+    }
+    if (s % 3600 === 0) {
+      var h = s / 3600;
+      return h === 1 ? "ساعة" : String(h) + " ساعات";
+    }
+    if (s % 60 === 0) return String(s / 60) + " دقيقة";
+    return String(Math.round(s / 60)) + " دقيقة";
+  }
+
+  function formatGlobalSendRangeAr(secs) {
+    if (!secs || !secs.length) return "حسب كل سبب";
+    var copy = secs.slice().sort(function (a, b) {
+      return a - b;
+    });
+    if (copy[0] === copy[copy.length - 1]) {
+      return "من " + formatDelaySecondsAr(copy[0]) + " بحسب السبب والمرحلة";
+    }
+    return (
+      "من " +
+      formatDelaySecondsAr(copy[0]) +
+      " إلى " +
+      formatDelaySecondsAr(copy[copy.length - 1]) +
+      " بحسب السبب والمرحلة"
+    );
+  }
+
+  function selectedStageTimingAr(stageIndex, value, unit) {
+    var n = Math.max(1, (parseInt(stageIndex, 10) || 0) + 1);
+    var u = normalizeApiDelayUnit(unit || "minute");
+    var val = parseFloat(value);
+    if (!isFinite(val) || val < 0) val = 0;
+    var valS = val === Math.floor(val) ? String(val) : String(val);
+    var unitAr =
+      u === "day" ? "يوم" : u === "hour" ? (val === 1 ? "ساعة" : "ساعات") : "دقيقة";
+    return (
+      "الرسالة " + n + " لهذا السبب: بعد " + valS + " " + unitAr + " من ترك السلة"
+    );
+  }
+
+  function paintSelectedStageTimingScope(cardEl) {
+    if (!cardEl) {
+      var rootSel = byId("ma-tpl-root");
+      cardEl =
+        rootSel &&
+        rootSel.querySelector(".ma-tpl-card[data-ma-tpl-key]:not([hidden])");
+    }
+    if (!cardEl) return;
+    var scope = cardEl.querySelector("[data-ma-tpl-delay-scope]");
+    var dvi = cardEl.querySelector("[data-ma-tpl-delay]");
+    var dsi = cardEl.querySelector("[data-ma-tpl-unit]");
+    if (!scope) return;
+    var ix = parseInt(cardEl.getAttribute("data-ma-tpl-active-stage") || "0", 10);
+    if (!(ix >= 0)) ix = 0;
+    scope.textContent = selectedStageTimingAr(
+      ix,
+      dvi && dvi.value,
+      dsi && dsi.value
+    );
+  }
+
   function paintFirstMessageTimingSummary() {
     var delayEl = byId("ma-rec-sum-delay");
     if (!delayEl || !lastPayload || !lastPayload.reason_rows) return;
@@ -753,29 +817,52 @@
         (m0 && m0.unit) || row.delay_unit || "minute"
       );
       if (!isFinite(val) || val < 0) continue;
-      var mult =
-        unit === "day" ? 86400 : unit === "hour" ? 3600 : 60;
+      var mult = unit === "day" ? 86400 : unit === "hour" ? 3600 : 60;
       secs.push(val * mult);
     }
-    if (!secs.length) {
-      delayEl.textContent = "حسب كل سبب";
-      return;
+    delayEl.textContent = formatGlobalSendRangeAr(secs);
+    paintSelectedStageTimingScope(null);
+  }
+
+  function applyRecoveryReasonFocus(focusRaw) {
+    var focus = String(focusRaw || "")
+      .trim()
+      .toLowerCase();
+    if (!focus) return true;
+    var root = byId("ma-tpl-root");
+    if (!root || !root.querySelector("[data-cf2-rec-pick]")) return false;
+    var banner = byId("ma-rec-mission-focus");
+    var keys = [];
+    if (focus === "shipping-hesitation" || focus === "shipping") {
+      keys = ["shipping", "delivery"];
+    } else if (focus && LABEL_BY_KEY[focus]) {
+      keys = [focus];
     }
-    secs.sort(function (a, b) {
-      return a - b;
-    });
-    function fmt(s) {
-      if (s % 86400 === 0) return String(s / 86400) + " يوم";
-      if (s % 3600 === 0) return String(s / 3600) + " ساعة";
-      if (s % 60 === 0) return String(s / 60) + " دقيقة";
-      return String(Math.round(s / 60)) + " دقيقة";
+    if (banner) {
+      banner.hidden = keys.length === 0;
     }
-    if (secs[0] === secs[secs.length - 1]) {
-      delayEl.textContent = fmt(secs[0]) + " من ترك السلة";
-    } else {
-      delayEl.textContent =
-        fmt(secs[0]) + "–" + fmt(secs[secs.length - 1]) + " من ترك السلة";
+    if (!root) return false;
+    var picks = root.querySelectorAll("[data-cf2-rec-pick]");
+    var i;
+    for (i = 0; i < picks.length; i++) {
+      var k = picks[i].getAttribute("data-cf2-rec-pick") || "";
+      var on = keys.indexOf(k) >= 0;
+      picks[i].classList.toggle("is-mission-focus", on);
     }
+    if (keys.length) {
+      selectReasonCard(keys[0]);
+      var card = root.querySelector(
+        '.ma-tpl-card[data-ma-tpl-key="' + keys[0] + '"]'
+      );
+      if (card) {
+        card.classList.add("is-mission-focus");
+        if (card.scrollIntoView) {
+          card.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        }
+      }
+      return true;
+    }
+    return false;
   }
 
   window.maUpdateRecoveryReasonsSummary = updateRecoveryReasonsSummary;
@@ -1567,9 +1654,24 @@
     }
   }
 
+  function syncTimingFromEditedCard(cardEl) {
+    if (!cardEl) return;
+    var rk = cardEl.getAttribute("data-ma-tpl-key");
+    if (rk) patchActiveStageInLastPayload(cardEl, rk);
+    paintFirstMessageTimingSummary();
+    paintSelectedStageTimingScope(cardEl);
+  }
+
   function onMaTplRootChange(ev) {
     var root = byId("ma-tpl-root");
     if (!root) return;
+    var delayCtl =
+      ev.target && ev.target.closest
+        ? ev.target.closest("[data-ma-tpl-delay], [data-ma-tpl-unit], [data-ma-tpl-enabled]")
+        : null;
+    if (delayCtl && root.contains(delayCtl)) {
+      syncTimingFromEditedCard(delayCtl.closest("[data-ma-tpl-key]"));
+    }
     var mcSel =
       ev.target && ev.target.closest
         ? ev.target.closest("[data-ma-tpl-msg-count]")
@@ -1615,9 +1717,16 @@
     }
     root._maTplOnClick = onMaTplRootClick;
     root._maTplOnChange = onMaTplRootChange;
+    root._maTplOnInput = function (ev) {
+      var t = ev.target;
+      if (!t || !t.closest) return;
+      if (!t.closest("[data-ma-tpl-delay]")) return;
+      syncTimingFromEditedCard(t.closest("[data-ma-tpl-key]"));
+    };
     root._maTplDelegatesBound = true;
     root.addEventListener("click", root._maTplOnClick);
     root.addEventListener("change", root._maTplOnChange);
+    root.addEventListener("input", root._maTplOnInput);
     tplMetrics.save_click_handlers = 1;
     refreshMaTplDebugCounters();
   }
@@ -1774,6 +1883,7 @@
         '<div class="cf2-rec-delay" role="group" aria-label="موعد إرسال هذه المرحلة بعد ترك السلة">' +
         '<span class="cf2-rec-delay__label">موعد الإرسال بعد ترك السلة</span>' +
         '<p class="cf2-rec-delay__hint">يُحسب من لحظة ترك السلة لهذه المرحلة — وليس انتظاراً بعد المرحلة السابقة.</p>' +
+        '<p class="cf2-rec-delay__scope" data-ma-tpl-delay-scope></p>' +
         '<div class="cf2-rec-delay__ctl">' +
         '<input class="ma-tpl-input cf2-rec-delay__value" type="number" id="ma-tpl-dv-' +
         k +
@@ -1985,6 +2095,10 @@
           (payload.reason_rows[0] && payload.reason_rows[0].key) ||
           TRIGGER_KEYS_ORDER[0]
       );
+      var rawH = (location.hash || "").replace(/^#/, "");
+      var qh = rawH.indexOf("?") >= 0 ? rawH.slice(rawH.indexOf("?") + 1) : "";
+      var fh = new URLSearchParams(qh);
+      applyRecoveryReasonFocus(String(fh.get("focus") || fh.get("reason") || ""));
       /* Collapse long timing theory panels in V2 */
       var panels = root.querySelectorAll("[data-ma-tpl-timing-policy]");
       for (ci = 0; ci < panels.length; ci++) {
@@ -2948,4 +3062,7 @@
   }
 
   window.maEnsureTriggerTemplatesLoaded = loadTemplates;
+  window.maApplyRecoveryReasonFocus = applyRecoveryReasonFocus;
+  window.maFormatGlobalSendRangeAr = formatGlobalSendRangeAr;
+  window.maSelectedStageTimingAr = selectedStageTimingAr;
 })();

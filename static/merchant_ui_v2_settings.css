@@ -533,6 +533,29 @@
   box-shadow: inset 0 0 0 1px rgba(8, 32, 72, 0.25);
   background: rgba(8, 32, 72, 0.04);
 }
+[data-cf-ui="v2"] .cf2-rec-reason.is-mission-focus {
+  outline: 2px solid #18b0a8;
+  outline-offset: 2px;
+}
+[data-cf-ui="v2"] .ma-tpl-card.is-mission-focus {
+  box-shadow: 0 0 0 2px rgba(24, 176, 168, 0.45);
+}
+[data-cf-ui="v2"] .cf2-rec-reasons__mission {
+  margin: 0 0 0.65rem;
+  padding: 0.55rem 0.7rem;
+  border-inline-start: 3px solid #18b0a8;
+  background: rgba(24, 176, 168, 0.08);
+  color: #082048;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+[data-cf-ui="v2"] .cf2-rec-delay__scope {
+  margin: 0.25rem 0 0.45rem;
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: #082048;
+}
 [data-cf-ui="v2"] .cf2-rec-reason.is-off {
   opacity: 0.72;
 }

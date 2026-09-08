@@ -579,11 +579,17 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
     border-inline-end: 1px solid var(--cf2-border);
     border-start-end-radius: 10px;
     border-end-end-radius: 10px;
-    background: #f7f9fc;
-    color: var(--cf2-ink-soft);
+    background: #18b0a8;
+    color: #fff;
     cursor: pointer;
     z-index: 20;
-    box-shadow: 2px 0 10px rgba(8, 32, 72, 0.06);
+    box-shadow: 2px 0 14px rgba(8, 32, 72, 0.22);
+    border-inline-end: 2px solid #0d6e69;
+  }
+
+  body[data-cf-ui="v2"] .cf2-ctx-handle:focus-visible {
+    outline: 2px solid #18b0a8;
+    outline-offset: 2px;
   }
 
   body[data-cf-ui="v2"] .cf2-ctx-handle[hidden],
@@ -595,8 +601,8 @@ body[data-cf-ui="v2"] .cf2-drawer__divider {
     width: 3px;
     height: 18px;
     border-radius: 99px;
-    background: rgba(8, 32, 72, 0.28);
-    box-shadow: 6px 0 0 rgba(8, 32, 72, 0.18);
+    background: #fff;
+    box-shadow: 6px 0 0 rgba(255, 255, 255, 0.72);
   }
 
   body[data-cf-ui="v2"] .cf2-ctx {

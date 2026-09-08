@@ -148,7 +148,7 @@
     var arc = opts.arc || "action_chosen";
     var surface = opts.surface || "home";
     var empty = arc === "insufficient_evidence" || !opp;
-    var f = fieldsFromOpp(opp, surface === "workspace");
+    var f = fieldsFromOpp(opp, true);
 
     var html =
       '<article class="cf-cda" data-cf2="commercial-decision-arc-v1" data-cavi-arc="' +

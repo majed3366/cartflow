@@ -1075,6 +1075,13 @@ body[data-cf-ui="v2"] .cf2-mission__btn--quiet {
   color: #14181c;
   border-color: rgba(20, 24, 28, 0.2);
 }
+body[data-cf-ui="v2"] a.cf2-mission__btn--exec {
+  text-decoration: none;
+  background: #fff;
+  color: #0d6e69;
+  border-color: #18b0a8;
+  box-shadow: inset 3px 0 0 #18b0a8;
+}
 body[data-cf-ui="v2"] .cf2-mission__hint,
 body[data-cf-ui="v2"] .cf2-mission__status {
   margin: 0;

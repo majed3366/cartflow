@@ -15,6 +15,7 @@
   min-height: 168px;
   max-width: 40rem;
   margin-inline: 0;
+  overflow: visible;
 }
 
 [data-cf-ui="v2"] .cf-cda__spine {
@@ -62,6 +63,12 @@
   font-weight: 800;
   letter-spacing: -0.01em;
   max-width: 32em;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: manual;
 }
 
 [data-cf-ui="v2"] .cf-cda[data-cavi-arc="under_measurement"] .cf-cda__decision {
@@ -85,6 +92,11 @@
   line-height: 1.4;
   max-width: 36em;
   color: color-mix(in srgb, var(--cf2-ink, #1a2332) 84%, transparent);
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: manual;
 }
 
 [data-cf-ui="v2"] .cf-cda__move {
@@ -95,6 +107,11 @@
   max-width: 34em;
   border-inline-end: 3px solid color-mix(in srgb, var(--cf2-ink, #1a2332) 45%, transparent);
   padding-inline-end: 10px;
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: manual;
 }
 
 [data-cf-ui="v2"] .cf-cda[data-cavi-arc="under_measurement"] .cf-cda__move {

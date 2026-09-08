@@ -93,6 +93,11 @@ def _apply_to_opportunity(opp: dict[str, Any]) -> None:
     pack = contract_for_family_v1(fam, evidence=ev, reason_label_ar=_reason_label(ev))
     if not pack:
         return
+    if pack.get("situation_ar"):
+        opp["title_ar"] = pack["situation_ar"]
+        raw_why = _norm(opp.get("priority_why_ar"))
+        if (not raw_why) or ("احتكاك" in raw_why) or ("يقطع" in raw_why):
+            opp["priority_why_ar"] = pack["situation_ar"]
     opp["action_ar"] = pack["action_ar"]
     opp["measure_ar"] = pack["measure_ar"]
     opp["recheck_ar"] = pack["recheck_ar"]
@@ -120,6 +125,8 @@ def _apply_to_catalog_card(card: dict[str, Any], evidence: Mapping[str, Any] | N
     )
     if not pack:
         return
+    if pack.get("situation_ar"):
+        card["title_ar"] = pack["situation_ar"]
     card["action_ar"] = pack["action_ar"]
     card["measure_ar"] = pack["measure_ar"]
     card["recheck_ar"] = pack["recheck_ar"]
@@ -182,6 +189,12 @@ def project_commercial_action_language_v1(body: dict[str, Any]) -> dict[str, Any
         primary_c = cat.get("primary") if isinstance(cat.get("primary"), dict) else None
         if primary_c:
             _apply_to_catalog_card(primary_c, evidence)
+            expl = cat.get("explain")
+            if isinstance(expl, dict):
+                raw_ex = _norm(expl.get("why_this_one_now_ar"))
+                sit = _norm(primary_c.get("title_ar"))
+                if sit and (("احتكاك" in raw_ex) or ("يقطع" in raw_ex) or not raw_ex):
+                    expl["why_this_one_now_ar"] = sit
         for row in list(cat.get("secondaries") or []):
             if isinstance(row, dict):
                 _apply_to_catalog_card(row, row.get("evidence") if isinstance(row.get("evidence"), Mapping) else evidence)

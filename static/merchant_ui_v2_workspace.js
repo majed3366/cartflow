@@ -681,6 +681,14 @@
 
   /* Commercial Mission — CTAs on existing Console. Family copy maps only (B);
      lifecycle phases are server-derived CDC. No new page / visual grammar. */
+  var CF2_MISSION_EXEC = {
+    shipping_friction: {
+      cta: "اضبط أسباب التردد",
+      href: "#settings?area=recovery&focus=shipping-hesitation",
+      hint: "يفتح سياسة الاسترجاع عند سببي الشحن ومدة التوصيل. القبول لا يبدأ القياس.",
+    },
+  };
+
   var CF2_MISSION_FAMILIES = {
     shipping_friction: {
       confirm:
@@ -717,22 +725,38 @@
       '" data-opportunity-id="' +
       esc(oid) +
       '">';
+    var exec = CF2_MISSION_EXEC[family];
+    function execLinkHtml() {
+      if (!exec || !exec.href) return "";
+      return (
+        '<a class="cf2-mission__btn cf2-mission__btn--exec" href="' +
+        esc(exec.href) +
+        '" data-cf2-mission-exec="settings">' +
+        esc(exec.cta) +
+        "</a>"
+      );
+    }
     if (!c || !phase) {
       html +=
         '<button type="button" class="cf2-mission__btn" data-cf2-mission-act="accept">اعتمد هذه المهمة</button>';
       html +=
         '<p class="cf2-mission__hint">القبول يسجّل القرار فقط — لا يبدأ القياس.</p>';
+      html += execLinkHtml();
     } else if (phase === "ACTION_CHOSEN") {
       html +=
         '<p class="cf2-mission__status">مسجّل: قرار معتمد — بانتظار إثبات التنفيذ.</p>';
+      html += execLinkHtml();
+      if (exec && exec.hint) {
+        html += '<p class="cf2-mission__hint">' + esc(exec.hint) + "</p>";
+      }
       html +=
-        '<button type="button" class="cf2-mission__btn" data-cf2-mission-act="confirm" data-commitment-id="' +
+        '<button type="button" class="cf2-mission__btn cf2-mission__btn--quiet" data-cf2-mission-act="confirm" data-commitment-id="' +
         esc(cid) +
         '">' +
         esc(copy.confirm) +
         "</button>";
       html +=
-        '<p class="cf2-mission__hint">التأكيد = إثبات تنفيذ (ليس مجرد فتح الصفحة).</p>';
+        '<p class="cf2-mission__hint">التأكيد = إثبات تنفيذ (ليس مجرد فتح الصفحة). فتح الإعدادات لا يبدأ القياس.</p>';
     } else if (phase === "UNDER_MEASUREMENT") {
       html +=
         '<p class="cf2-mission__status">' + esc(copy.measuring) + "</p>";
@@ -812,6 +836,7 @@
       if (!t || !t.getAttribute) return;
       var act = t.getAttribute("data-cf2-mission-act");
       if (!act) return;
+      if (t.getAttribute("data-cf2-mission-exec")) return;
       ev.preventDefault();
       var cid = t.getAttribute("data-commitment-id") || "";
       t.disabled = true;

@@ -102,16 +102,46 @@
     });
   }
 
+  function hashParams() {
+    var raw = (location.hash || "").replace(/^#/, "");
+    var q = raw.indexOf("?") >= 0 ? raw.slice(raw.indexOf("?") + 1) : "";
+    return new URLSearchParams(q);
+  }
+
   function areaFromHash() {
     var raw = (location.hash || "").replace(/^#/, "");
     var name = raw.split("?")[0];
-    var q = raw.indexOf("?") >= 0 ? raw.slice(raw.indexOf("?") + 1) : "";
-    var params = new URLSearchParams(q);
+    var params = hashParams();
     var asked = (params.get("area") || "").trim();
     if (asked && HASH_AREA[asked]) return HASH_AREA[asked];
     if (asked) return asked;
     if (HASH_AREA[name]) return HASH_AREA[name];
     return "";
+  }
+
+  function focusFromHash() {
+    var params = hashParams();
+    return String(params.get("focus") || params.get("reason") || "")
+      .trim()
+      .toLowerCase();
+  }
+
+  function applyRecoveryFocusFromHash(attempt) {
+    var focus = focusFromHash();
+    if (!focus) return;
+    var n = attempt || 0;
+    if (typeof window.maApplyRecoveryReasonFocus === "function") {
+      var ok = window.maApplyRecoveryReasonFocus(focus);
+      if (!ok && n < 24) {
+        window.setTimeout(function () {
+          applyRecoveryFocusFromHash(n + 1);
+        }, 50);
+      }
+    } else if (n < 24) {
+      window.setTimeout(function () {
+        applyRecoveryFocusFromHash(n + 1);
+      }, 50);
+    }
   }
 
   function classifyStore(sc) {
@@ -259,7 +289,16 @@
         window.maInitRecoveryPolicySettingsPage();
       }
       if (typeof window.maEnsureTriggerTemplatesLoaded === "function") {
-        window.maEnsureTriggerTemplatesLoaded();
+        var loaded = window.maEnsureTriggerTemplatesLoaded();
+        if (loaded && typeof loaded.then === "function") {
+          loaded.then(function () {
+            applyRecoveryFocusFromHash();
+          });
+        } else {
+          applyRecoveryFocusFromHash();
+        }
+      } else {
+        applyRecoveryFocusFromHash();
       }
       return;
     }
@@ -415,6 +454,7 @@
       state.loaded = true;
       paintOverview();
       if (state.selected) initDetail(state.selected);
+      if (state.selected === "recovery") applyRecoveryFocusFromHash();
       if (window.CartFlowUiV2 && window.CartFlowUiV2.refreshContextualSidebar) {
         window.CartFlowUiV2.refreshContextualSidebar();
       }

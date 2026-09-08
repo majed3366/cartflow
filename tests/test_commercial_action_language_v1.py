@@ -110,6 +110,9 @@ class CommercialActionLanguageContractTests(unittest.TestCase):
         self.assertIn("تكلفة", ship["action_ar"])
         self.assertIn("مدة", ship["action_ar"])
         self.assertIn("مجاني", ship["dont_ar"])
+        self.assertNotIn("احتكاك", blob)
+        self.assertNotIn("يوقف الشراء", ship["action_ar"])
+        self.assertNotIn("يقطع الشراء", blob)
 
         price = packs[FAMILY_PRICE]
         assert price is not None
@@ -144,6 +147,8 @@ class CommercialActionLanguageContractTests(unittest.TestCase):
         dc = primary.get("decision_contract_ar") or {}
         self.assertEqual(dc.get("cta_ar"), CTA_ACCEPT_MISSION_AR)
         self.assertIn("12", str(primary.get("why_ar") or ""))
+        self.assertNotIn("احتكاك", str(primary.get("title_ar") or ""))
+        self.assertEqual(primary.get("title_ar"), dc.get("decision_ar"))
         ev = (primary.get("evidence") or {}).get("counts") or {}
         self.assertEqual(ev.get("top_count"), 12)
         self.assertEqual(ev.get("hesitation_total"), 20)
