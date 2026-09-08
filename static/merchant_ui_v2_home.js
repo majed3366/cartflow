@@ -81,7 +81,7 @@
     var html =
       '<section class="cf2-home cf2-ldh" data-cf2="live-decision-hierarchy-v1" data-cf2-ldh="1" data-cf2-commercial-status-owner="' +
       escAttr(ldh.commercial_status_owner || "catalog_cdc_portfolio") +
-      '" data-cf2-frontend-ranking="0">';
+      '" data-cf2-frontend-ranking="0" data-cf2-frontend-lifecycle-derivation="0">';
     html +=
       '<header class="cf2-ldh__spine"><p class="cf2-ldh__kicker">' +
       esc(home.question_ar || "ما الذي يستحق انتباهي الآن؟") +
@@ -99,7 +99,7 @@
         '<h2 class="cf2-ldh__title">' + esc(now.title_ar || "") + "</h2>";
       if (now.evidence_ar) {
         html +=
-          '<p class="cf2-ldh__body cf2-ldh__body--quiet">' +
+          '<p class="cf2-ldh__body cf2-ldh__body--quiet cf2-ldh__ratio" dir="rtl" data-cf2-ldh-ratio="1">' +
           esc(now.evidence_ar) +
           "</p>";
       }

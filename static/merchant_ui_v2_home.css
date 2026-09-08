@@ -1029,6 +1029,10 @@ body[data-cf-ui="v2"] .cf2-ldh__body--quiet {
   font-size: 0.84rem;
   color: var(--cf2-muted, #5a6577);
 }
+body[data-cf-ui="v2"] .cf2-ldh__ratio {
+  unicode-bidi: isolate;
+  overflow-wrap: break-word;
+}
 body[data-cf-ui="v2"] .cf2-ldh__action {
   margin-top: 8px;
 }

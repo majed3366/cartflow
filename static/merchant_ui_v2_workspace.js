@@ -82,20 +82,22 @@
     var html =
       '<section class="cf2-col-ws cf2-ldh" data-cf2="live-decision-hierarchy-v1" data-cf2-ldh="1" data-cf2-commercial-status-owner="' +
       esc(ldh.commercial_status_owner || "catalog_cdc_portfolio") +
-      '" data-cf2-frontend-ranking="0" data-cf2-priority-lane="commercial" data-cf2-mission="v1" data-cf2-mission-family="' +
+      '" data-cf2-frontend-ranking="0" data-cf2-frontend-lifecycle-derivation="0" data-cf2-priority-lane="commercial" data-cf2-mission="v1" data-cf2-mission-family="' +
       esc(String((opp && opp.family) || (ldh.truth && ldh.truth.primary_family) || "")) +
       '">';
     if (ws.title_ar) {
       html += '<h1 class="cf2-ldh__title">' + esc(ws.title_ar) + "</h1>";
     }
-    html += ldhStack(
-      ws.why_now_label_ar || "لماذا هذه المهمة الآن؟",
-      ws.why_now_ar || ws.title_ar || "",
-      "evidence"
-    );
+    if (ws.why_now_ar && ws.why_now_ar !== ws.title_ar) {
+      html += ldhStack(
+        ws.why_now_label_ar || "لماذا هذه المهمة الآن؟",
+        ws.why_now_ar,
+        "evidence"
+      );
+    }
     if (ws.evidence_ar) {
       html +=
-        '<p class="cf2-ldh__body cf2-ldh__body--quiet" data-cf2-ldh-evidence="1">' +
+        '<p class="cf2-ldh__body cf2-ldh__body--quiet cf2-ldh__ratio" dir="rtl" data-cf2-ldh-evidence="1" data-cf2-ldh-ratio="1">' +
         esc(ws.evidence_ar) +
         "</p>";
     }
@@ -119,6 +121,29 @@
       "</p>";
     if (ws.execution_ar) {
       html += '<p class="cf2-ldh__body">' + esc(ws.execution_ar) + "</p>";
+    }
+    var journey = ws.journey && typeof ws.journey === "object" ? ws.journey : null;
+    if (journey && Array.isArray(journey.steps) && journey.steps.length) {
+      var currentStep = String(journey.current_step || "");
+      html +=
+        '<ol class="cf2-ldh__journey" data-cf2-ldh-journey="1" data-cf2-ldh-journey-current="' +
+        esc(currentStep) +
+        '">';
+      journey.steps.forEach(function (step, idx) {
+        var sid = String((step && step.id) || "");
+        var on = sid && sid === currentStep;
+        html +=
+          '<li class="cf2-ldh__journey-step' +
+          (on ? " is-current" : "") +
+          '" data-cf2-ldh-journey-step="' +
+          esc(sid) +
+          '"><span class="cf2-ldh__journey-n">' +
+          (idx + 1) +
+          "</span> " +
+          esc((step && step.label_ar) || "") +
+          "</li>";
+      });
+      html += "</ol>";
     }
     if (opp) {
       html += renderMissionActions(opp);
@@ -1031,7 +1056,7 @@
     var ldh = readLdh();
     if (ldh && ldh.enabled) {
       var htmlLdh =
-        '<div class="cf2-ws cf2-ws--lang cf2-ws--mobile-hierarchy-v1 cf2-ws--ldh" data-cf2="live-decision-hierarchy-v1" data-cf2-ldh="1" data-cf2-mobile-hierarchy="v1" data-cf2-frontend-ranking="0">';
+        '<div class="cf2-ws cf2-ws--lang cf2-ws--mobile-hierarchy-v1 cf2-ws--ldh" data-cf2="live-decision-hierarchy-v1" data-cf2-ldh="1" data-cf2-mobile-hierarchy="v1" data-cf2-frontend-ranking="0" data-cf2-frontend-lifecycle-derivation="0">';
       htmlLdh += renderHierarchyWorkspace(ldh, readColFocus());
       htmlLdh += "</div>";
       return htmlLdh;

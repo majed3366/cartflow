@@ -18,6 +18,11 @@ from services.live_decision_hierarchy_v1.contract_v1 import (
     CTA_OPEN_DECISION_AR,
     FAMILY_NOUN_AR,
     FORBIDDEN_INSUFFICIENCY_AR,
+    JOURNEY_ACCEPT_AR,
+    JOURNEY_CONFIRM_AR,
+    JOURNEY_EXECUTE_AR,
+    JOURNEY_MEASURE_AR,
+    JOURNEY_RECHECK_AR,
     LABEL_DECISION_AR,
     LABEL_DONT_AR,
     LABEL_EXECUTION_AR,
@@ -35,12 +40,12 @@ from services.live_decision_hierarchy_v1.contract_v1 import (
     PORTFOLIO_STATE_DEFERRED,
     PORTFOLIO_STATE_NEXT_MISSION,
     PORTFOLIO_STATE_SAFE_SECONDARY,
-    SIDEBAR_IN_PROGRESS_AR,
+    SIDEBAR_ACTION_CHOSEN_AR,
     SIDEBAR_LATER_AR,
+    SIDEBAR_MEASURING_AR,
     SIDEBAR_NOW_AR,
     SIDEBAR_REVIEW_AR,
     SUBSTATE_AWAITING_EXEC_AR,
-    SUBSTATE_MEASURING_AR,
 )
 from services.live_decision_hierarchy_v1.gate_v1 import gate_payload
 
@@ -131,13 +136,46 @@ def _monitor_body_ar(family: str, counts: Mapping[str, int]) -> str:
 
 
 def _evidence_line_ar(family: str, counts: Mapping[str, int]) -> str:
+    """Numerator / denominator in RTL-safe Arabic: 12 من 20 (60٪)."""
     key = _reason_key_for_family(family)
     n = int(counts.get(key) or 0) if key else 0
     total = int(counts.get("total") or 0)
     pct = _share_pct(n, total)
     if n and total and pct is not None:
-        return f"{n} / {total} = {pct}%"
+        return f"{n} من {total} ({pct}٪)"
     return ""
+
+
+def _why_now_from_evidence(family: str, counts: Mapping[str, int]) -> str:
+    """WHY this mission — evidence share, not a title repeat. Association only."""
+    noun = FAMILY_NOUN_AR.get(family) or ""
+    key = _reason_key_for_family(family)
+    n = int(counts.get(key) or 0) if key else 0
+    total = int(counts.get("total") or 0)
+    if not noun or n <= 0 or total <= 0:
+        return ""
+    return (
+        f"لأن {noun} يمثل {n} من {total} سبب تردد مسجّل "
+        f"خلال نافذة المراقبة الحالية."
+    )
+
+
+def _journey_package(phase: str) -> dict[str, Any]:
+    steps = [
+        {"id": "accept", "label_ar": JOURNEY_ACCEPT_AR},
+        {"id": "execute", "label_ar": JOURNEY_EXECUTE_AR},
+        {"id": "confirm", "label_ar": JOURNEY_CONFIRM_AR},
+        {"id": "measure", "label_ar": JOURNEY_MEASURE_AR},
+        {"id": "recheck", "label_ar": JOURNEY_RECHECK_AR},
+    ]
+    current = "accept"
+    if phase == "ACTION_CHOSEN":
+        current = "execute"
+    elif phase == "UNDER_MEASUREMENT":
+        current = "measure"
+    elif phase == "RECHECK_DUE":
+        current = "recheck"
+    return {"steps": steps, "current_step": current, "frontend_lifecycle_derivation": 0}
 
 
 def _commercial_state_label(phase: str) -> str:
@@ -234,8 +272,11 @@ def compose_live_decision_hierarchy_v1(
         execution_ar = cal_now.get("action_ar") or execution_ar
         measure_ar = cal_now.get("measure_ar") or measure_ar
         recheck_ar = cal_now.get("recheck_ar") or recheck_ar
-        if not why_ar or why_ar == title_ar:
-            why_ar = cal_now.get("situation_ar") or why_ar
+    why_from_evidence = _why_now_from_evidence(now_family, counts)
+    if why_from_evidence:
+        why_ar = why_from_evidence
+    elif why_ar == title_ar:
+        why_ar = ""
     if now_family == "shipping_friction" and not decision_ar:
         decision_ar = MISSION_SHIPPING_AR
 
@@ -313,20 +354,22 @@ def compose_live_decision_hierarchy_v1(
         sidebar_items.append(
             {
                 "id": "in_progress",
-                "label": SIDEBAR_IN_PROGRESS_AR,
+                "label": SIDEBAR_ACTION_CHOSEN_AR,
                 "count": 1,
                 "family": now_family,
                 "substate": SUBSTATE_AWAITING_EXEC_AR,
+                "parent_label": "قيد التنفيذ / القياس",
             }
         )
     elif now_family and now_phase == "UNDER_MEASUREMENT":
         sidebar_items.append(
             {
-                "id": "in_progress",
-                "label": SIDEBAR_IN_PROGRESS_AR,
+                "id": "measuring",
+                "label": SIDEBAR_MEASURING_AR,
                 "count": 1,
                 "family": now_family,
-                "substate": SUBSTATE_MEASURING_AR,
+                "substate": None,
+                "parent_label": "قيد التنفيذ / القياس",
             }
         )
     elif now_family and now_phase == "RECHECK_DUE":
@@ -374,6 +417,7 @@ def compose_live_decision_hierarchy_v1(
         "n_plus_one": 0,
         "query_param_bypass": False,
         "frontend_ranking": 0,
+        "frontend_lifecycle_derivation": 0,
         "commercial_status_owner": COMMERCIAL_STATUS_OWNER,
         "operational_guidance_owner": OPERATIONAL_GUIDANCE_OWNER,
         "suppress_same_mission_ogl_insufficiency": bool(mission_ready),
@@ -389,9 +433,10 @@ def compose_live_decision_hierarchy_v1(
         "workspace": {
             "title_ar": title_ar,
             "why_now_label_ar": LABEL_WHY_NOW_AR,
-            "why_now_ar": why_ar or title_ar,
+            "why_now_ar": why_ar,
             "evidence_label_ar": "الدليل",
             "evidence_ar": _evidence_line_ar(now_family, counts),
+            "journey": _journey_package(now_phase),
             "decision_label_ar": LABEL_DECISION_AR,
             "decision_ar": decision_ar,
             "dont_label_ar": LABEL_DONT_AR,

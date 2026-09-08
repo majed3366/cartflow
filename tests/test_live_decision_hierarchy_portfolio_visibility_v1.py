@@ -81,7 +81,7 @@ class LiveDecisionHierarchyPortfolioVisibilityV1Tests(unittest.TestCase):
         self.assertEqual(pkg["truth"]["counts"]["price"], 5)
         self.assertEqual(pkg["truth"]["counts"]["thinking"], 3)
         self.assertEqual(pkg["truth"]["counts"]["total"], 20)
-        self.assertIn("60%", pkg["home"]["now"]["evidence_ar"])
+        self.assertIn("12 من 20 (60٪)", pkg["home"]["now"]["evidence_ar"])
 
     def test_commercial_state_has_one_owner(self) -> None:
         pkg = _hierarchy()
@@ -194,9 +194,9 @@ class LiveDecisionHierarchyPortfolioVisibilityV1Tests(unittest.TestCase):
         self.assertIn("in_progress", ids)
         self.assertEqual(
             [i for i in chosen["sidebar"]["items"] if i["id"] == "in_progress"][0][
-                "substate"
+                "label"
             ],
-            "بانتظار التنفيذ",
+            "قيد التنفيذ",
         )
         cat["primary"]["cdc_phase"] = "UNDER_MEASUREMENT"
         cat["primary"]["commitment"] = {"phase": "UNDER_MEASUREMENT"}
@@ -207,8 +207,8 @@ class LiveDecisionHierarchyPortfolioVisibilityV1Tests(unittest.TestCase):
         self.assertEqual(measured["truth"]["cdc_phase"], "UNDER_MEASUREMENT")
         self.assertNotEqual(chosen["truth"]["cdc_phase"], measured["truth"]["cdc_phase"])
         self.assertEqual(
-            [i for i in measured["sidebar"]["items"] if i["id"] == "in_progress"][0][
-                "substate"
+            [i for i in measured["sidebar"]["items"] if i["id"] == "measuring"][0][
+                "label"
             ],
             "قيد القياس",
         )
@@ -274,7 +274,7 @@ class LiveDecisionHierarchyPortfolioVisibilityV1Tests(unittest.TestCase):
         )
         self.assertEqual(pkg["workspace"]["execution_label_ar"], "تنفيذ المهمة")
         ev = pkg["workspace"]["evidence_ar"]
-        self.assertIn("12", ev)
+        self.assertEqual(ev, "12 من 20 (60٪)")
         self.assertNotEqual(pkg["workspace"]["execution_ar"], ev)
         self.assertNotIn("12 / 20", pkg["workspace"]["execution_ar"])
 

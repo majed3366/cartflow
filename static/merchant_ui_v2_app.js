@@ -117,12 +117,19 @@
       if (!side || !Array.isArray(side.items) || !side.items.length) return null;
       return {
         title: side.title_ar || "مساحة القرار",
-        items: side.items.map(function (it) {
-          return {
-            id: it.id,
-            label: it.substate ? it.label + " · " + it.substate : it.label,
-          };
-        }),
+        items: side.items
+          .filter(function (it) {
+            if (!it || !it.id) return false;
+            if (it.id === "completed") return side.completed_supported === true;
+            return true;
+          })
+          .map(function (it) {
+            var label = it.label || "";
+            if (it.substate && it.substate !== it.label) {
+              label = label + " · " + it.substate;
+            }
+            return { id: it.id, label: label };
+          }),
       };
     } catch (e) {
       return null;

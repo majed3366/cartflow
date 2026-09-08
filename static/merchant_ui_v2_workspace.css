@@ -1188,4 +1188,44 @@ body[data-cf-ui="v2"] .cf2-ws--ldh .cf2-ldh__body--quiet {
 body[data-cf-ui="v2"] .cf2-ws--ldh .cf2-mission {
   margin-top: 12px;
 }
+body[data-cf-ui="v2"] .cf2-ws--ldh .cf2-ldh__ratio {
+  unicode-bidi: isolate;
+}
+body[data-cf-ui="v2"] .cf2-ldh__journey {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0 14px;
+  padding: 0;
+  list-style: none;
+}
+body[data-cf-ui="v2"] .cf2-ldh__journey-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--cf2-muted, #5a6577);
+  overflow-wrap: break-word;
+}
+body[data-cf-ui="v2"] .cf2-ldh__journey-step.is-current {
+  color: #082048;
+  font-weight: 700;
+}
+body[data-cf-ui="v2"] .cf2-ldh__journey-n {
+  flex: 0 0 1.15rem;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 999px;
+  text-align: center;
+  font-size: 0.68rem;
+  line-height: 1.15rem;
+  background: rgba(8, 32, 72, 0.08);
+  color: #082048;
+}
+body[data-cf-ui="v2"] .cf2-ldh__journey-step.is-current .cf2-ldh__journey-n {
+  background: #18B0A8;
+  color: #fff;
+}
 
