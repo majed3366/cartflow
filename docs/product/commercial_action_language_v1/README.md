@@ -2,7 +2,7 @@
 
 Merchant-facing action language for the four current decision kinds only.
 
-**DEPLOY: NO.** CTA `اعتمد هذه المهمة` is frozen.
+CTA `اعتمد هذه المهمة` is frozen. Executability runtime candidate: `867eddce62cdb8616414d7e477a0b1343426437d`. **FOUNDER PRODUCT PASS: NOT YET. GENERAL RELEASE: NO.**
 
 ## Law
 
@@ -29,7 +29,7 @@ Acceptance still means **decision accepted**, not execution started.
 
 ## Actions (merchant-facing)
 
-- **shipping_friction:** اجعل أسباب التردد التي يختارها العميل عند الشحن تفرّق بوضوح بين «تكلفة الشحن مرتفعة» و«مدة التوصيل طويلة» — حتى نعرف أيّهما يوقف الشراء.
+- **shipping_friction:** اجعل اختيارات سبب التردد التي يراها العميل تفرّق بين «تكلفة الشحن مرتفعة» و«مدة التوصيل طويلة» حتى يظهر في القراءة التالية أيّهما أكثر تكراراً.
 - **product_confidence:** أظهر في صفحة المنتج ما يثبت الجودة أو الضمان مما هو قائم فعلاً (مثل مدة الضمان أو ما يشمله المنتج) — بلا تقييمات أو شهادات غير موجودة.
 - **price_hesitation:** بيّن في صفحة المنتج ماذا يحصل عليه العميل مقابل السعر الحالي قبل أي تخفيض — ثم نعيد قراءة حصة سبب السعر.
 - **wait_insufficient_evidence:** أبقِ السعر والشحن والعرض كما هي، وواصل تسجيل أسباب تردد العملاء حتى يظهر سبب واحد بوضوح كافٍ.
