@@ -1,0 +1,143 @@
+{
+  "r17_apply": {
+    "status": 200,
+    "ok": true
+  },
+  "r17": {
+    "enabled": true,
+    "store_slug": "cf_live_reality_lab",
+    "cdc_phase": null,
+    "title_ar": "أقوى تردد مسجّل الآن مرتبط بالشحن.",
+    "why_now_ar": "لأن الشحن يمثل 12 من 20 سبب تردد مسجّل خلال نافذة المراقبة الحالية.",
+    "evidence_ar": "12 من 20 (60٪)",
+    "monitoring": "السعر يتكرر في 5 من 20 سبباً مسجلاً (25٪).",
+    "journey_current": "accept",
+    "sidebar": [
+      {
+        "id": "now",
+        "label": "الآن"
+      }
+    ],
+    "completed_supported": false,
+    "later": false
+  },
+  "r8_apply": {
+    "status": 200,
+    "ok": true
+  },
+  "r8": {
+    "enabled": true,
+    "store_slug": "cf_live_reality_lab",
+    "cdc_phase": "ACTION_CHOSEN",
+    "title_ar": "أقوى تردد مسجّل الآن مرتبط بالشحن.",
+    "why_now_ar": "لأن الشحن يمثل 11 من 17 سبب تردد مسجّل خلال نافذة المراقبة الحالية.",
+    "evidence_ar": "11 من 17 (65٪)",
+    "monitoring": null,
+    "journey_current": "execute",
+    "sidebar": [
+      {
+        "id": "in_progress",
+        "label": "قيد التنفيذ"
+      },
+      {
+        "id": "later",
+        "label": "لاحقاً"
+      }
+    ],
+    "completed_supported": false,
+    "later": true
+  },
+  "r9_apply": {
+    "status": 200,
+    "ok": true
+  },
+  "r9": {
+    "enabled": true,
+    "store_slug": "cf_live_reality_lab",
+    "cdc_phase": "UNDER_MEASUREMENT",
+    "title_ar": "أقوى تردد مسجّل الآن مرتبط بالشحن.",
+    "why_now_ar": "لأن الشحن يمثل 11 من 17 سبب تردد مسجّل خلال نافذة المراقبة الحالية.",
+    "evidence_ar": "11 من 17 (65٪)",
+    "monitoring": null,
+    "journey_current": "measure",
+    "sidebar": [
+      {
+        "id": "measuring",
+        "label": "قيد القياس"
+      },
+      {
+        "id": "later",
+        "label": "لاحقاً"
+      }
+    ],
+    "completed_supported": false,
+    "later": true
+  },
+  "r10_apply": {
+    "status": 200,
+    "ok": true
+  },
+  "r10": {
+    "enabled": true,
+    "store_slug": "cf_live_reality_lab",
+    "cdc_phase": "RECHECK_DUE",
+    "title_ar": "أقوى تردد مسجّل الآن مرتبط بالشحن.",
+    "why_now_ar": "لأن الشحن يمثل 11 من 17 سبب تردد مسجّل خلال نافذة المراقبة الحالية.",
+    "evidence_ar": "11 من 17 (65٪)",
+    "monitoring": null,
+    "journey_current": "recheck",
+    "sidebar": [
+      {
+        "id": "review",
+        "label": "للمراجعة"
+      },
+      {
+        "id": "later",
+        "label": "لاحقاً"
+      }
+    ],
+    "completed_supported": false,
+    "later": true
+  },
+  "r17_restore": {
+    "status": 200,
+    "ok": true
+  },
+  "r17_final": {
+    "enabled": true,
+    "store_slug": "cf_live_reality_lab",
+    "cdc_phase": null,
+    "title_ar": "أقوى تردد مسجّل الآن مرتبط بالشحن.",
+    "why_now_ar": "لأن الشحن يمثل 12 من 20 سبب تردد مسجّل خلال نافذة المراقبة الحالية.",
+    "evidence_ar": "12 من 20 (60٪)",
+    "monitoring": "السعر يتكرر في 5 من 20 سبباً مسجلاً (25٪).",
+    "journey_current": "accept",
+    "sidebar": [
+      {
+        "id": "now",
+        "label": "الآن"
+      }
+    ],
+    "completed_supported": false,
+    "later": false
+  },
+  "founder_eval": {
+    "apply_status": 403,
+    "summary_has_ldh": false
+  },
+  "sidebar_after_reload": {
+    "ready": [{"id": "now", "label": "الآن"}],
+    "action_chosen": [
+      {"id": "in_progress", "label": "قيد التنفيذ"},
+      {"id": "later", "label": "لاحقاً"}
+    ],
+    "measuring": [
+      {"id": "measuring", "label": "قيد القياس"},
+      {"id": "later", "label": "لاحقاً"}
+    ],
+    "recheck": [
+      {"id": "review", "label": "للمراجعة"},
+      {"id": "later", "label": "لاحقاً"}
+    ]
+  }
+}

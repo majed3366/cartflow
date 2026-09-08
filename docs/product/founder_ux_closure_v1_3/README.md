@@ -19,6 +19,7 @@ Presentation only. No COL / OGL / catalog / CDC / portfolio / capacity / window 
 
 ## Live proof
 
+Exact-SHA API `7096de1564c008ac83da6216c70aba22f328071a` (`67a9463c`).  
 Canonical: `docs/product/founder_ux_closure_v1_3/live/`
 
 Desktop copy:
