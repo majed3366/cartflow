@@ -31,4 +31,6 @@ Contextual sidebar organizes lifecycle state. It does not rank missions.
 
 ## Live proof
 
-`docs/product/live_decision_hierarchy_portfolio_visibility_v1/live/`
+Exact-SHA API deploy `eceb0d0719713be3c81244187c365714f1e12313` (`f7568b2e`).  
+6 live mobile shots: `docs/product/live_decision_hierarchy_portfolio_visibility_v1/live/`  
+Desktop copy: `C:\Users\Toshiba\Desktop\CartFlow_Founder_Review\Live_Decision_Hierarchy_Portfolio_Visibility_V1\`
