@@ -909,6 +909,16 @@ def attach_home_executive_summary_to_summary_v1(
                 "mission_portfolio_v1",
                 {"ok": False, "error": "attach_failed", "empty": True, "query_delta": 0},
             )
+        try:
+            from services.live_decision_hierarchy_v1 import (  # noqa: PLC0415
+                attach_live_decision_hierarchy_to_summary_v1,
+            )
+
+            attach_live_decision_hierarchy_to_summary_v1(
+                summary, store_slug=str(summary.get("store_slug") or "")
+            )
+        except Exception:  # noqa: BLE001 — lab presentation optional
+            summary.pop("live_decision_hierarchy_v1", None)
     except Exception:  # noqa: BLE001
         summary["home_executive_summary_v1"] = {
             "ok": False,

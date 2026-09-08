@@ -25,6 +25,142 @@
     return L() ? L().esc(s) : String(s == null ? "" : s);
   }
 
+  var LDH_KEY = "cf2_ldh_v1";
+
+  function storeLdh(pkg) {
+    try {
+      if (pkg && pkg.enabled) {
+        sessionStorage.setItem(LDH_KEY, JSON.stringify(pkg));
+      } else {
+        sessionStorage.removeItem(LDH_KEY);
+      }
+    } catch (e) {}
+    if (
+      global.CartFlowUiV2 &&
+      typeof global.CartFlowUiV2.refreshContextualSidebar === "function"
+    ) {
+      global.CartFlowUiV2.refreshContextualSidebar();
+    }
+  }
+
+  function readLdh() {
+    try {
+      var raw = sessionStorage.getItem(LDH_KEY);
+      if (!raw) return null;
+      var pkg = JSON.parse(raw);
+      return pkg && pkg.enabled ? pkg : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function ldhStack(label, body, flow, extraClass, bodyClass) {
+    if (!label && !body) return "";
+    var html =
+      '<div class="cf2-ldh__block' +
+      (extraClass ? " " + extraClass : "") +
+      '"';
+    if (flow) html += ' data-cf2-ldh-flow="' + esc(flow) + '"';
+    html += ">";
+    if (label) {
+      html += '<p class="cf2-ldh__label">' + esc(label) + "</p>";
+    }
+    if (body) {
+      html +=
+        '<p class="' +
+        (bodyClass || "cf2-ldh__body") +
+        '">' +
+        esc(body) +
+        "</p>";
+    }
+    html += "</div>";
+    return html;
+  }
+
+  function renderHierarchyWorkspace(ldh, opp) {
+    var ws = (ldh && ldh.workspace) || {};
+    var html =
+      '<section class="cf2-col-ws cf2-ldh" data-cf2="live-decision-hierarchy-v1" data-cf2-ldh="1" data-cf2-commercial-status-owner="' +
+      esc(ldh.commercial_status_owner || "catalog_cdc_portfolio") +
+      '" data-cf2-frontend-ranking="0" data-cf2-priority-lane="commercial" data-cf2-mission="v1" data-cf2-mission-family="' +
+      esc(String((opp && opp.family) || (ldh.truth && ldh.truth.primary_family) || "")) +
+      '">';
+    if (ws.title_ar) {
+      html += '<h1 class="cf2-ldh__title">' + esc(ws.title_ar) + "</h1>";
+    }
+    html += ldhStack(
+      ws.why_now_label_ar || "لماذا هذه المهمة الآن؟",
+      ws.why_now_ar || ws.title_ar || "",
+      "evidence"
+    );
+    if (ws.evidence_ar) {
+      html +=
+        '<p class="cf2-ldh__body cf2-ldh__body--quiet" data-cf2-ldh-evidence="1">' +
+        esc(ws.evidence_ar) +
+        "</p>";
+    }
+    html += ldhStack(
+      ws.decision_label_ar || "القرار",
+      ws.decision_ar || "",
+      "decision",
+      "cf2-ldh__block--decision",
+      "cf2-ldh__decision"
+    );
+    html += ldhStack(
+      ws.dont_label_ar || "لا تفعل هذا الآن",
+      ws.dont_ar || "",
+      "dont"
+    );
+    html +=
+      '<div class="cf2-ldh__block cf2-ldh__block--exec" data-cf2-ldh-flow="execution">';
+    html +=
+      '<p class="cf2-ldh__label">' +
+      esc(ws.execution_label_ar || "تنفيذ المهمة") +
+      "</p>";
+    if (ws.execution_ar) {
+      html += '<p class="cf2-ldh__body">' + esc(ws.execution_ar) + "</p>";
+    }
+    if (opp) {
+      html += renderMissionActions(opp);
+    }
+    html += "</div>";
+    var monitor = Array.isArray(ws.monitoring) ? ws.monitoring : [];
+    html +=
+      '<div class="cf2-ldh__block cf2-ldh__block--monitor" data-cf2-ldh-flow="measurement">';
+    html +=
+      '<p class="cf2-ldh__label">' +
+      esc(ws.measure_label_ar || "تحت المراقبة") +
+      "</p>";
+    if (monitor.length) {
+      monitor.forEach(function (row) {
+        html +=
+          '<p class="cf2-ldh__body" data-cf2-ldh-secondary="' +
+          esc(row.family || "") +
+          '">' +
+          esc(row.body_ar || "") +
+          "</p>";
+      });
+    } else if (ws.measure_ar) {
+      html += '<p class="cf2-ldh__body">' + esc(ws.measure_ar) + "</p>";
+    }
+    html += "</div>";
+    html += ldhStack(
+      ws.recheck_label_ar || "سنغيّر رأينا إذا...",
+      ws.recheck_ar || "",
+      "recheck"
+    );
+    if (ws.next_mission && ws.next_mission.family) {
+      html += ldhStack(
+        ws.next_mission.group_label_ar || "المهمة التجارية التالية",
+        ws.next_mission.title_ar || "",
+        "next",
+        "cf2-ldh__block--next"
+      );
+    }
+    html += "</section>";
+    return html;
+  }
+
   /* Mission Catalog Product Projection V1 — Workspace binds to catalog primary. */
   function catalogCardToOpp(card) {
     if (!card || typeof card !== "object") return null;
@@ -820,6 +956,8 @@
     if (!res.ok) return null;
     var sum = await res.json();
     /* Catalog primary owns commercial Console (Home ↔ Workspace match). */
+    var ldh = sum && sum.live_decision_hierarchy_v1;
+    storeLdh(ldh && ldh.enabled ? ldh : null);
     var primary = catalogPrimaryFromSummary(sum);
     if (!primary) {
       var col = sum && sum.commercial_opportunity_layer_v1;
@@ -890,6 +1028,14 @@
   }
 
   function render(payload, paintOpts) {
+    var ldh = readLdh();
+    if (ldh && ldh.enabled) {
+      var htmlLdh =
+        '<div class="cf2-ws cf2-ws--lang cf2-ws--mobile-hierarchy-v1 cf2-ws--ldh" data-cf2="live-decision-hierarchy-v1" data-cf2-ldh="1" data-cf2-mobile-hierarchy="v1" data-cf2-frontend-ranking="0">';
+      htmlLdh += renderHierarchyWorkspace(ldh, readColFocus());
+      htmlLdh += "</div>";
+      return htmlLdh;
+    }
     var projection = unwrapProjection(payload);
     var zoneB = Array.isArray(projection.zone_b) ? projection.zone_b : [];
     var split = splitPrimary(zoneB);

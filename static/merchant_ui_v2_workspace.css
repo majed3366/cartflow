@@ -1126,3 +1126,66 @@ body[data-cf-ui="v2"] .cf2-mission__err {
   color: #8b1e1e;
 }
 
+/* Live Decision Hierarchy V1 — Workspace type scale (lab tenant only). */
+body[data-cf-ui="v2"] .cf2-ws--ldh .cf2-ldh__title {
+  margin: 0 0 18px;
+  font-size: 1.32rem;
+  font-weight: 800;
+  line-height: 1.32;
+  color: #082048;
+  overflow-wrap: break-word;
+  white-space: normal;
+}
+body[data-cf-ui="v2"] .cf2-ws--ldh .cf2-ldh__block {
+  display: block;
+  margin: 0 0 20px;
+  padding: 0;
+}
+body[data-cf-ui="v2"] .cf2-ws--ldh .cf2-ldh__label {
+  display: block;
+  margin: 0 0 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--cf2-muted, #5a6577);
+}
+body[data-cf-ui="v2"] .cf2-ws--ldh .cf2-ldh__decision {
+  display: block;
+  margin: 0;
+  font-size: 1.12rem;
+  font-weight: 750;
+  line-height: 1.4;
+  color: #082048;
+  overflow-wrap: break-word;
+}
+body[data-cf-ui="v2"] .cf2-ws--ldh .cf2-ldh__block--decision {
+  border-inline-start: 3px solid #082048;
+  padding-inline-start: 12px;
+}
+body[data-cf-ui="v2"] .cf2-ws--ldh .cf2-ldh__block--exec {
+  border-inline-start: 3px solid #18B0A8;
+  padding-inline-start: 12px;
+}
+body[data-cf-ui="v2"] .cf2-ws--ldh .cf2-ldh__block--monitor,
+body[data-cf-ui="v2"] .cf2-ws--ldh .cf2-ldh__block--next {
+  border-inline-start: 3px solid rgba(8, 32, 72, 0.2);
+  padding-inline-start: 12px;
+}
+body[data-cf-ui="v2"] .cf2-ws--ldh .cf2-ldh__body {
+  display: block;
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 400;
+  line-height: 1.45;
+  color: color-mix(in srgb, #082048 76%, #5a6577);
+  overflow-wrap: break-word;
+}
+body[data-cf-ui="v2"] .cf2-ws--ldh .cf2-ldh__body--quiet {
+  margin: -8px 0 18px;
+  font-size: 0.84rem;
+  color: var(--cf2-muted, #5a6577);
+}
+body[data-cf-ui="v2"] .cf2-ws--ldh .cf2-mission {
+  margin-top: 12px;
+}
+

@@ -107,7 +107,33 @@
     return "CartFlow";
   }
 
+  function readLdhSidebar() {
+    try {
+      var raw = sessionStorage.getItem("cf2_ldh_v1");
+      if (!raw) return null;
+      var pkg = JSON.parse(raw);
+      if (!pkg || pkg.enabled !== true) return null;
+      var side = pkg.sidebar;
+      if (!side || !Array.isArray(side.items) || !side.items.length) return null;
+      return {
+        title: side.title_ar || "مساحة القرار",
+        items: side.items.map(function (it) {
+          return {
+            id: it.id,
+            label: it.substate ? it.label + " · " + it.substate : it.label,
+          };
+        }),
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
   function contextualFor(section) {
+    if (section === "workspace") {
+      var ldhCtx = readLdhSidebar();
+      if (ldhCtx) return ldhCtx;
+    }
     var conf = NAV.contextual[section];
     if (!conf || !(conf.items && conf.items.length)) return null;
     return conf;

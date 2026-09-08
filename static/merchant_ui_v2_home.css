@@ -945,3 +945,98 @@ body[data-cf-ui="v2"] .cf2-col__sec-act {
     font-size: 0.74rem;
   }
 }
+
+/* Live Decision Hierarchy V1 ? Home (lab tenant only). Existing navy/teal. */
+body[data-cf-ui="v2"] .cf2-ldh {
+  width: 100%;
+  max-width: 36rem;
+}
+body[data-cf-ui="v2"] .cf2-ldh__spine {
+  margin: 0 0 18px;
+}
+body[data-cf-ui="v2"] .cf2-ldh__kicker {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--cf2-muted, #5a6577);
+}
+body[data-cf-ui="v2"] .cf2-ldh__group {
+  margin: 0 0 22px;
+  padding: 0 0 4px;
+}
+body[data-cf-ui="v2"] .cf2-ldh__group--now {
+  border-inline-start: 4px solid #082048;
+  padding-inline-start: 12px;
+  box-shadow: inset 0 0 0 0 #18B0A8;
+}
+body[data-cf-ui="v2"] .cf2-ldh__group--now::before {
+  content: "";
+  display: block;
+  width: 28px;
+  height: 3px;
+  margin: 0 0 10px;
+  background: #18B0A8;
+  border-radius: 2px;
+}
+body[data-cf-ui="v2"] .cf2-ldh__group--monitor,
+body[data-cf-ui="v2"] .cf2-ldh__group--next {
+  border-inline-start: 3px solid rgba(8, 32, 72, 0.22);
+  padding-inline-start: 12px;
+}
+body[data-cf-ui="v2"] .cf2-ldh__group--later {
+  border-inline-start: 3px solid rgba(90, 101, 119, 0.28);
+  padding-inline-start: 12px;
+  opacity: 0.88;
+}
+body[data-cf-ui="v2"] .cf2-ldh__label {
+  display: block;
+  margin: 0 0 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--cf2-muted, #5a6577);
+}
+body[data-cf-ui="v2"] .cf2-ldh__title {
+  margin: 0 0 10px;
+  font-size: 1.28rem;
+  font-weight: 800;
+  line-height: 1.35;
+  color: #082048;
+  overflow-wrap: break-word;
+  word-break: normal;
+  white-space: normal;
+}
+body[data-cf-ui="v2"] .cf2-ldh__decision {
+  display: block;
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: #082048;
+  overflow-wrap: break-word;
+}
+body[data-cf-ui="v2"] .cf2-ldh__body {
+  display: block;
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  font-weight: 400;
+  line-height: 1.45;
+  color: color-mix(in srgb, #082048 78%, transparent);
+  overflow-wrap: break-word;
+}
+body[data-cf-ui="v2"] .cf2-ldh__body--quiet {
+  font-size: 0.84rem;
+  color: var(--cf2-muted, #5a6577);
+}
+body[data-cf-ui="v2"] .cf2-ldh__action {
+  margin-top: 8px;
+}
+body[data-cf-ui="v2"] .cf2-ldh__block {
+  display: block;
+  margin: 0 0 18px;
+}
+body[data-cf-ui="v2"] .cf2-ldh__block .cf2-ldh__label + .cf2-ldh__body,
+body[data-cf-ui="v2"] .cf2-ldh__block .cf2-ldh__label + .cf2-ldh__decision {
+  margin-top: 0;
+}

@@ -33,6 +33,140 @@
     return esc(s).replace(/"/g, "&quot;");
   }
 
+  var LDH_KEY = "cf2_ldh_v1";
+
+  function storeLdh(pkg) {
+    try {
+      if (pkg && pkg.enabled) {
+        sessionStorage.setItem(LDH_KEY, JSON.stringify(pkg));
+      } else {
+        sessionStorage.removeItem(LDH_KEY);
+      }
+    } catch (e) {}
+    if (
+      global.CartFlowUiV2 &&
+      typeof global.CartFlowUiV2.refreshContextualSidebar === "function"
+    ) {
+      global.CartFlowUiV2.refreshContextualSidebar();
+    }
+  }
+
+  function hierarchyFromSummary(summary) {
+    var pkg = summary && summary.live_decision_hierarchy_v1;
+    if (pkg && pkg.enabled === true) return pkg;
+    return null;
+  }
+
+  function ldhBlock(label, body, extraClass) {
+    if (!body) return "";
+    return (
+      '<div class="cf2-ldh__block' +
+      (extraClass ? " " + extraClass : "") +
+      '">' +
+      '<p class="cf2-ldh__label">' +
+      esc(label) +
+      "</p>" +
+      '<p class="cf2-ldh__body">' +
+      esc(body) +
+      "</p></div>"
+    );
+  }
+
+  function renderHierarchyHome(ldh, summary) {
+    var home = (ldh && ldh.home) || {};
+    var now = home.now || null;
+    var monitor = Array.isArray(home.monitoring) ? home.monitoring : [];
+    var nextM = home.next_mission || null;
+    var later = Array.isArray(home.later) ? home.later : [];
+    var html =
+      '<section class="cf2-home cf2-ldh" data-cf2="live-decision-hierarchy-v1" data-cf2-ldh="1" data-cf2-commercial-status-owner="' +
+      escAttr(ldh.commercial_status_owner || "catalog_cdc_portfolio") +
+      '" data-cf2-frontend-ranking="0">';
+    html +=
+      '<header class="cf2-ldh__spine"><p class="cf2-ldh__kicker">' +
+      esc(home.question_ar || "ما الذي يستحق انتباهي الآن؟") +
+      "</p></header>";
+    if (now) {
+      html +=
+        '<section class="cf2-ldh__group cf2-ldh__group--now" data-cf2-ldh-group="now" data-cf2-mission-family="' +
+        escAttr(now.family || "") +
+        '">';
+      html +=
+        '<p class="cf2-ldh__label">' +
+        esc(now.group_label_ar || "مهمتك الآن") +
+        "</p>";
+      html +=
+        '<h2 class="cf2-ldh__title">' + esc(now.title_ar || "") + "</h2>";
+      if (now.evidence_ar) {
+        html +=
+          '<p class="cf2-ldh__body cf2-ldh__body--quiet">' +
+          esc(now.evidence_ar) +
+          "</p>";
+      }
+      if (now.decision_ar) {
+        html +=
+          '<p class="cf2-ldh__label">' +
+          esc("القرار") +
+          "</p>";
+        html +=
+          '<p class="cf2-ldh__decision">' + esc(now.decision_ar) + "</p>";
+      }
+      html +=
+        '<div class="cf2-ldh__action"><a class="cf2-btn" href="#workspace" data-cf2-col-open="' +
+        escAttr(now.opportunity_id || "") +
+        '">' +
+        esc(now.cta_ar || "افتح القرار") +
+        "</a></div>";
+      html += "</section>";
+    }
+    if (monitor.length) {
+      html +=
+        '<section class="cf2-ldh__group cf2-ldh__group--monitor" data-cf2-ldh-group="monitoring">';
+      html +=
+        '<p class="cf2-ldh__label">' +
+        esc(monitor[0].group_label_ar || "تحت المراقبة") +
+        "</p>";
+      monitor.forEach(function (row) {
+        html +=
+          '<p class="cf2-ldh__body" data-cf2-ldh-secondary="' +
+          escAttr(row.family || "") +
+          '" data-cf2-ldh-portfolio="' +
+          escAttr(row.portfolio_state || "") +
+          '">' +
+          esc(row.body_ar || "") +
+          "</p>";
+      });
+      html += "</section>";
+    }
+    if (nextM && nextM.family) {
+      html +=
+        '<section class="cf2-ldh__group cf2-ldh__group--next" data-cf2-ldh-group="next">';
+      html +=
+        '<p class="cf2-ldh__label">' +
+        esc(nextM.group_label_ar || "المهمة التجارية التالية") +
+        "</p>";
+      if (nextM.title_ar) {
+        html += '<p class="cf2-ldh__body">' + esc(nextM.title_ar) + "</p>";
+      }
+      html += "</section>";
+    }
+    if (later.length) {
+      html +=
+        '<section class="cf2-ldh__group cf2-ldh__group--later" data-cf2-ldh-group="later">';
+      html +=
+        '<p class="cf2-ldh__label">' + esc("لاحقاً") + "</p>";
+      later.forEach(function (row) {
+        html +=
+          '<p class="cf2-ldh__body" data-cf2-ldh-deferred="1">' +
+          esc(row.title_ar || row.family || "") +
+          "</p>";
+      });
+      html += "</section>";
+    }
+    html += "</section>";
+    return html;
+  }
+
   /* Mission Catalog Product Projection V1 — consume server catalog only (no rerank). */
   function phaseStatusAr(phase) {
     var p = String(phase || "");
@@ -702,6 +836,12 @@
   }
 
   function render(pkg, summary, paintOpts) {
+    var ldh = hierarchyFromSummary(summary);
+    if (ldh) {
+      storeLdh(ldh);
+      return renderHierarchyHome(ldh, summary);
+    }
+    storeLdh(null);
     var col = resolveCommercialLayer(summary);
     var colHtml = renderColLayer(col, paintOpts);
     var sections = Array.isArray(pkg.sections) ? pkg.sections : [];
@@ -972,7 +1112,12 @@
       });
     }
     root.innerHTML = render(pkg, summary, paintOpts || {});
-    bindColActions(root, resolveCommercialLayer(summary));
+    var ldhPaint = hierarchyFromSummary(summary);
+    if (!ldhPaint) {
+      bindColActions(root, resolveCommercialLayer(summary));
+    } else {
+      bindColActions(root, resolveCommercialLayer(summary));
+    }
     return true;
   }
 

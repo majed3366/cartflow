@@ -67,6 +67,14 @@ def _apply_contact_truth_reconciliation(body: dict[str, Any]) -> None:
         project_commercial_action_language_v1(body)
     except Exception as al_exc:  # noqa: BLE001
         log.warning("commercial action language project: %s", al_exc)
+    try:
+        from services.live_decision_hierarchy_v1 import (  # noqa: PLC0415
+            attach_live_decision_hierarchy_to_summary_v1,
+        )
+
+        attach_live_decision_hierarchy_to_summary_v1(body)
+    except Exception as ldh_exc:  # noqa: BLE001
+        log.warning("live decision hierarchy attach: %s", ldh_exc)
 
 
 def summary_snapshot_contract_stale(payload: Mapping[str, Any]) -> bool:
