@@ -26,6 +26,14 @@ _DECISION_ALLOWED = frozenset(
         "proposed_metric_key",
         "signal_counts",
         "accepted_at",
+        # Commercial Intervention Intelligence V1 — additive, all optional on
+        # read so pre-existing rows stay parseable. No result or causal verdict
+        # is ever persisted here.
+        "intervention_id",
+        "recommendation_level",
+        "eligibility_state",
+        "conflict_group",
+        "economic_inputs_state",
     }
 )
 
@@ -77,6 +85,16 @@ def _bound_signal_counts(raw: Any) -> dict[str, float]:
     return out
 
 
+def _bound_recommendation_level(raw: Any) -> int:
+    try:
+        level = int(raw)
+    except (TypeError, ValueError):
+        raise SnapshotContractError("invalid_recommendation_level")
+    if not 0 <= level <= 4:
+        raise SnapshotContractError("invalid_recommendation_level")
+    return level
+
+
 def _assert_size(payload: Mapping[str, Any]) -> str:
     blob = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     if len(blob.encode("utf-8")) > SNAPSHOT_MAX_BYTES:
@@ -94,6 +112,11 @@ def build_decision_snapshot(
     action_code: str = "",
     proposed_metric_key: Optional[str] = None,
     signal_counts: Optional[Mapping[str, Any]] = None,
+    intervention_id: str = "",
+    recommendation_level: Optional[int] = None,
+    eligibility_state: str = "",
+    conflict_group: str = "",
+    economic_inputs_state: str = "",
 ) -> str:
     body: dict[str, Any] = {
         "schema_version": DECISION_SNAPSHOT_SCHEMA,
@@ -110,6 +133,16 @@ def build_decision_snapshot(
     counts = _bound_signal_counts(signal_counts)
     if counts:
         body["signal_counts"] = counts
+    if intervention_id:
+        body["intervention_id"] = str(intervention_id)[:128]
+    if recommendation_level is not None:
+        body["recommendation_level"] = _bound_recommendation_level(recommendation_level)
+    if eligibility_state:
+        body["eligibility_state"] = str(eligibility_state)[:64]
+    if conflict_group:
+        body["conflict_group"] = str(conflict_group)[:64]
+    if economic_inputs_state:
+        body["economic_inputs_state"] = str(economic_inputs_state)[:64]
     return _assert_size(body)
 
 
@@ -151,6 +184,8 @@ def parse_and_validate_decision_snapshot(raw: str | Mapping[str, Any]) -> dict[s
     unknown = set(data) - _DECISION_ALLOWED
     if unknown:
         raise SnapshotContractError("decision_snapshot_unknown_keys")
+    if "recommendation_level" in data:
+        _bound_recommendation_level(data.get("recommendation_level"))
     _assert_size(data)
     return data
 
