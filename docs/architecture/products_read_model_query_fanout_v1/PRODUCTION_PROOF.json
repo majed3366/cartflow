@@ -1,0 +1,158 @@
+{
+  "runtime_sha": "57fa657093d55ea481240d8f56128911642ff0f6",
+  "live_sha": "57fa657093d55ea481240d8f56128911642ff0f6",
+  "exact_sha_match": true,
+  "r17_apply": {
+    "status": 200,
+    "ok": true
+  },
+  "lab_products": {
+    "http": 200,
+    "ok": true,
+    "store_slug": "cf_live_reality_lab",
+    "lab_tenant": true,
+    "counts": {
+      "products": 11,
+      "named": 10,
+      "missing_name": 1
+    },
+    "query_delta": 1,
+    "n_plus_one": 0,
+    "frontend_ranking": 0,
+    "read_model_owner": "product_read_model_contract_v1",
+    "unique_visitor_claim": 0,
+    "oud": {
+      "name": "عود ملكي مركز",
+      "cart_count": 5,
+      "cart_value": 945.0,
+      "purchases": 0,
+      "hesitation": {
+        "price": 5
+      },
+      "exposure": {
+        "state": "LAB_SYNTHETIC",
+        "count": 5,
+        "heading_ar": "زيارات تجريبية",
+        "value_ar": "5",
+        "note_ar": "ليست زيارات متجر حقيقية.",
+        "label_ar": "زيارات تجريبية: 5. ليست زيارات متجر حقيقية.",
+        "lab_synthetic_visit_count": 5,
+        "truth_class": "LAB-SYNTHETIC PRODUCTION-SHAPED VISIT TRUTH"
+      }
+    },
+    "amber": {
+      "name": "عنبر ليلي",
+      "cart_count": 4,
+      "cart_value": 596.0,
+      "purchases": 0,
+      "hesitation": {
+        "shipping": 4
+      },
+      "exposure": {
+        "state": "LAB_SYNTHETIC",
+        "count": 4,
+        "heading_ar": "زيارات تجريبية",
+        "value_ar": "4",
+        "note_ar": "ليست زيارات متجر حقيقية.",
+        "label_ar": "زيارات تجريبية: 4. ليست زيارات متجر حقيقية.",
+        "lab_synthetic_visit_count": 4,
+        "truth_class": "LAB-SYNTHETIC PRODUCTION-SHAPED VISIT TRUTH"
+      }
+    },
+    "gift": {
+      "name": "طقم العناية الفاخر",
+      "cart_count": 4,
+      "cart_value": 996.0,
+      "purchases": 0,
+      "exposure_state": "NONE_RECORDED",
+      "exposure_count": null
+    },
+    "missing": {
+      "name": "منتج بدون اسم في الكتالوج",
+      "identity": "هوية الكتالوج غير مكتملة",
+      "missing_name": true
+    }
+  },
+  "lab_home": {
+    "http": 200,
+    "col_family": {
+      "schema": "commercial_opportunity_object_v1",
+      "opportunity_id": "col:shipping_friction:shipping:cf_live_reality_lab",
+      "family": "shipping_friction",
+      "truth_class": "PRODUCTION_TRUTH_READY",
+      "title_ar": "أقوى تردد مسجّل الآن مرتبط بالشحن.",
+      "why_ar": "أسباب التردد المرتبطة بالشحن هي الأعلى الآن: 12 من 20 (60٪). هذا نمط ارتباط في سجل أسباب المتجر، لا إثبات سبب جذري.",
+      "action_ar": "افتح أسباب التردد في سياسة الاسترجاع، وتأكد أن العميل يستطيع الاختيار بين «تكلفة الشحن مرتفعة» و«مدة التوصيل طويلة».",
+      "measure_ar": "حصة أسباب الشحن من إجمالي أسباب التردد خلال نافذة المراقبة الحالية (7 أيام — الآن 60٪).",
+      "recheck_ar": "بعد بلوغ حد الكفاية المعتمد للعينة الحالية، أو عند انخفاض واضح في حصة الشحن.",
+      "objective_ar": "تقليل التسرب عند خطوة الشحن",
+      "eyebrow_ar": "أهم فرصة تجارية الآن",
+      "priority_why_ar": "أقوى تردد مسجّل الآن مرتبط بالشحن.",
+      "evidence": {
+        "lines_ar": [
+          "أسباب التردد (7 أيام): 20",
+          "الأعلى: الشحن — 12 (60٪)",
+          "مصدر: سجل أسباب متجرك."
+        ],
+        "counts": {
+          "hesitation_total": 20,
+          "top_reason": "shipping",
+          "top_count": 12,
+          "top_share": 0.6
+        }
+      },
+      "decision_contract_ar": {
+        "decision_ar": "أقوى تردد مسجّل الآن مرتبط بالشحن.",
+        "why_now_ar": "أسباب التردد المرتبطة بالشحن هي الأعلى الآن: 12 من 20 (60٪). هذا نمط ارتباط في سجل أسباب المتجر، لا إثبات سبب جذري.",
+        "do_this_ar": "حدّد هل التردد مرتبط بتكلفة الشحن أم مدة التوصيل قبل أي تغيير في السعر.",
+        "dont_ar": "لا تخفّض الشحن ولا تجعله مجانياً قبل أن يتضح هل المشكلة التكلفة أم المدة.",
+        "measure_ar": "حصة أسباب الشحن من إجمالي أسباب التردد خلال نافذة المراقبة الحالية (7 أيام — الآن 60٪).",
+        "recheck_ar": "بعد بلوغ حد الكفاية المعتمد للعينة الحالية، أو عند انخفاض واضح في حصة الشحن.",
+        "cta_ar": "اعتمد هذه المهمة",
+        "diagnosis_ar": "لا يتضح بعد هل التردد الأقوى مرتبط بتكلفة الشحن أم بمدة التوصيل."
+      },
+      "workspace_href": "#workspace",
+      "generated_at": "2026-09-09T09:38:09Z",
+      "diagnosis_ar": "لا يتضح بعد هل التردد الأقوى مرتبط بتكلفة الشحن أم بمدة التوصيل.",
+      "dont_ar": "لا تخفّض الشحن ولا تجعله مجانياً قبل أن يتضح هل المشكلة التكلفة أم المدة."
+    },
+    "col_keys": [
+      "cost",
+      "empty",
+      "empty_state_ar",
+      "enabled",
+      "generated_at",
+      "layer_version",
+      "ok",
+      "primary",
+      "production_truth_present",
+      "question_ar",
+      "reason",
+      "schema"
+    ],
+    "has_products_compose": false
+  },
+  "lab_workspace": {
+    "http": 200,
+    "ok": true
+  },
+  "lab_carts": {
+    "http": 200,
+    "ok": true
+  },
+  "founder_eval_products": {
+    "http": 200,
+    "lab_tenant": false,
+    "query_delta": 1,
+    "n_plus_one": 0,
+    "counts": {
+      "products": 0,
+      "named": 0,
+      "missing_name": 0
+    },
+    "product_ids_sample": [],
+    "has_lab_sku": false,
+    "exposure_states": [],
+    "visit_field_label": "NOT_STORED"
+  }
+}

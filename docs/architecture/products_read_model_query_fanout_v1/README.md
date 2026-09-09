@@ -1,9 +1,12 @@
 # PRODUCTS_READ_MODEL_QUERY_FANOUT_V1
 
-**Status:** CLOSED  
+**Status:** CLOSED IN PRODUCTION  
 **Date (UTC):** 2026-09-09  
-**DEPLOY:** NO  
-**Exact-SHA deploy:** NO  
+**DEPLOY:** YES (API exact-SHA only)  
+**Exact-SHA:** `57fa657093d55ea481240d8f56128911642ff0f6`  
+**Deployment:** `00c00a30-279a-4164-9c78-c093fab004dd`  
+**Post-deploy live SHA:** `57fa657093d55ea481240d8f56128911642ff0f6` (MATCH)  
+**GENERAL RELEASE:** NO  
 **UI / COL / OGL / Mission Catalog / CDC / Portfolio / Home / Workspace / Carts / Scheduler:** unchanged
 
 | Field | Value |
@@ -90,7 +93,9 @@ No catalog · catalog without carts · carts without purchases · purchases with
 - Normal merchant: no `ProductSignalEvent` SQL; exposure `NOT_STORED`; zero visits not invented
 - Tenant filter on every source (`store_slug = :slug`; abandoned carts also `store_id` when present)
 
-**PERFORMANCE DEBT STATUS: CLOSED**  
-**READY FOR CLEAN CANDIDATE: YES** (code+tests+docs; not a product release)  
-**READY FOR EXACT-SHA DEPLOY: NO**  
-**DEPLOY: NO**
+**PERFORMANCE DEBT STATUS: CLOSED IN PRODUCTION**  
+**RUNTIME CANDIDATE SHA:** `57fa657093d55ea481240d8f56128911642ff0f6`  
+**DEPLOYMENT ID:** `00c00a30-279a-4164-9c78-c093fab004dd`  
+**POST-DEPLOY LIVE SHA:** `57fa657093d55ea481240d8f56128911642ff0f6`  
+**GENERAL RELEASE:** NO  
+**READY FOR EXACT-SHA DEPLOY:** already executed (do not redeploy docs SHA)
