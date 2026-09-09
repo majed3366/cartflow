@@ -284,7 +284,7 @@ def _compose_shipping_story(
     if not cartflow:
         cartflow = "CartFlow أرسل توضيحًا حول الشحن."
     rec_msg = _norm((rec or {}).get("merchant_message_ar"))
-    recommendation = rec_msg or "قد تستحق سياسة الشحن المراجعة إذا تكرر النمط."
+    recommendation = rec_msg or "قد يستحق وضوح تكلفة الشحن ومدة التوصيل المراجعة إذا تكرر النمط."
     action_required, action_line = _action_required_label(_norm((rec or {}).get("recommendation_type")))
     return _story_dict(
         story_type=STORY_SHIPPING_HESITATION,

@@ -180,9 +180,10 @@ def merchant_reason_panel_rows_from_counts(
     sh = int(bucket.get("shipping", 0))
     combo = min(100.0, round(100.0 * float(p + sh) / float(total), 1)) if total else 0.0
     insight = (
-        f"💡 السعر والشحن معاً يسببان {combo:.0f}٪ من التردد — راجع إعدادات الشحن وعروض الخصم"
+        f"💡 السعر والشحن يمثلان {combo:.0f}٪ من أسباب التردد المسجّلة — "
+        "وضّح تكلفة الشحن ومدة التوصيل وما يحصل عليه العميل مقابل السعر"
         if (p + sh) > 0
-        else "💡 راجع تجربة الشراء والأسعار لتحسين التحويل."
+        else "💡 راجع وضوح معلومات الشحن والمنتج في مسار الشراء."
     )
     return rows, insight
 

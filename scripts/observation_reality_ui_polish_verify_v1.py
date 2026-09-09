@@ -26,7 +26,7 @@ SAMPLE_FINDINGS = [
         "capability_id": "shipping_stronger_than_price",
         "title_ar": "أدلة الشحن أقوى من السعر",
         "statement_ar": "أدلة التردد بسبب الشحن/التوصيل أقوى حالياً من أدلة السعر.",
-        "recommended_action_ar": "اختبر شحنًا مجانيًا أو خفّض تكلفة الشحن.",
+        "recommended_action_ar": "وضّح تكلفة الشحن ومدة التوصيل قبل أي تغيير في السعر أو العرض.",
         "confidence_level": "high",
         "confidence_ar": "مرتفع",
     },

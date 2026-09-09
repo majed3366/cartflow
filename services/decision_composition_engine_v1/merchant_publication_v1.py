@@ -113,7 +113,7 @@ def _situation_action_ar(s: Mapping[str, Any]) -> str:
     if kind == "interest_without_purchase":
         return f"قرّر الموقف التجاري بخصوص {short} بناءً على التشخيص."
     if kind == "shipping_friction":
-        return f"قرّر إن كنت ستعدّل سياسة الشحن لـ {short} أم تبقيها."
+        return f"وضّح تكلفة الشحن ومدة التوصيل لـ {short} قبل أي تغيير في السعر أو العرض."
     if kind == "product_demand":
         return f"قرّر أولوية {short} في العرض والتسعير."
     if kind == "recovery_opportunity":

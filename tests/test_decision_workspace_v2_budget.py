@@ -97,7 +97,9 @@ def test_external_platform_has_action():
     assert execution_domain_v1(ship) == EXEC_DOMAIN_PLATFORM
     assert execution_readiness_v1(ship) == EXTERNAL_DEPENDENCY
     assert action_is_ready_v1(EXTERNAL_DEPENDENCY) is True
-    assert "عدّل تكلفة الشحن" in decision_sentence_ar_v1(ship)
+    sentence = decision_sentence_ar_v1(ship)
+    assert "تكلفة الشحن" in sentence and "مدة التوصيل" in sentence
+    assert "عدّل تكلفة الشحن" not in sentence
     href, label = destination_for_commitment_v1(ship)
     assert href.startswith("#settings")
     assert "شحن" in label or "زد" in label

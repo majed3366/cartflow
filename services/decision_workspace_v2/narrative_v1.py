@@ -619,7 +619,7 @@ def decision_sentence_ar_v1(card: Mapping[str, Any]) -> str:
             return "راجع الرسالة الأولى للاسترجاع."
         return "تابع السلال المعنية اليوم."
     if "شحن" in (subject + diagnosis + blob) or "ship" in blob:
-        return "عدّل تكلفة الشحن للطلبات الصغيرة."
+        return "حدّد هل التردد بسبب تكلفة الشحن أم مدة التوصيل، ثم وضّح المعلومة للعملاء."
     if "دفع" in diagnosis or "payment" in blob:
         return "راجع طرق الدفع المتاحة أثناء الدفع."
     if "interest" in blob or "اهتمام" in diagnosis:

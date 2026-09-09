@@ -157,9 +157,9 @@ def _executive_decision_title_v1(decision: Mapping[str, Any]) -> str:
     ):
         return "راجع حالات الشراء التي تحتاج تدخلك."
     if domain == "shipping" or "شحن" in title:
-        return "راجع تكلفة أو تجربة الشحن."
+        return "راجع وضوح تكلفة الشحن ومدة التوصيل للعملاء."
     if domain == "pricing" or "سعر" in title or "تسعير" in title:
-        return "راجع استراتيجية التسعير أو الخصم."
+        return "راجع وضوح ما يحصل عليه العميل مقابل السعر."
     if domain == "products" or "منتج" in title:
         if title and "راجع" in title:
             return sanitize_executive_text_v1(
