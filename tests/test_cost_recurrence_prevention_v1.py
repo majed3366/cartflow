@@ -295,6 +295,8 @@ class SingleInstanceAndOverlapTests(unittest.TestCase):
         self.assertNotIn("start_db_due_recovery_scanner_loop", src)
         self.assertNotIn("start_dashboard_snapshot_builder_loop", src)
         self.assertNotIn("start_dashboard_snapshot_archive_loop", src)
+        self.assertNotIn("start_exposure_retention_loop", src)
+        self.assertNotIn("run_exposure_retention_tick", src)
 
     def test_scheduler_entry_does_not_import_fastapi_app(self) -> None:
         from pathlib import Path

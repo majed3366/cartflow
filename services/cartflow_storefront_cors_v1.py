@@ -22,6 +22,7 @@ _WIDGET_CORS_EXACT_PATHS = frozenset(
         "/api/cartflow/reason",
         "/api/cart-event",
         "/api/storefront/widget-seen",
+        "/api/storefront/product-viewed",
     }
 )
 

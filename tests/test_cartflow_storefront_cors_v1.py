@@ -32,6 +32,7 @@ class CartflowStorefrontCorsUnitTests(unittest.TestCase):
         self.assertTrue(widget_cors_path_matches("/api/cartflow/reason"))
         self.assertTrue(widget_cors_path_matches("/api/cart-event"))
         self.assertTrue(widget_cors_path_matches("/api/storefront/widget-seen"))
+        self.assertTrue(widget_cors_path_matches("/api/storefront/product-viewed"))
         self.assertFalse(widget_cors_path_matches("/api/recovery-settings"))
 
 
@@ -106,6 +107,19 @@ class CartflowStorefrontCorsHttpTests(unittest.TestCase):
         )
         self.assertIn("POST", r.headers.get("access-control-allow-methods", ""))
         self.assertIn("Content-Type", r.headers.get("access-control-allow-headers", ""))
+
+    def test_options_preflight_product_viewed(self) -> None:
+        r = self.client.options(
+            "/api/storefront/product-viewed",
+            headers={
+                "Origin": self.zid_origin,
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "Content-Type",
+            },
+        )
+        self.assertEqual(204, r.status_code)
+        self.assertEqual(self.zid_origin, r.headers.get("access-control-allow-origin"))
+        self.assertIn("POST", r.headers.get("access-control-allow-methods", ""))
 
     def test_post_widget_seen_zid_origin_acao(self) -> None:
         r = self.client.post(

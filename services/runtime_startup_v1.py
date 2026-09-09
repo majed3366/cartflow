@@ -277,6 +277,27 @@ async def run_scheduler_drivers_at_startup() -> dict[str, Any]:
         log.warning("startup dashboard snapshot archive loop skipped: %s", exc)
         out["archive_loop_error"] = str(exc)[:200]
 
+    try:
+        from services.product_exposure_v1.retention_v1 import (  # noqa: PLC0415
+            exposure_retention_enabled,
+        )
+        from services.exposure_retention_loop_v1 import (  # noqa: PLC0415
+            start_exposure_retention_loop,
+        )
+
+        if exposure_retention_enabled():
+            start_exposure_retention_loop()
+            out["exposure_retention_loop_started"] = True
+            _print_line("[RUNTIME STARTUP] exposure_retention_loop_started=true")
+        else:
+            _print_line(
+                "[RUNTIME STARTUP] exposure_retention_loop_skipped reason=retention_disabled"
+            )
+    except Exception as exc:  # noqa: BLE001
+        _print_line(f"[RUNTIME STARTUP] exposure_retention_loop_error={str(exc)[:120]}")
+        log.warning("startup exposure retention loop skipped: %s", exc)
+        out["exposure_retention_loop_error"] = str(exc)[:200]
+
     return out
 
 

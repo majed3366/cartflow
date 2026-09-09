@@ -803,6 +803,87 @@ class ProductCatalogEntry(Base):
     last_synced_at = Column(DateTime, nullable=False)
 
 
+class ProductExposureEvent(Base):
+    """
+    Authoritative raw PDP exposure (HOT 0–30 days).
+
+    Insert-only. Canonical store_slug only. No PII, no full URL, no Zid columns.
+    """
+
+    __tablename__ = "product_exposure_events"
+    __table_args__ = (
+        UniqueConstraint("event_id", name="uq_product_exposure_event_id"),
+        Index(
+            "ix_pex_commercial_seq",
+            "store_slug",
+            "session_id",
+            "product_id",
+            "page_context",
+            "occurred_at",
+        ),
+        Index(
+            "ix_pex_session_day",
+            "store_slug",
+            "product_id",
+            "session_id",
+            "occurred_at",
+        ),
+        Index("ix_pex_store_time", "store_slug", "occurred_at"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    event_id = Column(String(64), nullable=False)
+    store_slug = Column(String(255), nullable=False)
+    product_id = Column(String(128), nullable=False)
+    session_id = Column(String(80), nullable=False)
+    page_context = Column(String(16), nullable=False)
+    occurred_at = Column(DateTime, nullable=False)
+    received_at = Column(DateTime, nullable=False)
+    source = Column(String(64), nullable=False)
+    truth_version = Column(String(32), nullable=False)
+    commercial_dedupe_key = Column(String(512), nullable=False)
+    commercial_bucket = Column(String(32), nullable=False)
+    commerce_platform = Column(String(32), nullable=False, default="unknown")
+    identity_source = Column(String(64), nullable=False, default="storefront_runtime")
+    event_source = Column(String(64), nullable=False, default="cartflow_storefront")
+    referrer_domain = Column(String(253), nullable=True)
+    claimed_utm_source = Column(String(80), nullable=True)
+    claimed_utm_medium = Column(String(80), nullable=True)
+    claimed_utm_campaign = Column(String(80), nullable=True)
+    lab_flag = Column(Boolean, nullable=False, default=False)
+
+
+class ProductExposureDailyFact(Base):
+    """
+    Derived daily grain (store_slug, product_id, date_utc).
+
+    HOT: rebuildable from raw. After seal + raw delete: historical authority.
+    """
+
+    __tablename__ = "product_exposure_daily_facts"
+    __table_args__ = (
+        UniqueConstraint(
+            "store_slug",
+            "product_id",
+            "date_utc",
+            name="uq_pex_daily_facts_grain",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    store_slug = Column(String(255), nullable=False)
+    product_id = Column(String(128), nullable=False)
+    date_utc = Column(String(10), nullable=False)
+    pdp_view_count = Column(Integer, nullable=False, default=0)
+    viewing_session_count = Column(Integer, nullable=False, default=0)
+    truth_version = Column(String(32), nullable=False, default="exposure_v1")
+    sealed_at = Column(DateTime, nullable=True)
+    seal_truth_version = Column(String(32), nullable=True)
+    seal_source_window_start = Column(DateTime, nullable=True)
+    seal_source_window_end = Column(DateTime, nullable=True)
+    seal_source_row_count = Column(Integer, nullable=True)
+
+
 class ProductHesitationMapping(Base):
     """
     Immutable Product ↔ Hesitation Reason link (Hesitation Mapping v1).

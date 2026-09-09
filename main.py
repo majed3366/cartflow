@@ -21449,6 +21449,14 @@ async def api_storefront_widget_seen(request: Request):
     return j({"ok": True, "updated": updated, "store_id": store_id})
 
 
+@app.post("/api/storefront/product-viewed")
+async def api_storefront_product_viewed(request: Request):
+    """PDP product exposure ingest — Origin+catalog authority. Not cart-event."""
+    from services.product_exposure_v1.http_v1 import handle_product_viewed  # noqa: PLC0415
+
+    return await handle_product_viewed(request)
+
+
 @app.get("/api/merchant/session-identity")
 def api_merchant_session_identity(request: Request):
     """
