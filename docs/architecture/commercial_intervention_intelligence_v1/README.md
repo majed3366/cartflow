@@ -57,7 +57,10 @@ No second lifecycle. No second ranker. No new commitment table.
 | `MEASUREMENT_CONTRACT.md` | Baseline, primary/guardrail metrics, windows, success/failure, causality boundary |
 | `INTEGRATION_MAP.md` | Seams into COL / Catalog / Portfolio / CDC / Workspace, conflict groups, UI contract, query budget |
 | `PROJECTIONS.md` | R17 projection, insufficient-evidence projection, future Level 3 projection |
-| `REPORT.md` | Final verdict report |
+| `REPORT.md` | Contract design verdict report |
+| `simulation_v1.py` | Non-production prototype: architecture, event, and contract simulation gate |
+| `SIMULATION_REPORT.md` | Simulation gate verdict (96/96 checks) |
+| `SIMULATION_RESULTS.md` | Raw simulation output + the 8 merchant projections |
 
 ## Verdict
 
