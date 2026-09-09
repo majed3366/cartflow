@@ -91,6 +91,19 @@ corrected. Verified: zero hits across
 - `narrative_v1` wait paths — `لا تغيّر سياسة الشحن حتى تتضح الأدلة.` / `لا تُجرِ تغييراً حتى تتضح الأدلة.`
 - `recovery_offer_decision.py`, `recovery_product_suggestions.py` — margin-protective guardrails that *discourage* discounting.
 
+**SAFE — negated guardrails (the largest category).** A forbidden phrase is safe
+when the merchant is told *not* to do it. `commercial_action_language_v1` and
+`operational_guidance_v1` already emit, on the live price path:
+
+> `dont_ar`: `لا تطلق خصماً عاماً ولا تخفّض السعر لأن السعر تكرر كسبب تردد.`
+> `why_ar`: `السعر هو أعلى سبب تردد الآن: 12 من 20 (60٪). هذا لا يثبت أن الخصم يرفع الإيراد.`
+
+A naive substring sweep counted 26 such occurrences as violations. They are the
+opposite — they are the price-safety law already working. The gate is therefore
+**negation-aware**: only an *unnegated* use counts, and
+`test_negation_is_required_to_keep_a_forbidden_phrase` proves the check still
+catches a real instruction. Both modules are now inside the gate's coverage.
+
 **NON-MERCHANT_INTERNAL (out of scope, unchanged):**
 
 - OGL `forbidden_actions` identifiers (`reduce_shipping_cost`, …) — policy identifiers, never painted.
@@ -138,7 +151,7 @@ Intervention Intelligence audit. No state machine was introduced here.
 
 ## Tests
 
-New: `tests/test_commercial_guidance_economic_safety_v1.py` — 10 tests.
+New: `tests/test_commercial_guidance_economic_safety_v1.py` — 11 tests.
 
 Covers: no economically parameterized guidance; no invented product-confidence
 proof; no monetary threshold; no merchant-facing `البيع المتقاطع`; shipping
@@ -164,6 +177,41 @@ suite.
 
 `tests/test_demo_lab_scenario1_v1.py` fails collection at the base SHA
 (`services.customer_movement_snapshot_v1` missing) — pre-existing, unrelated.
+
+---
+
+## Live production proof
+
+API deployed by exact SHA (`serviceInstanceDeployV2`), autodeploy OFF, no env
+mutation, Scheduler untouched (`f91e799d` / `2b1e5665`, 2026-08-27).
+
+| Check | Result |
+|-------|--------|
+| Pre-deploy live API SHA (re-observed) | `751c35a3…` / deployment `36be0d5c` SUCCESS |
+| `/ping` · `/health` · `/health?db=1` | 200 · 200 · 200 (`database: ok`) |
+| QueuePool `timeout_count` | 0 |
+| `X-CartFlow-Git-Sha` = `git_sha` = candidate | YES |
+
+Lab tenant `cf_live_reality_lab`, real `/dashboard` 200.
+
+| Family | Scenario | apply / verify | Live merchant action |
+|--------|----------|----------------|----------------------|
+| `shipping_friction` | `R17_shipping_hesitation` | ok / ok | `وضّح تكلفة الشحن ومدة التوصيل لـ … قبل أي تغيير في السعر أو العرض.` |
+| `price_hesitation` | `R21_price_hesitation` | ok / ok | `وضّح قيمة العرض مقابل السعر الحالي قبل أي خصم.` + `dont_ar: لا تطلق خصماً عاماً ولا تخفّض السعر…` |
+| `product_confidence` | `R20_product_confidence` | ok / ok | no invented reviews / certificates / guarantees |
+| `wait_insufficient_evidence` | `R15_zero_visits` | ok / ok | no economic instruction emitted |
+
+**R17 diagnosis unchanged:** `merchant_reason_counts_week` = shipping **12**,
+price 5, thinking 3 → 20 recorded reasons, shipping share **12/20 = 60%**.
+
+Dashboard insight now reads
+`السعر والشحن يمثلان 85٪ من أسباب التردد المسجّلة — وضّح تكلفة الشحن ومدة التوصيل وما يحصل عليه العميل مقابل السعر`
+(share of recorded reasons, not causation, no discount).
+
+**Unnegated forbidden instructions across `/dashboard` HTML + 4 scenario
+summaries + 4 workspace projections: 0.** Monetary thresholds: 0.
+
+Shipping live safe level: **2**.
 
 ---
 

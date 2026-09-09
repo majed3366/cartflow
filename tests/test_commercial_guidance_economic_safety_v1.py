@@ -41,7 +41,26 @@ MERCHANT_GUIDANCE_SOURCES = (
     "services/merchant_dashboard_reference_ui.py",
     "services/finding_decision_engine_v1.py",
     "services/business_reasoning_rules_v1.py",
+    "services/commercial_action_language_v1/contract_v1.py",
+    "services/operational_guidance_v1/compose_v1.py",
 )
+
+# A forbidden phrase is safe when the merchant is told *not* to do it
+# ("لا تخفّض السعر", "بلا خصم", "قبل أي خصم"). Only unnegated uses instruct.
+_NEGATORS = ("لا ", "دون", "بلا", "بدون", "قبل أي", "غير", "عدم", "لن ")
+
+
+def _unnegated_hits(text: str, phrase: str) -> int:
+    hits = 0
+    start = 0
+    while True:
+        i = text.find(phrase, start)
+        if i < 0:
+            return hits
+        lead = text[max(0, i - 16):i]
+        if not any(n in lead for n in _NEGATORS):
+            hits += 1
+        start = i + len(phrase)
 
 # Economically parameterized instructions — forbidden without economic truth.
 FORBIDDEN_ECONOMIC_PHRASES = (
@@ -84,13 +103,22 @@ def _guidance_text() -> list[tuple[str, str]]:
 def test_no_economically_parameterized_merchant_guidance() -> None:
     for rel, text in _guidance_text():
         for phrase in FORBIDDEN_ECONOMIC_PHRASES:
-            assert phrase not in text, f"{rel} emits economic guidance: {phrase}"
+            assert not _unnegated_hits(text, phrase), (
+                f"{rel} instructs economic guidance: {phrase}"
+            )
+
+
+def test_negation_is_required_to_keep_a_forbidden_phrase() -> None:
+    """The gate must not be satisfied by wording alone."""
+    assert _unnegated_hits("لا تخفّض السعر الآن.", "خفّض السعر") == 0
+    assert _unnegated_hits("وضّح القيمة قبل أي خصم مباشر.", "خصم مباشر") == 0
+    assert _unnegated_hits("خفّض السعر هذا الأسبوع.", "خفّض السعر") == 1
 
 
 def test_no_invented_product_confidence_proof() -> None:
     for rel, text in _guidance_text():
         for phrase in FORBIDDEN_INVENTED_PROOF:
-            assert phrase not in text, f"{rel} invents proof: {phrase}"
+            assert not _unnegated_hits(text, phrase), f"{rel} invents proof: {phrase}"
 
 
 def test_no_monetary_threshold_in_merchant_guidance() -> None:
