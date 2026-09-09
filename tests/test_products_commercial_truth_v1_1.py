@@ -96,7 +96,7 @@ def _by_id(pkg):
 
 
 class ProductsV11ReadabilityTests(unittest.TestCase):
-    def test_phase0_debt_is_open_not_done(self) -> None:
+    def test_debt_pack_records_closure(self) -> None:
         debt = _read(
             "docs/architecture/products_read_model_query_fanout_v1/README.md"
         )
@@ -104,17 +104,16 @@ class ProductsV11ReadabilityTests(unittest.TestCase):
             "docs/architecture/products_read_model_query_fanout_v1/PHASE0_BASELINE.md"
         )
         self.assertIn("PRODUCTS_READ_MODEL_QUERY_FANOUT_V1", debt)
-        self.assertIn("OPEN", debt)
-        self.assertNotIn("Status:** CLOSED", debt)
-        self.assertIn("normal = **+4**", debt)
-        self.assertIn("lab = **+5**", debt)
+        self.assertIn("CLOSED", debt)
+        self.assertIn("normal = **+1**", debt)
+        self.assertIn("lab = **+1**", debt)
         self.assertIn("7096de1564c008ac83da6216c70aba22f328071a", base)
         self.assertIn("+4", base)
         self.assertIn("+5", base)
 
     def test_query_delta_does_not_increase(self) -> None:
-        self.assertEqual(QUERY_COUNT_NORMAL, 4)
-        self.assertEqual(QUERY_COUNT_LAB, 5)
+        self.assertLessEqual(QUERY_COUNT_NORMAL, 1)
+        self.assertLessEqual(QUERY_COUNT_LAB, 2)
         compose = _read("services/products_commercial_truth_v1/compose_v1.py")
         self.assertIn("QUERY_COUNT_NORMAL", compose)
         self.assertIn("QUERY_COUNT_LAB", compose)

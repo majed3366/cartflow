@@ -94,8 +94,8 @@ class ProductsV12PresentationTests(unittest.TestCase):
         contract = _read("services/products_commercial_truth_v1/contract_v1.py")
         self.assertIn("أسباب تردد مسجّلة لهذا المنتج", compose)
         self.assertIn("QUERY_COUNT_NORMAL", compose)
-        self.assertEqual(QUERY_COUNT_NORMAL, 4)
-        self.assertEqual(QUERY_COUNT_LAB, 5)
+        self.assertLessEqual(QUERY_COUNT_NORMAL, 1)
+        self.assertLessEqual(QUERY_COUNT_LAB, 2)
         self.assertIn("products_commercial_truth_v1_1", contract)
         lab = _pkg()
         ids = [p["product_id"] for p in lab["products"]]
@@ -106,15 +106,14 @@ class ProductsV12PresentationTests(unittest.TestCase):
         self.assertEqual(lab["n_plus_one"], 0)
         self.assertEqual(lab["unique_visitor_claim"], 0)
 
-    def test_debt_remains_open(self) -> None:
+    def test_debt_is_closed(self) -> None:
         debt = _read(
             "docs/architecture/products_read_model_query_fanout_v1/README.md"
         )
         self.assertIn("PRODUCTS_READ_MODEL_QUERY_FANOUT_V1", debt)
-        self.assertIn("OPEN", debt)
-        self.assertNotIn("Status:** CLOSED", debt)
-        self.assertIn("normal = **+4**", debt)
-        self.assertIn("lab = **+5**", debt)
+        self.assertIn("CLOSED", debt)
+        self.assertIn("normal = **+1**", debt)
+        self.assertIn("lab = **+1**", debt)
 
     def test_frontend_is_presentation_only(self) -> None:
         js = _read("static/merchant_ui_v2_products.js")

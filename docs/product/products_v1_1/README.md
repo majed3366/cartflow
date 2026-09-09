@@ -21,7 +21,7 @@
 ## What did not change
 
 COL, OGL, Mission Catalog, CDC, Portfolio, Home, Workspace, Carts.  
-Query Δ still +4 / +5. Debt `PRODUCTS_READ_MODEL_QUERY_FANOUT_V1` remains **OPEN**.
+Query Δ at V1.1 ship was +4 / +5. Later closed to +1 / +1 — see `docs/architecture/products_read_model_query_fanout_v1/`.
 
 ## Evidence
 

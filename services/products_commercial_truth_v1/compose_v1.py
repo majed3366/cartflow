@@ -35,7 +35,6 @@ from services.products_commercial_truth_v1.contract_v1 import (
     LAB_VISIT_NOT_REAL_AR,
     LAYER_SCHEMA,
     LAYER_VERSION,
-    MAX_CART_LINK_ROWS,
     MAX_PRODUCTS,
     MISSING_NAME_IDENTITY_AR,
     MISSING_NAME_TITLE_AR,
@@ -182,155 +181,11 @@ def _strongest_signal(
 
 
 def _load_from_db(store_slug: str, store: Any, *, lab_tenant: bool) -> dict[str, Any]:
-    from sqlalchemy import func
-    from sqlalchemy.exc import SQLAlchemyError
-
-    from extensions import db
-    from models import (
-        AbandonedCart,
-        CartLineSnapshot,
-        ProductCatalogEntry,
-        ProductHesitationMapping,
-        ProductPurchaseMapping,
-        ProductSignalEvent,
+    from services.products_commercial_truth_v1.load_consolidated_v1 import (
+        load_products_read_model_v1,
     )
-    from services.live_reality_lab_v1.contract_v1 import LAB_SYNTHETIC_VISIT_SOURCE
-    from services.product_data.product_signal_types_v1 import SIGNAL_PRODUCT_VIEWED
 
-    slug = _norm(store_slug, max_len=191)
-    store_id = int(getattr(store, "id", 0) or 0) if store is not None else 0
-    catalog: list[dict[str, Any]] = []
-    carts: dict[str, dict[str, Any]] = {}
-    purchases: dict[str, dict[str, Any]] = {}
-    hesitation: dict[str, dict[str, int]] = {}
-    visits: dict[str, int] | None = None
-    query_count = QUERY_COUNT_NORMAL
-    try:
-        cat_rows = (
-            db.session.query(ProductCatalogEntry)
-            .filter(ProductCatalogEntry.store_slug == slug)
-            .order_by(ProductCatalogEntry.last_synced_at.desc())
-            .limit(MAX_PRODUCTS)
-            .all()
-        )
-        for row in cat_rows:
-            pid = _norm(row.product_id) or _norm(row.stable_identity_key)
-            if not pid:
-                continue
-            catalog.append(
-                {
-                    "product_id": pid,
-                    "name": _norm(row.name),
-                    "price": row.price,
-                    "currency": _norm(row.currency) or "SAR",
-                    "sku": _norm(row.sku),
-                    "missing_name": not _name_ok(row.name or ""),
-                }
-            )
-        from sqlalchemy import and_
-
-        join_on = AbandonedCart.zid_cart_id == CartLineSnapshot.cart_id
-        if store_id:
-            join_on = and_(join_on, AbandonedCart.store_id == store_id)
-        link_q = (
-            db.session.query(
-                CartLineSnapshot.product_id,
-                CartLineSnapshot.cart_id,
-                AbandonedCart.cart_value,
-            )
-            .outerjoin(AbandonedCart, join_on)
-            .filter(CartLineSnapshot.store_slug == slug)
-        )
-        seen: set[tuple[str, str]] = set()
-        for pid, cart_id, value in link_q.limit(MAX_CART_LINK_ROWS).all():
-            key = _norm(pid)
-            cid = _norm(cart_id)
-            if not key or not cid:
-                continue
-            pair = (key, cid)
-            if pair in seen:
-                continue
-            seen.add(pair)
-            bucket = carts.setdefault(key, {"cart_count": 0, "cart_value": 0.0})
-            bucket["cart_count"] += 1
-            bucket["cart_value"] += _as_float(value)
-        purch_rows = (
-            db.session.query(
-                ProductPurchaseMapping.product_id,
-                func.count(ProductPurchaseMapping.id),
-                func.coalesce(
-                    func.sum(
-                        func.coalesce(ProductPurchaseMapping.unit_price, 0.0)
-                        * func.coalesce(ProductPurchaseMapping.quantity, 1)
-                    ),
-                    0.0,
-                ),
-            )
-            .filter(ProductPurchaseMapping.store_slug == slug)
-            .group_by(ProductPurchaseMapping.product_id)
-            .limit(MAX_PRODUCTS)
-            .all()
-        )
-        for pid, n, revenue in purch_rows:
-            key = _norm(pid)
-            if not key:
-                continue
-            purchases[key] = {
-                "purchase_count": _as_int(n),
-                "revenue": _as_float(revenue),
-                "known": True,
-            }
-        hes_rows = (
-            db.session.query(
-                ProductHesitationMapping.product_id,
-                ProductHesitationMapping.reason,
-                func.count(ProductHesitationMapping.id),
-            )
-            .filter(ProductHesitationMapping.store_slug == slug)
-            .group_by(
-                ProductHesitationMapping.product_id,
-                ProductHesitationMapping.reason,
-            )
-            .limit(MAX_PRODUCTS * 6)
-            .all()
-        )
-        for pid, reason, n in hes_rows:
-            key = _norm(pid)
-            if not key:
-                continue
-            hesitation.setdefault(key, {})[_norm(reason).lower()] = _as_int(n)
-        if lab_tenant:
-            query_count = QUERY_COUNT_LAB
-            visits = {}
-            vis_rows = (
-                db.session.query(
-                    ProductSignalEvent.product_id,
-                    func.count(ProductSignalEvent.id),
-                )
-                .filter(
-                    ProductSignalEvent.store_slug == slug,
-                    ProductSignalEvent.source == LAB_SYNTHETIC_VISIT_SOURCE,
-                    ProductSignalEvent.signal_type == SIGNAL_PRODUCT_VIEWED,
-                )
-                .group_by(ProductSignalEvent.product_id)
-                .limit(MAX_PRODUCTS)
-                .all()
-            )
-            for pid, n in vis_rows:
-                key = _norm(pid)
-                if key:
-                    visits[key] = _as_int(n)
-    except SQLAlchemyError:
-        db.session.rollback()
-        raise
-    return {
-        "catalog": catalog,
-        "carts": carts,
-        "purchases": purchases,
-        "hesitation": hesitation,
-        "visits": visits,
-        "query_count": query_count,
-    }
+    return load_products_read_model_v1(store_slug, store, lab_tenant=lab_tenant)
 
 
 def _card_from_facts(
@@ -472,7 +327,8 @@ def compose_products_commercial_truth_v1(
         n_plus_one = 0
     else:
         blob = _load_from_db(slug, store, lab_tenant=lab_tenant)
-        query_count = int(blob.get("query_count") or 0)
+        ceiling = QUERY_COUNT_LAB if lab_tenant else QUERY_COUNT_NORMAL
+        query_count = int(blob.get("query_count") or ceiling)
         n_plus_one = 0
     catalog = list(blob.get("catalog") or [])
     carts = dict(blob.get("carts") or {})

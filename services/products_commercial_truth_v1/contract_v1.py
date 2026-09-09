@@ -21,8 +21,9 @@ COMMERCIAL_STATUS_OWNER = "catalog_cdc_portfolio"
 
 MAX_PRODUCTS = 40
 MAX_CART_LINK_ROWS = 400
-QUERY_COUNT_NORMAL = 4
-QUERY_COUNT_LAB = 5
+# One store-scoped CTE read. Lab visits ride the same statement (lab SQL only).
+QUERY_COUNT_NORMAL = 1
+QUERY_COUNT_LAB = 1
 
 QUESTION_AR = "أي المنتجات تستحق انتباهي، وماذا يحدث تجارياً لكل منتج؟"
 KICKER_AR = "حقيقة كل منتج من السلال والمشتريات وأسباب التردد — دون افتراض غير مثبت."
