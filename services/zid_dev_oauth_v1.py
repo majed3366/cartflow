@@ -245,7 +245,7 @@ def persist_zid_dev_store_from_token_response(
     Upsert Store by zid_store_id from OAuth token response (development install only).
     """
     from integrations.zid_client import (
-        fetch_zid_store_id_from_profile,
+        fetch_zid_store_id_from_oauth_grant,
         parse_zid_store_id_from_token,
         persist_oauth_tokens_on_store_row,
     )
@@ -254,9 +254,9 @@ def persist_zid_dev_store_from_token_response(
     access = (token_response.get("access_token") or "").strip()
     if not access:
         return None
-    zid = parse_zid_store_id_from_token(token_response) or fetch_zid_store_id_from_profile(
-        access
-    )
+    zid = parse_zid_store_id_from_token(
+        token_response
+    ) or fetch_zid_store_id_from_oauth_grant(token_response)
     if not zid:
         return None
     row = db.session.query(Store).filter(Store.zid_store_id == zid).first()
@@ -270,23 +270,30 @@ def persist_zid_dev_store_from_token_response(
     row.integration_source = ZID_DEV_INTEGRATION_SOURCE
     row.connected_at = now
     row.is_active = True
+    zid_now = (getattr(row, "zid_store_id", None) or zid or "").strip()
+    db.session.commit()
+    row = db.session.query(Store).filter(Store.zid_store_id == zid).first() or row
     try:
         from services.store_identity_v1 import sync_zid_store_identities_after_oauth
 
         sync_zid_store_identities_after_oauth(
             row,
             token_response=token_response,
-            prior_zid=prior_zid if prior_zid != (row.zid_store_id or "").strip() else None,
+            prior_zid=prior_zid if prior_zid != zid_now else None,
         )
+        db.session.commit()
+        row = db.session.query(Store).filter(Store.zid_store_id == zid).first() or row
     except Exception:  # noqa: BLE001
         pass
-    db.session.commit()
     try:
         from services.zid_storefront_widget_install_v1 import (  # noqa: PLC0415
             maybe_install_zid_storefront_widget,
         )
 
-        maybe_install_zid_storefront_widget(row, trigger="zid_dev_oauth")
+        fresh = db.session.query(Store).filter(Store.zid_store_id == zid).first()
+        maybe_install_zid_storefront_widget(fresh or row, trigger="zid_dev_oauth")
+        if fresh is not None:
+            row = fresh
     except Exception as exc:  # noqa: BLE001
         log.warning(
             "zid_dev_oauth widget_install_trigger_failed zid=%s err=%s",

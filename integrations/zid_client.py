@@ -236,53 +236,195 @@ def parse_zid_store_id_from_token(data: dict[str, Any]) -> Optional[str]:
     return None
 
 
-def fetch_zid_manager_profile(access_token: str) -> Optional[dict[str, Any]]:
-    """Full manager profile JSON — used for store identity sync."""
-    auth_bearer = (os.getenv("ZID_API_AUTHORIZATION") or "").strip()
-    h: dict[str, str] = {
-        "X-MANAGER-TOKEN": access_token,
+ZID_MANAGER_AUTH_INCOMPLETE = "zid_manager_auth_incomplete"
+ZID_MANAGER_CROSS_STORE_REJECTED = "zid_manager_cross_store_rejected"
+
+
+def _strip_bearer_prefix(raw: str) -> str:
+    s = (raw or "").strip()
+    if s.lower().startswith("bearer "):
+        return s[7:].strip()
+    return s
+
+
+def zid_manager_auth_state(store: Any) -> dict[str, Any]:
+    """Presence-only Manager auth state for one store row. Never includes secrets."""
+    store_id = getattr(store, "id", None) if store is not None else None
+    access_present = bool(
+        (getattr(store, "access_token", None) or "").strip()
+    ) if store is not None else False
+    auth_present = bool(
+        (getattr(store, "zid_authorization_token", None) or "").strip()
+    ) if store is not None else False
+    missing: list[str] = []
+    if not auth_present:
+        missing.append("zid_authorization_token")
+    if not access_present:
+        missing.append("access_token")
+    return {
+        "store_id": store_id,
+        "access_token": "present" if access_present else "missing",
+        "zid_authorization_token": "present" if auth_present else "missing",
+        "ready": not missing,
+        "missing": missing,
+        "error": None if not missing else ZID_MANAGER_AUTH_INCOMPLETE,
+    }
+
+
+def _manager_header_dict(*, authorization: str, access_token: str) -> dict[str, str]:
+    return {
+        "Authorization": f"Bearer {_strip_bearer_prefix(authorization)}",
+        "X-MANAGER-TOKEN": (access_token or "").strip(),
         "Accept": "application/json",
         "Accept-Language": "en",
     }
-    if auth_bearer:
-        h["Authorization"] = f"Bearer {auth_bearer}"
+
+
+def manager_headers_for_store(
+    store: Any,
+) -> Tuple[Optional[dict[str, str]], Optional[dict[str, Any]]]:
+    """
+    Dual-header Manager contract from ONE canonical store row.
+
+    Authorization ← stores.zid_authorization_token
+    X-MANAGER-TOKEN ← stores.access_token
+    No ZID_API_AUTHORIZATION fallback.
+    """
+    state = zid_manager_auth_state(store)
+    if not state["ready"]:
+        err = {
+            "error": ZID_MANAGER_AUTH_INCOMPLETE,
+            "missing": list(state["missing"]),
+            "store_id": state["store_id"],
+        }
+        try:
+            log.info(
+                "[ZID MANAGER AUTH] incomplete store_id=%s missing=%s",
+                state["store_id"] if state["store_id"] is not None else "-",
+                ",".join(state["missing"]),
+            )
+        except Exception:  # noqa: BLE001
+            pass
+        return None, err
+    access = (getattr(store, "access_token", None) or "").strip()
+    auth = (getattr(store, "zid_authorization_token", None) or "").strip()
+    return _manager_header_dict(authorization=auth, access_token=access), None
+
+
+def manager_headers_for_oauth_grant(
+    token_response: dict[str, Any],
+) -> Tuple[Optional[dict[str, str]], Optional[dict[str, Any]]]:
+    """Same-grant pair from one token-exchange body. Used before persist."""
+    access = (token_response.get("access_token") or "").strip()
+    auth = parse_zid_authorization_from_token_response(token_response)
+    missing: list[str] = []
+    if not auth:
+        missing.append("Authorization")
+    if not access:
+        missing.append("access_token")
+    if missing:
+        return None, {
+            "error": ZID_MANAGER_AUTH_INCOMPLETE,
+            "missing": missing,
+            "source": "oauth_grant",
+        }
+    return _manager_header_dict(authorization=str(auth), access_token=access), None
+
+
+def manager_headers_from_explicit_pair(
+    *,
+    store: Any,
+    authorization_token: str,
+    access_token: str,
+) -> Tuple[Optional[dict[str, str]], Optional[dict[str, Any]]]:
+    """
+    Reject unless both provided values match the same store row.
+    Prevents Store A Authorization + Store B manager token.
+    """
+    state = zid_manager_auth_state(store)
+    if not state["ready"]:
+        return None, {
+            "error": ZID_MANAGER_AUTH_INCOMPLETE,
+            "missing": list(state["missing"]),
+            "store_id": state["store_id"],
+        }
+    row_auth = _strip_bearer_prefix(getattr(store, "zid_authorization_token", None) or "")
+    row_access = (getattr(store, "access_token", None) or "").strip()
+    given_auth = _strip_bearer_prefix(authorization_token)
+    given_access = (access_token or "").strip()
+    auth_ok = bool(row_auth) and bool(given_auth) and hmac.compare_digest(
+        row_auth, given_auth
+    )
+    access_ok = bool(row_access) and bool(given_access) and hmac.compare_digest(
+        row_access, given_access
+    )
+    if not auth_ok or not access_ok:
+        return None, {
+            "error": ZID_MANAGER_CROSS_STORE_REJECTED,
+            "store_id": state["store_id"],
+        }
+    return manager_headers_for_store(store)
+
+
+def reject_cross_store_manager_pair(
+    *,
+    authorization_store: Any,
+    manager_token_store: Any,
+) -> Tuple[Optional[dict[str, str]], Optional[dict[str, Any]]]:
+    a_id = getattr(authorization_store, "id", None) if authorization_store is not None else None
+    b_id = getattr(manager_token_store, "id", None) if manager_token_store is not None else None
+    if a_id is None or b_id is None or int(a_id) != int(b_id):
+        return None, {
+            "error": ZID_MANAGER_CROSS_STORE_REJECTED,
+            "authorization_store_id": a_id,
+            "manager_token_store_id": b_id,
+        }
+    return manager_headers_for_store(authorization_store)
+
+
+def _manager_get_json(
+    url: str,
+    headers: dict[str, str],
+    *,
+    params: Optional[dict[str, Any]] = None,
+    timeout: int = 20,
+) -> Tuple[Optional[dict[str, Any]], int]:
     try:
-        r = _zid_get(ZID_PROFILE_API, headers=h, timeout=20)
+        r = _zid_get(url, headers=headers, params=params, timeout=timeout)
     except requests.RequestException:
-        return None
-    if r.status_code // 100 != 2:
-        return None
+        return None, 0
     try:
-        j = r.json()
+        body: Any = r.json()
     except Exception:
+        return None, r.status_code
+    if isinstance(body, dict):
+        return body, r.status_code
+    return None, r.status_code
+
+
+def fetch_zid_manager_profile(store: Any) -> Optional[dict[str, Any]]:
+    """Full manager profile JSON — used for store identity sync."""
+    headers, err = manager_headers_for_store(store)
+    if err or not headers:
         return None
-    return j if isinstance(j, dict) else None
+    body, status = _manager_get_json(ZID_PROFILE_API, headers)
+    if status // 100 != 2 or not isinstance(body, dict):
+        return None
+    return body
 
 
-def fetch_zid_manager_store_payload(access_token: str) -> Optional[dict[str, Any]]:
+def fetch_zid_manager_store_payload(store: Any) -> Optional[dict[str, Any]]:
     """Full JSON from GET /v1/managers/account/store — often has storefront URL."""
-    token = (access_token or "").strip()
-    if not token:
+    headers, err = manager_headers_for_store(store)
+    if err or not headers:
         return None
-    try:
-        r = _zid_get(
-            ZID_MANAGER_STORE_URL,
-            headers=_manager_headers(token),
-            timeout=20,
-        )
-    except requests.RequestException:
+    body, status = _manager_get_json(ZID_MANAGER_STORE_URL, headers)
+    if status // 100 != 2 or not isinstance(body, dict):
         return None
-    if r.status_code // 100 != 2:
-        return None
-    try:
-        j = r.json()
-    except Exception:
-        return None
-    return j if isinstance(j, dict) else None
+    return body
 
 
-def fetch_zid_store_id_from_profile(access_token: str) -> Optional[str]:
-    j = fetch_zid_manager_profile(access_token)
+def _store_id_from_manager_profile_json(j: Any) -> Optional[str]:
     if not isinstance(j, dict):
         return None
     for path in (
@@ -302,6 +444,21 @@ def fetch_zid_store_id_from_profile(access_token: str) -> Optional[str]:
     return None
 
 
+def fetch_zid_store_id_from_profile(store: Any) -> Optional[str]:
+    return _store_id_from_manager_profile_json(fetch_zid_manager_profile(store))
+
+
+def fetch_zid_store_id_from_oauth_grant(token_response: dict[str, Any]) -> Optional[str]:
+    """Profile store id using the same OAuth grant pair. Fail closed if Authorization missing."""
+    headers, err = manager_headers_for_oauth_grant(token_response)
+    if err or not headers:
+        return None
+    body, status = _manager_get_json(ZID_PROFILE_API, headers)
+    if status // 100 != 2:
+        return None
+    return _store_id_from_manager_profile_json(body)
+
+
 def persist_oauth_tokens_on_store_row(
     row: Any,
     token_response: dict[str, Any],
@@ -310,9 +467,9 @@ def persist_oauth_tokens_on_store_row(
     access = (token_response.get("access_token") or "").strip()
     if not access:
         return False
-    zid = parse_zid_store_id_from_token(token_response) or fetch_zid_store_id_from_profile(
-        access
-    )
+    # Parse only — never HTTP here. Manager GET releases the scoped session
+    # (rollback+remove), which would drop uncommitted token writes.
+    zid = parse_zid_store_id_from_token(token_response)
     refresh: Optional[str] = None
     r = token_response.get("refresh_token")
     if r is not None and str(r).strip():
@@ -459,28 +616,16 @@ def exchange_code_for_token(code: str) -> Tuple[dict, int]:
     return ({"response": body}, tr.status_code)
 
 
-def _manager_headers(store_token: str) -> dict[str, str]:
-    h: dict[str, str] = {
-        "X-MANAGER-TOKEN": store_token,
-        "Accept": "application/json",
-        "Accept-Language": "en",
-    }
-    auth = (os.getenv("ZID_API_AUTHORIZATION") or "").strip()
-    if auth:
-        h["Authorization"] = f"Bearer {auth}"
-    return h
-
-
 def fetch_abandoned_carts(store: Any) -> Tuple[dict, int]:
-    token = (getattr(store, "access_token", None) or "").strip()
-    if not token:
-        return ({"error": "store has no access token"}, 400)
+    headers, err = manager_headers_for_store(store)
+    if err or not headers:
+        return (err or {"error": ZID_MANAGER_AUTH_INCOMPLETE}, 409)
     url = f"{ZID_API_BASE}/managers/store/abandoned-carts"
     try:
         r = _zid_get(
             url,
             params={"page": 1, "page_size": 20},
-            headers=_manager_headers(token),
+            headers=headers,
             timeout=30,
         )
     except requests.RequestException as e:
@@ -494,18 +639,44 @@ def fetch_abandoned_carts(store: Any) -> Tuple[dict, int]:
     return ({"data": body}, r.status_code)
 
 
-def fetch_orders(store: Any) -> Tuple[dict, int]:
-    token = (getattr(store, "access_token", None) or "").strip()
-    if not token:
-        return ({"error": "store has no access token"}, 400)
+def fetch_orders(
+    store: Any,
+    *,
+    page: int = 1,
+    page_size: int = 20,
+) -> Tuple[dict, int]:
+    headers, err = manager_headers_for_store(store)
+    if err or not headers:
+        return (err or {"error": ZID_MANAGER_AUTH_INCOMPLETE}, 409)
     url = f"{ZID_API_BASE}/managers/store/orders"
     try:
         r = _zid_get(
             url,
-            params={"page": 1, "page_size": 20},
-            headers=_manager_headers(token),
+            params={"page": int(page), "page_size": int(page_size)},
+            headers=headers,
             timeout=30,
         )
+    except requests.RequestException as e:
+        return ({"error": "request_failed", "detail": str(e)}, 502)
+    try:
+        body: Any = r.json()
+    except Exception:
+        return ({"raw": (r.text or "")[:2000], "http_status": r.status_code}, r.status_code)
+    if isinstance(body, dict):
+        return (body, r.status_code)
+    return ({"data": body}, r.status_code)
+
+
+def fetch_order_view(store: Any, order_id: str) -> Tuple[dict, int]:
+    oid = str(order_id or "").strip()
+    if not oid:
+        return ({"error": "order_id_required"}, 400)
+    headers, err = manager_headers_for_store(store)
+    if err or not headers:
+        return (err or {"error": ZID_MANAGER_AUTH_INCOMPLETE}, 409)
+    url = f"{ZID_API_BASE}/managers/store/orders/{oid}/view"
+    try:
+        r = _zid_get(url, headers=headers, timeout=30)
     except requests.RequestException as e:
         return ({"error": "request_failed", "detail": str(e)}, 502)
     try:
@@ -551,25 +722,9 @@ def fetch_zid_app_scripts_manifest() -> Tuple[dict, int]:
     return ({}, r.status_code)
 
 
-def fetch_zid_manager_store_url(access_token: str) -> Optional[str]:
+def fetch_zid_manager_store_url(store: Any) -> Optional[str]:
     """Storefront base URL from GET /v1/managers/account/store."""
-    token = (access_token or "").strip()
-    if not token:
-        return None
-    try:
-        r = _zid_get(
-            ZID_MANAGER_STORE_URL,
-            headers=_manager_headers(token),
-            timeout=20,
-        )
-    except requests.RequestException:
-        return None
-    if r.status_code // 100 != 2:
-        return None
-    try:
-        j = r.json()
-    except Exception:
-        return None
+    j = fetch_zid_manager_store_payload(store)
     if not isinstance(j, dict):
         return None
     for path in (

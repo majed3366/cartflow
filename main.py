@@ -13634,7 +13634,6 @@ async def send_test_whatsapp_post(request: Request):
 DEFAULT_CLAUDE_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022")
 
 ZID_OAUTH_BASE = (os.getenv("ZID_OAUTH_BASE") or "https://oauth.zid.sa").rstrip("/")
-ZID_PROFILE_API = os.getenv("ZID_PROFILE_API_URL", "https://api.zid.sa/v1/managers/account/profile")
 
 # --- دعم القراءة من الحقول العامة (يُستدعى قبل ‎extract_cart_url‎) ---
 
@@ -13656,57 +13655,18 @@ def _parse_zid_store_id_from_token(data: dict[str, Any]) -> Optional[str]:
     return None
 
 
-def _fetch_zid_store_id_from_profile(access_token: str) -> Optional[str]:
-    auth_bearer = (os.getenv("ZID_API_AUTHORIZATION") or "").strip()
-    h: dict[str, str] = {
-        "X-MANAGER-TOKEN": access_token,
-        "Accept": "application/json",
-        "Accept-Language": "en",
-    }
-    if auth_bearer:
-        h["Authorization"] = f"Bearer {auth_bearer}"
-    try:
-        from services.db_resource_safety_v1.release_before_wait_v1 import (
-            release_before_external_wait,
-        )
-
-        release_before_external_wait(reason="zid_profile_http")
-        r = requests.get(ZID_PROFILE_API, headers=h, timeout=20)
-    except requests.RequestException:
-        return None
-    if r.status_code // 100 != 2:
-        return None
-    j = r.json()
-    if not isinstance(j, dict):
-        return None
-    for path in (
-        ("data", "store", "id"),
-        ("data", "store_id"),
-        ("store", "id"),
-        ("user", "store", "id"),
-    ):
-        cur: Any = j
-        for p in path:
-            if not isinstance(cur, dict):
-                cur = None
-                break
-            cur = cur.get(p)
-        if cur is not None and str(cur).strip():
-            return str(cur).strip()
-    return None
-
-
 def save_or_update_store_from_token_response(data: dict[str, Any]) -> None:
     """يحفظ ‎access_token / refresh_token / انتهاء الصلاحية‎ دون تسجيل أسرار."""
-    from integrations.zid_client import parse_zid_authorization_from_token_response
+    from integrations.zid_client import (
+        fetch_zid_store_id_from_oauth_grant,
+        parse_zid_authorization_from_token_response,
+    )
 
     access = (data.get("access_token") or "").strip()
     if not access:
         return
     auth = parse_zid_authorization_from_token_response(data)
-    zid = _parse_zid_store_id_from_token(data) or _fetch_zid_store_id_from_profile(
-        access
-    )
+    zid = _parse_zid_store_id_from_token(data) or fetch_zid_store_id_from_oauth_grant(data)
     refresh: Optional[str] = None
     r = data.get("refresh_token")
     if r is not None and str(r).strip():

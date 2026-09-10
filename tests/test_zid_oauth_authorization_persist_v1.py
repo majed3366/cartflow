@@ -11,7 +11,7 @@ from unittest import mock
 
 import models  # noqa: F401
 from extensions import db, init_database
-from models import Store
+from models import MerchantUser, Store
 from schema_zid_oauth_authorization import (
     ensure_store_zid_oauth_authorization_schema,
     reset_store_zid_oauth_authorization_schema_cache_for_tests,
@@ -94,28 +94,32 @@ class ZidOauthAuthorizationPersistTests(unittest.TestCase):
         assert store is not None
         store.zid_store_id = f"zid-auth-{self._suffix}"
         db.session.commit()
+        store_pk = int(store.id)
+        user_pk = int(user.id)
         applied = apply_oauth_token_to_merchant_store(
-            store_id=int(store.id),
-            merchant_user_id=int(user.id),
+            store_id=store_pk,
+            merchant_user_id=user_pk,
             token_response={
                 "access_token": "mgr-token",
                 "Authorization": "Bearer store-partner-auth",
-                "zid_store_id": store.zid_store_id,
+                "zid_store_id": f"zid-auth-{self._suffix}",
             },
         )
         self.assertTrue(applied)
-        loaded = db.session.get(Store, store.id)
+        loaded = db.session.get(Store, store_pk)
         assert loaded is not None
         self.assertEqual(
             (loaded.zid_authorization_token or "").strip(),
             "store-partner-auth",
         )
-        cookie = session_cookie_value_for_user(user)
+        fresh_user = db.session.get(MerchantUser, user_pk)
+        assert fresh_user is not None
+        cookie = session_cookie_value_for_user(fresh_user)
         disconnected, _ = disconnect_merchant_store(
             cookies={merchant_cookie_name(): cookie}
         )
         self.assertTrue(disconnected)
-        cleared = db.session.get(Store, store.id)
+        cleared = db.session.get(Store, store_pk)
         assert cleared is not None
         self.assertEqual((cleared.access_token or "").strip(), "")
         self.assertIsNone(cleared.zid_authorization_token)

@@ -234,6 +234,11 @@ def apply_oauth_token_to_merchant_store(
     prior_zid = (getattr(row, "zid_store_id", None) or "").strip()
     if not persist_oauth_tokens_on_store_row(row, token_response):
         return False
+    zid_log = (getattr(row, "zid_store_id", None) or "")[:64]
+    db.session.commit()
+    row = db.session.get(Store, int(store_id))
+    if row is None:
+        return False
     try:
         from services.store_identity_v1 import sync_zid_store_identities_after_oauth
 
@@ -242,25 +247,26 @@ def apply_oauth_token_to_merchant_store(
             token_response=token_response,
             prior_zid=prior_zid,
         )
+        db.session.commit()
     except Exception as exc:  # noqa: BLE001
         log.warning(
             "[STORE CONNECTION] identity_sync_failed store_id=%s err=%s",
             store_id,
             type(exc).__name__,
         )
-    db.session.commit()
     log.info(
         "[STORE CONNECTION] oauth_applied store_id=%s merchant_id=%s zid_store_id=%s",
         store_id,
         merchant_user_id,
-        (row.zid_store_id or "")[:64],
+        zid_log,
     )
     try:
         from services.zid_storefront_widget_install_v1 import (  # noqa: PLC0415
             maybe_install_zid_storefront_widget,
         )
 
-        maybe_install_zid_storefront_widget(row, trigger="merchant_oauth")
+        fresh = db.session.get(Store, int(store_id))
+        maybe_install_zid_storefront_widget(fresh or row, trigger="merchant_oauth")
     except Exception as exc:  # noqa: BLE001
         log.warning(
             "[STORE CONNECTION] widget_install_trigger_failed store_id=%s err=%s",

@@ -197,6 +197,15 @@ def fetch_zid_identity_sources_for_store(
     token = (getattr(store, "access_token", None) or "").strip()
     if not token:
         return None, None, None
+    # Snapshot credentials before Manager HTTP. _zid_get rolls back+removes
+    # the scoped session, which detaches the live Store instance.
+    store_id = getattr(store, "id", None)
+    snap = type("StoreAuthSnap", (), {})()
+    snap.id = store_id
+    snap.access_token = token
+    snap.zid_authorization_token = (
+        getattr(store, "zid_authorization_token", None) or ""
+    ).strip()
     profile: Optional[dict[str, Any]] = None
     manager_store: Optional[dict[str, Any]] = None
     store_url: Optional[str] = None
@@ -207,13 +216,13 @@ def fetch_zid_identity_sources_for_store(
             fetch_zid_manager_store_url,
         )
 
-        profile = fetch_zid_manager_profile(token)
-        manager_store = fetch_zid_manager_store_payload(token)
-        store_url = fetch_zid_manager_store_url(token)
+        profile = fetch_zid_manager_profile(snap)
+        manager_store = fetch_zid_manager_store_payload(snap)
+        store_url = fetch_zid_manager_store_url(snap)
     except Exception as exc:  # noqa: BLE001
         _log.warning(
             "zid identity source fetch skipped store_id=%s err=%s",
-            getattr(store, "id", None),
+            store_id,
             type(exc).__name__,
         )
     return profile, manager_store, store_url
@@ -892,7 +901,12 @@ def sync_zid_store_identities_after_oauth(
         n,
     )
     if warm_cache:
-        warm_widget_config_cache_for_store_row(store)
+        fresh = None
+        try:
+            fresh = db.session.get(Store, int(sid))
+        except Exception:  # noqa: BLE001
+            fresh = None
+        warm_widget_config_cache_for_store_row(fresh if fresh is not None else store)
 
 
 def sync_zid_identities_for_dashboard_store(row: Any) -> None:

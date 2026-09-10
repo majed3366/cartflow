@@ -299,7 +299,7 @@ def maybe_install_zid_storefront_widget(
     storefront_detail = ""
     store_url = ""
     if token:
-        store_url = fetch_zid_manager_store_url(token) or ""
+        store_url = fetch_zid_manager_store_url(store) or ""
         if store_url:
             found, detail = probe_storefront_for_widget_loader(
                 store_url,
