@@ -125,10 +125,34 @@ def ingest_purchase_truth(
         )
         return False
 
+    claimed_store_slug = (store_slug or "").strip()
     store_slug = resolve_purchase_truth_store_slug(
         recovery_key=rk,
         payload_store_slug=store_slug or "",
     )
+
+    from services.cartflow_purchase_truth import apply_platform_paid_write_policy  # noqa: PLC0415
+
+    decided = apply_platform_paid_write_policy(
+        purchase_source=source,
+        recovery_key=rk,
+        store_slug=store_slug or "",
+        order_id=order_id,
+        evidence_detail=evidence_detail,
+        claimed_store_slug=claimed_store_slug,
+    )
+    if decided is None:
+        _emit_block(
+            "PURCHASE TRUTH INGESTED",
+            source=source,
+            recovery_key=rk,
+            order=order_id or "-",
+            store=store_slug or "-",
+            truth_written="false",
+            reason="platform_paid_rejected",
+        )
+        return False
+    source, evidence_detail = decided
 
     already = has_purchase(rk)
     truth_written = record_purchase(
@@ -407,11 +431,23 @@ def ingest_purchase_truth_payload(payload: dict[str, Any]) -> Optional[str]:
     order_id = str(payload.get("order_id") or payload.get("zid_order_id") or "").strip() or None
     platform_src = str(payload.get("purchase_source") or "").strip()
     ingest_source = platform_src or source
+    try:
+        from services.cartflow_purchase_truth import (  # noqa: PLC0415
+            is_authoritative_platform_paid_source,
+        )
+        from services.zid_webhook_purchase_v2 import extract_zid_order_id  # noqa: PLC0415
+
+        if is_authoritative_platform_paid_source(ingest_source):
+            zid_oid = extract_zid_order_id(payload)
+            if zid_oid:
+                order_id = zid_oid
+    except Exception:  # noqa: BLE001
+        pass
 
     written = ingest_purchase_truth(
         recovery_key=rk,
         purchase_source=ingest_source,
-        store_slug=store_slug,
+        store_slug=payload_slug or store_slug,
         session_id=_session_part_from_payload(payload),
         cart_id=_cart_id_str_from_payload(payload),
         order_id=order_id,

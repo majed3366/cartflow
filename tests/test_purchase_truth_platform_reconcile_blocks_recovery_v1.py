@@ -110,7 +110,9 @@ def test_platform_zid_purchase_reconciles_canonical_recovery_and_blocks_send() -
     """
     abandon_sid = f"abandon-{uuid.uuid4().hex[:6]}"
     checkout_sid = f"checkout-{uuid.uuid4().hex[:6]}"
-    cart_id = f"cart-shared-{uuid.uuid4().hex[:6]}"
+    # cf_w_ prefix is synthetic: recovery_key stays session-based so checkout
+    # vs abandon session drift is visible; cart_id still matches the AC row.
+    cart_id = f"cf_w_shared-{uuid.uuid4().hex[:6]}"
     canonical_rk = f"demo:{abandon_sid}"
     webhook_rk = f"demo:{checkout_sid}"
     phone = "+966501112233"
@@ -179,11 +181,12 @@ def test_platform_zid_purchase_reconciles_canonical_recovery_and_blocks_send() -
     assert not has_purchase(webhook_rk)
 
     zid_raw = {
-        "event": "order.paid",
+        "event": "order.payment_status.update",
+        "payment_status": "paid",
         "store_slug": "demo",
         "session_id": checkout_sid,
         "cart_id": cart_id,
-        "order_id": f"ZID-ORD-{uuid.uuid4().hex[:8]}",
+        "id": f"ZID-ORD-{uuid.uuid4().hex[:8]}",
         "customer_phone": phone,
     }
     pt_payload = build_zid_purchase_truth_payload(zid_raw)

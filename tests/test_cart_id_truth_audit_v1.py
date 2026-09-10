@@ -92,10 +92,11 @@ class CartIdProducerBehaviorTests(unittest.TestCase):
 
         out = build_zid_purchase_truth_payload(
             {
-                "event": "order.paid",
+                "event": "order.payment_status.update",
+                "payment_status": "paid",
                 "store_slug": "merchant-1",
                 "zid_cart_id": "platform-cart-77",
-                "order_status": "paid",
+                "id": "ord-cart-77",
             }
         )
         self.assertIsNotNone(out)

@@ -192,10 +192,11 @@ def test_precedence_reply_beats_return_intelligence() -> None:
 def test_zid_webhook_payload_builds_ingest() -> None:
     pl = build_zid_purchase_truth_payload(
         {
-            "event": "order.paid",
+            "event": "order.payment_status.update",
+            "payment_status": "paid",
             "store_slug": "demo",
             "session_id": "zid-s1",
-            "order_id": "ord-1",
+            "id": "ord-1",
         }
     )
     assert pl is not None

@@ -24,6 +24,11 @@ log = logging.getLogger("cartflow")
 _lock = threading.Lock()
 _memory_records: dict[str, dict[str, Any]] = {}
 
+PROVENANCE_PLATFORM_PAID = "PLATFORM_PAID"
+PROVENANCE_USER_CLAIM = "USER_CLAIM"
+PROVENANCE_PRE_PURCHASE = "PRE_PURCHASE"
+PROVENANCE_OTHER = "OTHER_NON_AUTHORITATIVE"
+
 _TRUTH_FLAG_KEYS: tuple[tuple[str, str], ...] = (
     ("purchase_completed", "purchase_completed"),
     ("order_paid", "order_paid"),
@@ -42,6 +47,146 @@ _TRUTH_EVENT_NAMES: frozenset[str] = frozenset(
         "user_converted",
     }
 )
+
+_PLATFORM_PAID_SOURCES = frozenset(
+    {
+        "zid_webhook:platform_paid",
+        "platform_paid",
+    }
+)
+_USER_CLAIM_SOURCES = frozenset({"reply_purchase_claim"})
+_PRE_PURCHASE_SOURCES = frozenset({"order_created"})
+
+
+def classify_purchase_provenance(purchase_source: str) -> str:
+    """Classify PT provenance. ``purchase_detected`` remains any-signal suppression."""
+    s = (purchase_source or "").strip()
+    if s in _PLATFORM_PAID_SOURCES:
+        return PROVENANCE_PLATFORM_PAID
+    if s in _USER_CLAIM_SOURCES:
+        return PROVENANCE_USER_CLAIM
+    if s in _PRE_PURCHASE_SOURCES:
+        return PROVENANCE_PRE_PURCHASE
+    return PROVENANCE_OTHER
+
+
+def is_authoritative_platform_paid_source(purchase_source: str) -> bool:
+    return classify_purchase_provenance(purchase_source) == PROVENANCE_PLATFORM_PAID
+
+
+def count_authoritative_platform_paid(store_slug: str, order_id: str) -> int:
+    slug = (store_slug or "").strip()
+    oid = (order_id or "").strip()
+    if not slug or not oid:
+        return 0
+    try:
+        ensure_purchase_truth_schema(db)
+        return int(
+            db.session.query(PurchaseTruthRecord)
+            .filter(
+                PurchaseTruthRecord.store_slug == slug,
+                PurchaseTruthRecord.order_id == oid,
+                PurchaseTruthRecord.purchase_detected.is_(True),
+                PurchaseTruthRecord.purchase_source.in_(tuple(_PLATFORM_PAID_SOURCES)),
+            )
+            .count()
+        )
+    except Exception:  # noqa: BLE001
+        db.session.rollback()
+        return 0
+
+
+def apply_platform_paid_write_policy(
+    *,
+    purchase_source: str,
+    recovery_key: str,
+    store_slug: str,
+    order_id: Optional[str],
+    evidence_detail: str = "",
+    claimed_store_slug: str = "",
+) -> Optional[tuple[str, str]]:
+    """Gate PLATFORM_PAID writes. Returns ``(source, evidence_detail)`` or ``None`` (reject).
+
+    A second recovery_key for the same ``(store_slug, order_id)`` is demoted to
+    ``zid_webhook:platform_paid_bridge`` so suppression still applies without
+    double-counting authoritative paid orders.
+    """
+    source = (purchase_source or "").strip()
+    detail = (evidence_detail or "").strip()
+    if not is_authoritative_platform_paid_source(source):
+        return source, detail
+
+    rk = (recovery_key or "").strip()
+    slug = (store_slug or "").strip()
+    oid = (order_id or "").strip()
+    if not oid:
+        return None
+    if not slug:
+        return None
+    rk_head = (rk.split(":", 1)[0] or "").strip()
+    if not rk_head:
+        return None
+    if rk_head.casefold() != slug.casefold():
+        try:
+            from services.recovery_store_context import (  # noqa: PLC0415
+                canonical_store_slug_from_recovery_key,
+            )
+
+            canon = (canonical_store_slug_from_recovery_key(rk) or "").strip()
+        except Exception:  # noqa: BLE001
+            canon = ""
+        if not canon or canon.casefold() != slug.casefold():
+            return None
+    claim = (claimed_store_slug or "").strip()
+    if claim and claim.casefold() != rk_head.casefold() and claim.casefold() != slug.casefold():
+        try:
+            from services.merchant_test_widget_store_v1 import (  # noqa: PLC0415
+                is_public_widget_sandbox_slug,
+            )
+        except Exception:  # noqa: BLE001
+            return None
+        if not is_public_widget_sandbox_slug(claim):
+            return None
+
+    existing = find_authoritative_platform_paid_row(slug, oid)
+    if existing is not None and (existing.recovery_key or "").strip() != rk:
+        try:
+            from services.zid_webhook_purchase_v2 import (  # noqa: PLC0415
+                SOURCE_ZID_PLATFORM_PAID_BRIDGE,
+            )
+        except Exception:  # noqa: BLE001
+            SOURCE_ZID_PLATFORM_PAID_BRIDGE = "zid_webhook:platform_paid_bridge"
+        extra = f"bridge_from={(existing.recovery_key or '')[:80]}"
+        detail = f"{detail};{extra}" if detail else extra
+        return SOURCE_ZID_PLATFORM_PAID_BRIDGE, detail[:512]
+    return source, detail
+
+
+def find_authoritative_platform_paid_row(
+    store_slug: str,
+    order_id: str,
+) -> Optional[PurchaseTruthRecord]:
+    slug = (store_slug or "").strip()
+    oid = (order_id or "").strip()
+    if not slug or not oid:
+        return None
+    try:
+        ensure_purchase_truth_schema(db)
+        rows = (
+            db.session.query(PurchaseTruthRecord)
+            .filter(
+                PurchaseTruthRecord.store_slug == slug,
+                PurchaseTruthRecord.order_id == oid,
+                PurchaseTruthRecord.purchase_detected.is_(True),
+                PurchaseTruthRecord.purchase_source.in_(tuple(_PLATFORM_PAID_SOURCES)),
+            )
+            .order_by(PurchaseTruthRecord.id.asc())
+            .all()
+        )
+    except Exception:  # noqa: BLE001
+        db.session.rollback()
+        return None
+    return rows[0] if rows else None
 
 
 def _utc_now() -> datetime:
@@ -78,6 +223,36 @@ def extract_purchase_evidence(payload: dict[str, Any]) -> Optional[tuple[str, st
     """Return ``(purchase_source, evidence_detail)`` when payload has verified evidence."""
     if not isinstance(payload, dict):
         return None
+    try:
+        from services.zid_webhook_purchase_v2 import (  # noqa: PLC0415
+            SOURCE_ZID_PLATFORM_PAID,
+            SOURCE_ZID_PLATFORM_PAID_BRIDGE,
+            ZID_PLATFORM_PAID_EVENT,
+            extract_zid_platform_event,
+            zid_payload_indicates_platform_paid,
+        )
+    except Exception:  # noqa: BLE001
+        SOURCE_ZID_PLATFORM_PAID = "zid_webhook:platform_paid"
+        SOURCE_ZID_PLATFORM_PAID_BRIDGE = "zid_webhook:platform_paid_bridge"
+        ZID_PLATFORM_PAID_EVENT = "order.payment_status.update"
+        extract_zid_platform_event = lambda _p: ""  # noqa: E731
+        zid_payload_indicates_platform_paid = lambda _p: False  # noqa: E731
+
+    claimed_src = str(payload.get("purchase_source") or "").strip()
+    if extract_zid_platform_event(payload) == ZID_PLATFORM_PAID_EVENT:
+        if zid_payload_indicates_platform_paid(payload):
+            src = claimed_src if claimed_src in (
+                SOURCE_ZID_PLATFORM_PAID,
+                SOURCE_ZID_PLATFORM_PAID_BRIDGE,
+            ) else SOURCE_ZID_PLATFORM_PAID
+            return src, "event=order.payment_status.update;payment_status=paid"
+        return None
+
+    if claimed_src in (SOURCE_ZID_PLATFORM_PAID, SOURCE_ZID_PLATFORM_PAID_BRIDGE):
+        if zid_payload_indicates_platform_paid(payload):
+            return claimed_src, "zid_platform_paid"
+        return None
+
     for key, source in _TRUTH_FLAG_KEYS:
         if payload.get(key) is True:
             return source, f"{key}=true"
@@ -356,6 +531,28 @@ def record_purchase(
     if not rk or not source:
         return False
 
+    slug = (store_slug or "").strip()
+    oid = (order_id or "").strip() or None
+    detail = (evidence_detail or "").strip()
+    decided = apply_platform_paid_write_policy(
+        purchase_source=source,
+        recovery_key=rk,
+        store_slug=slug,
+        order_id=oid,
+        evidence_detail=detail,
+        claimed_store_slug=slug,
+    )
+    if decided is None:
+        return False
+    source, detail = decided
+
+    already_ctx = purchase_context(rk)
+    prior_source = str((already_ctx or {}).get("purchase_source") or "").strip()
+    if is_authoritative_platform_paid_source(prior_source) and not is_authoritative_platform_paid_source(source):
+        source = prior_source
+        if not oid:
+            oid = str((already_ctx or {}).get("order_id") or "").strip() or None
+
     already = has_purchase(rk)
     pt = purchase_time or _utc_now()
     evidence = PurchaseEvidence(
@@ -363,12 +560,12 @@ def record_purchase(
         purchase_detected=True,
         purchase_time=pt,
         purchase_source=source,
-        order_id=(order_id or "").strip() or None,
-        store_slug=(store_slug or "").strip(),
+        order_id=oid,
+        store_slug=slug,
         session_id=(session_id or "").strip(),
         cart_id=(cart_id or "").strip() or None,
         customer_phone=(customer_phone or "").strip() or None,
-        evidence_detail=(evidence_detail or "").strip(),
+        evidence_detail=detail,
     )
 
     if not already:
@@ -483,9 +680,18 @@ def record_purchase_from_payload(payload: dict[str, Any]) -> Optional[str]:
 
 
 __all__ = [
+    "PROVENANCE_OTHER",
+    "PROVENANCE_PLATFORM_PAID",
+    "PROVENANCE_PRE_PURCHASE",
+    "PROVENANCE_USER_CLAIM",
     "PurchaseEvidence",
+    "apply_platform_paid_write_policy",
+    "classify_purchase_provenance",
+    "count_authoritative_platform_paid",
     "extract_purchase_evidence",
+    "find_authoritative_platform_paid_row",
     "has_purchase",
+    "is_authoritative_platform_paid_source",
     "purchase_context",
     "record_purchase",
     "record_purchase_from_payload",
