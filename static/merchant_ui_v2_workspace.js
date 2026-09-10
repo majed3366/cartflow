@@ -812,21 +812,44 @@
      Every value is server-owned contract truth; this paints, it never decides.
      Reading order: evidence -> intervention -> safety/limit -> action ->
      measurement. Not eight equal boxes. */
-  function civLine(kind, label, body, opts) {
+  /* One advisory sentence: bold sublabel inline with its reasoning, so the
+     safety block reads as advice instead of a stack of labelled boxes. */
+  function civAdvice(kind, label, body) {
     var t = String(body || "").trim();
     if (!t) return "";
-    opts = opts || {};
+    var lab = String(label || "").trim();
     return (
-      '<div class="cf2-civ__line' +
-      (opts.quiet ? " cf2-civ__line--quiet" : "") +
-      '" data-cf2-civ-line="' +
+      '<p class="cf2-civ__advice" data-cf2-civ-line="' +
+      esc(kind) +
+      '">' +
+      (lab ? '<b class="cf2-civ__sub">' + esc(lab) + "</b> " : "") +
+      esc(t) +
+      "</p>"
+    );
+  }
+
+  /* One of the three closing questions. `sub` is an optional supporting line
+     that belongs to the same question rather than a fourth one. */
+  function civAsk(kind, label, body, subLabel, subBody) {
+    var t = String(body || "").trim();
+    var st = String(subBody || "").trim();
+    if (!t && !st) return "";
+    var html =
+      '<div class="cf2-civ__ask" data-cf2-civ-ask="' +
       esc(kind) +
       '"><p class="cf2-civ__k">' +
       esc(label) +
-      '</p><p class="cf2-civ__v">' +
-      esc(t) +
-      "</p></div>"
-    );
+      "</p>";
+    if (t) html += '<p class="cf2-civ__v">' + esc(t) + "</p>";
+    if (st) {
+      html +=
+        '<p class="cf2-civ__v cf2-civ__v--sub"><b class="cf2-civ__sub">' +
+        esc(subLabel) +
+        "</b> " +
+        esc(st) +
+        "</p>";
+    }
+    return html + "</div>";
   }
 
   function renderInterventionDecision(opp, actionsHtml, tailHtml) {
@@ -846,6 +869,8 @@
       (eligible ? "1" : "0") +
       '" data-cf-intervention-blocked-count="' +
       esc(String(blocked.length)) +
+      '" data-cf-intervention-state="' +
+      esc(String(iv.heading_state || "")) +
       '">';
 
     /* A — what we see */
@@ -859,32 +884,45 @@
     }
     html += "</div>";
 
-    /* B — the proposed intervention, the one dominant block */
+    /* B — the one dominant block. Its heading follows the lifecycle state the
+       server derived, so a running mission is never re-proposed as a new one. */
+    var newRec = iv.is_new_recommendation !== false;
     if (iv.what_we_suggest_ar) {
       html +=
-        '<div class="cf2-civ__act" data-cf2-civ-block="suggest">' +
+        '<div class="cf2-civ__act' +
+        (newRec ? "" : " cf2-civ__act--context") +
+        '" data-cf2-civ-block="suggest" data-cf2-civ-recommendation="' +
+        (newRec ? "1" : "0") +
+        '">' +
         '<p class="cf2-civ__eyebrow">' +
         esc(L.suggest || "ما التدخل المقترح الآن؟") +
         "</p>" +
         '<p class="cf2-civ__act-text">' +
         esc(iv.what_we_suggest_ar) +
-        "</p></div>";
+        "</p>";
+      if (!newRec && iv.active_intervention_ar) {
+        html +=
+          '<p class="cf2-civ__act-context"><b class="cf2-civ__sub">' +
+          esc(L.active || "التدخل الجاري") +
+          "</b> " +
+          esc(iv.active_intervention_ar) +
+          "</p>";
+      }
+      html += "</div>";
     }
 
-    /* C — why safe, why nothing stronger, what not to do */
+    /* C — one advisory block: why safe -> why nothing stronger -> do not do */
     var limit = "";
-    limit += civLine("safe", L.safe || "لماذا هذا آمن الآن؟", iv.why_this_is_safe_ar);
-    if (blocked.length) {
-      var b = '<div class="cf2-civ__line" data-cf2-civ-line="blocked">';
-      b += '<p class="cf2-civ__k">' + esc(L.blocked || "لماذا لا نقترح تدخلاً أقوى؟") + "</p>";
-      blocked.forEach(function (row) {
-        if (!row || !row.merchant_ar) return;
-        b += '<p class="cf2-civ__v">' + esc(row.merchant_ar) + "</p>";
-      });
-      b += "</div>";
-      limit += b;
-    }
-    limit += civLine("dont", L.dont || "لا تفعل الآن", iv.dont_do_ar);
+    limit += civAdvice("safe", L.safe || "لماذا هذا آمن الآن؟", iv.why_this_is_safe_ar);
+    blocked.forEach(function (row, i) {
+      if (!row || !row.merchant_ar) return;
+      limit += civAdvice(
+        "blocked",
+        i === 0 ? L.blocked || "لماذا لا نقترح تدخلاً أقوى؟" : "",
+        row.merchant_ar
+      );
+    });
+    limit += civAdvice("dont", L.dont || "لا تفعل الآن", iv.dont_do_ar);
     if (limit) {
       html += '<div class="cf2-civ__limit" data-cf2-civ-block="limit">' + limit + "</div>";
     }
@@ -893,16 +931,21 @@
        merchant reaches it without scrolling past the measurement detail. */
     html += String(actionsHtml || "");
 
-    /* E — measurement, recheck, mind change: readable but visually quiet */
+    /* E — three closing questions, clearly separated. The guardrail is not a
+       fourth question; it is the limit on what we measure. */
     var quiet = "";
-    quiet += civLine("measure", L.measure || "ماذا سنقيس؟", iv.primary_metric, { quiet: true });
-    quiet += civLine("guardrail", "الحد الذي لا نتجاوزه", iv.guardrail_metric, { quiet: true });
-    quiet += civLine("recheck", L.recheck || "متى نراجع؟", iv.recheck_condition, { quiet: true });
-    quiet += civLine(
+    quiet += civAsk(
+      "measure",
+      L.measure || "ماذا سنقيس؟",
+      iv.primary_metric,
+      L.guardrail || "الحد الذي لا نتجاوزه",
+      iv.guardrail_metric
+    );
+    quiet += civAsk("recheck", L.recheck || "متى نراجع؟", iv.recheck_condition);
+    quiet += civAsk(
       "mind-change",
       L.mind_change || "ما الذي سيجعلنا نغيّر رأينا؟",
-      iv.mind_change_condition,
-      { quiet: true }
+      iv.mind_change_condition
     );
     if (quiet) {
       html +=
@@ -1090,7 +1133,7 @@
     function execLinkHtml() {
       if (!exec || !exec.href) return "";
       return (
-        '<a class="cf2-mission__btn cf2-mission__btn--exec" href="' +
+        '<a class="cf2-mission__btn cf2-mission__btn--exec cf-lifecycle-action cf-lifecycle-action--nav" href="' +
         esc(exec.href) +
         '" data-cf2-mission-exec="settings">' +
         esc(exec.cta) +
@@ -1108,7 +1151,7 @@
     if (!c || !phase) {
       if (!interventionBlocks) {
         html +=
-          '<button type="button" class="cf2-mission__btn" data-cf2-mission-act="accept">اعتمد هذه المهمة</button>';
+          '<button type="button" class="cf2-mission__btn cf-lifecycle-action cf-lifecycle-action--primary" data-cf-lifecycle-action="primary" data-cf2-mission-act="accept">اعتمد هذه المهمة</button>';
         html +=
           '<p class="cf2-mission__hint">القبول يسجّل القرار فقط — لا يبدأ القياس.</p>';
         html += execLinkHtml();
@@ -1123,9 +1166,12 @@
         html += '<p class="cf2-mission__hint">' + esc(exec.hint) + "</p>";
       }
       html +=
-        '<button type="button" class="cf2-mission__btn cf2-mission__btn--quiet" data-cf2-mission-act="confirm" data-commitment-id="' +
+        '<button type="button" class="cf2-mission__btn cf-lifecycle-action cf-lifecycle-action--confirm" data-cf-lifecycle-action="confirm" data-cf2-mission-act="confirm" data-commitment-id="' +
         esc(cid) +
-        '">' +
+        '"><span class="cf-lifecycle-action__cue" aria-hidden="true">' +
+        '<svg viewBox="0 0 16 16" width="13" height="13" focusable="false">' +
+        '<path fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" ' +
+        'stroke-linejoin="round" d="M3 8.4l3.2 3.2L13 4.8"/></svg></span>' +
         esc(copy.confirm) +
         "</button>";
       html +=
@@ -1139,13 +1185,13 @@
       html +=
         '<p class="cf2-mission__status">حان وقت المراجعة — سنعيد قراءة أدلة الفرصة.</p>';
       html +=
-        '<button type="button" class="cf2-mission__btn" data-cf2-mission-act="recheck" data-commitment-id="' +
+        '<button type="button" class="cf2-mission__btn cf-lifecycle-action cf-lifecycle-action--primary" data-cf-lifecycle-action="primary" data-cf2-mission-act="recheck" data-commitment-id="' +
         esc(cid) +
         '">أعد قراءة الأدلة الآن</button>';
     }
     if (c && cid && phase && phase !== "RECHECK_DUE") {
       html +=
-        '<button type="button" class="cf2-mission__btn cf2-mission__btn--quiet" data-cf2-mission-act="abandon" data-commitment-id="' +
+        '<button type="button" class="cf2-mission__btn cf-lifecycle-action cf-lifecycle-action--secondary" data-cf-lifecycle-action="secondary" data-cf2-mission-act="abandon" data-commitment-id="' +
         esc(cid) +
         '">تراجع عن المهمة</button>';
     }

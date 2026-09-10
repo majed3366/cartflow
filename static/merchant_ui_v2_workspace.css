@@ -1272,17 +1272,44 @@ body[data-cf-ui="v2"] .cf2-civ__act-text {
   line-height: 1.42;
   color: var(--cf2-ink, #1a2332);
 }
+/* A mission already running is context, not a fresh proposal. */
+body[data-cf-ui="v2"] .cf2-civ__act--context {
+  border-inline-start-color: color-mix(in srgb, var(--cf2-ink, #1a2332) 30%, transparent);
+}
+body[data-cf-ui="v2"] .cf2-civ__act--context .cf2-civ__act-text {
+  font-size: 1.02rem;
+}
+body[data-cf-ui="v2"] .cf2-civ__act-context {
+  margin: 6px 0 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--cf2-muted, #5a6577);
+}
 body[data-cf-ui="v2"] .cf2-civ__limit {
   margin: 0 0 12px;
-  padding: 12px 13px;
+  padding: 11px 13px;
   background: color-mix(in srgb, var(--cf2-ink, #1a2332) 3.5%, transparent);
 }
-body[data-cf-ui="v2"] .cf2-civ__line {
+/* One advisory voice: sublabel inline, tight leading between the reasons. */
+body[data-cf-ui="v2"] .cf2-civ__advice {
+  margin: 0 0 7px;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: color-mix(in srgb, var(--cf2-ink, #1a2332) 86%, transparent);
+}
+body[data-cf-ui="v2"] .cf2-civ__advice:last-child {
+  margin-bottom: 0;
+}
+body[data-cf-ui="v2"] .cf2-civ__sub {
+  font-weight: 700;
+  color: var(--cf2-ink, #1a2332);
+}
+body[data-cf-ui="v2"] .cf2-civ__ask {
   display: grid;
   gap: 3px;
-  margin: 0 0 10px;
+  margin: 0 0 11px;
 }
-body[data-cf-ui="v2"] .cf2-civ__line:last-child {
+body[data-cf-ui="v2"] .cf2-civ__ask:last-child {
   margin-bottom: 0;
 }
 body[data-cf-ui="v2"] .cf2-civ__k {
@@ -1311,12 +1338,16 @@ body[data-cf-ui="v2"] .cf2-civ .cf2-mission + .cf2-civ__quiet {
   padding-top: 0;
   border-top: 0;
 }
-body[data-cf-ui="v2"] .cf2-civ__line--quiet .cf2-civ__k {
-  font-size: 0.72rem;
+body[data-cf-ui="v2"] .cf2-civ__quiet .cf2-civ__k {
+  font-size: 0.74rem;
+  color: var(--cf2-ink, #1a2332);
 }
-body[data-cf-ui="v2"] .cf2-civ__line--quiet .cf2-civ__v {
+body[data-cf-ui="v2"] .cf2-civ__quiet .cf2-civ__v {
   font-size: 0.87rem;
   color: var(--cf2-muted, #5a6577);
+}
+body[data-cf-ui="v2"] .cf2-civ__v--sub {
+  font-size: 0.83rem;
 }
 @media (max-width: 1023px) {
   body[data-cf-ui="v2"] .cf2-civ__diagnosis {
@@ -1332,5 +1363,76 @@ body[data-cf-ui="v2"] .cf2-civ__line--quiet .cf2-civ__v {
   body[data-cf-ui="v2"] .cf2-civ__act {
     margin-bottom: 12px;
   }
+  body[data-cf-ui="v2"] .cf2-civ__advice {
+    font-size: 0.88rem;
+  }
+}
+
+/* CartFlow mission lifecycle actions — one visual family.
+   Geometry is shared so accept / confirm / reverse read as the same product
+   system; only hierarchy changes between them. Reused by every future
+   lifecycle surface — never restyle a lifecycle control inline. */
+body[data-cf-ui="v2"] .cf-lifecycle-action {
+  --cf-la-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 11px 16px;
+  border-radius: var(--cf-la-radius);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  transition: background-color 0.12s ease, transform 0.06s ease;
+}
+body[data-cf-ui="v2"] .cf-lifecycle-action:focus-visible {
+  outline: 2px solid var(--cf2-ink, #1a2332);
+  outline-offset: 2px;
+}
+body[data-cf-ui="v2"] .cf-lifecycle-action:active {
+  transform: translateY(1px);
+}
+body[data-cf-ui="v2"] .cf-lifecycle-action--primary {
+  background: #14181c;
+  color: #f5f2eb;
+  border: 1px solid #14181c;
+}
+body[data-cf-ui="v2"] .cf-lifecycle-action--primary:hover {
+  background: #20262d;
+}
+/* Execution confirmation: same dark family, marked by the completion cue. */
+body[data-cf-ui="v2"] .cf-lifecycle-action--confirm {
+  background: #1f2630;
+  color: #f5f2eb;
+  border: 1px solid #1f2630;
+}
+body[data-cf-ui="v2"] .cf-lifecycle-action--confirm:hover {
+  background: #2a323d;
+}
+body[data-cf-ui="v2"] .cf-lifecycle-action__cue {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  color: currentColor;
+}
+/* Reversal: same geometry, restrained outline, clearly below confirmation. */
+body[data-cf-ui="v2"] .cf-lifecycle-action--secondary {
+  background: transparent;
+  color: color-mix(in srgb, var(--cf2-ink, #1a2332) 80%, transparent);
+  border: 1px solid rgba(20, 24, 28, 0.24);
+  font-weight: 600;
+  font-size: 0.9rem;
+  min-height: 40px;
+}
+body[data-cf-ui="v2"] .cf-lifecycle-action--secondary:hover {
+  background: rgba(20, 24, 28, 0.05);
+}
+body[data-cf-ui="v2"] a.cf2-mission__btn--exec.cf-lifecycle-action {
+  border-radius: var(--cf-la-radius);
+  justify-content: center;
 }
 

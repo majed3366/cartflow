@@ -20,10 +20,16 @@ from services.commercial_action_language_v1.contract_v1 import (
     contract_for_family_v1,
 )
 from services.commercial_action_language_v1.intervention_v1 import (
+    DEFERRAL_AR,
     ELIGIBLE,
     compose_merchant_intervention_card_v1,
     economic_manifest_v1,
     intervention_contract_v1,
+)
+from services.commercial_decision_commitment_v1.contract_v1 import (
+    PHASE_ACTION_CHOSEN,
+    PHASE_RECHECK_DUE,
+    PHASE_UNDER_MEASUREMENT,
 )
 from services.mission_portfolio_v1.contract_v1 import CONFLICT_SAFE_TO_COEXIST
 
@@ -43,11 +49,46 @@ LABELS_AR = {
     "measure": "ماذا سنقيس؟",
     "recheck": "متى نراجع؟",
     "mind_change": "ما الذي سيجعلنا نغيّر رأينا؟",
+    "active": "التدخل الجاري",
+    "guardrail": "الحد الذي لا نتجاوزه",
+}
+
+# The primary heading follows the lifecycle the merchant is actually in, so the
+# page never asks "what should we do now?" about a mission already running.
+# Presentation mapping over CDC's phase — CDC remains the only lifecycle owner.
+STATE_READY = "READY"
+STATE_ACTION_CHOSEN = "ACTION_CHOSEN"
+STATE_UNDER_MEASUREMENT = "UNDER_MEASUREMENT"
+STATE_RECHECK_DUE = "RECHECK_DUE"
+STATE_WAIT = "WAIT"
+
+HEADINGS_AR = {
+    STATE_READY: "ما التدخل المقترح الآن؟",
+    STATE_ACTION_CHOSEN: "ما الذي اعتمدته الآن؟",
+    STATE_UNDER_MEASUREMENT: "ما الذي نقيسه الآن؟",
+    STATE_RECHECK_DUE: "ماذا أظهرت إعادة المراجعة؟",
+    STATE_WAIT: "لماذا ننتظر الآن؟",
+}
+
+_PHASE_STATES = {
+    PHASE_ACTION_CHOSEN: STATE_ACTION_CHOSEN,
+    PHASE_UNDER_MEASUREMENT: STATE_UNDER_MEASUREMENT,
 }
 
 
 def _norm(value: Any) -> str:
     return " ".join(str(value or "").strip().split())
+
+
+def _heading_state(cdc_phase: str | None, eligibility_state: str) -> str:
+    """Which lifecycle question the merchant is actually looking at."""
+    phase = _norm(cdc_phase)
+    committed = _PHASE_STATES.get(phase)
+    if committed:
+        return committed
+    if phase == PHASE_RECHECK_DUE:
+        return STATE_RECHECK_DUE
+    return STATE_READY if eligibility_state == ELIGIBLE else STATE_WAIT
 
 
 def _conflict_type_for(portfolio: Mapping[str, Any] | None, opportunity_id: str) -> str | None:
@@ -117,6 +158,7 @@ def build_workspace_intervention_v1(
     reason_label_ar: str = "",
     situation_ar: str = "",
     evidence_ar: str = "",
+    active_action_ar: str = "",
 ) -> dict[str, Any]:
     """One guided commercial decision, ready to paint. Empty dict when unsupported."""
     fam = _norm(family)
@@ -150,6 +192,20 @@ def build_workspace_intervention_v1(
         evidence_line = merged[len(situation):].strip() if merged.startswith(situation) else ""
 
     state = _norm(card.get("eligibility_state"))
+    heading_state = _heading_state(own_cdc_phase, state)
+    labels = dict(LABELS_AR)
+    labels["suggest"] = HEADINGS_AR[heading_state]
+    # Only a READY card is a proposal. Every other state carries the deferral
+    # sentence followed by the family's safe action; split them so the state
+    # answers the heading and no blocked card ends on an instruction to act.
+    committed = heading_state in (STATE_ACTION_CHOSEN, STATE_UNDER_MEASUREMENT)
+    suggest = _norm(card.get("what_we_suggest_ar"))
+    trailing = ""
+    prefix = _norm(DEFERRAL_AR.get(state, ""))
+    if prefix and suggest.startswith(prefix):
+        trailing, suggest = suggest[len(prefix) :].strip(), prefix
+    # The trailing action is only true as context while that work is running.
+    active = (trailing or _norm(active_action_ar)) if committed else ""
     return {
         "ok": True,
         "projection_version": PROJECTION_VERSION,
@@ -158,11 +214,15 @@ def build_workspace_intervention_v1(
         "family": fam,
         "recommendation_level": card.get("recommendation_level"),
         "eligibility_state": state,
+        "cdc_phase": _norm(own_cdc_phase) or None,
+        "heading_state": heading_state,
+        "is_new_recommendation": heading_state == STATE_READY,
+        "active_intervention_ar": active,
         "conflict_group": card.get("conflict_group"),
-        "labels_ar": dict(LABELS_AR),
+        "labels_ar": labels,
         "situation_ar": situation,
         "evidence_ar": evidence_line,
-        "what_we_suggest_ar": _norm(card.get("what_we_suggest_ar")),
+        "what_we_suggest_ar": suggest,
         "why_this_is_safe_ar": _norm(card.get("why_this_is_safe_ar")),
         "blocked_candidates": _merchant_blocked(card.get("blocked_candidates")),
         "dont_do_ar": _norm(card.get("dont_do_ar")),
@@ -201,6 +261,7 @@ def attach_intervention_to_summary_v1(body: dict[str, Any]) -> dict[str, Any]:
         # CAL already projected contract copy onto the card upstream.
         situation_ar=_norm(card.get("title_ar")),
         evidence_ar=_norm(card.get("why_ar")),
+        active_action_ar=_norm(card.get("action_ar")),
     )
     if projection:
         card["intervention_v1"] = projection
@@ -209,8 +270,14 @@ def attach_intervention_to_summary_v1(body: dict[str, Any]) -> dict[str, Any]:
 
 __all__ = [
     "GUARDRAIL_FALLBACK_AR",
+    "HEADINGS_AR",
     "LABELS_AR",
     "PROJECTION_VERSION",
+    "STATE_ACTION_CHOSEN",
+    "STATE_READY",
+    "STATE_RECHECK_DUE",
+    "STATE_UNDER_MEASUREMENT",
+    "STATE_WAIT",
     "attach_intervention_to_summary_v1",
     "build_workspace_intervention_v1",
 ]
