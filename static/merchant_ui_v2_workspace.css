@@ -1228,6 +1228,14 @@ body[data-cf-ui="v2"] .cf2-ldh__journey-step.is-current .cf2-ldh__journey-n {
   background: #18B0A8;
   color: #fff;
 }
+/* Completed steps read as history, not as an open invitation. */
+body[data-cf-ui="v2"] .cf2-ldh__journey-step.is-done {
+  color: rgba(90, 101, 119, 0.62);
+}
+body[data-cf-ui="v2"] .cf2-ldh__journey-step.is-done .cf2-ldh__journey-n {
+  background: rgba(8, 32, 72, 0.06);
+  color: rgba(8, 32, 72, 0.5);
+}
 
 /* Commercial Intervention Intelligence V1 — one guided commercial decision.
    Reading order carries the weight: evidence is quiet, the proposed

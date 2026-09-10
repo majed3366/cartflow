@@ -287,6 +287,67 @@ class LifecycleActionFamilyTests(unittest.TestCase):
         self.assertNotIn(ACCEPT_AR, blocked)
 
 
+class LifecycleJourneyTests(unittest.TestCase):
+    """The lab lifecycle map marks history, so a past step is not an invitation."""
+
+    LDH = {
+        "title_ar": "المهمة التجارية الحالية",
+        "execution_label_ar": "تنفيذ المهمة",
+        "workspace": {
+            "journey": {
+                "current_step": "measure",
+                "steps": [
+                    {"id": "accept", "label_ar": ACCEPT_AR},
+                    {"id": "confirm", "label_ar": "أكّد إتمام التنفيذ"},
+                    {"id": "measure", "label_ar": "يبدأ القياس"},
+                    {"id": "recheck", "label_ar": "إعادة المراجعة"},
+                ],
+            }
+        },
+    }
+
+    def paint_ldh(self, phase: str) -> str:
+        import json
+
+        opp = {
+            "opportunity_id": "opp-1",
+            "family": SHIPPING,
+            "title_ar": "أقوى تردد مسجّل الآن مرتبط بالشحن.",
+            "mission_ready": True,
+            "intervention": projection(phase=phase),
+            "commitment": {"phase": phase, "commitment_id": "cmt-1"},
+            "cdc_phase": phase,
+        }
+        return _node_eval(
+            "g.CartFlowUiV2Workspace.renderHierarchyWorkspace("
+            + json.dumps(self.LDH, ensure_ascii=False)
+            + ","
+            + json.dumps(opp, ensure_ascii=False)
+            + ")"
+        )
+
+    def test_past_steps_are_marked_done(self) -> None:
+        html = self.paint_ldh(PHASE_UNDER_MEASUREMENT)
+        self.assertIn('data-cf2-ldh-journey-step="accept"', html)
+        accept = html[html.index('<li class="cf2-ldh__journey-step') :]
+        accept = accept[: accept.index("</li>")]
+        self.assertIn("is-done", accept)
+        self.assertIn("✓", accept)
+        self.assertNotIn("is-current", accept)
+
+    def test_current_step_is_not_marked_done(self) -> None:
+        html = self.paint_ldh(PHASE_UNDER_MEASUREMENT)
+        cur = html[html.index('data-cf2-ldh-journey-step="measure"') :]
+        cur = cur[: cur.index("</li>")]
+        self.assertNotIn("is-done", cur)
+
+    def test_accept_phrase_is_never_a_control_under_measurement(self) -> None:
+        html = self.paint_ldh(PHASE_UNDER_MEASUREMENT)
+        self.assertEqual(html.count(ACCEPT_AR), 1)  # the completed journey step only
+        self.assertNotIn('data-cf2-mission-act="accept"', html)
+        self.assertIn(".cf2-ldh__journey-step.is-done", WORKSPACE_CSS)
+
+
 class LifecycleActionStyleTests(unittest.TestCase):
     """A frozen, reusable style family — never one-off inline styling."""
 

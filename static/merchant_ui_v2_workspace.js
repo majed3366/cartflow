@@ -88,16 +88,25 @@
       '<ol class="cf2-ldh__journey" data-cf2-ldh-journey="1" data-cf2-ldh-journey-current="' +
       esc(currentStep) +
       '">';
+    /* Steps before the server's current step are history. Marking them keeps
+       a past step such as "accept this mission" from reading as an open
+       invitation while the mission is already being measured. */
+    var currentIdx = -1;
+    journey.steps.forEach(function (step, idx) {
+      if (currentIdx < 0 && step && String(step.id || "") === currentStep) currentIdx = idx;
+    });
     journey.steps.forEach(function (step, idx) {
       var sid = String((step && step.id) || "");
       var on = sid && sid === currentStep;
+      var done = currentIdx >= 0 && idx < currentIdx;
       html +=
         '<li class="cf2-ldh__journey-step' +
         (on ? " is-current" : "") +
+        (done ? " is-done" : "") +
         '" data-cf2-ldh-journey-step="' +
         esc(sid) +
         '"><span class="cf2-ldh__journey-n">' +
-        (idx + 1) +
+        (done ? "✓" : idx + 1) +
         "</span> " +
         esc((step && step.label_ar) || "") +
         "</li>";
