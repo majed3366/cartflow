@@ -318,6 +318,16 @@ def project_commercial_action_language_v1(body: dict[str, Any]) -> dict[str, Any
             nested = hes.get("operational_guidance_v1")
             if isinstance(nested, dict) and isinstance(ogl.get("home_surface"), dict):
                 nested["home_surface"] = dict(ogl.get("home_surface") or {})
+    # Last: the intervention projection reads the catalog card after contract
+    # copy has been applied, and Portfolio is already attached by this point.
+    try:
+        from services.commercial_action_language_v1.workspace_intervention_v1 import (  # noqa: PLC0415
+            attach_intervention_to_summary_v1,
+        )
+
+        attach_intervention_to_summary_v1(body)
+    except Exception:  # noqa: BLE001 — presentation overlay never breaks the summary
+        pass
     return body
 
 

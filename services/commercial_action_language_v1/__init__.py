@@ -19,11 +19,17 @@ from services.commercial_action_language_v1.project_v1 import (
     project_commercial_action_language_v1,
     project_guidance_action_language_v1,
 )
+from services.commercial_action_language_v1.workspace_intervention_v1 import (
+    attach_intervention_to_summary_v1,
+    build_workspace_intervention_v1,
+)
 
 __all__ = [
     "CTA_ACCEPT_MISSION_AR",
     "CONTRACT_FAMILIES",
     "VAGUE_ACTION_OPENERS",
+    "attach_intervention_to_summary_v1",
+    "build_workspace_intervention_v1",
     "compose_merchant_intervention_card_v1",
     "contract_for_family_v1",
     "derive_eligibility_v1",

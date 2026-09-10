@@ -215,6 +215,10 @@
       mission_ready: !!card.mission_ready,
       mission_ar: card.mission_ar || "",
       diagnosis_ar: card.diagnosis_ar || "",
+      intervention:
+        card.intervention_v1 && typeof card.intervention_v1 === "object"
+          ? card.intervention_v1
+          : null,
       catalog_explain_ar: null,
       decision_contract_ar: {
         decision_ar: card.title_ar || "",
@@ -732,6 +736,111 @@
     );
   }
 
+  /* Commercial Intervention Intelligence V1 — one guided commercial decision.
+     Every value is server-owned contract truth; this paints, it never decides.
+     Reading order: evidence -> intervention -> safety/limit -> action ->
+     measurement. Not eight equal boxes. */
+  function civLine(kind, label, body, opts) {
+    var t = String(body || "").trim();
+    if (!t) return "";
+    opts = opts || {};
+    return (
+      '<div class="cf2-civ__line' +
+      (opts.quiet ? " cf2-civ__line--quiet" : "") +
+      '" data-cf2-civ-line="' +
+      esc(kind) +
+      '"><p class="cf2-civ__k">' +
+      esc(label) +
+      '</p><p class="cf2-civ__v">' +
+      esc(t) +
+      "</p></div>"
+    );
+  }
+
+  function renderInterventionDecision(opp, actionsHtml) {
+    var iv = opp && opp.intervention;
+    if (!iv || iv.ok !== true) return "";
+    var L = iv.labels_ar || {};
+    var blocked = Array.isArray(iv.blocked_candidates) ? iv.blocked_candidates : [];
+    var eligible = !!iv.cta_ar;
+
+    var html =
+      '<div class="cf2-civ" data-cf2-civ="v1"' +
+      ' data-cf-intervention-level="' +
+      esc(String(iv.recommendation_level == null ? "" : iv.recommendation_level)) +
+      '" data-cf-intervention-eligibility="' +
+      esc(String(iv.eligibility_state || "")) +
+      '" data-cf-intervention-cta="' +
+      (eligible ? "1" : "0") +
+      '" data-cf-intervention-blocked-count="' +
+      esc(String(blocked.length)) +
+      '">';
+
+    /* A — what we see */
+    html += '<div class="cf2-civ__see" data-cf2-civ-block="see">';
+    html += '<p class="cf2-civ__eyebrow">' + esc(L.see || "ما الذي نراه؟") + "</p>";
+    if (iv.situation_ar) {
+      html += '<p class="cf2-civ__diagnosis">' + esc(iv.situation_ar) + "</p>";
+    }
+    if (iv.evidence_ar) {
+      html += '<p class="cf2-civ__evidence">' + esc(iv.evidence_ar) + "</p>";
+    }
+    html += "</div>";
+
+    /* B — the proposed intervention, the one dominant block */
+    if (iv.what_we_suggest_ar) {
+      html +=
+        '<div class="cf2-civ__act" data-cf2-civ-block="suggest">' +
+        '<p class="cf2-civ__eyebrow">' +
+        esc(L.suggest || "ما التدخل المقترح الآن؟") +
+        "</p>" +
+        '<p class="cf2-civ__act-text">' +
+        esc(iv.what_we_suggest_ar) +
+        "</p></div>";
+    }
+
+    /* C — why safe, why nothing stronger, what not to do */
+    var limit = "";
+    limit += civLine("safe", L.safe || "لماذا هذا آمن الآن؟", iv.why_this_is_safe_ar);
+    if (blocked.length) {
+      var b = '<div class="cf2-civ__line" data-cf2-civ-line="blocked">';
+      b += '<p class="cf2-civ__k">' + esc(L.blocked || "لماذا لا نقترح تدخلاً أقوى؟") + "</p>";
+      blocked.forEach(function (row) {
+        if (!row || !row.merchant_ar) return;
+        b += '<p class="cf2-civ__v">' + esc(row.merchant_ar) + "</p>";
+      });
+      b += "</div>";
+      limit += b;
+    }
+    limit += civLine("dont", L.dont || "لا تفعل الآن", iv.dont_do_ar);
+    if (limit) {
+      html += '<div class="cf2-civ__limit" data-cf2-civ-block="limit">' + limit + "</div>";
+    }
+
+    /* D — the action sits right after the limit that bounds it, so an eligible
+       merchant reaches it without scrolling past the measurement detail. */
+    html += String(actionsHtml || "");
+
+    /* E — measurement, recheck, mind change: readable but visually quiet */
+    var quiet = "";
+    quiet += civLine("measure", L.measure || "ماذا سنقيس؟", iv.primary_metric, { quiet: true });
+    quiet += civLine("guardrail", "الحد الذي لا نتجاوزه", iv.guardrail_metric, { quiet: true });
+    quiet += civLine("recheck", L.recheck || "متى نراجع؟", iv.recheck_condition, { quiet: true });
+    quiet += civLine(
+      "mind-change",
+      L.mind_change || "ما الذي سيجعلنا نغيّر رأينا؟",
+      iv.mind_change_condition,
+      { quiet: true }
+    );
+    if (quiet) {
+      html +=
+        '<div class="cf2-civ__quiet" data-cf2-civ-block="measurement">' + quiet + "</div>";
+    }
+
+    html += "</div>";
+    return html;
+  }
+
   function renderColDecision(opp, paintOpts) {
     paintOpts = paintOpts || {};
     if (!opp) return "";
@@ -785,6 +894,14 @@
         '<p class="cf2-col-ws__v">' +
         esc(opp.catalog_explain_ar) +
         "</p></div>";
+    }
+    /* When the server sends an intervention contract it owns the whole decision
+       body, so the arc organism would only repeat it. */
+    var civHtml = renderInterventionDecision(opp, renderMissionActions(opp));
+    if (civHtml) {
+      html += civHtml;
+      html += "</section>";
+      return html;
     }
     if (CDA && CDA.renderOrganism) {
       html += CDA.renderOrganism(opp, {
@@ -907,12 +1024,19 @@
         "</svg></span></a>"
       );
     }
+    /* Intervention contract owns CTA safety: an executable control exists only
+       on an ELIGIBLE card. Blocked states get explanation only — never a
+       disabled or greyed control. */
+    var iv = opp.intervention;
+    var interventionBlocks = !!(iv && iv.ok === true && !iv.cta_ar);
     if (!c || !phase) {
-      html +=
-        '<button type="button" class="cf2-mission__btn" data-cf2-mission-act="accept">اعتمد هذه المهمة</button>';
-      html +=
-        '<p class="cf2-mission__hint">القبول يسجّل القرار فقط — لا يبدأ القياس.</p>';
-      html += execLinkHtml();
+      if (!interventionBlocks) {
+        html +=
+          '<button type="button" class="cf2-mission__btn" data-cf2-mission-act="accept">اعتمد هذه المهمة</button>';
+        html +=
+          '<p class="cf2-mission__hint">القبول يسجّل القرار فقط — لا يبدأ القياس.</p>';
+        html += execLinkHtml();
+      }
     } else if (phase === "ACTION_CHOSEN") {
       html +=
         '<p class="cf2-mission__status">' +
@@ -1123,5 +1247,6 @@
     bindMissionActions: bindMissionActions,
     refreshColFocusFromSummary: refreshColFocusFromSummary,
     catalogPrimaryFromSummary: catalogPrimaryFromSummary,
+    renderColDecision: renderColDecision,
   };
 })(typeof window !== "undefined" ? window : globalThis);
