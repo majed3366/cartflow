@@ -289,6 +289,32 @@ class SummaryAttachTests(unittest.TestCase):
         for body in ({}, {"mission_catalog_v1": {"ok": False}}, {"mission_catalog_v1": {}}):
             self.assertIsInstance(attach_intervention_to_summary_v1(dict(body)), dict)
 
+    def test_full_cal_projection_carries_col_evidence_share(self) -> None:
+        """End to end through CAL: R17 keeps 12 من 20 (60٪) on the workspace."""
+        from services.commercial_action_language_v1 import (
+            project_commercial_action_language_v1,
+        )
+
+        body = self._summary()
+        body["commercial_opportunity_layer_v1"] = {
+            "ok": True,
+            "primary": {
+                "opportunity_id": "opp-1",
+                "family": SHIPPING,
+                "truth_class": TRUTH_PRODUCTION_READY,
+                "evidence": R17_EVIDENCE,
+            },
+            "secondaries": [],
+        }
+        out = project_commercial_action_language_v1(body)
+        iv = out["mission_catalog_v1"]["primary"]["intervention_v1"]
+        self.assertIn("12 من 20", iv["evidence_ar"])
+        self.assertIn("60", iv["evidence_ar"])
+        self.assertIn("الشحن", iv["situation_ar"])
+        self.assertIn("60", iv["primary_metric"])
+        self.assertEqual(iv["eligibility_state"], "ELIGIBLE")
+        self.assertEqual(iv["recommendation_level"], 2)
+
     def test_projection_does_not_touch_the_database(self) -> None:
         src = (
             ROOT / "services/commercial_action_language_v1/workspace_intervention_v1.py"

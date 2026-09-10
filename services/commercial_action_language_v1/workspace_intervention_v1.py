@@ -71,6 +71,22 @@ def _conflict_type_for(portfolio: Mapping[str, Any] | None, opportunity_id: str)
     return None
 
 
+def _evidence_for_card(body: Mapping[str, Any], card: Mapping[str, Any]) -> Mapping[str, Any] | None:
+    """COL owns the evidence bag; prefer its family bag over the card's copy."""
+    from services.commercial_action_language_v1.project_v1 import (  # noqa: PLC0415
+        _col_evidence_by_family,
+    )
+
+    fam = _norm(card.get("family"))
+    col = body.get("commercial_opportunity_layer_v1")
+    if isinstance(col, Mapping):
+        bag = _col_evidence_by_family(col).get(fam)
+        if isinstance(bag, Mapping):
+            return bag
+    own = card.get("evidence")
+    return own if isinstance(own, Mapping) else None
+
+
 def _merchant_blocked(candidates: Any) -> list[dict[str, Any]]:
     """Merchant sees the class and the reason in words — never field names."""
     out: list[dict[str, Any]] = []
@@ -99,6 +115,8 @@ def build_workspace_intervention_v1(
     own_cdc_phase: str | None,
     evidence: Mapping[str, Any] | None = None,
     reason_label_ar: str = "",
+    situation_ar: str = "",
+    evidence_ar: str = "",
 ) -> dict[str, Any]:
     """One guided commercial decision, ready to paint. Empty dict when unsupported."""
     fam = _norm(family)
@@ -120,10 +138,13 @@ def build_workspace_intervention_v1(
         return {}
 
     # Section 1 wants the diagnosis and its evidence read as two lines rather
-    # than the single merged string the card carries.
+    # than the single merged string the card carries. Copy already projected
+    # onto the card wins, because that is what every other surface shows.
     base = contract_for_family_v1(fam, evidence=evidence, reason_label_ar=reason_label_ar) or {}
-    situation = _norm(base.get("situation_ar")) or _norm(card.get("what_we_see_ar"))
-    evidence_line = _norm(base.get("evidence_ar"))
+    situation = _norm(situation_ar) or _norm(base.get("situation_ar")) or _norm(
+        card.get("what_we_see_ar")
+    )
+    evidence_line = _norm(evidence_ar) or _norm(base.get("evidence_ar"))
     if not evidence_line:
         merged = _norm(card.get("what_we_see_ar"))
         evidence_line = merged[len(situation):].strip() if merged.startswith(situation) else ""
@@ -167,7 +188,6 @@ def attach_intervention_to_summary_v1(body: dict[str, Any]) -> dict[str, Any]:
         return body
 
     commitment = card.get("commitment") if isinstance(card.get("commitment"), Mapping) else {}
-    evidence = card.get("evidence") if isinstance(card.get("evidence"), Mapping) else None
     projection = build_workspace_intervention_v1(
         family=card.get("family"),
         col_truth_class=card.get("truth_class"),
@@ -176,8 +196,11 @@ def attach_intervention_to_summary_v1(body: dict[str, Any]) -> dict[str, Any]:
             body.get("mission_portfolio_v1"), card.get("opportunity_id")
         ),
         own_cdc_phase=_norm(card.get("cdc_phase") or commitment.get("phase")) or None,
-        evidence=evidence,
+        evidence=_evidence_for_card(body, card),
         reason_label_ar=_norm(card.get("reason_label_ar")),
+        # CAL already projected contract copy onto the card upstream.
+        situation_ar=_norm(card.get("title_ar")),
+        evidence_ar=_norm(card.get("why_ar")),
     )
     if projection:
         card["intervention_v1"] = projection
