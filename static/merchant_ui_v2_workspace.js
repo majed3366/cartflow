@@ -77,6 +77,63 @@
     return html;
   }
 
+  /* LDH owns lifecycle, monitoring and the next mission. It does not own the
+     decision body once an intervention contract exists — otherwise the same
+     decision would be painted twice. */
+  function ldhJourneyHtml(ws) {
+    var journey = ws.journey && typeof ws.journey === "object" ? ws.journey : null;
+    if (!journey || !Array.isArray(journey.steps) || !journey.steps.length) return "";
+    var currentStep = String(journey.current_step || "");
+    var html =
+      '<ol class="cf2-ldh__journey" data-cf2-ldh-journey="1" data-cf2-ldh-journey-current="' +
+      esc(currentStep) +
+      '">';
+    journey.steps.forEach(function (step, idx) {
+      var sid = String((step && step.id) || "");
+      var on = sid && sid === currentStep;
+      html +=
+        '<li class="cf2-ldh__journey-step' +
+        (on ? " is-current" : "") +
+        '" data-cf2-ldh-journey-step="' +
+        esc(sid) +
+        '"><span class="cf2-ldh__journey-n">' +
+        (idx + 1) +
+        "</span> " +
+        esc((step && step.label_ar) || "") +
+        "</li>";
+    });
+    return html + "</ol>";
+  }
+
+  function ldhMonitorHtml(ws) {
+    var monitor = Array.isArray(ws.monitoring) ? ws.monitoring : [];
+    if (!monitor.length) return "";
+    var html =
+      '<div class="cf2-ldh__block cf2-ldh__block--monitor" data-cf2-ldh-flow="measurement">' +
+      '<p class="cf2-ldh__label">' +
+      esc(ws.measure_label_ar || "تحت المراقبة") +
+      "</p>";
+    monitor.forEach(function (row) {
+      html +=
+        '<p class="cf2-ldh__body" data-cf2-ldh-secondary="' +
+        esc(row.family || "") +
+        '">' +
+        esc(row.body_ar || "") +
+        "</p>";
+    });
+    return html + "</div>";
+  }
+
+  function ldhNextHtml(ws) {
+    if (!(ws.next_mission && ws.next_mission.family)) return "";
+    return ldhStack(
+      ws.next_mission.group_label_ar || "المهمة التجارية التالية",
+      ws.next_mission.title_ar || "",
+      "next",
+      "cf2-ldh__block--next"
+    );
+  }
+
   function renderHierarchyWorkspace(ldh, opp) {
     var ws = (ldh && ldh.workspace) || {};
     var html =
@@ -85,6 +142,21 @@
       '" data-cf2-frontend-ranking="0" data-cf2-frontend-lifecycle-derivation="0" data-cf2-priority-lane="commercial" data-cf2-mission="v1" data-cf2-mission-family="' +
       esc(String((opp && opp.family) || (ldh.truth && ldh.truth.primary_family) || "")) +
       '">';
+    var ivLdh = opp && opp.intervention;
+    if (ivLdh && ivLdh.ok === true) {
+      html += renderInterventionDecision(
+        opp,
+        '<div class="cf2-ldh__block cf2-ldh__block--exec" data-cf2-ldh-flow="execution">' +
+          '<p class="cf2-ldh__label">' +
+          esc(ws.execution_label_ar || "تنفيذ المهمة") +
+          "</p>" +
+          ldhJourneyHtml(ws) +
+          renderMissionActions(opp) +
+          "</div>",
+        ldhMonitorHtml(ws) + ldhNextHtml(ws)
+      );
+      return html + "</section>";
+    }
     if (ws.title_ar) {
       html += '<h1 class="cf2-ldh__title">' + esc(ws.title_ar) + "</h1>";
     }
@@ -757,7 +829,7 @@
     );
   }
 
-  function renderInterventionDecision(opp, actionsHtml) {
+  function renderInterventionDecision(opp, actionsHtml, tailHtml) {
     var iv = opp && opp.intervention;
     if (!iv || iv.ok !== true) return "";
     var L = iv.labels_ar || {};
@@ -836,6 +908,10 @@
       html +=
         '<div class="cf2-civ__quiet" data-cf2-civ-block="measurement">' + quiet + "</div>";
     }
+
+    /* Anything the intervention does not own (portfolio monitoring, next
+       mission) stays with its own owner and reads last. */
+    html += String(tailHtml || "");
 
     html += "</div>";
     return html;
@@ -1248,5 +1324,6 @@
     refreshColFocusFromSummary: refreshColFocusFromSummary,
     catalogPrimaryFromSummary: catalogPrimaryFromSummary,
     renderColDecision: renderColDecision,
+    renderHierarchyWorkspace: renderHierarchyWorkspace,
   };
 })(typeof window !== "undefined" ? window : globalThis);

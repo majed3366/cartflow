@@ -392,6 +392,81 @@ class PaintedWorkspaceTests(unittest.TestCase):
         self.assertNotIn("ECONOMIC_INPUTS_REQUIRED<", html)
 
 
+class LiveDecisionHierarchyPathTests(unittest.TestCase):
+    """The lab layout must show the same one decision, not a second copy."""
+
+    LDH = {
+        "enabled": True,
+        "commercial_status_owner": "catalog_cdc_portfolio",
+        "workspace": {
+            "title_ar": "أقوى تردد مسجّل الآن مرتبط بالشحن.",
+            "why_now_ar": "لأن الشحن يمثل 12 من 20 سبب تردد مسجّل.",
+            "evidence_ar": "12 من 20 (60٪)",
+            "decision_ar": "حدّد هل التردد مرتبط بتكلفة الشحن أم مدة التوصيل.",
+            "dont_ar": "لا تخفّض الشحن.",
+            "execution_ar": "افتح أسباب التردد في سياسة الاسترجاع.",
+            "journey": {
+                "current_step": "accept",
+                "steps": [
+                    {"id": "accept", "label_ar": "اعتمد هذه المهمة"},
+                    {"id": "measure", "label_ar": "يبدأ القياس"},
+                ],
+            },
+            "monitoring": [
+                {"family": "price_hesitation", "body_ar": "السعر يتكرر في 5 من 20 سبباً (25٪)."}
+            ],
+            "recheck_ar": "بعد بلوغ حد الكفاية.",
+        },
+    }
+
+    def paint_ldh(self, proj: dict, *, phase: str | None = None) -> str:
+        opp = {
+            "opportunity_id": "opp-1",
+            "family": proj.get("family") or SHIPPING,
+            "title_ar": "أقوى تردد مسجّل الآن مرتبط بالشحن.",
+            "mission_ready": True,
+            "intervention": proj,
+            "commitment": {"phase": phase} if phase else None,
+            "cdc_phase": phase,
+        }
+        return _node_eval(
+            "g.CartFlowUiV2Workspace.renderHierarchyWorkspace("
+            + json.dumps(self.LDH, ensure_ascii=False)
+            + ","
+            + json.dumps(opp, ensure_ascii=False)
+            + ")"
+        )
+
+    def test_lab_layout_paints_the_intervention(self) -> None:
+        html = self.paint_ldh(projection())
+        self.assertIn('data-cf2-civ="v1"', html)
+        for label in ("ما التدخل المقترح الآن؟", "لماذا هذا آمن الآن؟", "لماذا لا نقترح تدخلاً أقوى؟"):
+            self.assertIn(label, html)
+
+    def test_lab_layout_does_not_duplicate_the_decision(self) -> None:
+        html = self.paint_ldh(projection())
+        self.assertNotIn("cf2-ldh__title", html)
+        self.assertNotIn('data-cf2-ldh-flow="decision"', html)
+        self.assertNotIn('data-cf2-ldh-flow="dont"', html)
+        self.assertNotIn('data-cf2-ldh-flow="recheck"', html)
+        self.assertEqual(html.count("اعتمد هذه المهمة"), 2)  # journey step + CTA
+
+    def test_lab_layout_keeps_lifecycle_and_monitoring_owners(self) -> None:
+        html = self.paint_ldh(projection())
+        self.assertIn('data-cf2-ldh-journey="1"', html)
+        self.assertIn('data-cf2-ldh-secondary="price_hesitation"', html)
+
+    def test_lab_layout_withholds_cta_when_blocked(self) -> None:
+        html = self.paint_ldh(projection(conflict=CONFLICT_DUPLICATE_INTENT))
+        self.assertIn('data-cf-intervention-cta="0"', html)
+        self.assertNotIn('data-cf2-mission-act="accept"', html)
+
+    def test_lab_layout_falls_back_when_no_contract(self) -> None:
+        html = self.paint_ldh({})
+        self.assertIn("cf2-ldh__title", html)
+        self.assertNotIn('data-cf2-civ="v1"', html)
+
+
 class NoFrontendBusinessLogicTests(unittest.TestCase):
     def test_frontend_does_not_rank_or_decide_eligibility(self) -> None:
         start = WORKSPACE_JS.index("function renderInterventionDecision")
