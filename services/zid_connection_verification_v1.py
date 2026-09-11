@@ -210,6 +210,7 @@ def _fail(
         verified="false",
         connected_at_written="false",
     )
+    _refresh_store_connection_snapshot(store)
     return cap
 
 
@@ -232,6 +233,39 @@ def _assert_no_execution_activation(
         store.whatsapp_recovery_enabled = whatsapp_before
     if bool(getattr(store, "is_active", True)) != bool(active_before):
         store.is_active = active_before
+
+
+def _refresh_store_connection_snapshot(store: Any) -> None:
+    """Event-path snapshot write so dashboard GET matches verified state. Not Scheduler."""
+    if store is None or getattr(store, "id", None) is None:
+        return
+    try:
+        from services.dashboard_snapshot_change_v1 import (  # noqa: PLC0415
+            write_dashboard_snapshot_guarded,
+        )
+        from services.dashboard_snapshot_v1 import (  # noqa: PLC0415
+            SNAPSHOT_TYPE_STORE_CONNECTION,
+        )
+        from services.merchant_store_connection_v1 import (  # noqa: PLC0415
+            build_merchant_store_connection_status_for_store,
+        )
+
+        slug = canonical_store_slug_on_row(store) or ""
+        if not slug:
+            return
+        status = build_merchant_store_connection_status_for_store(store)
+        write_dashboard_snapshot_guarded(
+            store_id=int(store.id),
+            store_slug=slug,
+            snapshot_type=SNAPSHOT_TYPE_STORE_CONNECTION,
+            payload={"store_connection": status.to_api_dict()},
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.warning(
+            "[ZID CONNECTION VERIFY] snapshot_refresh_failed store_id=%s err=%s",
+            getattr(store, "id", None),
+            type(exc).__name__,
+        )
 
 
 def verify_and_persist_zid_connection(
@@ -385,6 +419,7 @@ def verify_and_persist_zid_connection(
         connected_at_written="true",
         scheduler_activated="false",
     )
+    _refresh_store_connection_snapshot(store)
     return cap
 
 

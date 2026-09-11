@@ -338,6 +338,14 @@ def disconnect_merchant_store(
         getattr(store, "id", None),
         meta.merchant_id,
     )
+    try:
+        from services.zid_connection_verification_v1 import (  # noqa: PLC0415
+            _refresh_store_connection_snapshot,
+        )
+
+        _refresh_store_connection_snapshot(store)
+    except Exception:  # noqa: BLE001
+        pass
     return True, "تم فصل الربط."
 
 

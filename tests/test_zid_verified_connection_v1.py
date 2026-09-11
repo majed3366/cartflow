@@ -480,6 +480,21 @@ class ZidVerifiedConnectionV1Tests(unittest.TestCase):
             STATE_AUTH_REJECTED,
         )
 
+    def test_verify_refreshes_store_connection_snapshot(self) -> None:
+        row = self._store(access="mgr", authorization="auth")
+        numeric = str(8600000 + int(row.id))
+        with _probe({"id": int(numeric)}, 200, "ok"), mock.patch(
+            "services.dashboard_snapshot_change_v1.write_dashboard_snapshot_guarded"
+        ) as writer:
+            verify_and_persist_zid_connection(row, trigger="test")
+        writer.assert_called()
+        args, kwargs = writer.call_args
+        payload = kwargs.get("payload") or {}
+        inner = payload.get("store_connection") or {}
+        self.assertTrue(inner.get("verified"))
+        self.assertEqual(inner.get("status_label_ar"), "تم الربط")
+        self.assertEqual(inner.get("connection_state"), STATE_CONNECTED_VERIFIED)
+
 
 if __name__ == "__main__":
     unittest.main()
