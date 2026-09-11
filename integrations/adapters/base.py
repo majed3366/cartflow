@@ -34,6 +34,10 @@ class PlatformAdapter(ABC):
     def extract_order(self, raw_payload: dict[str, Any]) -> dict[str, Any]:
         return {}
 
+    def map_order_economic_fact(self, raw_payload: dict[str, Any]) -> Optional[dict[str, Any]]:
+        """Platform-neutral paid-order money candidate, or None if fail-closed."""
+        return None
+
     def verify_connection(self, store: Any) -> Any:
         """Platform-specific connection verification. Core consumes a normalized capability."""
         return None

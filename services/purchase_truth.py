@@ -213,8 +213,43 @@ def ingest_purchase_truth(
                 order_id=str(order_id or ""),
                 customer_phone=str(customer_phone or ""),
             )
+        _maybe_capture_order_economic_fact(
+            purchase_source=source,
+            store_slug=store_slug or "",
+            order_id=order_id,
+        )
 
     return truth_written
+
+
+def _maybe_capture_order_economic_fact(
+    *,
+    purchase_source: str,
+    store_slug: str,
+    order_id: Optional[str],
+) -> None:
+    """PLATFORM_PAID only. Failures never downgrade Purchase Truth."""
+    try:
+        from services.cartflow_purchase_truth import (  # noqa: PLC0415
+            is_authoritative_platform_paid_source,
+        )
+
+        if not is_authoritative_platform_paid_source(purchase_source):
+            return
+        oid = str(order_id or "").strip()
+        if not oid:
+            return
+        from services.order_economic_fact_v1.capture import (  # noqa: PLC0415
+            capture_after_platform_paid,
+        )
+
+        capture_after_platform_paid(
+            purchase_source=purchase_source,
+            store_slug=store_slug,
+            external_order_id=oid,
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.warning("order economic fact capture skipped: %s", exc)
 
 
 def _reconcile_active_recovery_carts(**kwargs: Any) -> None:

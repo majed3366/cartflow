@@ -661,6 +661,48 @@ class PurchaseTruthRecord(Base):
     )
 
 
+class OrderEconomicFact(Base):
+    """Authoritative paid-order money. Grain: store + external order + truth_version."""
+
+    __tablename__ = "order_economic_facts"
+    __table_args__ = (
+        UniqueConstraint(
+            "store_slug",
+            "external_order_id",
+            "truth_version",
+            name="uq_order_economic_fact_grain",
+        ),
+        Index("ix_oef_store_currency_observed", "store_slug", "currency", "observed_at"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    store_slug = Column(String(255), nullable=False, index=True)
+    external_order_id = Column(String(255), nullable=False, index=True)
+    platform = Column(String(32), nullable=False)
+    payment_state = Column(String(32), nullable=False)
+    currency = Column(String(8), nullable=False)
+    paid_amount = Column(String(32), nullable=False)
+    order_total = Column(String(32), nullable=True)
+    transaction_amount = Column(String(32), nullable=True)
+    customer_shipping_charge = Column(String(32), nullable=True)
+    order_subtotal = Column(String(32), nullable=True)
+    discount_amount = Column(String(32), nullable=True)
+    tax_amount = Column(String(32), nullable=True)
+    remaining_amount = Column(String(32), nullable=True)
+    observed_at = Column(DateTime, nullable=False, index=True)
+    source = Column(String(64), nullable=False)
+    truth_version = Column(String(32), nullable=False)
+    created_at = Column(
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+
 class OperationalControlSnapshot(Base):
     """
     Durable platform operational controls — singleton row (id=1).

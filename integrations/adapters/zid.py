@@ -31,6 +31,11 @@ class ZidAdapter(PlatformAdapter):
     def extract_order(self, raw_payload: dict[str, Any]) -> dict[str, Any]:
         return {}
 
+    def map_order_economic_fact(self, raw_payload: dict[str, Any]) -> Optional[dict[str, Any]]:
+        from integrations.zid_order_economic_v1 import map_zid_order_view_to_economic_candidate
+
+        return map_zid_order_view_to_economic_candidate(raw_payload)
+
     def verify_connection(self, store: Any) -> Any:
         """Zid verified connection — Manager probe + identity bind. Not a dashboard path."""
         from services.zid_connection_verification_v1 import (  # noqa: PLC0415
