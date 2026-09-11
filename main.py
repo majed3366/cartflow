@@ -1751,7 +1751,20 @@ def _ensure_cartflow_api_db_warmed(*, trace_source: str = "warm") -> None:
                 return
             try:
                 with db_ready_stage("create_all"):
-                    db.create_all()
+                    from services.migration_lineage_integrity_v1.authority import (
+                        create_all_permitted,
+                        inspect_required_schema,
+                    )
+
+                    if create_all_permitted():
+                        db.create_all()
+                    else:
+                        chk = inspect_required_schema(db.engine)
+                        if not chk["ok"]:
+                            raise RuntimeError(
+                                "schema_authority_missing:"
+                                + ",".join(chk.get("missing") or [])
+                            )
                 with db_ready_stage("production_schema", reason=probe_production_schema_reason(context="startup")):
                     from schema_production_store_bootstrap import ensure_production_store_schema
 

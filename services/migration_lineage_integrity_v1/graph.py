@@ -32,10 +32,25 @@ def inspect_lineage(ini_path: str | None = None) -> dict[str, Any]:
         heads = list(script.get_heads())
         bases = list(script.get_bases())
         revs = list(script.walk_revisions())
+        missing_down: list[str] = []
+        known = {s.revision for s in revs}
+        for s in revs:
+            downs = s.down_revision
+            if downs is None:
+                continue
+            if isinstance(downs, str):
+                downs = (downs,)
+            for parent in downs:
+                if parent and parent not in known:
+                    missing_down.append(parent)
         out["walkable"] = True
         out["heads"] = sorted(heads)
         out["bases"] = sorted(bases)
         out["revision_count"] = len(revs)
+        out["missing_parents"] = sorted(set(missing_down))
+        if missing_down:
+            out["walkable"] = False
+            out["error"] = "missing_down_revision:" + ",".join(sorted(set(missing_down)))
     except Exception as exc:  # noqa: BLE001
         out["error"] = f"{type(exc).__name__}:{exc}"
         msg = str(exc)

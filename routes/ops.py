@@ -130,6 +130,24 @@ def health(
             out["database"] = "ok"
             out["database_name"] = str(db_name or "")
             out["database_host_class"] = klass
+            from services.migration_lineage_integrity_v1.authority import (
+                create_all_permitted,
+                inspect_required_schema,
+            )
+
+            if not create_all_permitted():
+                auth = inspect_required_schema(db.engine)
+                out["schema_authority"] = auth
+                if not auth.get("ok"):
+                    return j(
+                        {
+                            "ok": False,
+                            "service": "cartflow",
+                            "database": "ok",
+                            "schema_authority": auth,
+                        },
+                        503,
+                    )
         except SQLAlchemyError as e:
             db.session.rollback()
             log.warning("health db probe: %s", e)

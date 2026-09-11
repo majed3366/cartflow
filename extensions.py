@@ -163,6 +163,14 @@ class _DB:
         return _get_engine()
 
     def create_all(self) -> None:
+        from services.migration_lineage_integrity_v1.authority import (
+            create_all_permitted,
+            note_create_all_refused,
+        )
+
+        if not create_all_permitted():
+            note_create_all_refused()
+            return
         Base.metadata.create_all(bind=_get_engine())
 
     @property
