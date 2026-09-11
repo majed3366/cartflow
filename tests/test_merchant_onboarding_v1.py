@@ -50,6 +50,10 @@ class MerchantOnboardingV1Tests(unittest.TestCase):
 
     @patch.dict(os.environ, {"PRODUCTION_MODE": ""}, clear=False)
     @patch("services.whatsapp_send.recovery_uses_real_whatsapp", return_value=False)
+    @patch(
+        "services.merchant_connection_capability_v1.store_connection_is_verified",
+        return_value=True,
+    )
     @patch("services.cartflow_onboarding_readiness._phone_coverage_readonly", return_value=(True, True))
     @patch("services.cartflow_onboarding_readiness._milestones_readonly")
     def test_existing_merchant_inferred_progress(

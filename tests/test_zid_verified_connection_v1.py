@@ -480,6 +480,52 @@ class ZidVerifiedConnectionV1Tests(unittest.TestCase):
             STATE_AUTH_REJECTED,
         )
 
+    def test_legacy_save_or_update_does_not_overwrite_slug_or_fallback(self) -> None:
+        from main import save_or_update_store_from_token_response
+
+        slug = f"cartflow-{self._suffix}-legacy"
+        row = self._store(slug=slug, access="", authorization="")
+        orphan = Store(zid_store_id=None, is_active=True, access_token="")
+        db.session.add(orphan)
+        db.session.commit()
+        orphan_id = int(orphan.id)
+        save_or_update_store_from_token_response(
+            {
+                "access_token": "should-not-land-on-latest",
+                "Authorization": "Bearer leftover",
+            }
+        )
+        db.session.refresh(orphan)
+        self.assertEqual((orphan.access_token or "").strip(), "")
+        self.assertIsNone(db.session.get(Store, orphan_id).connected_at)
+
+        save_or_update_store_from_token_response(
+            {
+                "access_token": "mgr-legacy",
+                "Authorization": "Bearer auth-legacy",
+                "zid_store_id": "3121837",
+            }
+        )
+        db.session.refresh(row)
+        self.assertEqual((row.zid_store_id or "").strip(), slug)
+        self.assertNotEqual((row.access_token or "").strip(), "mgr-legacy")
+        self.assertIsNone(row.connected_at)
+        minted = db.session.query(Store).filter(Store.zid_store_id == "3121837").first()
+        self.assertIsNone(minted)
+
+        save_or_update_store_from_token_response(
+            {
+                "access_token": "mgr-on-slug",
+                "Authorization": "Bearer auth-on-slug",
+                "zid_store_id": slug,
+            }
+        )
+        db.session.refresh(row)
+        self.assertEqual((row.zid_store_id or "").strip(), slug)
+        self.assertEqual((row.access_token or "").strip(), "mgr-on-slug")
+        self.assertEqual((row.zid_authorization_token or "").strip(), "auth-on-slug")
+        self.assertIsNone(row.connected_at)
+
     def test_verify_refreshes_store_connection_snapshot(self) -> None:
         row = self._store(access="mgr", authorization="auth")
         numeric = str(8600000 + int(row.id))

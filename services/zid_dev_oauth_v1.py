@@ -264,6 +264,9 @@ def persist_zid_dev_store_from_token_response(
     if row is None:
         if not zid:
             return None
+        # Never mint CartFlow identity from a Zid numeric store id.
+        if str(zid).strip().isdigit():
+            return None
         row = Store(zid_store_id=zid, is_active=True)
         db.session.add(row)
     if not persist_oauth_tokens_on_store_row(row, token_response):

@@ -220,6 +220,18 @@ class ZidDevOauthV1Tests(unittest.TestCase):
         self.assertEqual(audit_log.call_args.kwargs.get("route"), "/auth/callback")
         self.assertEqual(audit_log.call_args.kwargs.get("code"), "")
 
+    def test_persist_does_not_mint_numeric_cartflow_slug(self) -> None:
+        before = db.session.query(Store).filter(Store.zid_store_id == "3121837").count()
+        row = persist_zid_dev_store_from_token_response(
+            {
+                "access_token": "numeric-should-not-create",
+                "zid_store_id": "3121837",
+            }
+        )
+        self.assertIsNone(row)
+        after = db.session.query(Store).filter(Store.zid_store_id == "3121837").count()
+        self.assertEqual(after, before)
+
     def test_auth_zid_dev_disabled_requires_login(self) -> None:
         os.environ["ZID_DEV_OAUTH_ENABLED"] = "0"
         r = self.client.get("/auth/zid", follow_redirects=False)

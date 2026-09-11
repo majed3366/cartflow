@@ -13656,53 +13656,31 @@ def _parse_zid_store_id_from_token(data: dict[str, Any]) -> Optional[str]:
 
 
 def save_or_update_store_from_token_response(data: dict[str, Any]) -> None:
-    """يحفظ ‎access_token / refresh_token / انتهاء الصلاحية‎ دون تسجيل أسرار."""
-    from integrations.zid_client import (
-        fetch_zid_store_id_from_oauth_grant,
-        parse_zid_authorization_from_token_response,
-    )
+    """
+    Legacy unused persist. Identity-safe and non-authoritative for «تم الربط».
+
+    Never overwrites CartFlow ``zid_store_id``, never writes ``connected_at``,
+    never latest-store fallback, never mints a numeric Zid id as CartFlow slug.
+    Merchant OAuth uses ``apply_oauth_token_to_merchant_store`` instead.
+    """
+    from integrations.zid_client import persist_oauth_tokens_on_store_row
+    from services.store_identity_v1 import resolve_store_row_by_identifier
 
     access = (data.get("access_token") or "").strip()
     if not access:
         return
-    auth = parse_zid_authorization_from_token_response(data)
-    zid = _parse_zid_store_id_from_token(data) or fetch_zid_store_id_from_oauth_grant(data)
-    refresh: Optional[str] = None
-    r = data.get("refresh_token")
-    if r is not None and str(r).strip():
-        refresh = str(r).strip()
-    exp: Optional[datetime] = None
-    ei = data.get("expires_in")
-    if isinstance(ei, (int, float)):
-        exp = datetime.now(timezone.utc) + timedelta(seconds=float(ei))
-
+    zid = _parse_zid_store_id_from_token(data)
+    row = None
     if zid:
-        row = db.session.query(Store).filter_by(zid_store_id=zid).first()
-    else:
-        row = (
-            db.session.query(Store).filter(Store.zid_store_id.is_(None))  # type: ignore[union-attr]
-            .order_by(Store.id.desc())
-            .first()
-        )
+        row, _via = resolve_store_row_by_identifier(zid)
+        if row is None:
+            row = db.session.query(Store).filter_by(zid_store_id=zid).first()
     if row is None:
-        row = Store(
-            zid_store_id=zid,
-            access_token=access,
-            zid_authorization_token=auth,
-            refresh_token=refresh,
-            token_expires_at=exp,
-            is_active=True,
-        )
-        db.session.add(row)
-    else:
-        row.zid_store_id = zid or row.zid_store_id
-        row.access_token = access
-        if auth:
-            row.zid_authorization_token = auth
-        if refresh is not None:
-            row.refresh_token = refresh
-        row.token_expires_at = exp
-        row.is_active = True
+        return
+    original_slug = (row.zid_store_id or "").strip()
+    if not persist_oauth_tokens_on_store_row(row, data):
+        return
+    row.zid_store_id = original_slug or row.zid_store_id
     db.session.commit()
 
 
