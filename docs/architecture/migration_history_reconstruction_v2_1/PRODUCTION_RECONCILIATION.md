@@ -1,8 +1,8 @@
-# Production reconciliation — design only
+# Production reconciliation — design only (V2.1)
 
-**Execute:** NO  
-**Production stamp:** NOT AUTHORIZED  
-**Production upgrade:** NOT AUTHORIZED  
+**V2.1 execute:** NO (design)  
+**V2.2 execute:** YES — stamp only. See [`../migration_history_reconstruction_v2_2/`](../migration_history_reconstruction_v2_2/).  
+**Production upgrade:** NEVER AUTHORIZED  
 **Date (UTC):** 2026-09-11
 
 ## Current production physical state (read-only)
