@@ -858,18 +858,53 @@ def _html_contains_widget_marker(html: str, loader_url: str) -> bool:
     return False
 
 
+ZID_WEBHOOK_BASIC_USER = "cartflow"
+
+
+def webhook_shared_secret() -> str:
+    """Password for documented Zid Basic Auth. Prefer dedicated webhook secret."""
+    return (os.getenv("ZID_WEBHOOK_SECRET") or os.getenv("ZID_CLIENT_SECRET") or "").strip()
+
+
+def _secrets_equal(left: str, right: str) -> bool:
+    if not left or not right or len(left) != len(right):
+        return False
+    return hmac.compare_digest(left, right)
+
+
+def _verify_zid_basic_auth(req: "StarletteRequest", secret: str) -> bool:
+    """Zid documents Authorization: Basic when username/password are set on create."""
+    raw = (req.headers.get("Authorization") or "").strip()
+    if not raw.lower().startswith("basic "):
+        return False
+    try:
+        token = raw.split(None, 1)[1].strip()
+        decoded = base64.b64decode(token, validate=True).decode("utf-8")
+    except Exception:  # noqa: BLE001
+        return False
+    user, sep, password = decoded.partition(":")
+    if not sep:
+        return False
+    expected_user = (os.getenv("ZID_WEBHOOK_BASIC_USER") or ZID_WEBHOOK_BASIC_USER).strip()
+    if not expected_user:
+        expected_user = ZID_WEBHOOK_BASIC_USER
+    return _secrets_equal(user, expected_user) and _secrets_equal(password, secret)
+
+
 def verify_webhook_signature(
     req: "StarletteRequest", raw_body: Optional[bytes] = None
 ) -> bool:
-    if raw_body is not None:
-        body = raw_body
-    else:
+    secret = webhook_shared_secret()
+    if not secret:
+        return False
+    if _verify_zid_basic_auth(req, secret):
+        return True
+    if raw_body is None:
         return False
     header_sig: Optional[str] = req.headers.get("X-Zid-Signature")
-    secret = (os.getenv("ZID_WEBHOOK_SECRET") or "").strip()
-    if not secret or not body or not (header_sig or "").strip():
+    if not header_sig or not raw_body:
         return False
-    mac = hmac.new(secret.encode("utf-8"), body, hashlib.sha256)
+    mac = hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha256)
     hexd = mac.hexdigest()
     b64d = base64.b64encode(mac.digest()).decode("ascii")
     s = header_sig.strip()
