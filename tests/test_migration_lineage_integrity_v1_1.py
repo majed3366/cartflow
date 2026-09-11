@@ -31,23 +31,22 @@ def _unlink(path: str) -> None:
 
 
 class EmptyDatabaseReplayTests(unittest.TestCase):
-    def test_upgrade_heads_from_empty_fails_on_pre_alembic_alter(self) -> None:
-        """Historical roots ALTER `stores` which Alembic never created."""
+    def test_upgrade_heads_from_empty_reaches_reconstructed_head(self) -> None:
+        """V2.1: E0 birth CREATE makes empty SQLite helper replay succeed."""
         fd, path = tempfile.mkstemp(suffix="_mli11.db")
         os.close(fd)
         _unlink(path)
         url = "sqlite:///" + path.replace("\\", "/")
         try:
             out = upgrade_heads_from_empty(database_url=url)
-            self.assertFalse(out["ok"])
-            msg = str(out.get("failing_message") or "")
-            self.assertIn("stores", msg.lower())
-            self.assertTrue(
-                "n2o3p4q5r6s7" in msg
-                or "a3ff333f6d46" in msg
-                or "no such table: stores" in msg.lower(),
-                msg,
-            )
+            self.assertTrue(out["ok"], out.get("failing_message"))
+            self.assertEqual(out.get("alembic_version"), ["f10altparity01"])
+            tables = set(out.get("tables") or [])
+            self.assertIn("stores", tables)
+            self.assertIn("recovery_schedules", tables)
+            self.assertIn("purchase_truth_records", tables)
+            self.assertIn("movement_snapshots", tables)
+            self.assertNotIn("commercial_decision_commitments", tables)
         finally:
             _unlink(path)
 
@@ -69,8 +68,10 @@ class FutureRevisionParentRuleTests(unittest.TestCase):
         out = inspect_lineage()
         self.assertTrue(out["walkable"], out.get("error"))
         self.assertEqual(out["missing_parents"], [])
-        self.assertIn("a3ff333f6d46", out["bases"])
-        self.assertIn("m1n2o3p4q5r6", out["bases"])
+        self.assertIn("e0fnd250425a", out["bases"])
+        self.assertIn("p2q3r4s5t6u7", out["bases"])
+        self.assertNotIn("a3ff333f6d46", out["bases"])
+        self.assertNotIn("m1n2o3p4q5r6", out["bases"])
 
     def test_proposed_parent_must_exist(self) -> None:
         ok = future_revision_parent_rule("k2l3m4n5o6p7")
@@ -165,27 +166,32 @@ class SchemaAuthorityTests(unittest.TestCase):
 
 
 class DriftClassificationTests(unittest.TestCase):
-    def test_create_all_owned_is_expected_drift(self) -> None:
+    def test_deprecated_cdc_is_expected_deprecated_drift(self) -> None:
         rows = classify_table_presence(
             fresh_names={"stores", "order_economic_facts"},
             production_names={
                 "stores",
                 "order_economic_facts",
-                "purchase_truth_records",
+                "commercial_decision_commitments",
             },
         )
         by_name = {r["table"]: r for r in rows}
         self.assertEqual(by_name["stores"]["class"], "MATCH")
-        self.assertEqual(by_name["purchase_truth_records"]["class"], "EXPECTED_DRIFT")
-        self.assertEqual(by_name["purchase_truth_records"]["owner"], "create_all")
-        self.assertTrue("purchase_truth_records" in CREATE_ALL_OWNED_TABLES)
+        self.assertEqual(
+            by_name["commercial_decision_commitments"]["class"],
+            "EXPECTED_DEPRECATED_DRIFT",
+        )
+        self.assertEqual(
+            by_name["commercial_decision_commitments"]["owner"], "deprecate"
+        )
+        self.assertTrue("commercial_decision_commitments" in CREATE_ALL_OWNED_TABLES)
 
-    def test_alembic_missing_in_production_is_unexplained(self) -> None:
+    def test_alembic_missing_in_production_is_unresolved(self) -> None:
         rows = classify_table_presence(
             fresh_names={"order_economic_facts"},
             production_names=set(),
         )
-        self.assertEqual(rows[0]["class"], "UNEXPLAINED_DRIFT")
+        self.assertEqual(rows[0]["class"], "UNRESOLVED_DRIFT")
         self.assertEqual(rows[0]["owner"], "alembic_missing_in_production")
 
 

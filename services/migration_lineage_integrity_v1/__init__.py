@@ -5,12 +5,16 @@ from services.migration_lineage_integrity_v1.authority import (
 )
 from services.migration_lineage_integrity_v1.graph import inspect_lineage
 from services.migration_lineage_integrity_v1.replay import upgrade_heads_from_empty
-from services.migration_lineage_integrity_v1.stamp import plan_or_stamp_heads
+from services.migration_lineage_integrity_v1.stamp import (
+    plan_or_stamp_heads,
+    stamp_canonical_from_ancestors,
+)
 
 __all__ = [
     "create_all_permitted",
     "inspect_lineage",
     "inspect_required_schema",
     "plan_or_stamp_heads",
+    "stamp_canonical_from_ancestors",
     "upgrade_heads_from_empty",
 ]

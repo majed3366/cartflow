@@ -10,7 +10,7 @@ file was never in the repo. No DDL — do not invent historical schema.
 from typing import Sequence, Union
 
 revision: str = "m1n2o3p4q5r6"
-down_revision: Union[str, Sequence[str], None] = None
+down_revision: Union[str, Sequence[str], None] = "e0fnd250425a"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

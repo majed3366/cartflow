@@ -22,6 +22,11 @@ REQUIRED_PRODUCTION_TABLES: tuple[str, ...] = (
 _REFUSE_LOGGED = False
 
 
+def schema_mutation_permitted() -> bool:
+    """False when runtime must not ADD COLUMN / create_all / manufacture schema."""
+    return create_all_permitted()
+
+
 def create_all_permitted() -> bool:
     """True only for tests, explicit allow, or ephemeral local development."""
     if (os.getenv("CARTFLOW_ALLOW_CREATE_ALL") or "").strip() == "1":
