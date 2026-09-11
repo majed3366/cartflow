@@ -15,7 +15,10 @@ from schema_purchase_truth import reset_purchase_truth_schema_guard_for_tests
 from services.cartflow_purchase_truth import reset_purchase_truth_foundation_for_tests
 from services.order_economic_fact_v1.aggregates import gross_paid_order_aov, store_paid_order_value
 from services.order_economic_fact_v1.backfill import backfill_order_economic_facts
-from services.order_economic_fact_v1.capture import capture_after_platform_paid
+from services.order_economic_fact_v1.capture import (
+    _store_capture_handle,
+    capture_after_platform_paid,
+)
 from services.order_economic_fact_v1.contract import (
     SAFE_AGGREGATE_TERM,
     SAFE_AOV_TERM,
@@ -477,6 +480,119 @@ def test_ingest_without_store_keeps_purchase_truth() -> None:
     )
     assert row is not None
     assert row.purchase_source == SOURCE_ZID_PLATFORM_PAID
+
+
+def test_capture_handle_is_plain_values_not_orm_store() -> None:
+    slug, nid, _body = _lab()
+    handle = _store_capture_handle(slug)
+    assert handle is not None
+    assert not isinstance(handle, Store)
+    assert handle.zid_store_id == slug
+    assert handle.access_token == "mgr-token"
+    assert handle.zid_authorization_token == "auth-token"
+    assert handle.expected_zid_numeric_id == nid
+    from integrations.zid_client import manager_headers_for_store
+
+    headers, err = manager_headers_for_store(handle)
+    assert err is None
+    assert headers is not None
+    assert headers["X-MANAGER-TOKEN"] == "mgr-token"
+    assert headers["Authorization"] == "Bearer auth-token"
+
+
+def test_expired_expunged_store_reaches_manager_get_and_persists() -> None:
+    slug, _nid, body = _lab()
+    assert _ingest_platform_paid(slug, PAID_ORDER_ID)
+    db.session.expire_all()
+    db.session.expunge_all()
+    seen: dict[str, object] = {}
+
+    def fetch(store: object, oid: str) -> tuple[dict, int]:
+        from integrations.zid_client import manager_headers_for_store
+
+        headers, err = manager_headers_for_store(store)
+        seen["oid"] = oid
+        seen["access"] = getattr(store, "access_token", None)
+        seen["auth"] = getattr(store, "zid_authorization_token", None)
+        seen["headers_ok"] = err is None and bool(headers)
+        return body, 200
+
+    out = capture_after_platform_paid(
+        purchase_source=SOURCE_ZID_PLATFORM_PAID,
+        store_slug=slug,
+        external_order_id=PAID_ORDER_ID,
+        fetch_order_view=fetch,
+    )
+    assert out["ok"] is True
+    assert seen["oid"] == PAID_ORDER_ID
+    assert seen["access"] == "mgr-token"
+    assert seen["auth"] == "auth-token"
+    assert seen["headers_ok"] is True
+    row = get_order_economic_fact(store_slug=slug, external_order_id=PAID_ORDER_ID)
+    assert row is not None
+    assert row.paid_amount == "21"
+    assert row.currency == "SAR"
+
+
+def test_detached_store_live_headers_reach_pytest_fetcher_gate() -> None:
+    slug, _nid, _body = _lab()
+    ok = ingest_purchase_truth(
+        recovery_key=f"{slug}:s1",
+        purchase_source=SOURCE_ZID_PLATFORM_PAID,
+        store_slug=slug,
+        session_id="s1",
+        order_id=PAID_ORDER_ID,
+        evidence_detail="oef-test",
+        apply_lifecycle=True,
+    )
+    assert ok is True
+    db.session.expire_all()
+    db.session.expunge_all()
+    out = capture_after_platform_paid(
+        purchase_source=SOURCE_ZID_PLATFORM_PAID,
+        store_slug=slug,
+        external_order_id=PAID_ORDER_ID,
+    )
+    assert out == {"ok": False, "reason": "test_fetcher_required"}
+    assert (
+        db.session.query(PurchaseTruthRecord)
+        .filter(
+            PurchaseTruthRecord.store_slug == slug,
+            PurchaseTruthRecord.order_id == PAID_ORDER_ID,
+        )
+        .first()
+        is not None
+    )
+    assert get_order_economic_fact(store_slug=slug, external_order_id=PAID_ORDER_ID) is None
+
+
+def test_empty_manager_tokens_still_fail_closed() -> None:
+    slug = _slug()
+    db.session.add(
+        Store(
+            zid_store_id=slug,
+            access_token="",
+            zid_authorization_token="",
+            is_active=True,
+        )
+    )
+    db.session.commit()
+    assert _ingest_platform_paid(slug, PAID_ORDER_ID)
+    db.session.expire_all()
+    db.session.expunge_all()
+    out = capture_after_platform_paid(
+        purchase_source=SOURCE_ZID_PLATFORM_PAID,
+        store_slug=slug,
+        external_order_id=PAID_ORDER_ID,
+    )
+    assert out == {"ok": False, "reason": "manager_auth_incomplete"}
+    assert (
+        db.session.query(PurchaseTruthRecord)
+        .filter(PurchaseTruthRecord.store_slug == slug, PurchaseTruthRecord.order_id == PAID_ORDER_ID)
+        .first()
+        is not None
+    )
+    assert get_order_economic_fact(store_slug=slug, external_order_id=PAID_ORDER_ID) is None
 
 
 def test_canonical_dedupe_is_store_and_order_not_recovery_key() -> None:

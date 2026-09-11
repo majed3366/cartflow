@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from typing import Any, Callable, Optional
 
 from extensions import db
@@ -25,23 +26,67 @@ log = logging.getLogger("cartflow")
 OrderViewFetcher = Callable[[Any, str], tuple[dict, int]]
 
 
-def _store_for_slug(store_slug: str) -> Optional[Store]:
+def _store_capture_handle(store_slug: str) -> Optional[SimpleNamespace]:
+    """Plain Store values for Manager GET / tenant check. Never return a live ORM row.
+
+    PLATFORM_PAID ingest commits Purchase Truth and lifecycle first. Those commits
+    expire or detach identity-map Store instances. Later attribute access then
+    raises DetachedInstanceError. Column queries copy scalars while the session
+    can still load them.
+    """
     slug = (store_slug or "").strip()
     if not slug:
         return None
-    return db.session.query(Store).filter(Store.zid_store_id == slug).first()
-
-
-def _expected_zid_numeric_id(store: Store) -> str:
     row = (
-        db.session.query(StoreIdentityAlias)
+        db.session.query(
+            Store.id,
+            Store.zid_store_id,
+            Store.access_token,
+            Store.zid_authorization_token,
+        )
+        .filter(Store.zid_store_id == slug)
+        .first()
+    )
+    if row is None:
+        return None
+    store_id = int(row[0])
+    alias = (
+        db.session.query(StoreIdentityAlias.alias_value)
         .filter(
-            StoreIdentityAlias.store_id == store.id,
+            StoreIdentityAlias.store_id == store_id,
             StoreIdentityAlias.alias_kind == ALIAS_KIND_ZID_NUMERIC_ID,
         )
         .first()
     )
-    return str(row.alias_value or "").strip() if row else ""
+    return SimpleNamespace(
+        id=store_id,
+        zid_store_id=str(row[1] or "").strip(),
+        access_token=str(row[2] or ""),
+        zid_authorization_token=str(row[3]) if row[3] is not None else None,
+        expected_zid_numeric_id=str(alias[0] or "").strip() if alias else "",
+    )
+
+
+def _store_for_slug(store_slug: str) -> Optional[SimpleNamespace]:
+    return _store_capture_handle(store_slug)
+
+
+def _expected_zid_numeric_id(store: Any) -> str:
+    cached = getattr(store, "expected_zid_numeric_id", None)
+    if isinstance(cached, str):
+        return cached
+    store_id = getattr(store, "id", None)
+    if store_id is None:
+        return ""
+    row = (
+        db.session.query(StoreIdentityAlias.alias_value)
+        .filter(
+            StoreIdentityAlias.store_id == int(store_id),
+            StoreIdentityAlias.alias_kind == ALIAS_KIND_ZID_NUMERIC_ID,
+        )
+        .first()
+    )
+    return str(row[0] or "").strip() if row else ""
 
 
 def capture_after_platform_paid(
@@ -61,7 +106,7 @@ def capture_after_platform_paid(
     if find_authoritative_platform_paid_row(slug, oid) is None:
         return {"ok": False, "reason": "platform_paid_row_missing"}
 
-    store = _store_for_slug(slug)
+    store = _store_capture_handle(slug)
     if store is None:
         return {"ok": False, "reason": "store_not_found"}
 
