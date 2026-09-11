@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 """Zid webhook → canonical purchase truth ingest (v2).
 
-Authoritative platform paid truth requires:
+Authoritative platform paid truth requires either:
 
-    event == order.payment_status.update
-    AND payment_status == paid
+    event == order.payment_status.update AND payment_status == paid
 
-Event-name fragments (order.paid, \"paid\" in event) are not payment truth.
+or the authenticated Zid subscription's observed root-order delivery shape:
+
+    no event/type wrapper, root store_id + order id, payment_status == paid
+
+Event-name fragments (order.paid, "paid" in event) are not payment truth.
 """
 from __future__ import annotations
 
@@ -114,43 +117,70 @@ def extract_zid_store_slug_claim(payload: dict[str, Any]) -> str:
     return ""
 
 
-def _store_slug_from_zid_store_id(store_id: Any) -> str:
-    sid = str(store_id or "").strip()
+def _canonical_store_slug_from_identifier(identifier: Any) -> str:
+    sid = str(identifier or "").strip()
     if not sid:
         return ""
     try:
-        from extensions import db  # noqa: PLC0415
-        from models import Store  # noqa: PLC0415
-
-        row = (
-            db.session.query(Store)
-            .filter(Store.zid_store_id == sid)
-            .order_by(Store.id.desc())
-            .first()
+        from services.store_identity_v1 import (  # noqa: PLC0415
+            canonical_store_slug_on_row,
+            resolve_store_row_by_identifier,
         )
-        if row is not None:
-            return str(getattr(row, "zid_store_id", "") or "").strip()
+
+        row, _via = resolve_store_row_by_identifier(sid)
+        return str(canonical_store_slug_on_row(row) or "").strip()
     except Exception:  # noqa: BLE001
         return ""
-    return ""
+
+
+def _store_slug_from_zid_store_id(store_id: Any) -> str:
+    """Resolve Zid numeric/UUID/alias identity to CartFlow's canonical store key."""
+    return _canonical_store_slug_from_identifier(store_id)
 
 
 def resolve_zid_store_slug(payload: dict[str, Any]) -> str:
     claimed = extract_zid_store_slug_claim(payload)
     if claimed:
+        canonical = _canonical_store_slug_from_identifier(claimed)
+        if canonical:
+            return canonical
+        # Preserve the established contract for explicit CartFlow store claims.
         return claimed
+
     order = zid_order_body(payload)
     store_id = order.get("store_id")
     if store_id is None:
         store_id = payload.get("store_id")
+    if store_id is None:
+        store_id = _as_dict(payload.get("data")).get("store_id")
     return _store_slug_from_zid_store_id(store_id)
 
 
-def zid_payload_indicates_platform_paid(payload: dict[str, Any]) -> bool:
-    """Authoritative Zid paid transition. Not event-name matching."""
+def _is_observed_zid_root_order_delivery(payload: dict[str, Any]) -> bool:
+    """Narrow fallback for Zid's observed eventless root Order webhook body."""
     if not isinstance(payload, dict):
         return False
-    if extract_zid_platform_event(payload) != ZID_PLATFORM_PAID_EVENT:
+    if extract_zid_platform_event(payload):
+        return False
+    if isinstance(payload.get("data"), dict) or isinstance(payload.get("order"), dict):
+        return False
+    store_id = payload.get("store_id")
+    if store_id is None or isinstance(store_id, (dict, list, bool)):
+        return False
+    if not str(store_id).strip():
+        return False
+    return bool(extract_zid_order_id(payload))
+
+
+def zid_payload_indicates_platform_paid(payload: dict[str, Any]) -> bool:
+    """Authoritative Zid paid transition, including observed root-order delivery."""
+    if not isinstance(payload, dict):
+        return False
+    event = extract_zid_platform_event(payload)
+    if event:
+        if event != ZID_PLATFORM_PAID_EVENT:
+            return False
+    elif not _is_observed_zid_root_order_delivery(payload):
         return False
     status = extract_zid_payment_status(payload)
     if not status or status in _REJECTED_PAYMENT_STATUSES:
@@ -167,7 +197,8 @@ def build_zid_purchase_truth_payload(payload: dict[str, Any]) -> Optional[dict[s
     """
     Map a documented Zid paid webhook to ingest shape.
 
-    Fail closed without payment_status=paid, event contract, order id, or store slug.
+    Fail closed without payment_status=paid, supported delivery shape, order id,
+    or store slug.
     """
     if not zid_payload_indicates_platform_paid(payload):
         return None
