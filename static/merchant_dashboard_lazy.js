@@ -1017,7 +1017,7 @@
         impact_ar: "",
       };
     /* Store Readiness = Store Connection + Widget + WhatsApp only (no Recovery). */
-    var storeOk = !!(sc.store_connected_ok || sc.connected);
+    var storeOk = !!sc.verified;
     var widgetOk = !!sc.widget_installed_ok;
     var waOk = String(wa.state_key || "") === "ready";
     var readyCount = (storeOk ? 1 : 0) + (widgetOk ? 1 : 0) + (waOk ? 1 : 0);

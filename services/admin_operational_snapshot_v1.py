@@ -566,7 +566,14 @@ def _section_support_context(
         mid = getattr(store, "merchant_user_id", None)
         ctx["merchant_user_id"] = int(mid) if mid is not None else None
         ctx["has_oauth_access_token"] = bool((getattr(store, "access_token") or "").strip())
-        ctx["store_connected"] = ctx["has_oauth_access_token"]
+        try:
+            from services.merchant_connection_capability_v1 import (
+                store_connection_is_verified,
+            )
+
+            ctx["store_connected"] = store_connection_is_verified(store)
+        except Exception:
+            ctx["store_connected"] = False
     try:
         from integrations.zid_client import zid_oauth_configured
 

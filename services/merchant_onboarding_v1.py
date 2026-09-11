@@ -169,9 +169,11 @@ def _step_is_complete(
         return False
 
     if step_id == "store":
-        token_ok = bool((getattr(store, "access_token", None) or "").strip())
-        recovery_on = bool(flags.get("recovery_enabled"))
-        return token_ok and recovery_on
+        from services.merchant_connection_capability_v1 import (
+            store_connection_is_verified,
+        )
+
+        return store_connection_is_verified(store)
 
     if step_id == "whatsapp":
         return merchant_whatsapp_setup_complete(store)

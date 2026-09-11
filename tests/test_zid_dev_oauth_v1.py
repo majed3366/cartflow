@@ -35,8 +35,20 @@ class ZidDevOauthV1Tests(unittest.TestCase):
         os.environ["ZID_CLIENT_SECRET"] = "test-client-secret"
         self.client = TestClient(app)
         self._suffix = uuid.uuid4().hex[:10]
+        self._widget_patch = mock.patch(
+            "services.zid_storefront_widget_install_v1.maybe_install_zid_storefront_widget",
+            return_value={"ok": True, "skipped": True, "reason": "unit_test"},
+        )
+        self._probe_patch = mock.patch(
+            "integrations.zid_client.probe_zid_manager_store",
+            return_value=(None, 0, "unavailable"),
+        )
+        self._widget_patch.start()
+        self._probe_patch.start()
 
     def tearDown(self) -> None:
+        self._probe_patch.stop()
+        self._widget_patch.stop()
         try:
             db.session.query(Store).filter(
                 Store.zid_store_id.like(f"zid-dev-{self._suffix}%")
@@ -98,7 +110,8 @@ class ZidDevOauthV1Tests(unittest.TestCase):
         self.assertEqual(r.status_code, 302)
         loc = r.headers.get("location") or ""
         self.assertIn("/dashboard", loc)
-        self.assertIn("store_connected=1", loc)
+        self.assertIn("store_connect_incomplete=1", loc)
+        self.assertNotIn("store_connected=1", loc)
         row = db.session.query(Store).filter(Store.zid_store_id == zid).first()
         self.assertIsNotNone(row)
         assert row is not None
@@ -106,7 +119,7 @@ class ZidDevOauthV1Tests(unittest.TestCase):
         self.assertEqual((row.refresh_token or "").strip(), "dev-refresh")
         self.assertEqual(row.integration_source, ZID_DEV_INTEGRATION_SOURCE)
         self.assertTrue(row.is_active)
-        self.assertIsNotNone(row.connected_at)
+        self.assertIsNone(row.connected_at)
 
     def test_dev_status_endpoint_hides_token(self) -> None:
         zid = f"zid-dev-{self._suffix}-status"
@@ -122,9 +135,9 @@ class ZidDevOauthV1Tests(unittest.TestCase):
         r = self.client.get("/dev/zid-dev-store-status")
         self.assertEqual(r.status_code, 200)
         data = r.json()
-        self.assertTrue(data.get("connected"))
         self.assertEqual(data.get("zid_store_id"), zid)
         self.assertEqual(data.get("integration_source"), ZID_DEV_INTEGRATION_SOURCE)
+        self.assertFalse(data.get("connected"))
         self.assertTrue(data.get("token_present"))
         self.assertNotIn("access_token", data)
         self.assertNotIn("secret-token", r.text)

@@ -33,3 +33,7 @@ class PlatformAdapter(ABC):
 
     def extract_order(self, raw_payload: dict[str, Any]) -> dict[str, Any]:
         return {}
+
+    def verify_connection(self, store: Any) -> Any:
+        """Platform-specific connection verification. Core consumes a normalized capability."""
+        return None

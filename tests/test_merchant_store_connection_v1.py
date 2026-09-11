@@ -36,8 +36,20 @@ class MerchantStoreConnectionV1Tests(unittest.TestCase):
         from schema_merchant_auth import ensure_merchant_auth_schema
 
         ensure_merchant_auth_schema(db)
+        self._widget_patch = mock.patch(
+            "services.zid_storefront_widget_install_v1.maybe_install_zid_storefront_widget",
+            return_value={"ok": True, "skipped": True, "reason": "unit_test"},
+        )
+        self._probe_patch = mock.patch(
+            "integrations.zid_client.probe_zid_manager_store",
+            return_value=(None, 0, "unavailable"),
+        )
+        self._widget_patch.start()
+        self._probe_patch.start()
 
     def tearDown(self) -> None:
+        self._probe_patch.stop()
+        self._widget_patch.stop()
         if self._prev_env is None:
             os.environ.pop("ENV", None)
         else:
@@ -119,10 +131,11 @@ class MerchantStoreConnectionV1Tests(unittest.TestCase):
 
         cookies = {merchant_cookie_name(): session_cookie_value_for_user(user)}
         status = build_merchant_store_connection_status(cookies=cookies)
-        self.assertTrue(status.connected)
-        self.assertEqual(status.status_label_ar, "تم الربط")
+        self.assertFalse(status.connected)
+        self.assertEqual(status.status_label_ar, "لم يكتمل الربط")
+        self.assertNotEqual(status.status_label_ar, "تم الربط")
         self.assertEqual(status.platform_ar, "زد")
-        self.assertTrue(is_merchant_store_platform_connected(store))
+        self.assertFalse(is_merchant_store_platform_connected(store))
 
     def test_disconnect_clears_token(self) -> None:
         email = f"sc-disc-{uuid.uuid4().hex}@example.com"
@@ -146,7 +159,7 @@ class MerchantStoreConnectionV1Tests(unittest.TestCase):
         status = build_merchant_store_connection_status(cookies=cookies)
         self.assertFalse(status.connected)
 
-    def test_onboarding_store_step_after_real_token(self) -> None:
+    def test_onboarding_store_step_requires_verified_connection(self) -> None:
         email = f"sc-onb-{uuid.uuid4().hex}@example.com"
         ok, _, user = register_merchant_account(
             store_name="متجر",
@@ -169,7 +182,7 @@ class MerchantStoreConnectionV1Tests(unittest.TestCase):
             store, merchant_user_id=int(user.id), emit_logs=False
         )
         store_step_after = next(s for s in flow_after.steps if s.step_id == "store")
-        self.assertTrue(store_step_after.is_complete)
+        self.assertFalse(store_step_after.is_complete)
 
     def test_oauth_state_roundtrip(self) -> None:
         state = issue_oauth_state(merchant_user_id=7, store_id=42)
@@ -288,7 +301,8 @@ class MerchantStoreConnectionV1Tests(unittest.TestCase):
             )
         self.assertEqual(r.status_code, 302)
         self.assertIn("/dashboard", r.headers.get("location") or "")
-        self.assertIn("store_connected=1", r.headers.get("location") or "")
+        self.assertIn("store_connect_incomplete=1", r.headers.get("location") or "")
+        self.assertNotIn("store_connected=1", r.headers.get("location") or "")
         db.session.refresh(store)
         self.assertEqual((store.access_token or "").strip(), "tok-test")
 

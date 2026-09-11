@@ -91,7 +91,11 @@ class TestActivationJourneyV2(unittest.TestCase):
         store.whatsapp_recovery_enabled = True
         store.reason_templates_json = '{"price":{}}'
         store.cartflow_widget_enabled = True
-        j = build_activation_journey_v2(store, merchant_user_id=2)
+        with patch(
+            "services.merchant_connection_capability_v1.store_connection_is_verified",
+            return_value=True,
+        ):
+            j = build_activation_journey_v2(store, merchant_user_id=2)
         self.assertTrue(j.onboarding_complete)
         self.assertFalse(j.show_journey)
         self.assertIsNotNone(j.readiness_card)

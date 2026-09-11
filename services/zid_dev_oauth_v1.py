@@ -245,44 +245,44 @@ def persist_zid_dev_store_from_token_response(
     Upsert Store by zid_store_id from OAuth token response (development install only).
     """
     from integrations.zid_client import (
-        fetch_zid_store_id_from_oauth_grant,
-        parse_zid_store_id_from_token,
         persist_oauth_tokens_on_store_row,
+        parse_zid_store_id_from_token,
     )
+    from services.store_identity_v1 import resolve_store_row_by_identifier
 
     ensure_production_store_schema(db, context="zid_oauth_persist")
     access = (token_response.get("access_token") or "").strip()
     if not access:
         return None
-    zid = parse_zid_store_id_from_token(
-        token_response
-    ) or fetch_zid_store_id_from_oauth_grant(token_response)
-    if not zid:
-        return None
-    row = db.session.query(Store).filter(Store.zid_store_id == zid).first()
+    zid = parse_zid_store_id_from_token(token_response)
+    row: Optional[Store] = None
+    if zid:
+        resolved, _via = resolve_store_row_by_identifier(zid)
+        row = resolved
+        if row is None:
+            row = db.session.query(Store).filter(Store.zid_store_id == zid).first()
     if row is None:
+        if not zid:
+            return None
         row = Store(zid_store_id=zid, is_active=True)
         db.session.add(row)
-    prior_zid = (getattr(row, "zid_store_id", None) or "").strip()
     if not persist_oauth_tokens_on_store_row(row, token_response):
         return None
-    now = datetime.now(timezone.utc)
     row.integration_source = ZID_DEV_INTEGRATION_SOURCE
-    row.connected_at = now
     row.is_active = True
-    zid_now = (getattr(row, "zid_store_id", None) or zid or "").strip()
-    db.session.commit()
-    row = db.session.query(Store).filter(Store.zid_store_id == zid).first() or row
     try:
-        from services.store_identity_v1 import sync_zid_store_identities_after_oauth
+        from services.store_identity_v1 import ensure_cartflow_zid_alias_for_store
 
-        sync_zid_store_identities_after_oauth(
-            row,
-            token_response=token_response,
-            prior_zid=prior_zid if prior_zid != zid_now else None,
+        ensure_cartflow_zid_alias_for_store(row)
+    except Exception:  # noqa: BLE001
+        pass
+    db.session.commit()
+    try:
+        from services.zid_connection_verification_v1 import (  # noqa: PLC0415
+            verify_and_persist_zid_connection,
         )
-        db.session.commit()
-        row = db.session.query(Store).filter(Store.zid_store_id == zid).first() or row
+
+        verify_and_persist_zid_connection(row, trigger="zid_dev_oauth")
     except Exception:  # noqa: BLE001
         pass
     try:
@@ -290,10 +290,7 @@ def persist_zid_dev_store_from_token_response(
             maybe_install_zid_storefront_widget,
         )
 
-        fresh = db.session.query(Store).filter(Store.zid_store_id == zid).first()
-        maybe_install_zid_storefront_widget(fresh or row, trigger="zid_dev_oauth")
-        if fresh is not None:
-            row = fresh
+        maybe_install_zid_storefront_widget(row, trigger="zid_dev_oauth")
     except Exception as exc:  # noqa: BLE001
         log.warning(
             "zid_dev_oauth widget_install_trigger_failed zid=%s err=%s",
@@ -321,14 +318,17 @@ def build_zid_dev_store_status_readonly() -> dict[str, Any]:
             "token_present": False,
             "zid_dev_oauth_enabled": zid_dev_oauth_enabled(),
         }
+    from services.merchant_connection_capability_v1 import store_connection_is_verified
+
     connected_at = getattr(row, "connected_at", None)
     if connected_at is not None and connected_at.tzinfo is None:
         connected_at = connected_at.replace(tzinfo=timezone.utc)
+    verified = store_connection_is_verified(row)
     return {
-        "connected": bool((row.access_token or "").strip()),
+        "connected": verified,
         "zid_store_id": (row.zid_store_id or "").strip() or None,
         "integration_source": (row.integration_source or "").strip() or None,
-        "connected_at": connected_at.isoformat() if connected_at else None,
+        "connected_at": connected_at.isoformat() if connected_at and verified else None,
         "token_present": bool((row.access_token or "").strip()),
         "zid_dev_oauth_enabled": zid_dev_oauth_enabled(),
     }

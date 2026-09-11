@@ -14542,16 +14542,35 @@ def auth_callback(request: Request):
                         merchant_user_id=int(merchant_id),
                         store_id=int(store_id),
                     )
-                    zid_dev_oauth_log("store_connected", value="true")
-                    return _dashboard_oauth_redirect(store_connected="1")
+                    from services.merchant_connection_capability_v1 import (  # noqa: PLC0415
+                        oauth_callback_redirect_params,
+                        read_store_connection_capability,
+                    )
+
+                    cap = read_store_connection_capability(row)
+                    zid_dev_oauth_log(
+                        "store_connected",
+                        value="true" if cap.verified else "false",
+                    )
+                    return _dashboard_oauth_redirect(
+                        **oauth_callback_redirect_params(cap)
+                    )
         if zid_dev_oauth_enabled():
             row = persist_zid_dev_store_from_token_response(body)
             if row is not None:
-                zid_dev_oauth_log("store_connected", value="true")
-                return _dashboard_oauth_redirect(
-                    store_connected="1",
-                    integration=ZID_DEV_INTEGRATION_SOURCE,
+                from services.merchant_connection_capability_v1 import (  # noqa: PLC0415
+                    oauth_callback_redirect_params,
+                    read_store_connection_capability,
                 )
+
+                cap = read_store_connection_capability(row)
+                zid_dev_oauth_log(
+                    "store_connected",
+                    value="true" if cap.verified else "false",
+                )
+                params = oauth_callback_redirect_params(cap)
+                params["integration"] = ZID_DEV_INTEGRATION_SOURCE
+                return _dashboard_oauth_redirect(**params)
             zid_dev_oauth_log("store_connected", value="false")
             return _dashboard_oauth_redirect(store_connect_error="persist_failed")
         zid_dev_oauth_log("store_connected", value="false")
@@ -21675,6 +21694,45 @@ def api_merchant_store_connection_disconnect(request: Request):
     finally:
         _log_dashboard_profile(
             endpoint="POST /api/merchant/store-connection/disconnect",
+            section="merchant_store_connection",
+            wall_perf_start=wall0,
+        )
+
+
+@app.post("/api/merchant/store-connection/verify")
+def api_merchant_store_connection_verify(request: Request):
+    """Explicit reconnect verification — Manager probe. Not used on dashboard GET."""
+    from services.merchant_store_connection_v1 import resolve_connect_context  # noqa: PLC0415
+    from services.zid_connection_verification_v1 import (  # noqa: PLC0415
+        verify_and_persist_zid_connection,
+    )
+    from services.merchant_store_connection_v1 import (  # noqa: PLC0415
+        build_merchant_store_connection_status_for_store,
+    )
+
+    wall0 = time.perf_counter()
+    _merchant_dashboard_db_ready()
+    try:
+        store, merchant_id, err = resolve_connect_context(cookies=dict(request.cookies))
+        if merchant_id is None:
+            return j({"ok": False, "error": "unauthenticated", "message_ar": err}, 401)
+        if store is None:
+            return j({"ok": False, "error": "no_store", "message_ar": err}, 404)
+        cap = verify_and_persist_zid_connection(store, trigger="merchant_verify")
+        status = build_merchant_store_connection_status_for_store(store)
+        return j(
+            {
+                "ok": True,
+                "verified": bool(cap.verified),
+                "store_connection": status.to_api_dict(),
+            }
+        )
+    except SQLAlchemyError:
+        db.session.rollback()
+        return j({"ok": False, "error": "failed"}, 500)
+    finally:
+        _log_dashboard_profile(
+            endpoint="POST /api/merchant/store-connection/verify",
             section="merchant_store_connection",
             wall_perf_start=wall0,
         )

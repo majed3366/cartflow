@@ -169,7 +169,7 @@
 
   function classifyStore(sc) {
     if (!sc) return { state: "PARTIAL", line: "تعذّر قراءة حالة الربط" };
-    if (sc.connected) return { state: "READY", line: sc.status_label_ar || "المتجر مربوط" };
+    if (sc.verified) return { state: "READY", line: sc.status_label_ar || "تم الربط" };
     return { state: "NEEDS_SETUP", line: sc.status_label_ar || "المتجر غير مربوط" };
   }
 

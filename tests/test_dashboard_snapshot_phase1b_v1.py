@@ -221,6 +221,9 @@ class DashboardSnapshotPhase1BTests(unittest.TestCase):
             payload={
                 "store_connection": {
                     "connected": True,
+                    "verified": True,
+                    "store_connected_ok": True,
+                    "connection_state": "CONNECTED_VERIFIED",
                     "status_label_ar": "تم الربط",
                     "store_name": "Demo Store",
                 }

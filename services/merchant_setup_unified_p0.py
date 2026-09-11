@@ -152,11 +152,11 @@ def _production_flags(
     if not templates_ok and store is not None:
         raw = (getattr(store, "reason_templates_json", None) or "").strip()
         templates_ok = len(raw) > 2
-    token_ok = bool(
-        store is not None and (getattr(store, "access_token", None) or "").strip()
-    )
+    from services.merchant_connection_capability_v1 import store_connection_is_verified
+
+    oauth_ok = store_connection_is_verified(store)
     return {
-        "oauth": token_ok,
+        "oauth": oauth_ok,
         "whatsapp": onboarding_step_complete(
             "whatsapp", store, ev, merchant_user_id=merchant_user_id
         ),

@@ -11,7 +11,7 @@ from unittest import mock
 
 import models  # noqa: F401
 from extensions import db, init_database
-from models import MerchantUser, Store
+from models import Store
 from schema_zid_oauth_authorization import (
     ensure_store_zid_oauth_authorization_schema,
     reset_store_zid_oauth_authorization_schema_cache_for_tests,
@@ -41,8 +41,14 @@ class ZidOauthAuthorizationPersistTests(unittest.TestCase):
         db.create_all()
         ensure_store_zid_oauth_authorization_schema(db)
         self._suffix = uuid.uuid4().hex[:10]
+        self._widget_patch = mock.patch(
+            "services.zid_storefront_widget_install_v1.maybe_install_zid_storefront_widget",
+            return_value={"ok": True, "skipped": True, "reason": "unit_test"},
+        )
+        self._widget_patch.start()
 
     def tearDown(self) -> None:
+        self._widget_patch.stop()
         reset_store_zid_oauth_authorization_schema_cache_for_tests()
         db.session.remove()
 
@@ -94,32 +100,32 @@ class ZidOauthAuthorizationPersistTests(unittest.TestCase):
         assert store is not None
         store.zid_store_id = f"zid-auth-{self._suffix}"
         db.session.commit()
-        store_pk = int(store.id)
-        user_pk = int(user.id)
-        applied = apply_oauth_token_to_merchant_store(
-            store_id=store_pk,
-            merchant_user_id=user_pk,
-            token_response={
-                "access_token": "mgr-token",
-                "Authorization": "Bearer store-partner-auth",
-                "zid_store_id": f"zid-auth-{self._suffix}",
-            },
-        )
+        with mock.patch(
+            "integrations.zid_client.probe_zid_manager_store",
+            return_value=(None, 0, "unavailable"),
+        ):
+            applied = apply_oauth_token_to_merchant_store(
+                store_id=int(store.id),
+                merchant_user_id=int(user.id),
+                token_response={
+                    "access_token": "mgr-token",
+                    "Authorization": "Bearer store-partner-auth",
+                    "zid_store_id": store.zid_store_id,
+                },
+            )
         self.assertTrue(applied)
-        loaded = db.session.get(Store, store_pk)
+        loaded = db.session.get(Store, store.id)
         assert loaded is not None
         self.assertEqual(
             (loaded.zid_authorization_token or "").strip(),
             "store-partner-auth",
         )
-        fresh_user = db.session.get(MerchantUser, user_pk)
-        assert fresh_user is not None
-        cookie = session_cookie_value_for_user(fresh_user)
+        cookie = session_cookie_value_for_user(user)
         disconnected, _ = disconnect_merchant_store(
             cookies={merchant_cookie_name(): cookie}
         )
         self.assertTrue(disconnected)
-        cleared = db.session.get(Store, store_pk)
+        cleared = db.session.get(Store, store.id)
         assert cleared is not None
         self.assertEqual((cleared.access_token or "").strip(), "")
         self.assertIsNone(cleared.zid_authorization_token)

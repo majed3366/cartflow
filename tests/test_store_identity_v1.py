@@ -194,6 +194,15 @@ class StoreIdentityV1Tests(unittest.TestCase):
             .count()
         )
         self.assertGreaterEqual(count, 3)
+        numeric_count = (
+            db.session.query(StoreIdentityAlias)
+            .filter(
+                StoreIdentityAlias.store_id == int(self.store.id),
+                StoreIdentityAlias.alias_kind == ALIAS_KIND_ZID_NUMERIC_ID,
+            )
+            .count()
+        )
+        self.assertEqual(numeric_count, 0)
 
 
 if __name__ == "__main__":

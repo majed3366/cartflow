@@ -89,6 +89,9 @@ class MerchantSetupUnifiedP0Tests(unittest.TestCase):
         with patch(
             "services.merchant_onboarding_v1._step_is_complete",
             side_effect=lambda sid, *_a, **_k: sid == "widget",
+        ), patch(
+            "services.merchant_connection_capability_v1.store_connection_is_verified",
+            return_value=True,
         ):
             u = build_merchant_setup_unified_p0(
                 store, merchant_user_id=3, emit_logs=False

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Zid adapter scaffold — no OAuth, no live API, no webhook wiring in foundation v1."""
+"""Zid adapter — webhook scaffold plus verified connection (Manager probe)."""
 from __future__ import annotations
 
 from typing import Any, Optional
@@ -30,3 +30,11 @@ class ZidAdapter(PlatformAdapter):
 
     def extract_order(self, raw_payload: dict[str, Any]) -> dict[str, Any]:
         return {}
+
+    def verify_connection(self, store: Any) -> Any:
+        """Zid verified connection — Manager probe + identity bind. Not a dashboard path."""
+        from services.zid_connection_verification_v1 import (  # noqa: PLC0415
+            verify_and_persist_zid_connection,
+        )
+
+        return verify_and_persist_zid_connection(store, trigger="adapter")

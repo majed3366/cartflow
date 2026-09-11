@@ -312,6 +312,8 @@ def _degraded_store_connection_payload(*, reason: str) -> dict[str, Any]:
         "snapshot_reason": reason,
         "store_connection": {
             "connected": False,
+            "verified": False,
+            "connection_state": "",
             "status_label_ar": "—",
             "status_description_ar": "",
             "store_name": "",
@@ -591,6 +593,12 @@ def build_store_connection_from_snapshot(
             t0=wall0,
             endpoint="store-connection",
         )
+        from services.merchant_connection_capability_v1 import (
+            apply_verified_connection_public_guard,
+        )
+
+        if isinstance(body, dict):
+            body = apply_verified_connection_public_guard(body)
         return enforce_route_budget(body, wall0=wall0, endpoint="store-connection")
 
 

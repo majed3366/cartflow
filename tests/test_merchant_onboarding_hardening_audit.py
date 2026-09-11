@@ -53,11 +53,20 @@ def _step(journey: object, step_id: str) -> object:
 )
 @patch("services.cartflow_onboarding_readiness._milestones_readonly")
 @patch("services.whatsapp_send.recovery_uses_real_whatsapp", return_value=False)
+@patch(
+    "services.merchant_connection_capability_v1.store_connection_is_verified",
+    side_effect=lambda st: isinstance(getattr(st, "access_token", None), str)
+    and bool((getattr(st, "access_token", None) or "").strip()),
+)
 class OnboardingHardeningAudit(unittest.TestCase):
     """PASS/FAIL gates for merchant onboarding truth."""
 
     def test_scenario_1_fresh_merchant(
-        self, _mock_real: object, mock_ms: object, _mock_phone: object
+        self,
+        _mock_verified: object,
+        _mock_real: object,
+        mock_ms: object,
+        _mock_phone: object,
     ) -> None:
         mock_ms.return_value = dict(_MILESTONES_EMPTY)
         store = _store()
@@ -82,7 +91,11 @@ class OnboardingHardeningAudit(unittest.TestCase):
         self.assertFalse(j.nav_locks["widget"].unlocked)
 
     def test_scenario_2_widget_test_only(
-        self, _mock_real: object, mock_ms: object, _mock_phone: object
+        self,
+        _mock_verified: object,
+        _mock_real: object,
+        mock_ms: object,
+        _mock_phone: object,
     ) -> None:
         mock_ms.return_value = dict(_MILESTONES_WIDGET_ONLY)
         store = _store(cartflow_widget_enabled=True)
@@ -95,7 +108,11 @@ class OnboardingHardeningAudit(unittest.TestCase):
         self.assertFalse(j.nav_locks["trigger-templates"].unlocked)
 
     def test_scenario_3_store_connected(
-        self, _mock_real: object, mock_ms: object, _mock_phone: object
+        self,
+        _mock_verified: object,
+        _mock_real: object,
+        mock_ms: object,
+        _mock_phone: object,
     ) -> None:
         mock_ms.return_value = dict(_MILESTONES_SANDBOX_VERIFIED)
         store = _store(access_token="tok-live", cartflow_widget_enabled=True)
@@ -106,7 +123,11 @@ class OnboardingHardeningAudit(unittest.TestCase):
         self.assertGreater(j.completed_steps, 2)
 
     def test_scenario_4_whatsapp_configured(
-        self, _mock_real: object, mock_ms: object, _mock_phone: object
+        self,
+        _mock_verified: object,
+        _mock_real: object,
+        mock_ms: object,
+        _mock_phone: object,
     ) -> None:
         mock_ms.return_value = dict(_MILESTONES_SANDBOX_VERIFIED)
         store = _store(
@@ -120,7 +141,11 @@ class OnboardingHardeningAudit(unittest.TestCase):
         self.assertTrue(j.nav_locks["trigger-templates"].unlocked)
 
     def test_scenario_5_templates_reviewed(
-        self, _mock_real: object, mock_ms: object, _mock_phone: object
+        self,
+        _mock_verified: object,
+        _mock_real: object,
+        mock_ms: object,
+        _mock_phone: object,
     ) -> None:
         mock_ms.return_value = dict(_MILESTONES_SANDBOX_VERIFIED)
         store = _store(
@@ -135,7 +160,11 @@ class OnboardingHardeningAudit(unittest.TestCase):
         self.assertFalse(j.onboarding_complete)
 
     def test_scenario_6_fully_activated(
-        self, _mock_real: object, mock_ms: object, _mock_phone: object
+        self,
+        _mock_verified: object,
+        _mock_real: object,
+        mock_ms: object,
+        _mock_phone: object,
     ) -> None:
         mock_ms.return_value = dict(_MILESTONES_SANDBOX_VERIFIED)
         store = _store(
@@ -154,10 +183,13 @@ class OnboardingHardeningAudit(unittest.TestCase):
         self.assertIn("الودجيت", checklist)
         self.assertIn("واتساب", checklist)
         self.assertIn("متجر", checklist)
-        self.assertIn("استرجاع", checklist)
 
     def test_scenario_7_regression_disconnect_store(
-        self, _mock_real: object, mock_ms: object, _mock_phone: object
+        self,
+        _mock_verified: object,
+        _mock_real: object,
+        mock_ms: object,
+        _mock_phone: object,
     ) -> None:
         mock_ms.return_value = dict(_MILESTONES_SANDBOX_VERIFIED)
         complete = _store(
@@ -182,7 +214,11 @@ class OnboardingHardeningAudit(unittest.TestCase):
         self.assertFalse(_step(j_after, "ready_for_launch").is_complete)
 
     def test_scenario_8_regression_disable_whatsapp(
-        self, _mock_real: object, mock_ms: object, _mock_phone: object
+        self,
+        _mock_verified: object,
+        _mock_real: object,
+        mock_ms: object,
+        _mock_phone: object,
     ) -> None:
         mock_ms.return_value = dict(_MILESTONES_SANDBOX_VERIFIED)
         complete = _store(
@@ -207,7 +243,11 @@ class OnboardingHardeningAudit(unittest.TestCase):
         self.assertIsNone(j_after.readiness_card)
 
     def test_scenario_9_direct_url_nav_locks(
-        self, _mock_real: object, mock_ms: object, _mock_phone: object
+        self,
+        _mock_verified: object,
+        _mock_real: object,
+        mock_ms: object,
+        _mock_phone: object,
     ) -> None:
         mock_ms.return_value = dict(_MILESTONES_EMPTY)
         store = _store()
@@ -220,7 +260,11 @@ class OnboardingHardeningAudit(unittest.TestCase):
             self.assertTrue(lock.cta_href)
 
     def test_scenario_10_mobile_css_present(
-        self, _mock_real: object, mock_ms: object, _mock_phone: object
+        self,
+        _mock_verified: object,
+        _mock_real: object,
+        mock_ms: object,
+        _mock_phone: object,
     ) -> None:
         mock_ms.return_value = dict(_MILESTONES_EMPTY)
         from pathlib import Path
@@ -242,7 +286,11 @@ class OnboardingHardeningAudit(unittest.TestCase):
             self.assertIn(cls, css)
 
     def test_account_not_complete_for_wrong_merchant(
-        self, _mock_real: object, mock_ms: object, _mock_phone: object
+        self,
+        _mock_verified: object,
+        _mock_real: object,
+        mock_ms: object,
+        _mock_phone: object,
     ) -> None:
         mock_ms.return_value = dict(_MILESTONES_EMPTY)
         store = _store(merchant_user_id=99)

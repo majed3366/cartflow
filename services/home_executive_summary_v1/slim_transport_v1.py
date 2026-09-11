@@ -89,13 +89,9 @@ def _store_connected(summary: Mapping[str, Any]) -> bool | None:
     for key in ("store_connection", "store_connection_status"):
         conn = summary.get(key)
         if isinstance(conn, Mapping):
-            if "store_connected_ok" in conn:
-                return bool(conn.get("store_connected_ok"))
-            state = str(conn.get("state_key") or conn.get("connection_state") or "").lower()
-            if state in {"connected", "ready", "ok"}:
-                return True
-            if state in {"disconnected", "setup_required", "not_connected", "error"}:
-                return False
+            if "verified" in conn:
+                return bool(conn.get("verified"))
+            return False
     return None
 
 

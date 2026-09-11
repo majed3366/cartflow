@@ -284,9 +284,9 @@ def evaluate_onboarding_readiness(store: Optional[Any] = None) -> dict[str, Any]
             sandbox_mode=sandbox_mode,
         )
 
-    token_ok = bool((getattr(st, "access_token", None) or "").strip())
-    zid_ok = bool((getattr(st, "zid_store_id", None) or "").strip())
-    flags["store_connected"] = token_ok or zid_ok
+    from services.merchant_connection_capability_v1 import store_connection_is_verified
+
+    flags["store_connected"] = store_connection_is_verified(st)
     if not flags["store_connected"]:
         blocking.append("store_not_connected")
 

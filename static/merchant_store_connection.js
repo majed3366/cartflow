@@ -46,10 +46,10 @@
   function applyStatus(d) {
     if (!d) return;
     lastPayload = d;
-    var connected = !!d.connected;
+    var connected = !!d.verified;
     var pill = byId("ma-sc-status-pill");
     if (pill) {
-      pill.textContent = d.status_label_ar || (connected ? "تم الربط" : "غير مربوط");
+      pill.textContent = d.status_label_ar || "غير مربوط";
       pill.classList.toggle("is-connected", connected);
       pill.classList.toggle("is-disconnected", !connected);
     }
@@ -156,15 +156,7 @@
       });
   }
 
-  function applyCachedStoreIfAny() {
-    var cache = window.__cfSettingsReadCache && window.__cfSettingsReadCache.store;
-    if (!cache) return false;
-    applyStatus(cache);
-    return true;
-  }
-
   function loadStatus(force) {
-    if (!force && applyCachedStoreIfAny()) return Promise.resolve();
     if (loading && !force) return Promise.resolve();
     loading = true;
     hideMsgs();
@@ -209,6 +201,21 @@
     } else if (params && params.get("store_connect_pending") === "1") {
       showErr(pendingMessage());
       location.hash = "#settings";
+    } else if (params && params.get("store_connect_incomplete") === "1") {
+      showErr("لم يكتمل الربط");
+      location.hash = "#settings";
+    } else if (params && params.get("store_connect_rejected") === "1") {
+      showErr("تعذر التحقق من الربط");
+      location.hash = "#settings";
+    } else if (params && params.get("store_connect_mismatch") === "1") {
+      showErr("تعذر تأكيد هوية المتجر");
+      location.hash = "#settings";
+    } else if (params && params.get("store_connect_reconnect") === "1") {
+      showErr("إعادة الربط مطلوبة");
+      location.hash = "#settings";
+    } else if (params && params.get("store_verification_pending") === "1") {
+      showErr("جارٍ التحقق من الربط");
+      location.hash = "#settings";
     } else if (params && params.get("store_connect_error") === "1") {
       showErr("تعذّر بدء الربط. حاول مرة أخرى.");
       location.hash = "#settings";
@@ -233,7 +240,6 @@
   window.maInitStoreConnectionPage = function () {
     bindOnce();
     checkHashFlash();
-    if (applyCachedStoreIfAny()) return;
-    loadStatus(false);
+    loadStatus(true);
   };
 })();

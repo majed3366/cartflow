@@ -463,13 +463,16 @@ def persist_oauth_tokens_on_store_row(
     row: Any,
     token_response: dict[str, Any],
 ) -> bool:
-    """Write OAuth tokens onto an existing Store row (no latest-store fallback)."""
+    """
+    Write OAuth tokens onto an existing Store row (no latest-store fallback).
+
+    Never overwrites ``stores.zid_store_id`` (CartFlow identity).
+    Does not write ``connected_at`` (verified connection owns that stamp).
+    Does not call Manager HTTP.
+    """
     access = (token_response.get("access_token") or "").strip()
     if not access:
         return False
-    # Parse only — never HTTP here. Manager GET releases the scoped session
-    # (rollback+remove), which would drop uncommitted token writes.
-    zid = parse_zid_store_id_from_token(token_response)
     refresh: Optional[str] = None
     r = token_response.get("refresh_token")
     if r is not None and str(r).strip():
@@ -478,12 +481,10 @@ def persist_oauth_tokens_on_store_row(
     ei = token_response.get("expires_in")
     if isinstance(ei, (int, float)):
         exp = datetime.now(timezone.utc) + timedelta(seconds=float(ei))
-    if zid:
-        row.zid_store_id = zid
     row.access_token = access
     auth = parse_zid_authorization_from_token_response(token_response)
-    if auth:
-        row.zid_authorization_token = auth
+    # New grant must not keep a previous Authorization paired with a new manager token.
+    row.zid_authorization_token = auth
     if refresh is not None:
         row.refresh_token = refresh
     row.token_expires_at = exp
@@ -495,6 +496,67 @@ def persist_oauth_tokens_on_store_row(
     if attempts < 1:
         row.recovery_attempts = 1
     return True
+
+
+def probe_zid_manager_store(
+    store: Any,
+    *,
+    timeout_s: float = 8.0,
+) -> Tuple[Optional[dict[str, Any]], int, str]:
+    """
+    One inexpensive read-only Manager probe for connection verification.
+
+    GET /v1/managers/account/store — store identity, not a merchant data dump.
+    Returns (json_or_none, http_status, outcome) where outcome is
+    ok | auth_incomplete | auth_rejected | unavailable.
+    Never logs secrets or response bodies.
+    """
+    headers, err = manager_headers_for_store(store)
+    if err or not headers:
+        return None, 0, "auth_incomplete"
+    url = f"{ZID_API_BASE}/managers/account/store"
+    try:
+        r = requests.get(url, headers=headers, timeout=float(timeout_s))
+    except requests.Timeout:
+        return None, 0, "unavailable"
+    except requests.RequestException:
+        return None, 0, "unavailable"
+    status = int(r.status_code)
+    if status in (401, 403):
+        try:
+            log.info(
+                "[ZID MANAGER PROBE] store_id=%s http_status=%s outcome=auth_rejected",
+                getattr(store, "id", None) if store is not None else "-",
+                status,
+            )
+        except Exception:  # noqa: BLE001
+            pass
+        return None, status, "auth_rejected"
+    if status // 100 != 2:
+        try:
+            log.info(
+                "[ZID MANAGER PROBE] store_id=%s http_status=%s outcome=unavailable",
+                getattr(store, "id", None) if store is not None else "-",
+                status,
+            )
+        except Exception:  # noqa: BLE001
+            pass
+        return None, status, "unavailable"
+    try:
+        body: Any = r.json()
+    except Exception:
+        return None, status, "unavailable"
+    if not isinstance(body, dict):
+        return None, status, "unavailable"
+    try:
+        log.info(
+            "[ZID MANAGER PROBE] store_id=%s http_status=%s outcome=ok",
+            getattr(store, "id", None) if store is not None else "-",
+            status,
+        )
+    except Exception:  # noqa: BLE001
+        pass
+    return body, status, "ok"
 
 
 def zid_oauth_configured() -> bool:

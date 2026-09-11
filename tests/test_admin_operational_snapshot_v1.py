@@ -87,7 +87,7 @@ class AdminOperationalSnapshotV1Tests(unittest.TestCase):
         self.assertNotIn('"access_token":', blob)
         ctx = snap.get("support_context") or {}
         self.assertTrue(ctx.get("has_oauth_access_token"))
-        self.assertTrue(ctx.get("store_connected"))
+        self.assertFalse(ctx.get("store_connected"))
 
     def test_redact_strips_sensitive_keys(self) -> None:
         raw = {

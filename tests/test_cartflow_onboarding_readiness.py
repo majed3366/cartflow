@@ -8,7 +8,12 @@ from unittest.mock import patch
 
 from extensions import db
 from main import app
-from models import AbandonedCart, CartRecoveryLog, Store
+from models import AbandonedCart, CartRecoveryLog, Store, StoreIdentityAlias
+from services.store_identity_v1 import (
+    ALIAS_KIND_ZID_NUMERIC_ID,
+    PLATFORM_ZID,
+    register_store_identity_alias,
+)
 from services import cartflow_onboarding_readiness as onb
 from services import cartflow_runtime_health as rh
 
@@ -22,6 +27,16 @@ class CartflowOnboardingReadinessTests(unittest.TestCase):
             db.session.query(AbandonedCart).filter(
                 AbandonedCart.zid_cart_id.like("onb-%")
             ).delete(synchronize_session=False)
+            onb_ids = [
+                s.id
+                for s in db.session.query(Store)
+                .filter(Store.zid_store_id.like("onb-%"))
+                .all()
+            ]
+            if onb_ids:
+                db.session.query(StoreIdentityAlias).filter(
+                    StoreIdentityAlias.store_id.in_(onb_ids)
+                ).delete(synchronize_session=False)
             db.session.query(Store).filter(Store.zid_store_id.like("onb-%")).delete(
                 synchronize_session=False
             )
@@ -64,11 +79,21 @@ class CartflowOnboardingReadinessTests(unittest.TestCase):
         st = Store(
             zid_store_id="onb-sandbox",
             access_token="x",
+            zid_authorization_token="auth",
             is_active=True,
             recovery_attempts=1,
             cartflow_widget_enabled=True,
         )
         db.session.add(st)
+        db.session.commit()
+        st.connected_at = st.created_at
+        db.session.commit()
+        register_store_identity_alias(
+            store_id=int(st.id),
+            alias_kind=ALIAS_KIND_ZID_NUMERIC_ID,
+            alias_value=str(9200000 + int(st.id)),
+            platform=PLATFORM_ZID,
+        )
         db.session.commit()
         with patch(
             "services.whatsapp_send.recovery_uses_real_whatsapp",

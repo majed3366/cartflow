@@ -17,6 +17,12 @@ from models import (
     RecoveryEvent,
     RecoveryTruthTimelineEvent,
     Store,
+    StoreIdentityAlias,
+)
+from services.store_identity_v1 import (
+    ALIAS_KIND_ZID_NUMERIC_ID,
+    PLATFORM_ZID,
+    register_store_identity_alias,
 )
 from services.admin_operational_health_json_v1 import build_admin_operational_health_json
 from services.integration_health_v1 import (
@@ -47,6 +53,7 @@ def _reset() -> None:
         CartRecoveryReason,
         RecoveryEvent,
         AbandonedCart,
+        StoreIdentityAlias,
         Store,
     ):
         try:
@@ -68,12 +75,21 @@ def _store(*, token: str = "", widget_status: str | None = None) -> Store:
     row = Store(
         zid_store_id=_STORE,
         access_token=token,
+        zid_authorization_token="ih-auth" if token else None,
         is_active=True,
         widget_installation_status=widget_status,
         connected_at=_NOW.replace(tzinfo=None) if token else None,
     )
     db.session.add(row)
     db.session.commit()
+    if token:
+        register_store_identity_alias(
+            store_id=int(row.id),
+            alias_kind=ALIAS_KIND_ZID_NUMERIC_ID,
+            alias_value=str(9000000 + int(row.id)),
+            platform=PLATFORM_ZID,
+        )
+        db.session.commit()
     return row
 
 
@@ -231,6 +247,7 @@ def test_per_store_isolation() -> None:
     good = Store(
         zid_store_id="good-store",
         access_token="good-token",
+        zid_authorization_token="good-auth",
         is_active=True,
         connected_at=_NOW.replace(tzinfo=None),
         widget_installation_status="installed",
@@ -239,6 +256,12 @@ def test_per_store_isolation() -> None:
     bad = Store(zid_store_id="bad-store", access_token="", is_active=True)
     db.session.add(good)
     db.session.flush()
+    register_store_identity_alias(
+        store_id=int(good.id),
+        alias_kind=ALIAS_KIND_ZID_NUMERIC_ID,
+        alias_value=str(9100000 + int(good.id)),
+        platform=PLATFORM_ZID,
+    )
     db.session.add(bad)
     base = _NOW - timedelta(hours=1)
     db.session.add(

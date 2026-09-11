@@ -32,10 +32,10 @@ def _signing_secret() -> bytes:
 
 
 def is_merchant_store_platform_connected(store: Optional[Any]) -> bool:
-    """True only when a real OAuth access token is stored (not signup slug alone)."""
-    if store is None:
-        return False
-    return bool((getattr(store, "access_token", None) or "").strip())
+    """True only for CONNECTED_VERIFIED. Access token presence is not sufficient."""
+    from services.merchant_connection_capability_v1 import store_connection_is_verified
+
+    return store_connection_is_verified(store)
 
 
 def _format_dt_ar(dt: Optional[datetime]) -> str:
@@ -74,6 +74,14 @@ class MerchantStoreConnectionStatus:
     widget_install_error: Optional[str] = None
     store_connected_ok: bool = False
     widget_installed_ok: bool = False
+    connection_state: str = ""
+    verified: bool = False
+    platform: str = ""
+    auth_state: str = ""
+    identity_state: str = ""
+    capability_state: str = ""
+    verified_at: Optional[str] = None
+    failure_reason: Optional[str] = None
 
     def to_api_dict(self) -> dict[str, Any]:
         return {
@@ -96,6 +104,14 @@ class MerchantStoreConnectionStatus:
             "widget_install_error": self.widget_install_error,
             "store_connected_ok": self.store_connected_ok,
             "widget_installed_ok": self.widget_installed_ok,
+            "connection_state": self.connection_state,
+            "verified": self.verified,
+            "platform": self.platform,
+            "auth_state": self.auth_state,
+            "identity_state": self.identity_state,
+            "capability_state": self.capability_state,
+            "verified_at": self.verified_at,
+            "failure_reason": self.failure_reason,
         }
 
 
@@ -120,10 +136,15 @@ def build_merchant_store_connection_status_for_store(
     store_name: Optional[str] = None,
 ) -> MerchantStoreConnectionStatus:
     from integrations.zid_client import zid_oauth_configured
+    from services.merchant_connection_capability_v1 import (
+        read_store_connection_capability,
+        store_has_platform_credentials,
+    )
     from services.zid_storefront_widget_install_v1 import build_widget_install_api_fields
 
     name = (store_name or merchant_store_display_name(store) or "").strip()
-    connected = is_merchant_store_platform_connected(store)
+    cap = read_store_connection_capability(store)
+    connected = bool(cap.verified)
     zid_ready = zid_oauth_configured()
     pending_msg = "ميزة الربط قيد الإعداد"
     widget_fields = (
@@ -131,48 +152,42 @@ def build_merchant_store_connection_status_for_store(
         if store is not None
         else build_widget_install_api_fields(None, connected=False)
     )
-
-    if connected and store is not None:
-        at = getattr(store, "updated_at", None) or getattr(store, "created_at", None)
-        return MerchantStoreConnectionStatus(
-            connected=True,
-            status_label_ar="تم الربط",
-            status_description_ar="",
-            store_name=name,
-            platform_ar=_infer_platform_ar(store, connected=True),
-            connected_at_ar=_format_dt_ar(at),
-            zid_connect_available=zid_ready,
-            zid_connect_url="/api/merchant/store-connection/zid/connect",
-            salla_connect_available=False,
-            shopify_note_ar="Shopify قريباً",
-            pending_setup_message_ar=pending_msg,
-            widget_installation_status=widget_fields.get("widget_installation_status"),
-            widget_status_label_ar=widget_fields.get("widget_status_label_ar") or "—",
-            widget_status_description_ar=widget_fields.get(
-                "widget_status_description_ar"
-            )
-            or "",
-            widget_installed_at_ar=widget_fields.get("widget_installed_at_ar") or "—",
-            widget_last_seen_at_ar=widget_fields.get("widget_last_seen_at_ar") or "—",
-            widget_install_error=widget_fields.get("widget_install_error"),
-            store_connected_ok=True,
-            widget_installed_ok=bool(widget_fields.get("widget_installed_ok")),
-        )
+    platform_ar = "زد" if store_has_platform_credentials(store) or connected else "—"
+    connected_at = cap.verified_at
+    connected_at_ar = _format_dt_ar(connected_at) if connected else "—"
+    cap_dict = cap.to_api_dict()
 
     return MerchantStoreConnectionStatus(
-        connected=False,
-        status_label_ar="غير مربوط",
-        status_description_ar="ابدأ بربط متجرك لتفعيل استرجاع السلال.",
+        connected=connected,
+        status_label_ar=cap.merchant_label_ar,
+        status_description_ar=cap.merchant_description_ar,
         store_name=name,
-        platform_ar="—",
-        connected_at_ar="—",
+        platform_ar=platform_ar,
+        connected_at_ar=connected_at_ar,
         zid_connect_available=zid_ready,
         zid_connect_url="/api/merchant/store-connection/zid/connect",
         salla_connect_available=False,
         shopify_note_ar="Shopify قريباً",
         pending_setup_message_ar=pending_msg,
-        store_connected_ok=False,
-        widget_installed_ok=False,
+        widget_installation_status=widget_fields.get("widget_installation_status"),
+        widget_status_label_ar=widget_fields.get("widget_status_label_ar") or "—",
+        widget_status_description_ar=widget_fields.get(
+            "widget_status_description_ar"
+        )
+        or "",
+        widget_installed_at_ar=widget_fields.get("widget_installed_at_ar") or "—",
+        widget_last_seen_at_ar=widget_fields.get("widget_last_seen_at_ar") or "—",
+        widget_install_error=widget_fields.get("widget_install_error"),
+        store_connected_ok=connected,
+        widget_installed_ok=bool(widget_fields.get("widget_installed_ok")),
+        connection_state=cap.connection_state,
+        verified=connected,
+        platform=cap.platform,
+        auth_state=cap.auth_state,
+        identity_state=cap.identity_state,
+        capability_state=cap.capability_state,
+        verified_at=cap_dict.get("verified_at"),
+        failure_reason=cap.failure_reason,
     )
 
 
@@ -231,42 +246,54 @@ def apply_oauth_token_to_merchant_store(
             owner,
         )
         return False
-    prior_zid = (getattr(row, "zid_store_id", None) or "").strip()
     if not persist_oauth_tokens_on_store_row(row, token_response):
         return False
-    zid_log = (getattr(row, "zid_store_id", None) or "")[:64]
-    db.session.commit()
-    row = db.session.get(Store, int(store_id))
-    if row is None:
-        return False
     try:
-        from services.store_identity_v1 import sync_zid_store_identities_after_oauth
+        from services.store_identity_v1 import ensure_cartflow_zid_alias_for_store
 
-        sync_zid_store_identities_after_oauth(
-            row,
-            token_response=token_response,
-            prior_zid=prior_zid,
-        )
-        db.session.commit()
+        ensure_cartflow_zid_alias_for_store(row)
     except Exception as exc:  # noqa: BLE001
         log.warning(
-            "[STORE CONNECTION] identity_sync_failed store_id=%s err=%s",
+            "[STORE CONNECTION] cartflow_alias_failed store_id=%s err=%s",
             store_id,
             type(exc).__name__,
         )
+    db.session.commit()
     log.info(
         "[STORE CONNECTION] oauth_applied store_id=%s merchant_id=%s zid_store_id=%s",
         store_id,
         merchant_user_id,
-        zid_log,
+        (row.zid_store_id or "")[:64],
     )
+    try:
+        from services.zid_connection_verification_v1 import (  # noqa: PLC0415
+            verify_and_persist_zid_connection,
+        )
+
+        verify_and_persist_zid_connection(row, trigger="merchant_oauth")
+    except Exception as exc:  # noqa: BLE001
+        log.warning(
+            "[STORE CONNECTION] verification_failed store_id=%s err=%s",
+            store_id,
+            type(exc).__name__,
+        )
+        try:
+            from services.merchant_connection_capability_v1 import (
+                STATE_VERIFICATION_PENDING,
+                persist_connection_failure_state,
+            )
+
+            persist_connection_failure_state(row, STATE_VERIFICATION_PENDING)
+            row.connected_at = None
+            db.session.commit()
+        except Exception:  # noqa: BLE001
+            db.session.rollback()
     try:
         from services.zid_storefront_widget_install_v1 import (  # noqa: PLC0415
             maybe_install_zid_storefront_widget,
         )
 
-        fresh = db.session.get(Store, int(store_id))
-        maybe_install_zid_storefront_widget(fresh or row, trigger="merchant_oauth")
+        maybe_install_zid_storefront_widget(row, trigger="merchant_oauth")
     except Exception as exc:  # noqa: BLE001
         log.warning(
             "[STORE CONNECTION] widget_install_trigger_failed store_id=%s err=%s",
@@ -280,18 +307,31 @@ def disconnect_merchant_store(
     *,
     cookies: Optional[dict[str, str]] = None,
 ) -> tuple[bool, str]:
+    from services.merchant_connection_capability_v1 import store_has_platform_credentials
+
     store, meta = resolve_merchant_onboarding_store(cookies=cookies)
     if store is None:
         if meta.source == "unauthenticated":
             return False, "يلزم تسجيل الدخول."
         return False, "لم يُعثر على متجر مرتبط بحسابك."
-    if not is_merchant_store_platform_connected(store):
+    if not store_has_platform_credentials(store) and not getattr(
+        store, "connected_at", None
+    ):
         return True, "المتجر غير مربوط بالفعل."
 
     store.access_token = ""
     store.zid_authorization_token = None
     store.refresh_token = None
     store.token_expires_at = None
+    store.connected_at = None
+    try:
+        from services.merchant_connection_capability_v1 import (
+            clear_connection_failure_state,
+        )
+
+        clear_connection_failure_state(store)
+    except Exception:  # noqa: BLE001
+        pass
     db.session.commit()
     log.info(
         "[STORE CONNECTION] disconnected store_id=%s merchant_id=%s",

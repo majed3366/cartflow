@@ -127,7 +127,7 @@ def build_merchant_session_identity_v1(
     conn = build_merchant_store_connection_status_for_store(
         store, store_name=store_name
     )
-    connected = bool(conn.connected) or (
+    connected = bool(getattr(conn, "verified", False)) or (
         is_review and store is not None
     )
     if is_review:
@@ -136,8 +136,12 @@ def build_merchant_session_identity_v1(
         status_key = "living_store_review"
     elif connected:
         provider = (conn.platform_ar or "—").strip() or "—"
-        status_ar = (conn.status_label_ar or "تم الربط").strip()
-        status_key = "connected"
+        status_ar = (
+            conn.status_label_ar
+            if conn.verified
+            else (conn.status_label_ar or "غير مربوط")
+        ).strip()
+        status_key = "connected" if conn.verified else "disconnected"
     else:
         provider = "—"
         status_ar = (conn.status_label_ar or "غير مربوط").strip()

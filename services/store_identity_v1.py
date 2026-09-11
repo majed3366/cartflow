@@ -635,11 +635,19 @@ def list_public_cache_keys_for_store_row(row: Any) -> List[str]:
     if sid is not None:
         try:
             aliases = (
-                db.session.query(StoreIdentityAlias.alias_value)
+                db.session.query(
+                    StoreIdentityAlias.alias_kind, StoreIdentityAlias.alias_value
+                )
                 .filter(StoreIdentityAlias.store_id == int(sid))
                 .all()
             )
-            for (av,) in aliases:
+            from services.merchant_connection_capability_v1 import (
+                ALIAS_KIND_PLATFORM_CONNECTION_STATE,
+            )
+
+            for kind, av in aliases:
+                if (kind or "").strip() == ALIAS_KIND_PLATFORM_CONNECTION_STATE:
+                    continue
                 v = normalize_identity_value(av)
                 if v and v.casefold() not in seen:
                     keys.append(v)
@@ -827,32 +835,9 @@ def sync_zid_store_identities_after_oauth(
     if current_zid:
         aliases.append((ALIAS_KIND_CARTFLOW_ZID, current_zid, PLATFORM_CARTFLOW))
 
-    if isinstance(token_response, dict):
-        from integrations.zid_client import parse_zid_store_id_from_token
-
-        for key in ("zid_store_id", "store_id", "merchant_id"):
-            v = token_response.get(key)
-            if v is not None and str(v).strip():
-                aliases.append(
-                    (ALIAS_KIND_ZID_NUMERIC_ID, str(v).strip(), PLATFORM_ZID)
-                )
-        nested = token_response.get("store")
-        if isinstance(nested, dict):
-            if nested.get("id") is not None:
-                aliases.append(
-                    (
-                        ALIAS_KIND_ZID_NUMERIC_ID,
-                        str(nested["id"]).strip(),
-                        PLATFORM_ZID,
-                    )
-                )
-            if nested.get("uuid") is not None:
-                aliases.append(
-                    (ALIAS_KIND_ZID_UUID, str(nested["uuid"]).strip(), PLATFORM_ZID)
-                )
-        tok_zid = parse_zid_store_id_from_token(token_response)
-        if tok_zid:
-            aliases.append((ALIAS_KIND_ZID_NUMERIC_ID, tok_zid, PLATFORM_ZID))
+    # zid_numeric_id is persisted only after authenticated Manager proof
+    # in zid_connection_verification_v1. Do not register it from OAuth
+    # token bodies or opportunistic identity sync.
 
     if profile is None:
         access = (getattr(store, "access_token", None) or "").strip()
@@ -864,13 +849,8 @@ def sync_zid_store_identities_after_oauth(
             manager_store_payload = None
             manager_store_url = None
     else:
-        access = (getattr(store, "access_token", None) or "").strip()
         manager_store_payload = None
         manager_store_url = None
-        if access:
-            _prof, manager_store_payload, manager_store_url = (
-                fetch_zid_identity_sources_for_store(store)
-            )
 
     if isinstance(profile, dict):
         aliases.extend(collect_zid_identities_from_profile(profile))
@@ -887,6 +867,8 @@ def sync_zid_store_identities_after_oauth(
     seen: set[str] = set()
     unique: List[Tuple[str, str, Optional[str]]] = []
     for kind, val, plat in aliases:
+        if kind == ALIAS_KIND_ZID_NUMERIC_ID:
+            continue
         vv = normalize_identity_value(val)
         if not vv or vv.casefold() in seen:
             continue
