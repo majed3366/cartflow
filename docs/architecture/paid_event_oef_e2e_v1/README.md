@@ -1,6 +1,6 @@
 # Paid Event → OrderEconomicFact End-to-End V1
 
-**Status:** AUTHORIZED DSE + MINIMAL AUTH/SUBSCRIPTION CORRECTION  
+**Status:** DSE CLOSED FOR `74389634`; PIPE READY; E2E WRITE WAITING ON A NEW REAL PAID ORDER  
 **Date (UTC):** 2026-09-11  
 **General release:** NO  
 **Level 3:** NO
