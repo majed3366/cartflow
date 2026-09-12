@@ -9,7 +9,11 @@ from services.order_economic_fact_v1.contract import (
     TRUTH_VERSION,
     CanonicalOrderEconomicFact,
 )
-from services.order_economic_fact_v1.persist import get_order_economic_fact, persist_order_economic_fact
+from services.order_economic_fact_v1.persist import (
+    get_order_economic_fact,
+    get_order_economic_facts,
+    persist_order_economic_fact,
+)
 
 __all__ = [
     "CanonicalOrderEconomicFact",
@@ -20,6 +24,7 @@ __all__ = [
     "backfill_order_economic_facts",
     "capture_after_platform_paid",
     "get_order_economic_fact",
+    "get_order_economic_facts",
     "gross_paid_order_aov",
     "persist_order_economic_fact",
     "store_paid_order_value",

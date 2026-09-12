@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Iterable, Optional
 
 from sqlalchemy.exc import IntegrityError
 
@@ -14,6 +14,48 @@ from schema_order_economic_fact_v1 import ensure_order_economic_fact_schema
 from services.order_economic_fact_v1.contract import CanonicalOrderEconomicFact, TRUTH_VERSION
 
 log = logging.getLogger("cartflow")
+
+MAX_BATCH_ORDER_IDS = 25
+
+
+def _bounded_external_order_ids(external_order_ids: Optional[Iterable[str]]) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for raw in external_order_ids or ():
+        oid = str(raw or "").strip()
+        if not oid or oid in seen:
+            continue
+        seen.add(oid)
+        out.append(oid)
+        if len(out) >= MAX_BATCH_ORDER_IDS:
+            break
+    return out
+
+
+def get_order_economic_facts(
+    *,
+    store_slug: str,
+    external_order_ids: Iterable[str],
+    truth_version: str = TRUTH_VERSION,
+) -> dict[str, OrderEconomicFact]:
+    """Store-scoped batch read. Deduped, max 25 IDs, one SELECT. No schema ensure."""
+    slug = (store_slug or "").strip()
+    ver = (truth_version or "").strip() or TRUTH_VERSION
+    if not slug:
+        return {}
+    ids = _bounded_external_order_ids(external_order_ids)
+    if not ids:
+        return {}
+    rows = (
+        db.session.query(OrderEconomicFact)
+        .filter(
+            OrderEconomicFact.store_slug == slug,
+            OrderEconomicFact.truth_version == ver,
+            OrderEconomicFact.external_order_id.in_(ids),
+        )
+        .all()
+    )
+    return {str(row.external_order_id): row for row in rows}
 
 
 def get_order_economic_fact(
@@ -27,16 +69,11 @@ def get_order_economic_fact(
     ver = (truth_version or "").strip() or TRUTH_VERSION
     if not slug or not oid:
         return None
-    ensure_order_economic_fact_schema(db)
-    return (
-        db.session.query(OrderEconomicFact)
-        .filter(
-            OrderEconomicFact.store_slug == slug,
-            OrderEconomicFact.external_order_id == oid,
-            OrderEconomicFact.truth_version == ver,
-        )
-        .first()
-    )
+    return get_order_economic_facts(
+        store_slug=slug,
+        external_order_ids=[oid],
+        truth_version=ver,
+    ).get(oid)
 
 
 def persist_order_economic_fact(fact: CanonicalOrderEconomicFact) -> OrderEconomicFact:

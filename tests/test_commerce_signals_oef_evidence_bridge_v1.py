@@ -17,6 +17,7 @@ from services.commerce_signals_v1 import (
     SIGNAL_RECOVERY_PROGRESSED,
     SIGNAL_RECOVERY_STARTED,
     build_commerce_signals_v1,
+    load_commerce_signals_for_recovery_key,
     load_store_commerce_signals_v1,
 )
 from services.commerce_signals_v1_flag import ENV_COMMERCE_SIGNALS_V1
@@ -238,9 +239,9 @@ class OefSignalBridgeTests(unittest.TestCase):
     def test_e_purchase_confirmed_backward_compatible_without_order_id(self) -> None:
         legacy = _purchase()
         legacy.pop("order_id")
-        reader = mock.Mock(return_value=_oef())
+        reader = mock.Mock(return_value={ORDER_ID: _oef()})
         with mock.patch(
-            "services.commerce_signals_v1._read_order_economic_fact",
+            "services.order_economic_fact_v1.persist.get_order_economic_facts",
             reader,
         ):
             signals = build_commerce_signals_v1(
@@ -275,68 +276,88 @@ class OefSignalBridgeTests(unittest.TestCase):
             confirmed = _purchase_signal(signals)
             self.assertEqual(_oef_refs(confirmed), [])
 
-    def test_persist_lookup_path_is_get_order_economic_fact(self) -> None:
+    def test_persist_lookup_path_is_get_order_economic_facts(self) -> None:
         with mock.patch(
-            "services.order_economic_fact_v1.persist.get_order_economic_fact",
-            return_value=_oef(),
-        ) as lookup:
-            signals = build_commerce_signals_v1(
+            "services.order_economic_fact_v1.persist.get_order_economic_facts",
+            return_value={ORDER_ID: _oef()},
+        ) as lookup, mock.patch(
+            "services.cartflow_purchase_truth.purchase_context",
+            return_value=_purchase(),
+        ), mock.patch(
+            "services.recovery_truth_timeline_v1.get_recovery_truth_timeline",
+            return_value=[],
+        ):
+            payload = load_commerce_signals_for_recovery_key(
                 store_slug=STORE,
                 recovery_key=RK,
-                purchase=_purchase(),
                 force=True,
             )
-        lookup.assert_called_once_with(
-            store_slug=STORE,
-            external_order_id=ORDER_ID,
-        )
-        confirmed = _purchase_signal(signals)
+        lookup.assert_called_once()
+        kwargs = lookup.call_args.kwargs
+        self.assertEqual(kwargs["store_slug"], STORE)
+        self.assertEqual(list(kwargs["external_order_ids"]), [ORDER_ID])
+        confirmed = _purchase_signal(payload["signals"])
         self.assertEqual(_oef_refs(confirmed)[0]["paid_amount"], PAID_AMOUNT)
         self.assertEqual(_oef_refs(confirmed)[0]["currency"], CURRENCY)
 
     def test_lookup_uses_store_slug_and_order_id(self) -> None:
-        reader = mock.Mock(return_value=_oef())
+        reader = mock.Mock(return_value={ORDER_ID: _oef()})
         with mock.patch(
-            "services.commerce_signals_v1._read_order_economic_fact",
+            "services.order_economic_fact_v1.persist.get_order_economic_facts",
             reader,
+        ), mock.patch(
+            "services.cartflow_purchase_truth.purchase_context",
+            return_value=_purchase(),
+        ), mock.patch(
+            "services.recovery_truth_timeline_v1.get_recovery_truth_timeline",
+            return_value=[],
         ):
-            signals = build_commerce_signals_v1(
+            payload = load_commerce_signals_for_recovery_key(
                 store_slug=STORE,
                 recovery_key=RK,
-                purchase=_purchase(),
                 force=True,
             )
-        reader.assert_called_once_with(STORE, ORDER_ID)
-        confirmed = _purchase_signal(signals)
+        reader.assert_called_once()
+        kwargs = reader.call_args.kwargs
+        self.assertEqual(kwargs["store_slug"], STORE)
+        self.assertEqual(list(kwargs["external_order_ids"]), [ORDER_ID])
+        confirmed = _purchase_signal(payload["signals"])
         self.assertEqual(_oef_refs(confirmed)[0]["paid_amount"], PAID_AMOUNT)
 
     def test_lookup_exception_does_not_block_purchase_confirmed(self) -> None:
         with mock.patch(
-            "services.commerce_signals_v1._read_order_economic_fact",
+            "services.order_economic_fact_v1.persist.get_order_economic_facts",
             side_effect=RuntimeError("oef unavailable"),
+        ), mock.patch(
+            "services.cartflow_purchase_truth.purchase_context",
+            return_value=_purchase(),
+        ), mock.patch(
+            "services.recovery_truth_timeline_v1.get_recovery_truth_timeline",
+            return_value=[],
         ):
-            signals = build_commerce_signals_v1(
+            payload = load_commerce_signals_for_recovery_key(
                 store_slug=STORE,
                 recovery_key=RK,
-                purchase=_purchase(),
                 force=True,
             )
-        confirmed = _purchase_signal(signals)
+        confirmed = _purchase_signal(payload["signals"])
         self.assertEqual(_oef_refs(confirmed), [])
 
     def test_load_store_attaches_matching_oef_only(self) -> None:
         purchase = _purchase()
         matching = _oef()
-        foreign = _oef(store_slug=OTHER, external_order_id=OTHER_ORDER_ID, id=99)
 
-        def _read(store_slug: str, order_id: str):
-            if store_slug == STORE and order_id == ORDER_ID:
-                return matching
-            return foreign
+        def _batch(*, store_slug: str, external_order_ids, truth_version: str = "oef_v1"):
+            out = {}
+            if store_slug == STORE:
+                for oid in external_order_ids:
+                    if oid == ORDER_ID:
+                        out[oid] = matching
+            return out
 
         with mock.patch(
-            "services.commerce_signals_v1._read_order_economic_fact",
-            side_effect=_read,
+            "services.order_economic_fact_v1.persist.get_order_economic_facts",
+            side_effect=_batch,
         ), mock.patch(
             "services.cartflow_purchase_truth.purchase_context",
             return_value=purchase,
@@ -357,8 +378,8 @@ class OefSignalBridgeTests(unittest.TestCase):
 
     def test_load_store_missing_oef_keeps_purchase_confirmed(self) -> None:
         with mock.patch(
-            "services.commerce_signals_v1._read_order_economic_fact",
-            return_value=None,
+            "services.order_economic_fact_v1.persist.get_order_economic_facts",
+            return_value={},
         ), mock.patch(
             "services.cartflow_purchase_truth.purchase_context",
             return_value=_purchase(),

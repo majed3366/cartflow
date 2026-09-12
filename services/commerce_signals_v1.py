@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
-from typing import Any, Mapping, Optional
+from typing import Any, Iterable, Mapping, Optional
 
 from services.commerce_signals_v1_flag import commerce_signals_v1_enabled
 from services.recovery_truth_timeline_v1 import (
@@ -40,9 +40,6 @@ SIGNAL_PURCHASE_CONFIRMED = "purchase_confirmed"
 
 REF_TYPE_PURCHASE_TRUTH = "purchase_truth_record"
 REF_TYPE_ORDER_ECONOMIC_FACT = "order_economic_fact"
-
-# Sentinel: build() should resolve OEF itself when Purchase Truth has order_id.
-_OEF_RESOLVE = object()
 
 _STARTED_STATUSES = frozenset({STATUS_SCHEDULED, STATUS_DELAY_STARTED})
 _PROGRESSED_STATUSES = frozenset(
@@ -134,20 +131,28 @@ def _verified_paid_amount(raw: Any) -> Optional[str]:
     return text
 
 
-def _read_order_economic_fact(store_slug: str, order_id: str) -> Any:
-    """Read-only OEF lookup. Fail-closed: errors and misses return None."""
+def _purchase_order_id(purchase: Optional[dict[str, Any]]) -> str:
+    if not isinstance(purchase, dict) or purchase.get("purchase_detected") is not True:
+        return ""
+    return _norm(purchase.get("order_id"))
+
+
+def _read_order_economic_facts(store_slug: str, order_ids: Iterable[str]) -> dict[str, Any]:
+    """OEF-owned batch read. Empty IDs → no query. Fail-closed: errors return {}."""
     ss = _norm(store_slug)
-    oid = _norm(order_id)
-    if not ss or not oid:
-        return None
+    if not ss:
+        return {}
+    cleaned = [_norm(oid) for oid in order_ids if _norm(oid)]
+    if not cleaned:
+        return {}
     try:
         from services.order_economic_fact_v1.persist import (  # noqa: PLC0415
-            get_order_economic_fact,
+            get_order_economic_facts,
         )
 
-        return get_order_economic_fact(store_slug=ss, external_order_id=oid)
+        return get_order_economic_facts(store_slug=ss, external_order_ids=cleaned)
     except Exception:  # noqa: BLE001
-        return None
+        return {}
 
 
 def _oef_evidence_ref(
@@ -188,17 +193,6 @@ def _oef_evidence_ref(
     return ref
 
 
-def _resolve_purchase_oef(
-    *,
-    store_slug: str,
-    order_id: str,
-    order_economic_fact: Any,
-) -> Any:
-    if order_economic_fact is _OEF_RESOLVE:
-        return _read_order_economic_fact(store_slug, order_id)
-    return order_economic_fact
-
-
 def build_commerce_signals_v1(
     *,
     store_slug: str,
@@ -207,10 +201,10 @@ def build_commerce_signals_v1(
     purchase: Optional[dict[str, Any]] = None,
     blocked: Optional[dict[str, Any]] = None,
     force: bool = False,
-    order_economic_fact: Any = _OEF_RESOLVE,
+    order_economic_fact: Any = None,
 ) -> list[dict[str, Any]]:
     """
-    Pure projection from existing truth inputs.
+    Pure projection from existing truth inputs. Does not query OEF.
 
     When a valid Purchase Truth has order_id, attaches verified OEF
     paid_amount/currency onto purchase_confirmed evidence_refs only.
@@ -316,11 +310,7 @@ def build_commerce_signals_v1(
                         store_slug=ss,
                         recovery_key=rk,
                         order_id=order_id,
-                        fact=_resolve_purchase_oef(
-                            store_slug=ss,
-                            order_id=order_id,
-                            order_economic_fact=order_economic_fact,
-                        ),
+                        fact=order_economic_fact,
                     )
                     if oef_ref is not None:
                         p_refs.append(oef_ref)
@@ -389,6 +379,64 @@ def build_commerce_signals_v1(
     return out
 
 
+def _load_recovery_signal_inputs(
+    *,
+    store_slug: str,
+    recovery_key: str,
+) -> tuple[list[dict[str, Any]], Optional[dict[str, Any]], Optional[dict[str, Any]]]:
+    timeline: list[dict[str, Any]] = []
+    purchase: Optional[dict[str, Any]] = None
+    blocked: Optional[dict[str, Any]] = None
+
+    try:
+        from services.recovery_truth_timeline_v1 import (  # noqa: PLC0415
+            get_recovery_truth_timeline,
+        )
+
+        timeline = get_recovery_truth_timeline(recovery_key)
+    except Exception:  # noqa: BLE001
+        timeline = []
+
+    try:
+        from services.cartflow_purchase_truth import purchase_context  # noqa: PLC0415
+
+        purchase = purchase_context(recovery_key)
+    except Exception:  # noqa: BLE001
+        purchase = None
+
+    try:
+        from models import RecoverySchedule  # noqa: PLC0415
+        from extensions import db  # noqa: PLC0415
+
+        row = (
+            db.session.query(RecoverySchedule)
+            .filter(RecoverySchedule.recovery_key == recovery_key)
+            .order_by(RecoverySchedule.id.desc())
+            .first()
+        )
+        if row is not None:
+            err = _norm(getattr(row, "last_error", None)).lower()
+            if err in (
+                "schedule_blocked_missing_phone",
+                "purchase_truth_stop",
+                "skipped_missing_phone",
+                "skipped_no_verified_phone",
+            ):
+                blocked = {
+                    "reason": err,
+                    "store_slug": store_slug,
+                    "recovery_key": recovery_key,
+                    "observed_at": _utc_now_iso(),
+                    "source": "recovery_schedule",
+                    "ref_type": "recovery_schedule",
+                    "id": getattr(row, "id", None),
+                }
+    except Exception:  # noqa: BLE001
+        blocked = None
+
+    return timeline, purchase, blocked
+
+
 def load_commerce_signals_for_recovery_key(
     *,
     store_slug: str,
@@ -420,64 +468,13 @@ def load_commerce_signals_for_recovery_key(
             "signals": [],
         }
 
-    timeline: list[dict[str, Any]] = []
-    purchase: Optional[dict[str, Any]] = None
-    blocked: Optional[dict[str, Any]] = None
-
-    try:
-        from services.recovery_truth_timeline_v1 import (  # noqa: PLC0415
-            get_recovery_truth_timeline,
-        )
-
-        timeline = get_recovery_truth_timeline(rk)
-    except Exception:  # noqa: BLE001
-        timeline = []
-
-    try:
-        from services.cartflow_purchase_truth import purchase_context  # noqa: PLC0415
-
-        purchase = purchase_context(rk)
-    except Exception:  # noqa: BLE001
-        purchase = None
-
-    try:
-        from models import RecoverySchedule  # noqa: PLC0415
-        from extensions import db  # noqa: PLC0415
-
-        row = (
-            db.session.query(RecoverySchedule)
-            .filter(RecoverySchedule.recovery_key == rk)
-            .order_by(RecoverySchedule.id.desc())
-            .first()
-        )
-        if row is not None:
-            err = _norm(getattr(row, "last_error", None)).lower()
-            if err in (
-                "schedule_blocked_missing_phone",
-                "purchase_truth_stop",
-                "skipped_missing_phone",
-                "skipped_no_verified_phone",
-            ):
-                blocked = {
-                    "reason": err,
-                    "store_slug": ss,
-                    "recovery_key": rk,
-                    "observed_at": _utc_now_iso(),
-                    "source": "recovery_schedule",
-                    "ref_type": "recovery_schedule",
-                    "id": getattr(row, "id", None),
-                }
-    except Exception:  # noqa: BLE001
-        blocked = None
-
-    oef: Any = None
-    if isinstance(purchase, dict) and purchase.get("purchase_detected") is True:
-        purchase_order_id = _norm(purchase.get("order_id"))
-        if purchase_order_id:
-            try:
-                oef = _read_order_economic_fact(ss, purchase_order_id)
-            except Exception:  # noqa: BLE001
-                oef = None
+    timeline, purchase, blocked = _load_recovery_signal_inputs(
+        store_slug=ss,
+        recovery_key=rk,
+    )
+    order_id = _purchase_order_id(purchase)
+    facts = _read_order_economic_facts(ss, [order_id] if order_id else [])
+    oef = facts.get(order_id) if order_id else None
 
     signals = build_commerce_signals_v1(
         store_slug=ss,
@@ -563,6 +560,7 @@ def load_store_commerce_signals_v1(
     Store-scoped read-only Signals for summary attach.
 
     Reuses per-key Truth→Signal projection; dedupes by type+evidence.
+    One OEF batch lookup for distinct order_ids on the selected keys.
     purchase_confirmed may include verified OEF money when the key's
     Purchase Truth has an order_id and a matching Order Economic Fact.
     """
@@ -587,18 +585,38 @@ def load_store_commerce_signals_v1(
         }
 
     keys = list(recovery_keys) if recovery_keys is not None else _recent_store_recovery_keys(ss)
-    signals: list[dict[str, Any]] = []
-    seen: set[tuple[str, tuple[str, ...]]] = set()
+    loaded_inputs: list[tuple[str, list[dict[str, Any]], Optional[dict[str, Any]], Optional[dict[str, Any]]]] = []
+    order_ids: list[str] = []
+    seen_order_ids: set[str] = set()
     for raw_rk in keys:
         rk = _norm(raw_rk)
         if not rk or not _recovery_key_belongs_to_store(rk, ss):
             continue
-        loaded = load_commerce_signals_for_recovery_key(
+        timeline, purchase, blocked = _load_recovery_signal_inputs(
             store_slug=ss,
             recovery_key=rk,
-            force=force,
         )
-        for sig in loaded.get("signals") or []:
+        loaded_inputs.append((rk, timeline, purchase, blocked))
+        order_id = _purchase_order_id(purchase)
+        if order_id and order_id not in seen_order_ids:
+            seen_order_ids.add(order_id)
+            order_ids.append(order_id)
+    facts = _read_order_economic_facts(ss, order_ids)
+
+    signals: list[dict[str, Any]] = []
+    seen: set[tuple[str, tuple[str, ...]]] = set()
+    for rk, timeline, purchase, blocked in loaded_inputs:
+        order_id = _purchase_order_id(purchase)
+        oef = facts.get(order_id) if order_id else None
+        for sig in build_commerce_signals_v1(
+            store_slug=ss,
+            recovery_key=rk,
+            timeline_events=timeline,
+            purchase=purchase,
+            blocked=blocked,
+            force=force,
+            order_economic_fact=oef,
+        ):
             if not isinstance(sig, dict):
                 continue
             key = (str(sig.get("signal_type") or ""), _evidence_key(sig.get("evidence_refs") or []))
