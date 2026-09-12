@@ -11,7 +11,8 @@ import hashlib
 import json
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from decimal import Decimal, InvalidOperation
+from typing import Any, Mapping, Optional
 
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -88,6 +89,10 @@ from services.product_data.time_authority_binding_resolve_v1 import resolve_boun
 
 log = logging.getLogger("cartflow")
 
+REF_TYPE_ORDER_ECONOMIC_FACT = "order_economic_fact"
+SIGNAL_PURCHASE_CONFIRMED = "purchase_confirmed"
+_OEF_LINEAGE_ROLE = "verified_paid_order_money"
+
 
 def _utc_naive_now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
@@ -126,6 +131,100 @@ def _domains_ok(rule: dict[str, Any], available: set[str]) -> tuple[bool, list[s
     required = list(rule.get("required_source_domains") or [])
     missing = [d for d in required if d not in available]
     return (len(missing) == 0, missing)
+
+
+def _norm_text(value: Any) -> str:
+    return str(value or "").strip()
+
+
+def _verified_oef_paid_amount(raw: Any) -> Optional[str]:
+    """Return the supplied paid string when parseable and strictly positive."""
+    text = _norm_text(raw)
+    if not text:
+        return None
+    try:
+        amount = Decimal(text)
+    except (InvalidOperation, ValueError):
+        return None
+    if amount <= 0:
+        return None
+    return text
+
+
+def _collect_oef_evidence_from_purchase_signals(
+    signals: list[Any],
+) -> list[dict[str, Any]]:
+    """
+    Preserve verified OEF evidence already attached to purchase_confirmed.
+
+    Read-only over loaded Commerce Signal evidence_refs. No OEF DB lookup.
+    No abandoned-cart value fallback. No fabricated currency or amount.
+    """
+    out: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, str]] = set()
+    for raw in signals or []:
+        if not isinstance(raw, Mapping):
+            continue
+        if _norm_text(raw.get("signal_type")) != SIGNAL_PURCHASE_CONFIRMED:
+            continue
+        refs = raw.get("evidence_refs")
+        if not isinstance(refs, list):
+            continue
+        for ref in refs:
+            if not isinstance(ref, Mapping):
+                continue
+            if _norm_text(ref.get("ref_type")) != REF_TYPE_ORDER_ECONOMIC_FACT:
+                continue
+            oef_id = ref.get("id")
+            if oef_id is None or _norm_text(oef_id) == "":
+                continue
+            paid = _verified_oef_paid_amount(ref.get("paid_amount"))
+            currency = _norm_text(ref.get("currency"))
+            if not paid or not currency:
+                continue
+            key = (_norm_text(oef_id), paid, currency)
+            if key in seen:
+                continue
+            seen.add(key)
+            preserved: dict[str, Any] = {
+                "ref_type": REF_TYPE_ORDER_ECONOMIC_FACT,
+                "id": oef_id,
+                "paid_amount": paid,
+                "currency": currency,
+            }
+            recovery_key = _norm_text(ref.get("recovery_key"))
+            if not recovery_key:
+                subject = raw.get("subject")
+                if isinstance(subject, Mapping):
+                    recovery_key = _norm_text(subject.get("recovery_key"))
+            if recovery_key:
+                preserved["recovery_key"] = recovery_key
+            out.append(preserved)
+    out.sort(key=lambda r: (_norm_text(r.get("id")), str(r.get("paid_amount"))))
+    return out
+
+
+def _preserve_oef_lineage(
+    *,
+    contributions: dict[str, Any],
+    source_record_ids: list[str],
+    oef_refs: list[dict[str, Any]],
+) -> tuple[dict[str, Any], list[str]]:
+    """Attach OEF lineage to existing CISYN fields. Never writes known_facts."""
+    if not oef_refs:
+        return contributions, source_record_ids
+    next_contributions = dict(contributions)
+    next_contributions[REF_TYPE_ORDER_ECONOMIC_FACT] = {
+        "supporting_records": len(oef_refs),
+        "role": _OEF_LINEAGE_ROLE,
+        "refs": list(oef_refs),
+    }
+    next_ids = list(source_record_ids)
+    for ref in oef_refs:
+        rid = f"oef:{_norm_text(ref.get('id'))}"
+        if rid and rid not in next_ids:
+            next_ids.append(rid)
+    return next_contributions, next_ids
 
 
 def _build_synthesis(
@@ -676,6 +775,13 @@ def _eval_whatsapp_return(
             "supporting_records": len(purchases),
             "role": "completed_purchase",
         }
+    oef_refs = _collect_oef_evidence_from_purchase_signals(purchases)
+    source_record_ids = [f"signal:{i}" for i, _ in enumerate(recovery[:20])]
+    contributions, source_record_ids = _preserve_oef_lineage(
+        contributions=contributions,
+        source_record_ids=source_record_ids,
+        oef_refs=oef_refs,
+    )
 
     if sample < min_n:
         state = STATE_INSUFFICIENT
@@ -718,7 +824,7 @@ def _eval_whatsapp_return(
             pattern_direction=direction,
             commercial_domain="recovery",
             source_domains=["commerce_signals"],
-            source_record_ids=[f"signal:{i}" for i, _ in enumerate(recovery[:20])],
+            source_record_ids=source_record_ids,
             source_contributions=contributions,
             required_source_domains=["commerce_signals"],
             missing_source_domains=[],
@@ -1264,6 +1370,22 @@ def _eval_recovery_influence(
         if cls in counts:
             counts[cls] += 1
     sample = purchase_confirmed + sum(counts.values())
+    oef_refs = _collect_oef_evidence_from_purchase_signals(signals)
+    contributions = {
+        "commerce_signals": {
+            "supporting_records": sample,
+            "role": "influence_boundary",
+        },
+        "purchase_truth": {
+            "supporting_records": purchase_confirmed,
+            "role": "completed_purchase",
+        },
+    }
+    contributions, source_record_ids = _preserve_oef_lineage(
+        contributions=contributions,
+        source_record_ids=[],
+        oef_refs=oef_refs,
+    )
     if sample < int(rule.get("minimum_sample_size") or 0):
         state = STATE_INSUFFICIENT
         summary = "recovery_influence_boundary.insufficient"
@@ -1294,17 +1416,8 @@ def _eval_recovery_influence(
             pattern_direction=DIRECTION_INFLUENCE_BOUNDARY,
             commercial_domain="recovery_influence",
             source_domains=["commerce_signals"],
-            source_record_ids=[],
-            source_contributions={
-                "commerce_signals": {
-                    "supporting_records": sample,
-                    "role": "influence_boundary",
-                },
-                "purchase_truth": {
-                    "supporting_records": purchase_confirmed,
-                    "role": "completed_purchase",
-                },
-            },
+            source_record_ids=source_record_ids,
+            source_contributions=contributions,
             required_source_domains=["commerce_signals"],
             missing_source_domains=[],
             known_facts=known,
