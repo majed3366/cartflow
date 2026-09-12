@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 from typing import Any, Mapping, Optional
 
 from services.commerce_signals_v1_flag import commerce_signals_v1_enabled
@@ -36,6 +37,12 @@ SIGNAL_RECOVERY_PROGRESSED = "recovery_progressed"
 SIGNAL_RECOVERY_COMPLETED = "recovery_completed"
 SIGNAL_RECOVERY_BLOCKED = "recovery_blocked"
 SIGNAL_PURCHASE_CONFIRMED = "purchase_confirmed"
+
+REF_TYPE_PURCHASE_TRUTH = "purchase_truth_record"
+REF_TYPE_ORDER_ECONOMIC_FACT = "order_economic_fact"
+
+# Sentinel: build() should resolve OEF itself when Purchase Truth has order_id.
+_OEF_RESOLVE = object()
 
 _STARTED_STATUSES = frozenset({STATUS_SCHEDULED, STATUS_DELAY_STARTED})
 _PROGRESSED_STATUSES = frozenset(
@@ -107,6 +114,91 @@ def _subject(store_slug: str, recovery_key: str) -> dict[str, Any]:
     }
 
 
+def _fact_attr(fact: Any, name: str) -> Any:
+    if isinstance(fact, Mapping):
+        return fact.get(name)
+    return getattr(fact, name, None)
+
+
+def _verified_paid_amount(raw: Any) -> Optional[str]:
+    """Return the canonical OEF paid string, or None if missing/non-positive."""
+    text = _norm(raw)
+    if not text:
+        return None
+    try:
+        amount = Decimal(text)
+    except (InvalidOperation, ValueError):
+        return None
+    if amount <= 0:
+        return None
+    return text
+
+
+def _read_order_economic_fact(store_slug: str, order_id: str) -> Any:
+    """Read-only OEF lookup. Fail-closed: errors and misses return None."""
+    ss = _norm(store_slug)
+    oid = _norm(order_id)
+    if not ss or not oid:
+        return None
+    try:
+        from services.order_economic_fact_v1.persist import (  # noqa: PLC0415
+            get_order_economic_fact,
+        )
+
+        return get_order_economic_fact(store_slug=ss, external_order_id=oid)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _oef_evidence_ref(
+    *,
+    store_slug: str,
+    recovery_key: str,
+    order_id: str,
+    fact: Any,
+) -> Optional[dict[str, Any]]:
+    """
+    Verified economic evidence for purchase_confirmed.
+
+    Attaches only when the fact matches this store + order and has
+    paid_amount + currency. Never uses cart_value. Never fabricates.
+    """
+    if fact is None:
+        return None
+    fact_store = _norm(_fact_attr(fact, "store_slug"))
+    fact_oid = _norm(
+        _fact_attr(fact, "external_order_id") or _fact_attr(fact, "order_id")
+    )
+    if fact_store != _norm(store_slug) or fact_oid != _norm(order_id):
+        return None
+    paid = _verified_paid_amount(_fact_attr(fact, "paid_amount"))
+    currency = _norm(_fact_attr(fact, "currency"))
+    if not paid or not currency:
+        return None
+    ref: dict[str, Any] = {
+        "ref_type": REF_TYPE_ORDER_ECONOMIC_FACT,
+        "id": _fact_attr(fact, "id"),
+        "recovery_key": _norm(recovery_key),
+        "paid_amount": paid,
+        "currency": currency,
+    }
+    payment_state = _norm(_fact_attr(fact, "payment_state"))
+    if payment_state:
+        ref["status"] = payment_state
+    return ref
+
+
+def _resolve_purchase_oef(
+    *,
+    store_slug: str,
+    order_id: str,
+    order_economic_fact: Any,
+) -> Any:
+    if order_economic_fact is _OEF_RESOLVE:
+        return _read_order_economic_fact(store_slug, order_id)
+    return order_economic_fact
+
+
 def build_commerce_signals_v1(
     *,
     store_slug: str,
@@ -115,9 +207,14 @@ def build_commerce_signals_v1(
     purchase: Optional[dict[str, Any]] = None,
     blocked: Optional[dict[str, Any]] = None,
     force: bool = False,
+    order_economic_fact: Any = _OEF_RESOLVE,
 ) -> list[dict[str, Any]]:
     """
     Pure projection from existing truth inputs.
+
+    When a valid Purchase Truth has order_id, attaches verified OEF
+    paid_amount/currency onto purchase_confirmed evidence_refs only.
+    Missing or foreign OEF leaves the signal economically unquantified.
 
     Returns [] when flag off (unless force=True), store isolation fails,
     or inputs are empty/invalid.
@@ -207,11 +304,28 @@ def build_commerce_signals_v1(
             purchase_ok = True
             p_refs = [
                 {
-                    "ref_type": "purchase_truth_record",
+                    "ref_type": REF_TYPE_PURCHASE_TRUTH,
                     "id": purchase.get("id") or purchase.get("purchase_truth_id"),
                     "recovery_key": rk,
                 }
             ]
+            order_id = _norm(purchase.get("order_id"))
+            if order_id:
+                try:
+                    oef_ref = _oef_evidence_ref(
+                        store_slug=ss,
+                        recovery_key=rk,
+                        order_id=order_id,
+                        fact=_resolve_purchase_oef(
+                            store_slug=ss,
+                            order_id=order_id,
+                            order_economic_fact=order_economic_fact,
+                        ),
+                    )
+                    if oef_ref is not None:
+                        p_refs.append(oef_ref)
+                except Exception:  # noqa: BLE001
+                    pass
             _emit(
                 _make_signal(
                     signal_type=SIGNAL_PURCHASE_CONFIRMED,
@@ -226,7 +340,7 @@ def build_commerce_signals_v1(
                 started_status = _norm(started_event.get("status")).lower()
                 completed_refs = [
                     {
-                        "ref_type": "purchase_truth_record",
+                        "ref_type": REF_TYPE_PURCHASE_TRUTH,
                         "id": purchase.get("id") or purchase.get("purchase_truth_id"),
                         "recovery_key": rk,
                     },
@@ -356,6 +470,15 @@ def load_commerce_signals_for_recovery_key(
     except Exception:  # noqa: BLE001
         blocked = None
 
+    oef: Any = None
+    if isinstance(purchase, dict) and purchase.get("purchase_detected") is True:
+        purchase_order_id = _norm(purchase.get("order_id"))
+        if purchase_order_id:
+            try:
+                oef = _read_order_economic_fact(ss, purchase_order_id)
+            except Exception:  # noqa: BLE001
+                oef = None
+
     signals = build_commerce_signals_v1(
         store_slug=ss,
         recovery_key=rk,
@@ -363,6 +486,7 @@ def load_commerce_signals_for_recovery_key(
         purchase=purchase,
         blocked=blocked,
         force=force,
+        order_economic_fact=oef,
     )
     return {
         "ok": True,
@@ -439,6 +563,8 @@ def load_store_commerce_signals_v1(
     Store-scoped read-only Signals for summary attach.
 
     Reuses per-key Truth→Signal projection; dedupes by type+evidence.
+    purchase_confirmed may include verified OEF money when the key's
+    Purchase Truth has an order_id and a matching Order Economic Fact.
     """
     if not force and not commerce_signals_v1_enabled():
         return {
@@ -534,6 +660,8 @@ def attach_commerce_signals_v1_to_summary(
 
 __all__ = [
     "PROJECTION",
+    "REF_TYPE_ORDER_ECONOMIC_FACT",
+    "REF_TYPE_PURCHASE_TRUTH",
     "SIGNAL_PURCHASE_CONFIRMED",
     "SIGNAL_RECOVERY_BLOCKED",
     "SIGNAL_RECOVERY_COMPLETED",
